@@ -233,7 +233,7 @@ public class ReturnsService {
                 "completed",
                 TimeUtil.nowUTC(),
                 sale.invoiceNumber(),
-                null, null
+                null
         );
         salesRepository.insertTransaction(refundTransaction, saleId);
 

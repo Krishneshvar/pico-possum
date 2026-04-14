@@ -144,7 +144,7 @@ public class CheckoutService {
                     Transaction transaction = new Transaction(
                             null, p.amount(), "payment", p.paymentMethodId(), 
                             null, "completed", com.possum.shared.util.TimeUtil.nowUTC(), 
-                            invoiceNumber, null, null
+                            invoiceNumber, null
                     );
                     salesRepository.insertTransaction(transaction, newSaleId);
                 }

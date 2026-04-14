@@ -77,7 +77,6 @@ class SqliteInventoryRepositoryTest {
                 expiry_date TEXT,
                 quantity INTEGER NOT NULL,
                 unit_cost REAL,
-                purchase_order_item_id INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """);
@@ -99,14 +98,14 @@ class SqliteInventoryRepositoryTest {
 
     @Test
     void insertLot_validLot_insertsSuccessfully() {
-        InventoryLot lot = new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null, null);
+        InventoryLot lot = new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null);
         long id = repository.insertInventoryLot(lot);
         assertTrue(id > 0);
     }
 
     @Test
     void findLotById_found_returnsLot() {
-        InventoryLot lot = new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null, null);
+        InventoryLot lot = new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null);
         long id = repository.insertInventoryLot(lot);
         Optional<InventoryLot> result = repository.findLotById(id);
         assertTrue(result.isPresent());
@@ -116,8 +115,8 @@ class SqliteInventoryRepositoryTest {
     @Test
     void getStockByProductId_aggregation_returnsTotal() throws SQLException {
         connection.createStatement().execute("INSERT INTO products (id, name, sku, mrp, cost_price) VALUES (1, 'Product', 'SKU001', 100, 50)");
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null, null));
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH002", null, null, 50, new BigDecimal("50.00"), null, null));
+        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null));
+        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH002", null, null, 50, new BigDecimal("50.00"), null));
 
         int stock = repository.getStockByProductId(1L);
         assertEquals(150, stock);
@@ -125,8 +124,8 @@ class SqliteInventoryRepositoryTest {
 
     @Test
     void findAvailableLots_FIFO_ordering() {
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH003", null, null, 30, new BigDecimal("50.00"), null, null));
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null, null));
+        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH003", null, null, 30, new BigDecimal("50.00"), null));
+        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null));
 
         List<AvailableLot> result = repository.findAvailableLotsByProductId(1L);
         assertEquals(2, result.size());
@@ -135,7 +134,7 @@ class SqliteInventoryRepositoryTest {
     @Test
     void findLowStockProducts_threshold_returnsProducts() throws SQLException {
         connection.createStatement().execute("INSERT INTO products (id, name, sku, mrp, cost_price, stock_alert_cap) VALUES (1, 'Low Stock', 'SKU001', 100, 50, 100)");
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 50, new BigDecimal("50.00"), null, null));
+        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 50, new BigDecimal("50.00"), null));
 
         List<Product> result = repository.findLowStockProducts();
         assertEquals(1, result.size());

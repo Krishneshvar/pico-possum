@@ -51,7 +51,7 @@ class InventoryServiceTest {
         when(inventoryRepository.insertInventoryLot(any())).thenReturn(500L);
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(20);
 
-        InventoryService.ReceiveInventoryResult result = inventoryService.receiveInventory(1L, 20, new BigDecimal("15.00"), "BATCH1", null, null, null, 1L);
+        InventoryService.ReceiveInventoryResult result = inventoryService.receiveInventory(1L, 20, new BigDecimal("15.00"), "BATCH1", null, null, 1L);
 
         assertNotNull(result);
         assertEquals(500L, result.lotId());
@@ -67,8 +67,8 @@ class InventoryServiceTest {
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(100);
         // Lot 1: 10 units, Lot 2: 50 units
         when(inventoryRepository.findAvailableLotsByProductId(1L)).thenReturn(List.of(
-            new AvailableLot(100L, 1L, null, null, null, 10, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 10),
-            new AvailableLot(101L, 1L, null, null, null, 50, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 50)
+            new AvailableLot(100L, 1L, null, null, null, 10, BigDecimal.TEN, java.time.LocalDateTime.now(), 10),
+            new AvailableLot(101L, 1L, null, null, null, 50, BigDecimal.TEN, java.time.LocalDateTime.now(), 50)
         ));
 
         // Deduct 15 units

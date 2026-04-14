@@ -107,7 +107,7 @@ class TransactionsControllerTest {
     private Transaction createTestTransaction(Long id, String invoiceNumber, BigDecimal amount, String type) {
         return new Transaction(
             id, amount, type, 1L, "Cash", "completed", LocalDateTime.now(),
-            invoiceNumber, "Test Customer", null
+            invoiceNumber, "Test Customer"
         );
     }
 }

@@ -74,21 +74,12 @@ class TransactionServiceTest {
         verify(salesRepository).findTransactionsBySaleId(10L);
     }
 
-    @Test
-    void listTransactionsByPurchase_shouldReturnList() {
-        List<Transaction> transactions = List.of(createTestTransaction(3L));
-        when(transactionRepository.findTransactionsByPurchaseOrderId(20L)).thenReturn(transactions);
 
-        List<Transaction> result = transactionService.listTransactionsByPurchase(20L, viewPermissions);
-
-        assertEquals(1, result.size());
-        verify(transactionRepository).findTransactionsByPurchaseOrderId(20L);
-    }
 
     private Transaction createTestTransaction(long id) {
         return new Transaction(
             id, BigDecimal.TEN, "SALE", 100L, "CASH", "COMPLETED",
-            LocalDateTime.now(), "Ref" + id, "Customer Name", "Supplier Name"
+            LocalDateTime.now(), "Ref" + id, "Customer Name"
         );
     }
 }

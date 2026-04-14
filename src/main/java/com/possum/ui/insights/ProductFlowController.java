@@ -96,7 +96,7 @@ public class ProductFlowController {
         endDatePicker = filterBar.addDateFilter("endDate", "To Date");
         
         eventTypeFilter = filterBar.addMultiSelectFilter("eventTypes", "Event Type",
-            List.of("SALE", "PURCHASE", "RETURN", "ADJUSTMENT"),
+            List.of("SALE", "RETURN", "ADJUSTMENT"),
             s -> s
         );
 
@@ -400,7 +400,7 @@ public class ProductFlowController {
 
     private void handleViewBill(ProductFlow flow) {
         if (flow.billRefId() == null) return;
-        
+
         try {
             long billId = flow.billRefId();
             if ("sale_item".equalsIgnoreCase(flow.referenceType()) || "sale".equalsIgnoreCase(flow.eventType())) {
@@ -411,10 +411,6 @@ public class ProductFlowController {
                     params.put("sale", sale);
                     workspaceManager.openOrFocusWindow("Bill: " + sale.invoiceNumber(), "/fxml/sales/sale-detail-view.fxml", params);
                 }
-            } else if ("purchase_order".equalsIgnoreCase(flow.referenceType()) || "purchase".equalsIgnoreCase(flow.eventType())) {
-                Map<String, Object> params = new HashMap<>();
-                params.put("orderId", billId);
-                workspaceManager.openOrFocusWindow("PO: " + flow.billRefNumber(), "/fxml/purchase/purchase-order-detail.fxml", params);
             }
         } catch (Exception e) {
             com.possum.infrastructure.logging.LoggingConfig.getLogger().error("Could not open document details", e);

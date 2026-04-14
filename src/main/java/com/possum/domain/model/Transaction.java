@@ -12,8 +12,7 @@ public record Transaction(
         String status,
         LocalDateTime transactionDate,
         String invoiceNumber,
-        String customerName,
-        String supplierName
+        String customerName
 ) {
     public String shortInvoiceNumber() {
         if (invoiceNumber == null) return "";

@@ -32,19 +32,12 @@ public class NavBarBuilder {
             {"Stock",       "/fxml/inventory/inventory-view.fxml"},
             {"Stock History","/fxml/inventory/stock-history-view.fxml"}
         });
-        createNavMenu("Sales", "bx-cart", new Object[][]{
+        createNavMenu("Commercial", "bx-cart", new Object[][]{
             {"Point of Sale", "/fxml/sales/pos-view.fxml"},
             {"Bill History",  "/fxml/sales/sales-history-view.fxml"},
             {"Transactions",  "/fxml/transactions/transactions-view.fxml"},
+            {"Customers",     "/fxml/people/customers-view.fxml"},
             {"Returns",       "/fxml/returns/returns-view.fxml"}
-        });
-        createNavMenu("Purchase", "bx-purchase-tag", new Object[][]{
-            {"Suppliers",       "/fxml/purchase/suppliers-view.fxml"},
-            {"Payment Policies", "/fxml/purchase/payment-policies-view.fxml"},
-            {"Purchase Orders", "/fxml/purchase/purchase-view.fxml"}
-        });
-        createNavMenu("People", "bx-group", new Object[][]{
-            {"Customers", "/fxml/people/customers-view.fxml"}
         });
         createNavMenu("Insights", "bx-bar-chart-alt-2", new Object[][]{
             {"Sales Reports",   "/fxml/reports/sales-reports-view.fxml"},

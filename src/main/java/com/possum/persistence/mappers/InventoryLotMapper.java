@@ -17,7 +17,6 @@ public final class InventoryLotMapper implements RowMapper<InventoryLot> {
                 SqlMapperUtils.getLocalDateTime(rs, "expiry_date"),
                 rs.getInt("quantity"),
                 SqlMapperUtils.getBigDecimal(rs, "unit_cost"),
-                SqlMapperUtils.getNullableLong(rs, "purchase_order_item_id"),
                 SqlMapperUtils.getLocalDateTime(rs, "created_at")
         );
     }

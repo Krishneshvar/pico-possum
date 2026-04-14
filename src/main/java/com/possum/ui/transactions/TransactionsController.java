@@ -174,7 +174,7 @@ public class TransactionsController extends AbstractCrudController<Transaction, 
     @Override
     protected void setupFilters() {
         filterBar.addMultiSelectFilter("type", "All Types", 
-            List.of("Sale", "Refund", "Purchase"),
+            List.of("Sale", "Refund"),
             s -> s,
             false
         );

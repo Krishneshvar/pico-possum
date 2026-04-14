@@ -1,6 +1,5 @@
 package com.possum.application.transactions;
 
-import com.possum.domain.exceptions.AuthorizationException;
 import com.possum.domain.model.Transaction;
 import com.possum.domain.repositories.SalesRepository;
 import com.possum.domain.repositories.TransactionRepository;
@@ -26,8 +25,6 @@ public final class TransactionServiceImpl implements TransactionService {
 
     @Override
     public PagedResult<Transaction> getTransactions(TransactionFilter filter, Set<String> userPermissions) {
-        checkPermissions(userPermissions);
-
         int page = Math.max(1, filter.currentPage());
         int limit = Math.min(100, Math.max(1, filter.itemsPerPage()));
 
@@ -51,23 +48,11 @@ public final class TransactionServiceImpl implements TransactionService {
 
     @Override
     public Optional<Transaction> getTransactionById(long id, Set<String> userPermissions) {
-        checkPermissions(userPermissions);
         return transactionRepository.findTransactionById(id);
     }
 
     @Override
     public List<Transaction> listTransactionsBySale(long saleId, Set<String> userPermissions) {
-        checkPermissions(userPermissions);
         return salesRepository.findTransactionsBySaleId(saleId);
-    }
-
-    @Override
-    public List<Transaction> listTransactionsByPurchase(long purchaseOrderId, Set<String> userPermissions) {
-        checkPermissions(userPermissions);
-        return transactionRepository.findTransactionsByPurchaseOrderId(purchaseOrderId);
-    }
-
-    private void checkPermissions(Set<String> userPermissions) {
-        // No-op
     }
 }

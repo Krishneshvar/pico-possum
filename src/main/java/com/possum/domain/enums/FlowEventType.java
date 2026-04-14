@@ -1,7 +1,6 @@
 package com.possum.domain.enums;
 
 public enum FlowEventType {
-    PURCHASE("purchase"),
     SALE("sale"),
     RETURN("return"),
     ADJUSTMENT("adjustment");

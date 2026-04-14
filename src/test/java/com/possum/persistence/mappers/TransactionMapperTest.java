@@ -48,7 +48,6 @@ class TransactionMapperTest {
         assertEquals(LocalDateTime.of(2023, 10, 15, 14, 30), tx.transactionDate());
         assertEquals("INV-123", tx.invoiceNumber());
         assertEquals("Jane Smith", tx.customerName());
-        assertNull(tx.supplierName());
     }
 
     @Test

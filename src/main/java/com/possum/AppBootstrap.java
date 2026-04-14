@@ -2,13 +2,10 @@ package com.possum;
 
 import com.possum.application.ApplicationModule;
 import com.possum.application.sales.SalesService;
-
-
 import com.possum.ui.sales.ProductSearchIndex;
 import com.possum.application.transactions.TransactionService;
 import com.possum.application.returns.ReturnsService;
 import com.possum.application.reports.ReportsService;
-import com.possum.application.purchase.PurchaseService;
 import com.possum.persistence.repositories.sqlite.*;
 import com.possum.ui.DependencyInjector;
 import com.possum.application.auth.AuthContext;
@@ -47,9 +44,7 @@ public final class AppBootstrap {
     private TransactionService transactionService;
     private ReturnsService returnsService;
     private ReportsService reportsService;
-    private PurchaseService purchaseService;
     private SqliteSalesRepository salesRepository;
-    private SqliteSupplierRepository supplierRepository;
     private com.possum.domain.services.SaleCalculator saleCalculator;
     private com.possum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
     private TransactionManager transactionManager;
@@ -149,9 +144,6 @@ public final class AppBootstrap {
                 new com.possum.persistence.repositories.sqlite.SqliteTransactionRepository(databaseManager);
         com.possum.persistence.repositories.sqlite.SqliteReturnsRepository returnRepository =
                 new com.possum.persistence.repositories.sqlite.SqliteReturnsRepository(databaseManager);
-        supplierRepository = new SqliteSupplierRepository(databaseManager);
-        com.possum.persistence.repositories.sqlite.SqlitePurchaseRepository purchaseOrderRepository =
-                new com.possum.persistence.repositories.sqlite.SqlitePurchaseRepository(databaseManager);
 
         com.possum.application.sales.PaymentService paymentService =
                 new com.possum.application.sales.PaymentService(salesRepository);
@@ -174,14 +166,12 @@ public final class AppBootstrap {
         com.possum.persistence.repositories.sqlite.SqliteReportsRepository reportsRepository =
                 new com.possum.persistence.repositories.sqlite.SqliteReportsRepository(databaseManager);
         reportsService = new ReportsService(reportsRepository, productFlowRepository);
-        purchaseService = new PurchaseService(purchaseOrderRepository, supplierRepository, productRepository,
-                inventoryRepository, productFlowRepository, auditRepository, transactionManager, databaseManager, jsonService);
     }
 
     private void initializeUI() {
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
                 saleCalculator, productSearchIndex, transactionService, returnsService,
-                reportsService, purchaseService, salesRepository, supplierRepository, appPaths);
+                reportsService, salesRepository, appPaths);
 
         dependencyInjector.getToastService().setMainStage(null);
     }

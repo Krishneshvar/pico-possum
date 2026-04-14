@@ -66,7 +66,7 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                 """
                 SELECT 
                   il.id, il.product_id, il.batch_number, il.manufactured_date, il.expiry_date,
-                  il.quantity AS initial_quantity, il.unit_cost, il.purchase_order_item_id, il.created_at,
+                  il.quantity AS initial_quantity, il.unit_cost, il.created_at,
                   (il.quantity + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE lot_id = il.id), 0)) AS remaining_quantity
                 FROM inventory_lots il
                 WHERE il.product_id = ?
@@ -81,7 +81,6 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                         SqlMapperUtils.getLocalDateTime(rs, "expiry_date"),
                         rs.getInt("initial_quantity"),
                         SqlMapperUtils.getBigDecimal(rs, "unit_cost"),
-                        getNullableLong(rs, "purchase_order_item_id"),
                         SqlMapperUtils.getLocalDateTime(rs, "created_at"),
                         rs.getInt("remaining_quantity")
                 ),
@@ -187,17 +186,16 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         return executeInsert(
                 """
                 INSERT INTO inventory_lots (
-                  product_id, batch_number, manufactured_date, expiry_date, quantity, unit_cost, purchase_order_item_id
+                  product_id, batch_number, manufactured_date, expiry_date, quantity, unit_cost
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 lot.productId(),
                 lot.batchNumber(),
                 lot.manufacturedDate(),
                 lot.expiryDate(),
                 lot.quantity(),
-                lot.unitCost(),
-                lot.purchaseOrderItemId()
+                lot.unitCost()
         );
     }
 

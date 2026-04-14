@@ -2,9 +2,7 @@ package com.possum.domain.enums;
 
 public enum TransactionType {
     PAYMENT("payment"),
-    REFUND("refund"),
-    PURCHASE("purchase"),
-    PURCHASE_REFUND("purchase_refund");
+    REFUND("refund");
 
     private final String dbValue;
 

@@ -89,7 +89,7 @@ public class ProductService {
             ));
 
             if (command.initialStock() != null && command.initialStock() > 0) {
-                InventoryLot lot = new InventoryLot(null, productId, null, null, null, command.initialStock(), command.costPrice(), null, null);
+                InventoryLot lot = new InventoryLot(null, productId, null, null, null, command.initialStock(), command.costPrice(), null);
                 long lotId = inventoryRepository.insertInventoryLot(lot);
 
                 InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, lotId, command.initialStock(), "confirm_receive", null, null, command.userId(), null, null);

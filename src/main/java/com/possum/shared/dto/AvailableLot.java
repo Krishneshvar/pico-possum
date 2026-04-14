@@ -11,7 +11,6 @@ public record AvailableLot(
         LocalDateTime expiryDate,
         Integer initialQuantity,
         BigDecimal unitCost,
-        Long purchaseOrderItemId,
         LocalDateTime createdAt,
         Integer remainingQuantity
 ) {

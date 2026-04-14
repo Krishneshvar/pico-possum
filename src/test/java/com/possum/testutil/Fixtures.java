@@ -121,7 +121,7 @@ public final class Fixtures {
 
     public static AvailableLot lot(long id, long productId, int remaining) {
         return new AvailableLot(id, productId, null, null, null, remaining,
-                BigDecimal.ZERO, null, LocalDateTime.now(), remaining);
+                BigDecimal.ZERO, LocalDateTime.now(), remaining);
     }
 
     // -------------------------------------------------------------------------

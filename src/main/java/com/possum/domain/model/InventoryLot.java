@@ -11,7 +11,6 @@ public record InventoryLot(
         LocalDateTime expiryDate,
         Integer quantity,
         BigDecimal unitCost,
-        Long purchaseOrderItemId,
         LocalDateTime createdAt
 ) {
 }

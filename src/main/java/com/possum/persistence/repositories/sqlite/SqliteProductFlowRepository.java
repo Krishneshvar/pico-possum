@@ -35,17 +35,15 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
         StringBuilder sql = new StringBuilder("""
                 SELECT
                   pf.*, p.name AS product_name, 
-                  COALESCE(s.id, po.id) AS bill_ref_id,
-                  COALESCE(s.invoice_number, po.invoice_number) AS bill_ref_number,
-                  COALESCE(c.name, supp.name) as customer_name,
+                  s.id AS bill_ref_id,
+                  s.invoice_number AS bill_ref_number,
+                  c.name AS customer_name,
                   GROUP_CONCAT(DISTINCT pm.name) AS payment_method_names
                 FROM product_flow pf
                 JOIN products p ON pf.product_id = p.id
                 LEFT JOIN sale_items si ON (pf.reference_type = 'sale_item' AND pf.reference_id = si.id)
                 LEFT JOIN sales s ON si.sale_id = s.id
                 LEFT JOIN customers c ON s.customer_id = c.id
-                LEFT JOIN purchase_orders po ON (pf.reference_type = 'purchase_order' AND pf.reference_id = po.id)
-                LEFT JOIN suppliers supp ON po.supplier_id = supp.id
                 LEFT JOIN transactions t ON (s.id = t.sale_id AND t.type = 'payment' AND t.status = 'completed')
                 LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
                 WHERE pf.product_id = ?
@@ -91,7 +89,6 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
         return queryOne(
                 """
                 SELECT
-                  SUM(CASE WHEN pf.event_type = 'purchase' THEN pf.quantity ELSE 0 END) AS total_purchased,
                   SUM(CASE WHEN pf.event_type = 'sale' THEN ABS(pf.quantity) ELSE 0 END) AS total_sold,
                   SUM(CASE WHEN pf.event_type = 'return' THEN pf.quantity ELSE 0 END) AS total_returned,
                   SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity < 0 THEN ABS(pf.quantity) ELSE 0 END) AS total_lost,
@@ -101,20 +98,19 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                 WHERE pf.product_id = ?
                 """,
                 rs -> {
-                    int purchased = rs.getInt("total_purchased");
                     int sold = rs.getInt("total_sold");
                     int returned = rs.getInt("total_returned");
                     int lost = rs.getInt("total_lost");
                     int gained = rs.getInt("total_gained");
                     int events = rs.getInt("total_events");
                     java.util.Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("totalPurchased", purchased);
+                    map.put("totalPurchased", 0);
                     map.put("totalSold", sold);
                     map.put("totalReturned", returned);
                     map.put("totalLost", lost);
                     map.put("totalGained", gained);
                     map.put("totalEvents", events);
-                    map.put("netMovement", purchased + returned + gained - sold - lost);
+                    map.put("netMovement", returned + gained - sold - lost);
                     return map;
                 },
                 productId

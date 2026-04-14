@@ -8,7 +8,6 @@ import com.possum.ui.sales.ProductSearchIndex;
 import com.possum.application.transactions.TransactionService;
 import com.possum.application.returns.ReturnsService;
 import com.possum.application.reports.ReportsService;
-import com.possum.application.purchase.PurchaseService;
 import com.possum.application.drafts.DraftService;
 import com.possum.persistence.repositories.sqlite.SqlitePosDraftRepository;
 import com.possum.domain.repositories.*;
@@ -32,10 +31,8 @@ public class DependencyInjector {
     private final TransactionService transactionService;
     private final ReturnsService returnsService;
     private final ReportsService reportsService;
-    private final PurchaseService purchaseService;
 
     private final SalesRepository salesRepository;
-    private final SupplierRepository supplierRepository;
     private final com.possum.infrastructure.filesystem.AppPaths appPaths;
 
     private NavigationManager navigationManager;
@@ -49,9 +46,9 @@ public class DependencyInjector {
                                com.possum.domain.services.SaleCalculator saleCalculator,
                                ProductSearchIndex productSearchIndex,
                                TransactionService transactionService, ReturnsService returnsService,
-                               ReportsService reportsService, PurchaseService purchaseService,
+                               ReportsService reportsService,
                                SalesRepository salesRepository,
-                               SupplierRepository supplierRepository, com.possum.infrastructure.filesystem.AppPaths appPaths) {
+                               com.possum.infrastructure.filesystem.AppPaths appPaths) {
 
         this.applicationModule = applicationModule;
         this.serviceLocator = serviceLocator;
@@ -62,9 +59,7 @@ public class DependencyInjector {
         this.transactionService = transactionService;
         this.returnsService = returnsService;
         this.reportsService = reportsService;
-        this.purchaseService = purchaseService;
         this.salesRepository = salesRepository;
-        this.supplierRepository = supplierRepository;
         this.appPaths = appPaths;
         buildRegistry();
     }
@@ -86,11 +81,9 @@ public class DependencyInjector {
         registry.put(TransactionService.class, () -> transactionService);
         registry.put(ReturnsService.class, () -> returnsService);
         registry.put(ReportsService.class, () -> reportsService);
-        registry.put(PurchaseService.class, () -> purchaseService);
 
         // Repositories
         registry.put(SalesRepository.class, () -> salesRepository);
-        registry.put(SupplierRepository.class, () -> supplierRepository);
         registry.put(ProductRepository.class, () -> serviceLocator.getDatabaseManager().getProductRepository());
         registry.put(SqlitePosDraftRepository.class, () -> new SqlitePosDraftRepository(serviceLocator.getDatabaseManager(), serviceLocator.getDatabaseManager().getProductRepository(), serviceLocator.getTransactionManager()));
 
@@ -124,24 +117,14 @@ public class DependencyInjector {
         registry.put(com.possum.ui.returns.CreateReturnDialogController.class,
                 () -> new com.possum.ui.returns.CreateReturnDialogController(
                         salesService, salesRepository, returnsService));
-        registry.put(com.possum.ui.purchase.PurchaseOrderDetailController.class,
-                () -> new com.possum.ui.purchase.PurchaseOrderDetailController(purchaseService, workspaceManager));
-        registry.put(com.possum.ui.purchase.PurchaseOrderFormController.class,
-                () -> new com.possum.ui.purchase.PurchaseOrderFormController(
-                        purchaseService, supplierRepository, serviceLocator.getDatabaseManager().getProductRepository(),
-                        workspaceManager, productSearchIndex, salesService));
         registry.put(com.possum.ui.inventory.InventoryController.class,
                 () -> new com.possum.ui.inventory.InventoryController(
                         applicationModule.getInventoryService(), serviceLocator.getDatabaseManager().getProductRepository(),
                         applicationModule.getCategoryService(), workspaceManager));
-        registry.put(com.possum.ui.purchase.PurchaseController.class,
-                () -> new com.possum.ui.purchase.PurchaseController(purchaseService, salesService, workspaceManager));
-        
         registry.put(com.possum.ui.dashboard.DashboardController.class,
                 () -> new com.possum.ui.dashboard.DashboardController(
                         reportsService, applicationModule.getInventoryService(),
                         serviceLocator.getDatabaseBackupService()));
-
         registry.put(com.possum.ui.insights.BusinessInsightsController.class,
                 () -> new com.possum.ui.insights.BusinessInsightsController(reportsService));
     }
@@ -210,14 +193,10 @@ public class DependencyInjector {
                         applicationModule.getProductService(), applicationModule.getCategoryService(),
                         workspaceManager, serviceLocator.getSettingsStore(), productSearchIndex,
                         serviceLocator.getDraftService()));
-        registry.put(com.possum.ui.purchase.PurchaseOrderDetailController.class,
-                () -> new com.possum.ui.purchase.PurchaseOrderDetailController(purchaseService, workspaceManager));
-        registry.put(com.possum.ui.purchase.PurchaseOrderFormController.class,
-                () -> new com.possum.ui.purchase.PurchaseOrderFormController(
-                        purchaseService, supplierRepository, serviceLocator.getDatabaseManager().getProductRepository(),
-                        workspaceManager, productSearchIndex, salesService));
-        registry.put(com.possum.ui.purchase.PurchaseController.class,
-                () -> new com.possum.ui.purchase.PurchaseController(purchaseService, salesService, workspaceManager));
+        registry.put(com.possum.ui.inventory.InventoryController.class,
+                () -> new com.possum.ui.inventory.InventoryController(
+                        applicationModule.getInventoryService(), serviceLocator.getDatabaseManager().getProductRepository(),
+                        applicationModule.getCategoryService(), workspaceManager));
     }
 
     public void injectDependencies(Object controller) {

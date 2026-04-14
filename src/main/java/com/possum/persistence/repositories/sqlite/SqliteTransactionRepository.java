@@ -17,7 +17,7 @@ import java.util.StringJoiner;
 public final class SqliteTransactionRepository extends BaseSqliteRepository implements TransactionRepository {
 
     private static final Set<String> SORTABLE = Set.of(
-            "transaction_date", "amount", "status", "customer_name", "invoice_number", "supplier_name", "type"
+            "transaction_date", "amount", "status", "customer_name", "invoice_number", "type"
     );
     private static final String UNIFIED_TRANSACTIONS_CTE = """
             WITH unified_transactions AS (
@@ -29,15 +29,12 @@ public final class SqliteTransactionRepository extends BaseSqliteRepository impl
                 pm.name AS payment_method_name,
                 t.status AS status,
                 t.transaction_date AS transaction_date,
-                COALESCE(s.invoice_number, po.invoice_number) AS invoice_number,
-                c.name AS customer_name,
-                sup.name AS supplier_name
+                s.invoice_number AS invoice_number,
+                c.name AS customer_name
               FROM transactions t
               LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
               LEFT JOIN sales s ON t.sale_id = s.id
               LEFT JOIN customers c ON s.customer_id = c.id
-              LEFT JOIN purchase_orders po ON t.purchase_order_id = po.id
-              LEFT JOIN suppliers sup ON po.supplier_id = sup.id
 
               UNION ALL
 
@@ -50,8 +47,7 @@ public final class SqliteTransactionRepository extends BaseSqliteRepository impl
                 'legacy' AS status,
                 ls.sale_date AS transaction_date,
                 ls.invoice_number AS invoice_number,
-                CASE WHEN ls.customer_name IS NULL OR trim(ls.customer_name) = '' THEN 'Walk-in Customer' ELSE ls.customer_name END AS customer_name,
-                NULL AS supplier_name
+                CASE WHEN ls.customer_name IS NULL OR trim(ls.customer_name) = '' THEN 'Walk-in Customer' ELSE ls.customer_name END AS customer_name
               FROM legacy_sales ls
             )
             """;
@@ -84,7 +80,6 @@ public final class SqliteTransactionRepository extends BaseSqliteRepository impl
             case "status" -> "ut.status";
             case "customer_name" -> "ut.customer_name";
             case "invoice_number" -> "ut.invoice_number";
-            case "supplier_name" -> "ut.supplier_name";
             case "type" -> "ut.type";
             default -> "ut.transaction_date";
         };
@@ -130,40 +125,15 @@ public final class SqliteTransactionRepository extends BaseSqliteRepository impl
     }
 
     @Override
-    public List<Transaction> findTransactionsByPurchaseOrderId(long purchaseOrderId) {
-        return queryList(
-                """
-                SELECT
-                  t.*,
-                  pm.name AS payment_method_name,
-                  COALESCE(s.invoice_number, po.invoice_number) AS invoice_number,
-                  c.name AS customer_name,
-                  sup.name AS supplier_name
-                FROM transactions t
-                LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
-                LEFT JOIN sales s ON t.sale_id = s.id
-                LEFT JOIN customers c ON s.customer_id = c.id
-                LEFT JOIN purchase_orders po ON t.purchase_order_id = po.id
-                LEFT JOIN suppliers sup ON po.supplier_id = sup.id
-                WHERE t.purchase_order_id = ?
-                ORDER BY t.transaction_date DESC
-                """,
-                mapper,
-                purchaseOrderId
-        );
-    }
-
-    @Override
-    public long insertTransaction(Transaction transaction, Long saleId, Long purchaseOrderId) {
+    public long insertTransaction(Transaction transaction, Long saleId) {
         return executeInsert(
                 """
                 INSERT INTO transactions (
-                    sale_id, purchase_order_id, amount, type,
+                    sale_id, amount, type,
                     payment_method_id, status, transaction_date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 saleId,
-                purchaseOrderId,
                 transaction.amount(),
                 transaction.type(),
                 transaction.paymentMethodId(),
@@ -224,8 +194,7 @@ public final class SqliteTransactionRepository extends BaseSqliteRepository impl
         }
         if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
             String fuzzy = "%" + filter.searchTerm().trim() + "%";
-            joiner.add("(COALESCE(ut.invoice_number, '') LIKE ? OR COALESCE(ut.customer_name, '') LIKE ? OR COALESCE(ut.supplier_name, '') LIKE ?)");
-            params.add(fuzzy);
+            joiner.add("(COALESCE(ut.invoice_number, '') LIKE ? OR COALESCE(ut.customer_name, '') LIKE ?)");
             params.add(fuzzy);
             params.add(fuzzy);
         }

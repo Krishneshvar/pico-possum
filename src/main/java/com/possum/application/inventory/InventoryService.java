@@ -76,7 +76,7 @@ public class InventoryService {
 
     public ReceiveInventoryResult receiveInventory(long productId, int quantity, BigDecimal unitCost,
                                                    String batchNumber, LocalDateTime manufacturedDate,
-                                                   LocalDateTime expiryDate, Long purchaseOrderItemId, long userId) {
+                                                   LocalDateTime expiryDate, long userId) {
         if (quantity <= 0)
             throw new com.possum.domain.exceptions.ValidationException("Quantity must be positive");
         if (unitCost == null || unitCost.compareTo(BigDecimal.ZERO) < 0)
@@ -84,18 +84,18 @@ public class InventoryService {
 
         return transactionManager.runInTransaction(() -> {
             InventoryLot lot = new InventoryLot(null, productId, batchNumber, manufacturedDate, expiryDate,
-                    quantity, unitCost, purchaseOrderItemId, TimeUtil.nowUTC());
+                    quantity, unitCost, TimeUtil.nowUTC());
             long lotId = inventoryRepository.insertInventoryLot(lot);
 
             InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, lotId, quantity,
-                    InventoryReason.CONFIRM_RECEIVE.getValue(), "purchase_order_item", purchaseOrderItemId,
+                    InventoryReason.CONFIRM_RECEIVE.getValue(), "manual", null,
                     userId, null, TimeUtil.nowUTC());
             inventoryRepository.insertInventoryAdjustment(adjustment);
 
             int newStock = inventoryRepository.getStockByProductId(productId);
 
-            productFlowService.logProductFlow(productId, FlowEventType.PURCHASE, quantity,
-                    "purchase_order_item", purchaseOrderItemId);
+            productFlowService.logProductFlow(productId, FlowEventType.ADJUSTMENT, quantity,
+                    "manual", null);
 
             Map<String, Object> auditData = Map.of(
                     "product_id", productId,

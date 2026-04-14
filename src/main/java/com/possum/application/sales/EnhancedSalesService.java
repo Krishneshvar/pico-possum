@@ -188,7 +188,7 @@ public class EnhancedSalesService {
                         "completed",
                         TimeUtil.nowUTC(),
                         invoiceNumber,
-                        null, null
+                        null
                 );
                 long txId = salesRepository.insertTransaction(transaction, saleId);
                 insertedTransactions.add(new Transaction(
@@ -200,7 +200,7 @@ public class EnhancedSalesService {
                         "completed",
                         TimeUtil.nowUTC(),
                         invoiceNumber,
-                        null, null
+                        null
                 ));
             }
 

@@ -32,7 +32,6 @@ class InventoryLotMapperTest {
         lenient().when(resultSet.getString("expiry_date")).thenReturn("2024-01-01 00:00:00");
         lenient().when(resultSet.getInt("quantity")).thenReturn(100);
         lenient().when(resultSet.getObject("unit_cost")).thenReturn(new BigDecimal("50.25"));
-        lenient().when(resultSet.getLong("purchase_order_item_id")).thenReturn(50L);
         lenient().when(resultSet.wasNull()).thenReturn(false);
         lenient().when(resultSet.getString("created_at")).thenReturn("2023-01-01 10:00:00");
 
@@ -46,7 +45,6 @@ class InventoryLotMapperTest {
         assertEquals(LocalDateTime.of(2024, 1, 1, 0, 0, 0), lot.expiryDate());
         assertEquals(100, lot.quantity());
         assertEquals(new BigDecimal("50.25"), lot.unitCost());
-        assertEquals(50L, lot.purchaseOrderItemId());
     }
 
     @Test
@@ -54,13 +52,11 @@ class InventoryLotMapperTest {
     void mapInventoryLot_nulls_success() throws SQLException {
         lenient().when(resultSet.getLong("id")).thenReturn(1L);
         lenient().when(resultSet.getLong("product_id")).thenReturn(10L);
-        lenient().when(resultSet.getLong("purchase_order_item_id")).thenReturn(0L);
         lenient().when(resultSet.getString(anyString())).thenReturn(null);
         lenient().when(resultSet.wasNull()).thenReturn(true);
 
         InventoryLot lot = mapper.map(resultSet);
 
         assertNotNull(lot);
-        assertNull(lot.purchaseOrderItemId());
     }
 }

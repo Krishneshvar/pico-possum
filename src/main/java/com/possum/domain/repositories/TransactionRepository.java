@@ -13,9 +13,7 @@ public interface TransactionRepository {
 
     Optional<Transaction> findTransactionById(long id);
 
-    List<Transaction> findTransactionsByPurchaseOrderId(long purchaseOrderId);
-
-    long insertTransaction(Transaction transaction, Long saleId, Long purchaseOrderId);
+    long insertTransaction(Transaction transaction, Long saleId);
 
     BigDecimal getTotalRefundedForSale(long saleId);
 

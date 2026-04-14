@@ -29,12 +29,6 @@ public class RouteRegistry {
         register("transactions", "/fxml/transactions/transactions-view.fxml", "transactions.view");
         register("returns", "/fxml/returns/returns-view.fxml", "returns.view");
 
-        // Purchase
-        register("purchase", "/fxml/purchase/purchase-view.fxml", "purchase.view");
-        register("suppliers", "/fxml/purchase/suppliers-view.fxml", "suppliers.view");
-        register("payment-policies", "/fxml/purchase/payment-policies-view.fxml", "suppliers.view");
-        register("payment-policy-form", "/fxml/purchase/payment-policy-form-view.fxml", "suppliers.manage");
-
         // People
         register("users", "/fxml/people/users-view.fxml", "users.view");
         register("customers", "/fxml/people/customers-view.fxml", "customers.view");

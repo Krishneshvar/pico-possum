@@ -39,14 +39,11 @@ class SqliteTransactionRepositoryTest {
     private void createSchema() throws SQLException {
         connection.createStatement().execute("CREATE TABLE payment_methods (id INTEGER PRIMARY KEY, name TEXT)");
         connection.createStatement().execute("CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT)");
-        connection.createStatement().execute("CREATE TABLE suppliers (id INTEGER PRIMARY KEY, name TEXT)");
         connection.createStatement().execute("CREATE TABLE sales (id INTEGER PRIMARY KEY, customer_id INTEGER, invoice_number TEXT)");
-        connection.createStatement().execute("CREATE TABLE purchase_orders (id INTEGER PRIMARY KEY, supplier_id INTEGER, invoice_number TEXT)");
         connection.createStatement().execute("""
             CREATE TABLE transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sale_id INTEGER,
-                purchase_order_id INTEGER,
                 amount REAL,
                 type TEXT,
                 payment_method_id INTEGER,
@@ -68,22 +65,20 @@ class SqliteTransactionRepositoryTest {
         
         connection.createStatement().execute("INSERT INTO payment_methods (id, name) VALUES (1, 'Cash')");
         connection.createStatement().execute("INSERT INTO customers (id, name) VALUES (1, 'John Doe')");
-        connection.createStatement().execute("INSERT INTO suppliers (id, name) VALUES (1, 'Jane Supplier')");
         connection.createStatement().execute("INSERT INTO sales (id, customer_id, invoice_number) VALUES (1, 1, 'INV-100')");
-        connection.createStatement().execute("INSERT INTO purchase_orders (id, supplier_id, invoice_number) VALUES (1, 1, 'PO-100')");
     }
 
     @Test
     void insertTransaction_insertsSuccessfully() {
-        Transaction transaction = new Transaction(null, new BigDecimal("150.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null, null);
-        long id = repository.insertTransaction(transaction, 1L, null);
+        Transaction transaction = new Transaction(null, new BigDecimal("150.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null);
+        long id = repository.insertTransaction(transaction, 1L);
         assertTrue(id > 0);
     }
 
     @Test
     void findTransactionById_found_returnsUnifiedTransaction() {
-        Transaction transaction = new Transaction(null, new BigDecimal("150.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null, null);
-        long id = repository.insertTransaction(transaction, 1L, null);
+        Transaction transaction = new Transaction(null, new BigDecimal("150.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null);
+        long id = repository.insertTransaction(transaction, 1L);
 
         Optional<Transaction> result = repository.findTransactionById(id);
         assertTrue(result.isPresent());
@@ -94,21 +89,10 @@ class SqliteTransactionRepositoryTest {
     }
 
     @Test
-    void findTransactionsByPurchaseOrderId_filtering_returnsList() {
-        Transaction t1 = new Transaction(null, new BigDecimal("500.00"), "expense", 1L, null, "completed", LocalDateTime.now(), null, null, null);
-        repository.insertTransaction(t1, null, 1L);
-
-        List<Transaction> result = repository.findTransactionsByPurchaseOrderId(1L);
-        assertEquals(1, result.size());
-        assertEquals("PO-100", result.get(0).invoiceNumber());
-        assertEquals("Jane Supplier", result.get(0).supplierName());
-    }
-
-    @Test
     void getTotalRefundedForSale_returnsSum() {
-        repository.insertTransaction(new Transaction(null, new BigDecimal("-50.00"), "refund", 1L, null, "completed", LocalDateTime.now(), null, null, null), 1L, null);
-        repository.insertTransaction(new Transaction(null, new BigDecimal("-20.00"), "refund", 1L, null, "completed", LocalDateTime.now(), null, null, null), 1L, null);
-        repository.insertTransaction(new Transaction(null, new BigDecimal("100.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null, null), 1L, null); // should not be counted
+        repository.insertTransaction(new Transaction(null, new BigDecimal("-50.00"), "refund", 1L, null, "completed", LocalDateTime.now(), null, null), 1L);
+        repository.insertTransaction(new Transaction(null, new BigDecimal("-20.00"), "refund", 1L, null, "completed", LocalDateTime.now(), null, null), 1L);
+        repository.insertTransaction(new Transaction(null, new BigDecimal("100.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null), 1L); // should not be counted
         
         BigDecimal total = repository.getTotalRefundedForSale(1L);
         assertEquals(0, new BigDecimal("70").compareTo(total)); // ABS(-50) + ABS(-20)
@@ -116,8 +100,8 @@ class SqliteTransactionRepositoryTest {
 
     @Test
     void getTotalPaidForSale_returnsSum() {
-        repository.insertTransaction(new Transaction(null, new BigDecimal("100.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null, null), 1L, null);
-        repository.insertTransaction(new Transaction(null, new BigDecimal("50.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null, null), 1L, null);
+        repository.insertTransaction(new Transaction(null, new BigDecimal("100.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null), 1L);
+        repository.insertTransaction(new Transaction(null, new BigDecimal("50.00"), "payment", 1L, null, "completed", LocalDateTime.now(), null, null), 1L);
         
         BigDecimal total = repository.getTotalPaidForSale(1L);
         assertEquals(0, new BigDecimal("150").compareTo(total));

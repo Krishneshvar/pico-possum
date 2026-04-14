@@ -18,11 +18,9 @@ public final class TransactionMapper implements RowMapper<Transaction> {
                 rs.getString("status"),
                 SqlMapperUtils.getLocalDateTime(rs, "transaction_date"),
                 getOptionalColumn(rs, "invoice_number"),
-                getOptionalColumn(rs, "customer_name"),
-                getOptionalColumn(rs, "supplier_name")
+                getOptionalColumn(rs, "customer_name")
         );
     }
-
 
     private static String getOptionalColumn(ResultSet rs, String column) throws SQLException {
         try {
