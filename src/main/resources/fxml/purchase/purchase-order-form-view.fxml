@@ -37,11 +37,11 @@
 
                 <!-- Search Bar -->
                 <HBox spacing="10" alignment="CENTER_LEFT">
-                    <TextField fx:id="searchVariantField" 
-                              promptText="Search by product name or SKU and press Enter..." 
-                              HBox.hgrow="ALWAYS"
-                              styleClass="text-field"
-                              accessibleText="Search for products or variants to add to the order"/>
+                    <TextField fx:id="searchProductField" 
+                               promptText="Search by product name or SKU and press Enter..." 
+                               HBox.hgrow="ALWAYS"
+                               styleClass="text-field"
+                               accessibleText="Search for products to add to the order"/>
                     <Button fx:id="addItemButton" text="+ Add Item" onAction="#handleAddItem" 
                            styleClass="action-button, primary-button"
                            accessibleText="Add selected item to order"/>
@@ -55,7 +55,7 @@
                         <Label fx:id="itemCountLabel" text="0 items" styleClass="view-subtitle" style="-fx-font-size: 12px;"/>
                     </HBox>
                     <com.possum.ui.common.controls.DataTableView fx:id="itemsTable" VBox.vgrow="ALWAYS" minHeight="400"
-                               accessibleText="List of items in the purchase order" />
+                                accessibleText="List of items in the purchase order" />
                 </VBox>
             </VBox>
 

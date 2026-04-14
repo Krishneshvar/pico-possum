@@ -24,7 +24,7 @@ class TaxCalculationCacheTest {
     
     @Test
     void testCacheMiss() {
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = cache.get(invoice, null);
@@ -35,7 +35,7 @@ class TaxCalculationCacheTest {
     
     @Test
     void testCacheHit() {
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult expected = new TaxCalculationResult(
@@ -54,7 +54,7 @@ class TaxCalculationCacheTest {
     
     @Test
     void testCacheWithCustomer() {
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         Customer customer = new Customer(1L, "Test", null, null, null, "retail", false,
@@ -75,7 +75,7 @@ class TaxCalculationCacheTest {
     
     @Test
     void testCacheExemptCustomer() {
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         Customer exemptCustomer = new Customer(1L, "NGO", null, null, null, "ngo", true,
@@ -97,7 +97,7 @@ class TaxCalculationCacheTest {
     
     @Test
     void testCacheClear() {
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = new TaxCalculationResult(
@@ -112,7 +112,7 @@ class TaxCalculationCacheTest {
     
     @Test
     void testCacheStats() {
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = new TaxCalculationResult(
@@ -135,7 +135,7 @@ class TaxCalculationCacheTest {
     void testCacheExpiry() throws InterruptedException {
         cache = new TaxCalculationCache(100, 100);
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = new TaxCalculationResult(

@@ -12,8 +12,7 @@ public final class PurchaseOrderItemMapper implements RowMapper<PurchaseOrderIte
         return new PurchaseOrderItem(
                 rs.getLong("id"),
                 rs.getLong("purchase_order_id"),
-                rs.getLong("variant_id"),
-                getOptionalColumn(rs, "variant_name"),
+                rs.getLong("product_id"),
                 getOptionalColumn(rs, "sku"),
                 getOptionalColumn(rs, "product_name"),
                 rs.getInt("quantity"),

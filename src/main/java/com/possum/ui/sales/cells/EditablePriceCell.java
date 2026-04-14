@@ -57,7 +57,7 @@ public class EditablePriceCell extends TableCell<CartItem, CartItem> {
         if (tf != null && it != null) { 
             try { 
                 BigDecimal v = new BigDecimal(tf.getText().replace(com.possum.shared.util.CurrencyUtil.getSymbol(), "").replace(",", "").trim()).max(BigDecimal.ZERO); 
-                BigDecimal m = it.getVariant().price(); 
+                BigDecimal m = it.getProduct().mrp(); 
                 if (v.compareTo(m) > 0) { 
                     NotificationService.warning("Price cannot exceed MRP (" + com.possum.shared.util.CurrencyUtil.format(m) + ")"); 
                     v = m; 

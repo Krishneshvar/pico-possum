@@ -96,14 +96,14 @@ class ReturnCalculatorTest {
     }
 
     @Test
-    void calculateRefunds_setsCorrectVariantId() {
+    void calculateRefunds_setsCorrectProductId() {
         SaleItem item = Fixtures.saleItem(1L, 10L, 42L, 1, "100.00");
         List<RefundCalculation> result = calculator.calculateRefunds(
                 List.of(returnItem(1L, 1)),
                 List.of(item),
                 BigDecimal.ZERO
         );
-        assertEquals(42L, result.get(0).variantId());
+        assertEquals(42L, result.get(0).productId());
     }
 
     // --- calculateTotalRefund ---
@@ -111,8 +111,8 @@ class ReturnCalculatorTest {
     @Test
     void calculateTotalRefund_sumsAllRefundAmounts() {
         List<RefundCalculation> calcs = List.of(
-                new RefundCalculation(1L, 1, new BigDecimal("30.00"), 1L),
-                new RefundCalculation(2L, 1, new BigDecimal("70.00"), 2L)
+                new RefundCalculation(1L, 1, new BigDecimal("30.00"), 1L, BigDecimal.TEN, BigDecimal.ZERO, "S1", "P1"),
+                new RefundCalculation(2L, 1, new BigDecimal("70.00"), 2L, BigDecimal.TEN, BigDecimal.ZERO, "S2", "P2")
         );
         assertEquals(new BigDecimal("100.00"), calculator.calculateTotalRefund(calcs));
     }

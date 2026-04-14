@@ -47,7 +47,7 @@ class TransactionRollbackIntegrationTest {
     private static SqliteCategoryRepository categoryRepository;
     private static SqliteProductRepository productRepository;
 
-    private static long testVariantId;
+    private static long testProductId;
     private static long testUserId;
     private static long cashPaymentMethodId;
 
@@ -64,7 +64,6 @@ class TransactionRollbackIntegrationTest {
 
         categoryRepository = new SqliteCategoryRepository(databaseManager);
         productRepository = new SqliteProductRepository(databaseManager);
-        SqliteVariantRepository variantRepository = new SqliteVariantRepository(databaseManager);
         salesRepository = new SqliteSalesRepository(databaseManager);
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
         inventoryRepository = new SqliteInventoryRepository(databaseManager);
@@ -77,13 +76,13 @@ class TransactionRollbackIntegrationTest {
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
         SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        TaxEngine taxEngine = new TaxEngine(taxRepository, jsonService);
+        EnhancedTaxEngine taxEngine = new EnhancedTaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
-        salesService = new SalesService(salesRepository,  variantRepository,  productRepository,  customerRepository, 
-                auditRepository,  inventoryService,  taxEngine, new com.possum.domain.services.SaleCalculator( taxEngine),  paymentService,  transactionManager, 
-                jsonService,  settingsStore,  invoiceNumberService);
+        salesService = new SalesService(salesRepository, productRepository, customerRepository, 
+                auditRepository, inventoryService, taxEngine, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+                jsonService, settingsStore, invoiceNumberService);
 
         long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin'");
         User u = userRepository.insertUserWithRoles(
@@ -92,7 +91,7 @@ class TransactionRollbackIntegrationTest {
         );
         testUserId = u.id();
         cashPaymentMethodId = getOrSeedPaymentMethod();
-        testVariantId = seedVariantWithStock(50);
+        testProductId = seedProductWithStock(50);
     }
 
     @AfterAll
@@ -117,10 +116,10 @@ class TransactionRollbackIntegrationTest {
     @Order(1)
     @DisplayName("Exception mid-transaction — entire sale rolled back, stock unchanged")
     void midTransactionException_rollsBackSaleAndStock() {
-        int stockBefore = inventoryService.getVariantStock(testVariantId);
+        int stockBefore = inventoryService.getProductStock(testProductId);
         int salesCountBefore = queryInt("SELECT COUNT(*) FROM sales");
 
-        // Force a transaction failure by injecting an invalid operation: use a non-existent variant
+        // Force a transaction failure by injecting an invalid operation: use a non-existent product
         assertThrows(Exception.class, () ->
                 salesService.createSale(new CreateSaleRequest(
                         List.of(new CreateSaleItemRequest(999999L, 1, BigDecimal.ZERO, new BigDecimal("100.00"))),
@@ -134,7 +133,7 @@ class TransactionRollbackIntegrationTest {
         assertEquals(salesCountBefore, salesCountAfter, "No orphan sale record should exist after rollback");
 
         // Stock should be unchanged
-        int stockAfter = inventoryService.getVariantStock(testVariantId);
+        int stockAfter = inventoryService.getProductStock(testProductId);
         assertEquals(stockBefore, stockAfter, "Stock should be unchanged after failed sale");
     }
 
@@ -192,13 +191,13 @@ class TransactionRollbackIntegrationTest {
         int salesBefore = queryInt("SELECT COUNT(*) FROM sales");
         int saleItemsBefore = queryInt("SELECT COUNT(*) FROM sale_items");
 
-        // This will fail because the second variant doesn't exist — first variant's stock deduction
-        // happens inside the same transation so everything rolls back
+        // This will fail because the second product doesn't exist — first product's stock deduction
+        // happens inside the same transaction so everything rolls back
         assertThrows(Exception.class, () ->
                 salesService.createSale(new CreateSaleRequest(
                         List.of(
-                                new CreateSaleItemRequest(testVariantId, 1, BigDecimal.ZERO, new BigDecimal("50.00")),
-                                new CreateSaleItemRequest(-1L, 1, BigDecimal.ZERO, new BigDecimal("50.00")) // invalid variant
+                                new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("50.00")),
+                                new CreateSaleItemRequest(-1L, 1, BigDecimal.ZERO, new BigDecimal("50.00")) // invalid product
                         ),
                         null, BigDecimal.ZERO,
                         List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
@@ -208,7 +207,6 @@ class TransactionRollbackIntegrationTest {
         // All counts should be unchanged
         assertEquals(salesBefore, queryInt("SELECT COUNT(*) FROM sales"), "No orphan sale");
         assertEquals(saleItemsBefore, queryInt("SELECT COUNT(*) FROM sale_items"), "No orphan sale items");
-        // audit: may or may not change depending on where exactly the exception throws
     }
 
     @Test
@@ -246,7 +244,7 @@ class TransactionRollbackIntegrationTest {
                 List.of("admin"), List.of("sales:create", "sales:manage")));
 
         SaleResponse saleResp = salesService.createSale(new CreateSaleRequest(
-                List.of(new CreateSaleItemRequest(testVariantId, 1, BigDecimal.ZERO, new BigDecimal("50.00"))),
+                List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("50.00"))),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(new BigDecimal("50.00"), cashPaymentMethodId))
         ), testUserId);
@@ -261,47 +259,30 @@ class TransactionRollbackIntegrationTest {
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private static long seedVariantWithStock(int qty) {
+    private static long seedProductWithStock(int qty) {
         long catId = categoryRepository.insertCategory("RBCat-" + UUID.randomUUID(), null).id();
-        long prodId = productRepository.insertProduct(new Product(
-                null, "RBProd-" + UUID.randomUUID(), "desc", catId, null, null, null, "active", null, null, null, null, null
+        long productId = productRepository.insertProduct(new Product(
+            null, "RBProd-" + UUID.randomUUID(), "RBSKU-" + UUID.randomUUID(), "desc", catId, "active",
+            new BigDecimal("50.00"), new BigDecimal("60.00"), 1L, 0, 5, false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
         ));
-        long variantId = insertVariant(prodId, "RBSKU-" + UUID.randomUUID());
-        seedInventory(variantId, qty);
-        return variantId;
+        seedInventory(productId, qty);
+        return productId;
     }
 
-    private static long insertVariant(long productId, String sku) {
+    private static void seedInventory(long productId, int quantity) {
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO variants (product_id, name, sku, mrp, cost_price, is_default, status) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id")) {
+                "INSERT INTO inventory_lots (product_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
             stmt.setLong(1, productId);
-            stmt.setString(2, "Default");
-            stmt.setString(3, sku);
-            stmt.setBigDecimal(4, new BigDecimal("50.00"));
-            stmt.setBigDecimal(5, new BigDecimal("30.00"));
-            stmt.setInt(6, 1);
-            stmt.setString(7, "active");
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
-        } catch (SQLException e) { throw new IllegalStateException("insertVariant failed", e); }
-        throw new IllegalStateException("No variant ID returned");
-    }
-
-    private static void seedInventory(long variantId, int quantity) {
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_lots (variant_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, variantId);
             stmt.setInt(2, quantity);
             stmt.setBigDecimal(3, new BigDecimal("30.00"));
             stmt.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException("Seed lot failed", e); }
 
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_adjustments (variant_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
+                "INSERT INTO inventory_adjustments (product_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
                 "VALUES (?, ?, ?, 'correction', ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, variantId);
-            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE variant_id = ? ORDER BY id DESC LIMIT 1", variantId));
+            stmt.setLong(1, productId);
+            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
             stmt.setInt(3, quantity);
             stmt.setLong(4, 1);
             stmt.executeUpdate();

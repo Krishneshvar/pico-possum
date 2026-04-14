@@ -1,9 +1,7 @@
 package com.possum.ui.sales;
 
-import com.possum.domain.model.CartItem;
 import com.possum.domain.model.Category;
-import com.possum.domain.model.Variant;
-import com.possum.ui.common.controls.NotificationService;
+import com.possum.domain.model.Product;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -15,9 +13,6 @@ import javafx.stage.Popup;
 import com.possum.shared.util.CurrencyUtil;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages the three Popup autocomplete lists in the POS screen:
@@ -30,8 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PosAutocompleteManager {
 
     public interface Callbacks {
-        void onProductSelected(Variant v);
-        void onProductSelectedForQuickAdd(Variant v);
+        void onProductSelected(Product p);
+        void onProductSelectedForQuickAdd(Product p);
         void onCategorySelectedForQuickAdd(Category c);
         ProductSearchIndex getSearchIndex();
         com.possum.application.categories.CategoryService getCategoryService();
@@ -41,11 +36,11 @@ public class PosAutocompleteManager {
 
     // Main product search popup
     private final Popup searchPopup = new Popup();
-    private final ListView<Variant> searchResultsView = new ListView<>();
+    private final ListView<Product> searchResultsView = new ListView<>();
 
     // Quick-add product popup
     private final Popup quickProductPopup = new Popup();
-    private final ListView<Variant> quickProductResultsView = new ListView<>();
+    private final ListView<Product> quickProductResultsView = new ListView<>();
 
     // Quick-add category popup
     private final Popup quickCategoryPopup = new Popup();
@@ -58,7 +53,7 @@ public class PosAutocompleteManager {
     // ── Accessors used by PosController ──────────────────────────────────────
 
     public Popup getSearchPopup() { return searchPopup; }
-    public ListView<Variant> getSearchResultsView() { return searchResultsView; }
+    public ListView<Product> getSearchResultsView() { return searchResultsView; }
     public Popup getQuickProductPopup() { return quickProductPopup; }
     public Popup getQuickCategoryPopup() { return quickCategoryPopup; }
 
@@ -70,14 +65,14 @@ public class PosAutocompleteManager {
         searchPopup.setAutoHide(true);
 
         searchResultsView.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Variant item, boolean empty) {
+            @Override protected void updateItem(Product item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setGraphic(null); return; }
                 VBox box = new VBox(2);
                 box.getStyleClass().add("search-item-box");
-                Label name = new Label(item.productName() + (item.name().equals("Default") ? "" : " - " + item.name()));
+                Label name = new Label(item.name());
                 name.getStyleClass().add("search-item-name");
-                Label detail = new Label(item.sku() + " • " + CurrencyUtil.format(item.price()) + " • Stock: " + (item.stock() != null ? item.stock() : "∞"));
+                Label detail = new Label(item.sku() + " • " + CurrencyUtil.format(item.mrp()) + " • Stock: " + (item.stock() != null ? item.stock() : "∞"));
                 detail.getStyleClass().add("search-item-details");
                 box.getChildren().addAll(name, detail);
                 setGraphic(box);
@@ -86,16 +81,16 @@ public class PosAutocompleteManager {
 
         searchResultsView.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
-                Variant v = searchResultsView.getSelectionModel().getSelectedItem();
-                if (v != null) { cb.onProductSelected(v); searchField.clear(); searchPopup.hide(); }
+                Product p = searchResultsView.getSelectionModel().getSelectedItem();
+                if (p != null) { cb.onProductSelected(p); searchField.clear(); searchPopup.hide(); }
             } else if (e.getCode() == KeyCode.UP && searchResultsView.getSelectionModel().getSelectedIndex() == 0) {
                 searchField.requestFocus();
             }
         });
 
         searchResultsView.setOnMouseClicked(e -> {
-            Variant v = searchResultsView.getSelectionModel().getSelectedItem();
-            if (v != null) Platform.runLater(() -> { cb.onProductSelected(v); searchField.clear(); searchPopup.hide(); });
+            Product p = searchResultsView.getSelectionModel().getSelectedItem();
+            if (p != null) Platform.runLater(() -> { cb.onProductSelected(p); searchField.clear(); searchPopup.hide(); });
         });
 
         searchField.textProperty().addListener((o, ol, q) -> showSearchPopup(searchField, q != null ? q.trim() : ""));
@@ -105,7 +100,7 @@ public class PosAutocompleteManager {
     }
 
     public void showSearchPopup(javafx.scene.control.TextField anchor, String query) {
-        List<Variant> res = query.isEmpty() ? cb.getSearchIndex().searchByName("") : cb.getSearchIndex().searchByName(query);
+        List<Product> res = query.isEmpty() ? cb.getSearchIndex().searchByName("") : cb.getSearchIndex().searchByName(query);
         if (res.isEmpty() && query.isEmpty()) res = cb.getSearchIndex().searchByName(" ");
         if (!res.isEmpty()) {
             searchResultsView.getItems().setAll(res);
@@ -120,19 +115,18 @@ public class PosAutocompleteManager {
         } else searchPopup.hide();
     }
 
-    public void setupQuickAddAutocomplete(javafx.scene.control.TextField productField,
-                                           javafx.scene.control.TextField variantField) {
+    public void setupQuickAddAutocomplete(javafx.scene.control.TextField productField) {
         applyStyles(quickProductResultsView);
         quickProductPopup.getContent().add(quickProductResultsView);
         quickProductPopup.setAutoHide(true);
 
         quickProductResultsView.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Variant item, boolean empty) {
+            @Override protected void updateItem(Product item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setGraphic(null); return; }
                 VBox box = new VBox(2);
                 box.getStyleClass().add("search-item-box");
-                Label name = new Label(item.productName()); name.getStyleClass().add("search-item-name");
+                Label name = new Label(item.name()); name.getStyleClass().add("search-item-name");
                 Label detail = new Label(item.categoryName() != null ? item.categoryName() : "No Category");
                 detail.getStyleClass().add("search-item-details");
                 box.getChildren().addAll(name, detail); setGraphic(box);
@@ -141,21 +135,20 @@ public class PosAutocompleteManager {
 
         productField.textProperty().addListener((o, ol, q) -> showQuickProductPopup(productField, q != null ? q.trim() : ""));
         quickProductResultsView.setOnMouseClicked(e -> {
-            Variant v = quickProductResultsView.getSelectionModel().getSelectedItem();
-            if (v != null) { cb.onProductSelectedForQuickAdd(v); quickProductPopup.hide(); variantField.requestFocus(); }
+            Product p = quickProductResultsView.getSelectionModel().getSelectedItem();
+            if (p != null) { cb.onProductSelectedForQuickAdd(p); quickProductPopup.hide(); }
         });
         quickProductResultsView.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
-                Variant v = quickProductResultsView.getSelectionModel().getSelectedItem();
-                if (v != null) { cb.onProductSelectedForQuickAdd(v); quickProductPopup.hide(); variantField.requestFocus(); }
+                Product p = quickProductResultsView.getSelectionModel().getSelectedItem();
+                if (p != null) { cb.onProductSelectedForQuickAdd(p); quickProductPopup.hide(); }
             }
         });
     }
 
     private void showQuickProductPopup(javafx.scene.control.TextField anchor, String query) {
         if (query.isEmpty()) { quickProductPopup.hide(); return; }
-        List<Variant> res = cb.getSearchIndex().searchByName(query).stream()
-                .filter(distinctByKey(Variant::productId)).limit(10).toList();
+        List<Product> res = cb.getSearchIndex().searchByName(query).stream().limit(10).toList();
         if (!res.isEmpty()) {
             quickProductResultsView.getItems().setAll(res);
             quickProductResultsView.setPrefHeight(Math.min(res.size() * 52 + 10, 300));
@@ -211,10 +204,5 @@ public class PosAutocompleteManager {
     private void applyStyles(ListView<?> lv) {
         String css = Objects.requireNonNull(getClass().getResource("/styles/pos.css")).toExternalForm();
         if (!lv.getStylesheets().contains(css)) lv.getStylesheets().add(css);
-    }
-
-    private static <T> Predicate<T> distinctByKey(Function<? super T, ?> key) {
-        java.util.Set<Object> seen = ConcurrentHashMap.newKeySet();
-        return t -> seen.add(key.apply(t));
     }
 }

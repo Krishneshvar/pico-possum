@@ -56,7 +56,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         dataTable.setEmptySubtitle("Try adjusting filters or search terms.");
         
         TableColumn<StockHistoryDto, String> productCol = new TableColumn<>("Product");
-        TableColumn<StockHistoryDto, String> variantCol = new TableColumn<>("Variant");
         TableColumn<StockHistoryDto, String> skuCol = new TableColumn<>("SKU");
         TableColumn<StockHistoryDto, String> changeCol = new TableColumn<>("Change");
         TableColumn<StockHistoryDto, String> reasonCol = new TableColumn<>("Reason");
@@ -64,7 +63,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         TableColumn<StockHistoryDto, String> dateCol = new TableColumn<>("Date & Time");
 
         productCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().productName()));
-        variantCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().variantName()));
         skuCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().sku()));
         
         changeCol.setCellValueFactory(cellData -> new SimpleStringProperty(
@@ -117,7 +115,7 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
                     : ""));
 
         dataTable.getTableView().getColumns().addAll(
-            productCol, variantCol, skuCol, changeCol, reasonCol, adjustedByCol, dateCol
+            productCol, skuCol, changeCol, reasonCol, adjustedByCol, dateCol
         );
     }
 
@@ -246,7 +244,7 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
 
     @Override
     protected String getEntityIdentifier(StockHistoryDto entity) {
-        return entity.productName() + " (" + entity.variantName() + ")";
+        return entity.productName();
     }
 
     private String formatReason(String reason) {
@@ -281,6 +279,11 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         });
         
         picker.setPromptText("DD/MM/YYYY");
+    }
+
+    @FXML
+    protected void handleRefresh() {
+        loadData();
     }
 }
 

@@ -15,10 +15,9 @@ public final class ReturnItemMapper implements RowMapper<ReturnItem> {
                 rs.getLong("sale_item_id"),
                 rs.getInt("quantity"),
                 SqlMapperUtils.getBigDecimal(rs, "refund_amount"),
-                rs.getLong("variant_id"),
+                rs.getLong("product_id"),
                 SqlMapperUtils.getBigDecimal(rs, "price_per_unit"),
                 SqlMapperUtils.getBigDecimal(rs, "tax_rate"),
-                rs.getString("variant_name"),
                 rs.getString("sku"),
                 rs.getString("product_name")
         );

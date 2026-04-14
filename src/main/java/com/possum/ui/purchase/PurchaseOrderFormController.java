@@ -4,12 +4,12 @@ import com.possum.application.auth.AuthContext;
 import com.possum.application.purchase.PurchaseService;
 import com.possum.application.sales.SalesService;
 import com.possum.domain.model.PaymentMethod;
+import com.possum.domain.model.Product;
 import com.possum.domain.model.PurchaseOrder;
 import com.possum.domain.model.PurchaseOrderItem;
 import com.possum.domain.model.Supplier;
-import com.possum.domain.model.Variant;
+import com.possum.domain.repositories.ProductRepository;
 import com.possum.domain.repositories.SupplierRepository;
-import com.possum.domain.repositories.VariantRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.ui.common.controls.DataTableView;
 import com.possum.ui.common.controls.NotificationService;
@@ -20,11 +20,9 @@ import com.possum.ui.navigation.Parameterizable;
 import com.possum.ui.sales.ProductSearchIndex;
 import com.possum.ui.workspace.WorkspaceManager;
 import javafx.application.Platform;
-
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
@@ -33,12 +31,12 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Popup;
 import javafx.util.StringConverter;
 
-
 import com.possum.shared.util.CurrencyUtil;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import com.possum.ui.purchase.cells.*;
 
@@ -47,7 +45,7 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
     @FXML private Label titleLabel;
     @FXML private ComboBox<Supplier> supplierCombo;
     @FXML private ComboBox<PaymentMethod> paymentMethodCombo;
-    @FXML private TextField searchVariantField;
+    @FXML private TextField searchProductField;
     @FXML private DataTableView<PurchaseItemRow> itemsTable;
     @FXML private Button saveButton;
     @FXML private Label totalCostLabel;
@@ -55,13 +53,13 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
 
     private PurchaseService purchaseService;
     private SupplierRepository supplierRepository;
-    private VariantRepository variantRepository;
+    private ProductRepository productRepository;
     private WorkspaceManager workspaceManager;
     private ProductSearchIndex searchIndex;
     private SalesService salesService;
 
     private Popup searchPopup = new Popup();
-    private ListView<Variant> searchResultsView = new ListView<>();
+    private ListView<Product> searchResultsView = new ListView<>();
 
     private PurchaseOrder existingPo;
     private Runnable onSaveCallback;
@@ -69,11 +67,11 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
     private boolean isViewMode = false;
 
     public PurchaseOrderFormController(PurchaseService purchaseService, SupplierRepository supplierRepository,
-                                       VariantRepository variantRepository, WorkspaceManager workspaceManager,
+                                       ProductRepository productRepository, WorkspaceManager workspaceManager,
                                        ProductSearchIndex searchIndex, SalesService salesService) {
         this.purchaseService = purchaseService;
         this.supplierRepository = supplierRepository;
-        this.variantRepository = variantRepository;
+        this.productRepository = productRepository;
         this.workspaceManager = workspaceManager;
         this.searchIndex = searchIndex;
         this.salesService = salesService;
@@ -104,9 +102,9 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
             if (finalIsView) {
                 saveButton.setVisible(false);
                 saveButton.setManaged(false);
-                if (searchVariantField != null) {
-                    searchVariantField.setVisible(false);
-                    searchVariantField.setManaged(false);
+                if (searchProductField != null) {
+                    searchProductField.setVisible(false);
+                    searchProductField.setManaged(false);
                 }
                 supplierCombo.setDisable(true);
                 paymentMethodCombo.setDisable(true);
@@ -118,12 +116,12 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
     @FXML
     public void initialize() {
         setupItemsTable();
-        setupVariantSearch();
+        setupProductSearch();
         setupSearchAutocomplete();
     }
 
     private void setupItemsTable() {
-        TableColumn<PurchaseItemRow, String> productCol = new TableColumn<>("Product | Variant");
+        TableColumn<PurchaseItemRow, String> productCol = new TableColumn<>("Product");
         productCol.setCellValueFactory(new PropertyValueFactory<>("displayName"));
         productCol.setPrefWidth(300);
         productCol.setCellFactory(col -> new TableCell<>() {
@@ -138,9 +136,9 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
                     VBox vbox = new VBox(2);
                     Label productLabel = new Label(row.getProductName());
                     productLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-                    Label variantLabel = new Label(row.getSku() + " (" + row.getVariantName() + ")");
-                    variantLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 10px;");
-                    vbox.getChildren().addAll(productLabel, variantLabel);
+                    Label skuLabel = new Label(row.getSku());
+                    skuLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 10px;");
+                    vbox.getChildren().addAll(productLabel, skuLabel);
                     setGraphic(vbox);
                 }
             }
@@ -186,15 +184,15 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
         itemsTable.getTableView().setItems(itemRows);
     }
 
-    private void setupVariantSearch() {
-        if (searchVariantField == null) return;
-        searchVariantField.textProperty().addListener((obs, oldVal, newVal) -> showAutocompletePopup(newVal != null ? newVal.trim() : ""));
-        searchVariantField.focusedProperty().addListener((obs, old, isFocused) -> {
-            if (isFocused) showAutocompletePopup(searchVariantField.getText().trim());
+    private void setupProductSearch() {
+        if (searchProductField == null) return;
+        searchProductField.textProperty().addListener((obs, oldVal, newVal) -> showAutocompletePopup(newVal != null ? newVal.trim() : ""));
+        searchProductField.focusedProperty().addListener((obs, old, isFocused) -> {
+            if (isFocused) showAutocompletePopup(searchProductField.getText().trim());
             else Platform.runLater(() -> { if (!searchResultsView.isFocused()) searchPopup.hide(); });
         });
-        searchVariantField.setOnMouseClicked(e -> showAutocompletePopup(searchVariantField.getText().trim()));
-        searchVariantField.setOnAction(e -> handleAddItem());
+        searchProductField.setOnMouseClicked(e -> showAutocompletePopup(searchProductField.getText().trim()));
+        searchProductField.setOnAction(e -> handleAddItem());
     }
 
     private void setupSearchAutocomplete() {
@@ -205,7 +203,7 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
 
         searchResultsView.setCellFactory(lv -> new ListCell<>() {
             @Override
-            protected void updateItem(Variant item, boolean empty) {
+            protected void updateItem(Product item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
@@ -213,7 +211,7 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
                 } else {
                     VBox box = new VBox(2);
                     box.getStyleClass().add("search-item-box");
-                    Label name = new Label(item.productName() + (item.name().equals("Default") ? "" : " - " + item.name()));
+                    Label name = new Label(item.name());
                     name.getStyleClass().add("search-item-name");
                     Label details = new Label(item.sku() + " • Cost: " + CurrencyUtil.format(item.costPrice() != null ? item.costPrice() : BigDecimal.ZERO) + " • Stock: " + (item.stock() != null ? item.stock() : "∞"));
                     details.getStyleClass().add("search-item-details");
@@ -224,20 +222,20 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
         });
 
         searchResultsView.setOnMouseClicked(e -> {
-            Variant v = searchResultsView.getSelectionModel().getSelectedItem();
-            if (v != null) { addVariantToCart(v); searchVariantField.clear(); searchPopup.hide(); }
+            Product p = searchResultsView.getSelectionModel().getSelectedItem();
+            if (p != null) { addProductToCart(p); searchProductField.clear(); searchPopup.hide(); }
         });
 
         searchResultsView.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
-                Variant v = searchResultsView.getSelectionModel().getSelectedItem();
-                if (v != null) { addVariantToCart(v); searchVariantField.clear(); searchPopup.hide(); }
+                Product p = searchResultsView.getSelectionModel().getSelectedItem();
+                if (p != null) { addProductToCart(p); searchProductField.clear(); searchPopup.hide(); }
             } else if (e.getCode() == javafx.scene.input.KeyCode.UP && searchResultsView.getSelectionModel().getSelectedIndex() <= 0) {
-                searchVariantField.requestFocus();
+                searchProductField.requestFocus();
             }
         });
 
-        searchVariantField.setOnKeyPressed(e -> {
+        searchProductField.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.DOWN && searchPopup.isShowing()) {
                 searchResultsView.requestFocus();
                 searchResultsView.getSelectionModel().selectFirst();
@@ -246,13 +244,13 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
     }
 
     private void showAutocompletePopup(String query) {
-        List<Variant> results = searchIndex.searchByName(query);
+        List<Product> results = searchIndex.searchByName(query);
         if (!results.isEmpty()) {
             searchResultsView.setItems(FXCollections.observableArrayList(results));
             searchResultsView.setPrefHeight(Math.min(results.size() * 52 + 5, 300));
-            searchResultsView.setPrefWidth(Math.max(searchVariantField.getWidth(), 350));
-            javafx.geometry.Point2D pos = searchVariantField.localToScreen(0, searchVariantField.getHeight() + 2);
-            if (pos != null) searchPopup.show(searchVariantField, pos.getX(), pos.getY());
+            searchResultsView.setPrefWidth(Math.max(searchProductField.getWidth(), 350));
+            javafx.geometry.Point2D pos = searchProductField.localToScreen(0, searchProductField.getHeight() + 2);
+            if (pos != null) searchPopup.show(searchProductField, pos.getX(), pos.getY());
         } else {
             searchPopup.hide();
         }
@@ -260,44 +258,44 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
 
     @FXML
     private void handleAddItem() {
-        String query = searchVariantField.getText().trim();
+        String query = searchProductField.getText().trim();
         if (query.isEmpty()) { NotificationService.warning("Enter a product name or SKU to search"); return; }
 
         if (searchPopup.isShowing() && !searchResultsView.getItems().isEmpty()) {
-            Variant selected = searchResultsView.getSelectionModel().getSelectedItem();
+            Product selected = searchResultsView.getSelectionModel().getSelectedItem();
             if (selected == null) selected = searchResultsView.getItems().get(0);
-            addVariantToCart(selected);
-            searchVariantField.clear();
+            addProductToCart(selected);
+            searchProductField.clear();
             searchPopup.hide();
             return;
         }
 
         try {
-            List<Variant> results = searchIndex.searchByName(query);
+            List<Product> results = searchIndex.searchByName(query);
             if (results.isEmpty()) { NotificationService.warning("No product found matching: " + query); return; }
-            if (results.size() == 1) { addVariantToCart(results.get(0)); searchVariantField.clear(); }
-            else showVariantSelectionDialog(results);
+            if (results.size() == 1) { addProductToCart(results.get(0)); searchProductField.clear(); }
+            else showProductSelectionDialog(results);
         } catch (Exception ex) { NotificationService.error("Failed to search products"); }
     }
 
-    private void showVariantSelectionDialog(List<Variant> variants) {
-        Dialog<Variant> dialog = new Dialog<>();
+    private void showProductSelectionDialog(List<Product> products) {
+        Dialog<Product> dialog = new Dialog<>();
         DialogStyler.apply(dialog);
-        dialog.setTitle("Select Product Variant");
+        dialog.setTitle("Select Product");
         dialog.setHeaderText("Multiple products found. Select one:");
-        ListView<Variant> listView = new ListView<>(FXCollections.observableArrayList(variants));
+        ListView<Product> listView = new ListView<>(FXCollections.observableArrayList(products));
         listView.setCellFactory(lv -> new ListCell<>() {
             @Override
-            protected void updateItem(Variant item, boolean empty) {
+            protected void updateItem(Product item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) setText(null);
-                else setText(item.productName() + " - " + item.name() + " (" + item.sku() + ") - " + CurrencyUtil.format(item.costPrice() != null ? item.costPrice() : BigDecimal.ZERO));
+                else setText(item.name() + " (" + item.sku() + ") - " + CurrencyUtil.format(item.costPrice() != null ? item.costPrice() : BigDecimal.ZERO));
             }
         });
         dialog.getDialogPane().setContent(listView);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.setResultConverter(bt -> bt == ButtonType.OK ? listView.getSelectionModel().getSelectedItem() : null);
-        dialog.showAndWait().ifPresent(v -> { addVariantToCart(v); searchVariantField.clear(); });
+        dialog.showAndWait().ifPresent(p -> { addProductToCart(p); searchProductField.clear(); });
     }
 
     private void loadData(boolean isView) {
@@ -316,8 +314,8 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
                     }
                     PurchaseService.PurchaseOrderDetail detail = purchaseService.getPurchaseOrderById(existingPo.id());
                     for (PurchaseOrderItem item : detail.items()) {
-                        variantRepository.findVariantByIdSync(item.variantId()).ifPresent(v -> {
-                            PurchaseItemRow row = new PurchaseItemRow(v);
+                        productRepository.findProductById(item.productId()).ifPresent(p -> {
+                            PurchaseItemRow row = new PurchaseItemRow(p);
                             row.setQuantity(item.quantity());
                             row.setUnitCost(item.unitCost());
                             itemRows.add(row);
@@ -361,17 +359,17 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
         });
     }
 
-    private void addVariantToCart(Variant variant) {
+    private void addProductToCart(Product product) {
         for (PurchaseItemRow row : itemRows) {
-            if (row.getVariantId() != null && row.getVariantId().equals(variant.id())) {
+            if (row.getProductId() != null && row.getProductId().equals(product.id())) {
                 row.setQuantity(row.getQuantity() + 1);
-                NotificationService.success("Quantity updated for " + variant.name());
+                NotificationService.success("Quantity updated for " + product.name());
                 recalculateTotal();
                 return;
             }
         }
-        itemRows.add(new PurchaseItemRow(variant));
-        NotificationService.success("Added " + variant.name() + " to order");
+        itemRows.add(new PurchaseItemRow(product));
+        NotificationService.success("Added " + product.name() + " to order");
         recalculateTotal();
     }
 
@@ -383,8 +381,8 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
             Supplier supplier = supplierCombo.getValue();
             if (supplier == null) { NotificationService.error("Select a supplier"); return; }
             List<PurchaseService.PurchaseOrderItemRequest> items = itemRows.stream()
-                .filter(row -> row.getVariantId() != null)
-                .map(row -> new PurchaseService.PurchaseOrderItemRequest(row.getVariantId(), row.getQuantity(), row.getUnitCost()))
+                .filter(row -> row.getProductId() != null)
+                .map(row -> new PurchaseService.PurchaseOrderItemRequest(row.getProductId(), row.getQuantity(), row.getUnitCost()))
                 .toList();
             if (items.isEmpty()) { NotificationService.error("Add at least one valid item"); return; }
             PaymentMethod pm = paymentMethodCombo.getValue();
@@ -410,7 +408,9 @@ public class PurchaseOrderFormController implements Parameterizable, PurchaseCel
     }
 
     private void applyPopupListStyles(ListView<?> lv) {
-        String s = Objects.requireNonNull(getClass().getResource("/styles/pos.css")).toExternalForm();
-        if (!lv.getStylesheets().contains(s)) lv.getStylesheets().add(s);
+        try {
+            String s = Objects.requireNonNull(getClass().getResource("/styles/pos.css")).toExternalForm();
+            if (!lv.getStylesheets().contains(s)) lv.getStylesheets().add(s);
+        } catch (Exception ignored) {}
     }
 }

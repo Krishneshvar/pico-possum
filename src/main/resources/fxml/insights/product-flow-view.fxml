@@ -24,7 +24,7 @@
     
     <fx:define>
         <HBox fx:id="searchDock" alignment="CENTER_LEFT" spacing="8">
-            <TextField fx:id="searchField" promptText="Search products or variants..." HBox.hgrow="ALWAYS" styleClass="search-field-pos" prefWidth="300">
+            <TextField fx:id="searchField" promptText="Search products..." HBox.hgrow="ALWAYS" styleClass="search-field-pos" prefWidth="300">
                 <tooltip>
                     <Tooltip text="Start typing to select item"/>
                 </tooltip>

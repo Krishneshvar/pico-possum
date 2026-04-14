@@ -87,7 +87,11 @@ public class ReturnsService {
                         refundCalc.saleItemId(),
                         refundCalc.quantity(),
                         refundCalc.refundAmount(),
-                        null, null, null, null, null, null
+                        refundCalc.productId(),
+                        refundCalc.pricePerUnit(),
+                        refundCalc.taxRate(),
+                        refundCalc.sku(),
+                        refundCalc.productName()
                 );
                 long returnItemId = returnsRepository.insertReturnItem(returnItem);
 
@@ -95,7 +99,7 @@ public class ReturnsService {
                 // Restore inventory
                 inventoryService.restoreStock(
 
-                        refundCalc.variantId(),
+                        refundCalc.productId(),
                         "sale_item",
                         refundCalc.saleItemId(),
                         refundCalc.quantity(),
@@ -176,7 +180,7 @@ public class ReturnsService {
             if (requestedQuantity > availableToReturn) {
                 throw new ValidationException(
                         String.format("Cannot return %d of %s. Only %d remaining to return.",
-                                requestedQuantity, saleItem.variantName(), availableToReturn)
+                                requestedQuantity, saleItem.productName(), availableToReturn)
                 );
             }
 

@@ -1,6 +1,7 @@
 package com.possum.persistence.db;
 
 import com.possum.infrastructure.filesystem.AppPaths;
+import com.possum.persistence.repositories.sqlite.*;
 import org.flywaydb.core.Flyway;
 import org.sqlite.SQLiteConfig;
 
@@ -152,5 +153,13 @@ public final class DatabaseManager implements ConnectionProvider, AutoCloseable 
         } catch (SQLException ignored) {
             // Best effort cleanup during failed initialization.
         }
+    }
+
+    public SqliteProductRepository getProductRepository() {
+        return new SqliteProductRepository(this);
+    }
+
+    public SqliteInventoryRepository getInventoryRepository() {
+        return new SqliteInventoryRepository(this);
     }
 }

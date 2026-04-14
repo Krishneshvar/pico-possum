@@ -43,7 +43,7 @@ class InventoryPerformanceIntegrationTest {
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
 
-    private static long testVariantId;
+    private static long testProductId;
     private static long testUserId;
     private static long cashPaymentMethodId;
 
@@ -60,7 +60,6 @@ class InventoryPerformanceIntegrationTest {
 
         SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager);
         SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager);
-        SqliteVariantRepository variantRepository = new SqliteVariantRepository(databaseManager);
         salesRepository = new SqliteSalesRepository(databaseManager);
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
@@ -73,13 +72,13 @@ class InventoryPerformanceIntegrationTest {
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
         SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        TaxEngine taxEngine = new TaxEngine(taxRepository, jsonService);
+        EnhancedTaxEngine taxEngine = new EnhancedTaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
-        salesService = new SalesService(salesRepository,  variantRepository,  productRepository,  customerRepository, 
-                auditRepository,  inventoryService,  taxEngine, new com.possum.domain.services.SaleCalculator( taxEngine),  paymentService,  transactionManager, 
-                jsonService,  settingsStore,  invoiceNumberService);
+        salesService = new SalesService(salesRepository, productRepository, customerRepository, 
+                auditRepository, inventoryService, taxEngine, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+                jsonService, settingsStore, invoiceNumberService);
 
         long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin'");
         User u = userRepository.insertUserWithRoles(
@@ -88,7 +87,7 @@ class InventoryPerformanceIntegrationTest {
         );
         testUserId = u.id();
         cashPaymentMethodId = getOrSeedPaymentMethod();
-        testVariantId = seedVariantWithStock(categoryRepository, productRepository, 100000);
+        testProductId = seedProductWithStock(categoryRepository, productRepository, 100000);
     }
 
     @AfterAll
@@ -107,14 +106,14 @@ class InventoryPerformanceIntegrationTest {
     @Order(1)
     @DisplayName("Performance: Create 1000 sales sequentially — verifies response time and final stock")
     void performance_create1000SalesSequentially() {
-        int initialStock = inventoryService.getVariantStock(testVariantId);
+        int initialStock = inventoryService.getProductStock(testProductId);
         int iterations = 1000;
         BigDecimal unitPrice = new BigDecimal("10.00");
 
         long start = System.currentTimeMillis();
         for (int i = 0; i < iterations; i++) {
             salesService.createSale(new CreateSaleRequest(
-                    List.of(new CreateSaleItemRequest(testVariantId, 1, BigDecimal.ZERO, unitPrice)),
+                    List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, unitPrice)),
                     null, BigDecimal.ZERO,
                     List.of(new PaymentRequest(unitPrice, cashPaymentMethodId))
             ), testUserId);
@@ -124,61 +123,39 @@ class InventoryPerformanceIntegrationTest {
 
         System.out.println("Created 1000 sales in " + duration + "ms (" + (duration / iterations) + "ms/sale)");
 
-        // Verify final stock
-        int finalStock = inventoryService.getVariantStock(testVariantId);
+        int finalStock = inventoryService.getProductStock(testProductId);
         assertEquals(initialStock - iterations, finalStock);
 
-        // Verify audit logs exist
         int auditCount = queryInt("SELECT COUNT(*) FROM audit_log WHERE table_name = 'sales'");
         assertTrue(auditCount >= iterations);
 
-        // Limit check: 1000 sales
         assertTrue(duration < 45000, "Performance threshold exceeded: 1000 sales took " + duration + "ms");
     }
 
-    // ─── helpers ──────────────────────────────────────────────────────────────
-
-    private static long seedVariantWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
+    private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("PerfCat-" + UUID.randomUUID(), null).id();
-        long prodId = prodRepo.insertProduct(new Product(
-                null, "PerfProd-" + UUID.randomUUID(), "desc", catId, null, null, null, "active", null, null, null, null, null
+        long productId = prodRepo.insertProduct(new Product(
+            null, "PerfProd-" + UUID.randomUUID(), "PSKU-" + UUID.randomUUID(), "desc", catId, "active",
+            new BigDecimal("100.00"), new BigDecimal("120.00"), 1L, 0, 5, false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
         ));
-        long variantId = insertVariant(prodId, "PSKU-" + UUID.randomUUID());
-        seedInventory(variantId, qty);
-        return variantId;
+        seedInventory(productId, qty);
+        return productId;
     }
 
-    private static long insertVariant(long productId, String sku) {
+    private static void seedInventory(long productId, int quantity) {
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO variants (product_id, name, sku, mrp, cost_price, is_default, status) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id")) {
+                "INSERT INTO inventory_lots (product_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
             stmt.setLong(1, productId);
-            stmt.setString(2, "Default");
-            stmt.setString(3, sku);
-            stmt.setBigDecimal(4, new BigDecimal("100.00"));
-            stmt.setBigDecimal(5, new BigDecimal("60.00"));
-            stmt.setInt(6, 1);
-            stmt.setString(7, "active");
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
-        } catch (SQLException e) { throw new IllegalStateException("insertVariant failed", e); }
-        throw new IllegalStateException("No ID returned");
-    }
-
-    private static void seedInventory(long variantId, int quantity) {
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_lots (variant_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, variantId);
             stmt.setInt(2, quantity);
             stmt.setBigDecimal(3, new BigDecimal("60.00"));
             stmt.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException("Seed lot failed", e); }
 
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_adjustments (variant_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
+                "INSERT INTO inventory_adjustments (product_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
                 "VALUES (?, ?, ?, 'correction', ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, variantId);
-            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE variant_id = ? ORDER BY id DESC LIMIT 1", variantId));
+            stmt.setLong(1, productId);
+            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
             stmt.setInt(3, quantity);
             stmt.setLong(4, 1);
             stmt.executeUpdate();
@@ -186,7 +163,7 @@ class InventoryPerformanceIntegrationTest {
     }
 
     private static long getOrSeedPaymentMethod() {
-        List<com.possum.domain.model.PaymentMethod> methods = salesRepository.findPaymentMethods();
+        List<com.possum.shared.dto.PaymentMethod> methods = salesRepository.findPaymentMethods();
         if (!methods.isEmpty()) return methods.get(0).id();
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
                 "INSERT INTO payment_methods (name, code, is_active) VALUES ('Cash', 'CA', 1) RETURNING id")) {

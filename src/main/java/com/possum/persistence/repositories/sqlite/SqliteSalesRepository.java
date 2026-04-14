@@ -111,13 +111,13 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sale_items (
-                  sale_id, variant_id, quantity, price_per_unit, cost_per_unit, tax_rate, tax_amount, discount_amount,
+                  sale_id, product_id, quantity, price_per_unit, cost_per_unit, tax_rate, tax_amount, discount_amount,
                   applied_tax_rate, applied_tax_amount, tax_rule_snapshot
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 item.saleId(),
-                item.variantId(),
+                item.productId(),
                 item.quantity(),
                 item.pricePerUnit(),
                 item.costPerUnit(),
@@ -185,11 +185,10 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return queryList(
                 """
                 SELECT
-                  si.*, v.name AS variant_name, v.sku, p.name AS product_name,
+                  si.*, p.sku, p.name AS product_name,
                   (SELECT COALESCE(SUM(ri.quantity), 0) FROM return_items ri WHERE ri.sale_item_id = si.id) AS returned_quantity
                 FROM sale_items si
-                JOIN variants v ON si.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON si.product_id = p.id
                 WHERE si.sale_id = ?
                 """,
                 saleItemMapper,

@@ -35,7 +35,7 @@
             <Button fx:id="addButton" text="Add New Product" onAction="#handleAdd" styleClass="action-button, primary-button" accessibleText="Create a new product record" accessibleRole="BUTTON" defaultButton="true">
                 <graphic><FontIcon iconLiteral="bx-plus" iconSize="16" iconColor="white"/></graphic>
                 <tooltip>
-                    <Tooltip text="Create a new product and define its variants"/>
+                    <Tooltip text="Create a new product record"/>
                 </tooltip>
             </Button>
         </HBox>

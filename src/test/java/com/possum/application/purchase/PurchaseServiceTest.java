@@ -9,7 +9,7 @@ import com.possum.domain.exceptions.ValidationException;
 import com.possum.domain.model.PurchaseOrder;
 import com.possum.domain.model.PurchaseOrderItem;
 import com.possum.domain.model.Supplier;
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.persistence.db.ConnectionProvider;
 import com.possum.persistence.db.TransactionManager;
@@ -39,7 +39,7 @@ class PurchaseServiceTest {
 
     @Mock private PurchaseRepository purchaseRepository;
     @Mock private SupplierRepository supplierRepository;
-    @Mock private VariantRepository variantRepository;
+    @Mock private ProductRepository productRepository;
     @Mock private InventoryRepository inventoryRepository;
     @Mock private ProductFlowRepository productFlowRepository;
     @Mock private AuditRepository auditRepository;
@@ -51,7 +51,7 @@ class PurchaseServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        purchaseService = new PurchaseService(purchaseRepository, supplierRepository, variantRepository, inventoryRepository, productFlowRepository, auditRepository, transactionManager, connectionProvider, jsonService);
+        purchaseService = new PurchaseService(purchaseRepository, supplierRepository, productRepository, inventoryRepository, productFlowRepository, auditRepository, transactionManager, connectionProvider, jsonService);
         AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin", List.of(), List.of("purchase.manage")));
         
         lenient().when(transactionManager.runInTransaction(any())).thenAnswer(invocation -> {
@@ -117,7 +117,7 @@ class PurchaseServiceTest {
         );
 
         when(supplierRepository.findSupplierById(1L)).thenReturn(Optional.of(mock(Supplier.class)));
-        when(variantRepository.findVariantByIdSync(10L)).thenReturn(Optional.of(mock(Variant.class)));
+        when(productRepository.findProductById(10L)).thenReturn(Optional.of(mock(Product.class)));
         when(purchaseRepository.createPurchaseOrder(eq(1L), anyString(), eq(1L), eq(1L), anyList())).thenReturn(100L);
         PurchaseOrder po = new PurchaseOrder(100L, "PXX123", 1L, "sup", 1L, null, "pending", LocalDateTime.now(), null, 1L, "jane", 1, BigDecimal.TEN);
         when(purchaseRepository.getPurchaseOrderById(100L)).thenReturn(Optional.of(po));

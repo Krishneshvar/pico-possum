@@ -69,7 +69,7 @@ public class SaleCompletionHandler {
         }
 
         final List<CreateSaleItemRequest> items = bill.getItems().stream()
-                .map(it -> new CreateSaleItemRequest(it.getVariant().id(), it.getQuantity(), it.getDiscountAmount(), it.getPricePerUnit()))
+                .map(it -> new CreateSaleItemRequest(it.getProduct().id(), it.getQuantity(), it.getDiscountAmount(), it.getPricePerUnit()))
                 .toList();
         final BigDecimal discount = bill.isDiscountFixed()
                 ? bill.getOverallDiscountValue()

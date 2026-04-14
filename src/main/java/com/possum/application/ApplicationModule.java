@@ -7,7 +7,6 @@ import com.possum.application.inventory.InventoryService;
 import com.possum.application.inventory.ProductFlowService;
 import com.possum.application.products.ProductModule;
 import com.possum.application.products.ProductService;
-import com.possum.application.variants.VariantService;
 import com.possum.infrastructure.filesystem.AppPaths;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.security.PasswordHasher;
@@ -34,7 +33,6 @@ public final class ApplicationModule {
     public ApplicationModule(UserRepository userRepository,
                             SessionRepository sessionRepository,
                             ProductRepository productRepository,
-                            VariantRepository variantRepository,
                             CategoryRepository categoryRepository,
                             InventoryRepository inventoryRepository,
                             ProductFlowRepository productFlowRepository,
@@ -66,7 +64,6 @@ public final class ApplicationModule {
         
         this.productModule = new ProductModule(
                 productRepository,
-                variantRepository,
                 inventoryRepository,
                 auditRepository,
                 transactionManager,
@@ -84,10 +81,6 @@ public final class ApplicationModule {
 
     public ProductService getProductService() {
         return productModule.getProductService();
-    }
-
-    public VariantService getVariantService() {
-        return productModule.getVariantService();
     }
 
     public CategoryService getCategoryService() {

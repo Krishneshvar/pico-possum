@@ -13,13 +13,10 @@ import com.possum.ui.workspace.WorkspaceManager;
 import com.possum.shared.util.CsvImportUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -89,11 +86,14 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         TableColumn<Product, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
 
+        TableColumn<Product, String> skuCol = new TableColumn<>("SKU");
+        skuCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().sku()));
+
+        TableColumn<Product, String> priceCol = new TableColumn<>("Price");
+        priceCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().mrp() != null ? com.possum.shared.util.CurrencyUtil.format(cellData.getValue().mrp()) : "-"));
+
         TableColumn<Product, String> categoryCol = new TableColumn<>("Category");
         categoryCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().categoryName()));
-
-        TableColumn<Product, String> taxCol = new TableColumn<>("Tax Category");
-        taxCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().taxCategoryName() != null ? cellData.getValue().taxCategoryName() : "-"));
 
         TableColumn<Product, String> statusCol = new TableColumn<>("Status");
         statusCol.setSortable(false);
@@ -112,7 +112,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             }
         });
 
-        dataTable.getTableView().getColumns().addAll(nameCol, categoryCol, taxCol, statusCol);
+        dataTable.getTableView().getColumns().addAll(nameCol, skuCol, priceCol, categoryCol, statusCol);
         addActionMenuColumn();
     }
 
@@ -222,6 +222,11 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         importHandler.handleImport();
     }
 
+    @FXML
+    protected void handleRefresh() {
+        loadData();
+    }
+
     /**
      * Inner class to handle CSV import functionality
      */
@@ -245,21 +250,22 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             ));
 
             Integer stockAlert = CsvImportUtil.parseInteger(
-                CsvImportUtil.getValue(row, headers, "Minimum Stock Level", "Stock Alert", "Stock Alert Cap"), 0
+                CsvImportUtil.getValue(row, headers, "Minimum Stock Level", "Stock Alert", "Stock Alert Cap"), 10
             );
-            if (stockAlert == null || stockAlert < 0) stockAlert = 0;
 
             BigDecimal price = CsvImportUtil.parseDecimal(
                 CsvImportUtil.getValue(row, headers, "MRP", "MRP/Price", "Price"), BigDecimal.ZERO
             );
-            if (price.compareTo(BigDecimal.ZERO) < 0) price = BigDecimal.ZERO;
 
             BigDecimal costPrice = CsvImportUtil.parseDecimal(
                 CsvImportUtil.getValue(row, headers, "Avg Item Cost", "Cost Price", "Cost"), BigDecimal.ZERO
             );
-            if (costPrice.compareTo(BigDecimal.ZERO) < 0) costPrice = BigDecimal.ZERO;
 
-            return new ProductImportRow(name, sku, categoryName, stockAlert, price, costPrice);
+            Integer initialStock = CsvImportUtil.parseInteger(
+                CsvImportUtil.getValue(row, headers, "Opening Stock", "Current Stock", "Stock"), 0
+            );
+
+            return new ProductImportRow(name, sku, categoryName, stockAlert, price, costPrice, initialStock);
         }
 
         @Override
@@ -273,15 +279,11 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             Long categoryId = resolveOrCreateCategoryId(record.categoryName(), categoryMap);
             long actorId = AuthContext.getCurrentUser().id();
 
-            ProductService.VariantCommand defaultVariant = new ProductService.VariantCommand(
-                null, record.name(), record.sku(), record.price(), record.costPrice(),
-                record.stockAlert(), true, "active", 0, "Initial import"
-            );
-
-            productService.createProductWithVariants(
+            productService.createProduct(
                 new ProductService.CreateProductCommand(
-                    record.name(), "", categoryId, "active", null,
-                    List.of(defaultVariant), java.util.Collections.emptyList(), actorId
+                    record.name(), "", categoryId, null, record.sku(),
+                    record.price(), record.costPrice(), record.stockAlert(), "active",
+                    null, record.initialStock(), actorId
                 )
             );
             return null;
@@ -317,6 +319,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     private record ProductImportRow(
         String name, String sku, String categoryName,
-        Integer stockAlert, BigDecimal price, BigDecimal costPrice
+        Integer stockAlert, BigDecimal price, BigDecimal costPrice,
+        Integer initialStock
     ) {}
 }

@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 public record InventoryAdjustment(
         Long id,
-        Long variantId,
+        Long productId,
         Long lotId,
         Integer quantityChange,
         String reason,

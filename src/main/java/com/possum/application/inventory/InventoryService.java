@@ -7,7 +7,7 @@ import com.possum.domain.enums.InventoryReason;
 import com.possum.domain.exceptions.InsufficientStockException;
 import com.possum.domain.model.InventoryAdjustment;
 import com.possum.domain.model.InventoryLot;
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.persistence.db.TransactionManager;
@@ -46,24 +46,24 @@ public class InventoryService {
         this.stockManager = stockManager;
     }
 
-    public int getVariantStock(long variantId) {
-        return inventoryRepository.getStockByVariantId(variantId);
+    public int getProductStock(long productId) {
+        return inventoryRepository.getStockByProductId(productId);
     }
 
-    public List<InventoryLot> getVariantLots(long variantId) {
-        return inventoryRepository.findLotsByVariantId(variantId);
+    public List<InventoryLot> getProductLots(long productId) {
+        return inventoryRepository.findLotsByProductId(productId);
     }
 
-    public List<InventoryAdjustment> getVariantAdjustments(long variantId, int limit, int offset) {
-        return inventoryRepository.findAdjustmentsByVariantId(variantId, limit, offset);
+    public List<InventoryAdjustment> getProductAdjustments(long productId, int limit, int offset) {
+        return inventoryRepository.findAdjustmentsByProductId(productId, limit, offset);
     }
 
     public List<com.possum.shared.dto.StockHistoryDto> getStockHistory(String search, List<String> reasons, String fromDate, String toDate, List<Long> userIds, int limit, int offset) {
         return inventoryRepository.findStockHistory(search, reasons, fromDate, toDate, userIds, limit, offset);
     }
 
-    public List<Variant> getLowStockAlerts() {
-        return inventoryRepository.findLowStockVariants();
+    public List<Product> getLowStockAlerts() {
+        return inventoryRepository.findLowStockProducts();
     }
 
     public List<InventoryLot> getExpiringLots(int days) {
@@ -74,7 +74,7 @@ public class InventoryService {
         return inventoryRepository.getInventoryStats();
     }
 
-    public ReceiveInventoryResult receiveInventory(long variantId, int quantity, BigDecimal unitCost,
+    public ReceiveInventoryResult receiveInventory(long productId, int quantity, BigDecimal unitCost,
                                                    String batchNumber, LocalDateTime manufacturedDate,
                                                    LocalDateTime expiryDate, Long purchaseOrderItemId, long userId) {
         if (quantity <= 0)
@@ -83,22 +83,22 @@ public class InventoryService {
             throw new com.possum.domain.exceptions.ValidationException("Unit cost must be zero or greater");
 
         return transactionManager.runInTransaction(() -> {
-            InventoryLot lot = new InventoryLot(null, variantId, batchNumber, manufacturedDate, expiryDate,
+            InventoryLot lot = new InventoryLot(null, productId, batchNumber, manufacturedDate, expiryDate,
                     quantity, unitCost, purchaseOrderItemId, TimeUtil.nowUTC());
             long lotId = inventoryRepository.insertInventoryLot(lot);
 
-            InventoryAdjustment adjustment = new InventoryAdjustment(null, variantId, lotId, quantity,
+            InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, lotId, quantity,
                     InventoryReason.CONFIRM_RECEIVE.getValue(), "purchase_order_item", purchaseOrderItemId,
                     userId, null, TimeUtil.nowUTC());
             inventoryRepository.insertInventoryAdjustment(adjustment);
 
-            int newStock = inventoryRepository.getStockByVariantId(variantId);
+            int newStock = inventoryRepository.getStockByProductId(productId);
 
-            productFlowService.logProductFlow(variantId, FlowEventType.PURCHASE, quantity,
+            productFlowService.logProductFlow(productId, FlowEventType.PURCHASE, quantity,
                     "purchase_order_item", purchaseOrderItemId);
 
             Map<String, Object> auditData = Map.of(
-                    "variant_id", variantId,
+                    "product_id", productId,
                     "quantity", quantity,
                     "unit_cost", unitCost,
                     "batch_number", batchNumber != null ? batchNumber : "",
@@ -106,28 +106,28 @@ public class InventoryService {
             );
             auditRepository.log("inventory_lots", lotId, "CREATE", jsonService.toJson(auditData), userId);
 
-            return new ReceiveInventoryResult(lotId, variantId, quantity, newStock);
+            return new ReceiveInventoryResult(lotId, productId, quantity, newStock);
         });
     }
 
-    public DeductStockResult deductStock(long variantId, int quantity, long userId, InventoryReason reason,
+    public DeductStockResult deductStock(long productId, int quantity, long userId, InventoryReason reason,
                                          String referenceType, Long referenceId) {
         if (quantity <= 0) {
             return new DeductStockResult(true, 0);
         }
 
-        int currentStock = inventoryRepository.getStockByVariantId(variantId);
+        int currentStock = inventoryRepository.getStockByProductId(productId);
         if (isInventoryRestrictionsEnabled() && currentStock < quantity) {
             throw new InsufficientStockException(currentStock, quantity);
         }
 
         return transactionManager.runInTransaction(() -> {
-            deductStockInternal(variantId, quantity, userId, reason, referenceType, referenceId);
+            deductStockInternal(productId, quantity, userId, reason, referenceType, referenceId);
             return new DeductStockResult(true, quantity);
         });
     }
 
-    public RestoreStockResult restoreStock(long variantId, String referenceType, long referenceId,
+    public RestoreStockResult restoreStock(long productId, String referenceType, long referenceId,
                                            int quantity, long userId, InventoryReason reason,
                                            String newReferenceType, Long newReferenceId) {
         if (quantity <= 0) {
@@ -139,7 +139,7 @@ public class InventoryService {
                     .findAdjustmentsByReference(referenceType, referenceId);
 
             List<InventoryAdjustment> plan = stockManager.planRestoration(
-                    variantId, quantity, originalAdjustments, reason, newReferenceType, newReferenceId, userId
+                    productId, quantity, originalAdjustments, reason, newReferenceType, newReferenceId, userId
             );
 
             for (InventoryAdjustment adj : plan) {
@@ -147,18 +147,18 @@ public class InventoryService {
             }
 
             FlowEventType eventType = reason == InventoryReason.RETURN ? FlowEventType.RETURN : FlowEventType.ADJUSTMENT;
-            productFlowService.logProductFlow(variantId, eventType, quantity,
+            productFlowService.logProductFlow(productId, eventType, quantity,
                     newReferenceType != null ? newReferenceType : "adjustment", newReferenceId);
 
             return new RestoreStockResult(true, quantity);
         });
     }
 
-    public AdjustInventoryResult adjustInventory(long variantId, Long lotId, int quantityChange,
+    public AdjustInventoryResult adjustInventory(long productId, Long lotId, int quantityChange,
                                                  InventoryReason reason, String referenceType,
                                                  Long referenceId, long userId) {
         if (quantityChange < 0 && isInventoryRestrictionsEnabled()) {
-            int currentStock = inventoryRepository.getStockByVariantId(variantId);
+            int currentStock = inventoryRepository.getStockByProductId(productId);
             if (currentStock + quantityChange < 0) {
                 throw new InsufficientStockException(currentStock, Math.abs(quantityChange));
             }
@@ -166,16 +166,16 @@ public class InventoryService {
 
         return transactionManager.runInTransaction(() -> {
             if (quantityChange < 0 && lotId == null) {
-                deductStockInternal(variantId, Math.abs(quantityChange), userId, reason, referenceType, referenceId);
-                int newStock = inventoryRepository.getStockByVariantId(variantId);
-                return new AdjustInventoryResult(0, variantId, quantityChange, reason, newStock);
+                deductStockInternal(productId, Math.abs(quantityChange), userId, reason, referenceType, referenceId);
+                int newStock = inventoryRepository.getStockByProductId(productId);
+                return new AdjustInventoryResult(0, productId, quantityChange, reason, newStock);
             }
 
-            InventoryAdjustment adjustment = new InventoryAdjustment(null, variantId, lotId, quantityChange,
+            InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, lotId, quantityChange,
                     reason.getValue(), referenceType, referenceId, userId, null, TimeUtil.nowUTC());
             long adjustmentId = inventoryRepository.insertInventoryAdjustment(adjustment);
 
-            int newStock = inventoryRepository.getStockByVariantId(variantId);
+            int newStock = inventoryRepository.getStockByProductId(productId);
 
             FlowEventType eventType = switch (reason) {
                 case SALE -> FlowEventType.SALE;
@@ -183,26 +183,26 @@ public class InventoryService {
                 default -> FlowEventType.ADJUSTMENT;
             };
 
-            productFlowService.logProductFlow(variantId, eventType, quantityChange,
+            productFlowService.logProductFlow(productId, eventType, quantityChange,
                     referenceType != null ? referenceType : "adjustment", referenceId != null ? referenceId : adjustmentId);
 
             Map<String, Object> auditData = Map.of(
-                    "variant_id", variantId,
+                    "product_id", productId,
                     "quantity_change", quantityChange,
                     "reason", reason.getValue(),
                     "new_stock", newStock
             );
             auditRepository.log("inventory_adjustments", adjustmentId, "CREATE", jsonService.toJson(auditData), userId);
 
-            return new AdjustInventoryResult(adjustmentId, variantId, quantityChange, reason, newStock);
+            return new AdjustInventoryResult(adjustmentId, productId, quantityChange, reason, newStock);
         });
     }
 
-    private void deductStockInternal(long variantId, int quantity, long userId, InventoryReason reason,
+    private void deductStockInternal(long productId, int quantity, long userId, InventoryReason reason,
                                      String referenceType, Long referenceId) {
-        List<AvailableLot> availableLots = inventoryRepository.findAvailableLots(variantId);
+        List<AvailableLot> availableLots = inventoryRepository.findAvailableLotsByProductId(productId);
         List<InventoryAdjustment> plan = stockManager.planDeduction(
-                variantId, quantity, availableLots, reason, referenceType, referenceId, userId
+                productId, quantity, availableLots, reason, referenceType, referenceId, userId
         );
 
         for (InventoryAdjustment adj : plan) {
@@ -210,14 +210,14 @@ public class InventoryService {
         }
 
         FlowEventType eventType = reason == InventoryReason.SALE ? FlowEventType.SALE : FlowEventType.ADJUSTMENT;
-        productFlowService.logProductFlow(variantId, eventType, -quantity,
+        productFlowService.logProductFlow(productId, eventType, -quantity,
                 referenceType != null ? referenceType : "adjustment", referenceId);
     }
 
-    public record ReceiveInventoryResult(long lotId, long variantId, int quantity, int newStock) {}
+    public record ReceiveInventoryResult(long lotId, long productId, int quantity, int newStock) {}
     public record DeductStockResult(boolean success, int deducted) {}
     public record RestoreStockResult(boolean success, int restored) {}
-    public record AdjustInventoryResult(long id, long variantId, int quantityChange, InventoryReason reason, int newStock) {}
+    public record AdjustInventoryResult(long id, long productId, int quantityChange, InventoryReason reason, int newStock) {}
 
     private boolean isInventoryRestrictionsEnabled() {
         try {

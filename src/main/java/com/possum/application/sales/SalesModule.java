@@ -12,7 +12,6 @@ public class SalesModule {
     private final PaymentService paymentService;
 
     public SalesModule(SalesRepository salesRepository,
-                       VariantRepository variantRepository,
                        ProductRepository productRepository,
                        CustomerRepository customerRepository,
                        AuditRepository auditRepository,
@@ -29,7 +28,6 @@ public class SalesModule {
         
         this.salesService = new SalesService(
                 salesRepository,
-                variantRepository,
                 productRepository,
                 customerRepository,
                 auditRepository,

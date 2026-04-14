@@ -4,10 +4,11 @@ import com.possum.application.auth.AuthContext;
 import com.possum.application.auth.AuthUser;
 import com.possum.application.inventory.InventoryService;
 import com.possum.application.categories.CategoryService;
-import com.possum.domain.model.Variant;
-import com.possum.domain.repositories.VariantRepository;
+import com.possum.domain.model.Product;
+import com.possum.domain.repositories.ProductRepository;
 import com.possum.domain.repositories.TaxRepository;
 import com.possum.shared.dto.PagedResult;
+import com.possum.shared.dto.ProductFilter;
 import com.possum.ui.common.controls.FilterBar;
 import com.possum.ui.common.controls.PaginationBar;
 import com.possum.ui.JavaFXInitializer;
@@ -23,7 +24,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class InventoryControllerTest {
@@ -34,7 +34,7 @@ class InventoryControllerTest {
     }
 
     @Mock private InventoryService inventoryService;
-    @Mock private VariantRepository variantRepository;
+    @Mock private ProductRepository productRepository;
     @Mock private CategoryService categoryService;
     @Mock private TaxRepository taxRepository;
     @Mock private WorkspaceManager workspaceManager;
@@ -67,29 +67,27 @@ class InventoryControllerTest {
     @Test
     @DisplayName("Should fetch inventory data")
     void fetchData_success() {
-        InventoryFilter filter = new InventoryFilter(null, null, null, null, null, null, null, 0, 25);
-        List<Variant> variants = List.of(
-            createTestVariant(1L, "Product 1", 10),
-            createTestVariant(2L, "Product 2", 5)
+        ProductFilter filter = new ProductFilter(null, null, null, null, null, null, null, 0, 25, "stock", "ASC");
+        List<Product> products = List.of(
+            createTestProduct(1L, "Product 1", 10),
+            createTestProduct(2L, "Product 2", 5)
         );
-        PagedResult<Variant> pagedResult = new PagedResult<>(variants, 2, 1, 0, 25);
+        PagedResult<Product> pagedResult = new PagedResult<>(products, 2, 1, 0, 25);
         
-        when(variantRepository.findVariants(any(), any(), any(), any(), any(), any(), any(), any(), anyString(), anyString(), anyInt(), anyInt()))
-            .thenReturn(pagedResult);
+        when(productRepository.findProducts(any())).thenReturn(pagedResult);
 
         // Call controller method
-        PagedResult<Variant> result = controller.fetchData(filter);
+        PagedResult<Product> result = controller.fetchData(filter);
 
         assertNotNull(result);
         assertEquals(2, result.totalCount());
-        verify(variantRepository).findVariants(any(), any(), any(), any(), any(), any(), any(), any(), eq("stock"), eq("ASC"), eq(0), eq(25));
+        verify(productRepository).findProducts(filter);
     }
 
     @Test
     @DisplayName("Should build filter correctly")
     void buildFilter_success() {
-        // Since we can't easily trigger JavaFX UI changes (filterBar), we test the default filter build
-        InventoryFilter filter = controller.buildFilter();
+        ProductFilter filter = controller.buildFilter();
 
         assertNotNull(filter);
         assertEquals(0, filter.page());
@@ -97,23 +95,17 @@ class InventoryControllerTest {
     }
 
     @Test
-    @DisplayName("Should get entity names")
-    void getNames_success() {
-        assertEquals("inventory", controller.getEntityName());
-        assertEquals("Inventory Item", controller.getEntityNameSingular());
-    }
-
-    @Test
     @DisplayName("Should throw exception on delete")
     void deleteEntity_throwsException() {
-        Variant v = createTestVariant(1L, "Test", 10);
-        assertThrows(UnsupportedOperationException.class, () -> controller.deleteEntity(v));
+        Product p = createTestProduct(1L, "Test", 10);
+        assertThrows(UnsupportedOperationException.class, () -> controller.deleteEntity(p));
     }
 
-    private Variant createTestVariant(Long id, String name, int stock) {
-        return new Variant(
-            id, 1L, name, "Standard", "SKU" + id, new BigDecimal("10.00"),
-            BigDecimal.ZERO, 10, true, "active", null, stock, "Electronics", null, null, null, null
+    private Product createTestProduct(Long id, String name, int stock) {
+        return new Product(
+            id, name, "SKU" + id, "Description", 1L, "active",
+            new BigDecimal("10.00"), new BigDecimal("12.00"), 1L, stock, 5,
+            false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
         );
     }
 }

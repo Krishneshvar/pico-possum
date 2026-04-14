@@ -53,7 +53,6 @@ class PosControllerTest {
         controller = new PosController(salesService, customerService, searchIndex, taxEngine,
                 printerService, settingsStore, productService, categoryService, saleCalculator, posDraftRepository);
         
-        // Use reflection to initialize the controller fields as initialize() is hard to run in JUnit
         java.lang.reflect.Field billsField = PosController.class.getDeclaredField("bills");
         billsField.setAccessible(true);
         List<SaleDraft> bills = new java.util.ArrayList<>();
@@ -75,19 +74,19 @@ class PosControllerTest {
     }
 
     @Test
-    @DisplayName("Should add variant to cart")
+    @DisplayName("Should add product to cart")
     void addToCart_success() throws Exception {
-        Variant variant = createTestVariant(1L, "Test Product", "Standard", "123", new BigDecimal("100.00"), 10);
+        Product product = createTestProduct(1L, "Test Product", "123", new BigDecimal("100.00"), 10);
         
         GeneralSettings settings = new GeneralSettings();
         settings.setInventoryAlertsAndRestrictionsEnabled(false);
         when(settingsStore.loadGeneralSettings()).thenReturn(settings);
 
-        java.lang.reflect.Method addToCartMethod = PosController.class.getDeclaredMethod("addToCart", Variant.class);
+        java.lang.reflect.Method addToCartMethod = PosController.class.getDeclaredMethod("addToCart", Product.class);
         addToCartMethod.setAccessible(true);
         
         try {
-            addToCartMethod.invoke(controller, variant);
+            addToCartMethod.invoke(controller, product);
         } catch (Exception e) {}
 
         java.lang.reflect.Field currentBillField = PosController.class.getDeclaredField("currentBill");
@@ -95,7 +94,7 @@ class PosControllerTest {
         SaleDraft currentBill = (SaleDraft) currentBillField.get(controller);
         
         assertEquals(1, currentBill.getItems().size());
-        assertEquals(variant.sku(), currentBill.getItems().get(0).getVariant().sku());
+        assertEquals(product.sku(), currentBill.getItems().get(0).getProduct().sku());
     }
 
     @Test
@@ -105,11 +104,10 @@ class PosControllerTest {
         currentBillField.setAccessible(true);
         SaleDraft currentBill = (SaleDraft) currentBillField.get(controller);
         
-        Variant variant = createTestVariant(1L, "Test Product", "Standard", "123", new BigDecimal("100.00"), 10);
-        CartItem cartItem = new CartItem(variant, 2);
+        Product product = createTestProduct(1L, "Test Product", "123", new BigDecimal("100.00"), 10);
+        CartItem cartItem = new CartItem(product, 2);
         currentBill.getItems().add(cartItem);
 
-        // Recalculate is now delegated to saleCalculator
         doAnswer(invocation -> {
             SaleDraft d = invocation.getArgument(0);
             d.setTotal(new BigDecimal("200.00"));
@@ -127,11 +125,11 @@ class PosControllerTest {
         verify(saleCalculator, times(1)).recalculate(currentBill);
     }
 
-    private Variant createTestVariant(Long id, String productName, String variantName, 
-                                     String sku, BigDecimal price, Integer stock) {
-        return new Variant(
-            id, 1L, productName, variantName, sku, price, BigDecimal.ZERO,
-            0, true, "active", null, stock, "Electronics", null, null, null, null
+    private Product createTestProduct(Long id, String name, String sku, BigDecimal price, Integer stock) {
+        return new Product(
+            id, name, sku, "Description", 1L, "active",
+            price, price.multiply(new BigDecimal("1.2")), 1L, stock, 5,
+            false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
         );
     }
 

@@ -105,10 +105,9 @@ public final class SqlitePurchaseRepository extends BaseSqliteRepository impleme
         return queryList(
                 """
                 SELECT
-                  poi.*, v.name AS variant_name, v.sku, p.name AS product_name
+                  poi.*, p.sku, p.name AS product_name
                 FROM purchase_order_items poi
-                JOIN variants v ON poi.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON poi.product_id = p.id
                 WHERE poi.purchase_order_id = ?
                 """,
                 itemMapper,
@@ -130,14 +129,14 @@ public final class SqlitePurchaseRepository extends BaseSqliteRepository impleme
                 createdBy
         );
         for (PurchaseOrderItem item : items) {
-            boolean variantExists = queryOne("SELECT id FROM variants WHERE id = ?", rs -> rs.getLong("id"), item.variantId()).isPresent();
-            if (!variantExists) {
-                throw new IllegalStateException("Variant not found: " + item.variantId());
+            boolean productExists = queryOne("SELECT id FROM products WHERE id = ?", rs -> rs.getLong("id"), item.productId()).isPresent();
+            if (!productExists) {
+                throw new IllegalStateException("Product not found: " + item.productId());
             }
             executeInsert(
-                    "INSERT INTO purchase_order_items (purchase_order_id, variant_id, quantity, unit_cost) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO purchase_order_items (purchase_order_id, product_id, quantity, unit_cost) VALUES (?, ?, ?, ?)",
                     poId,
-                    item.variantId(),
+                    item.productId(),
                     item.quantity(),
                     item.unitCost()
             );
@@ -159,9 +158,9 @@ public final class SqlitePurchaseRepository extends BaseSqliteRepository impleme
         executeUpdate("DELETE FROM purchase_order_items WHERE purchase_order_id = ?", id);
         for (PurchaseOrderItem item : items) {
             executeInsert(
-                    "INSERT INTO purchase_order_items (purchase_order_id, variant_id, quantity, unit_cost) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO purchase_order_items (purchase_order_id, product_id, quantity, unit_cost) VALUES (?, ?, ?, ?)",
                     id,
-                    item.variantId(),
+                    item.productId(),
                     item.quantity(),
                     item.unitCost()
             );

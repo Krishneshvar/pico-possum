@@ -26,7 +26,6 @@ public class EnhancedServiceFactory {
 
     // Repositories
     private final SalesRepository salesRepository;
-    private final VariantRepository variantRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final TaxRepository taxRepository;
@@ -45,7 +44,6 @@ public class EnhancedServiceFactory {
             JsonService jsonService,
             SettingsStore settingsStore,
             SalesRepository salesRepository,
-            VariantRepository variantRepository,
             ProductRepository productRepository,
             CustomerRepository customerRepository,
             TaxRepository taxRepository,
@@ -62,7 +60,6 @@ public class EnhancedServiceFactory {
         this.jsonService = jsonService;
         this.settingsStore = settingsStore;
         this.salesRepository = salesRepository;
-        this.variantRepository = variantRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.taxRepository = taxRepository;
@@ -97,7 +94,6 @@ public class EnhancedServiceFactory {
         
         return new EnhancedSalesService(
                 salesRepository,
-                variantRepository,
                 productRepository,
                 customerRepository,
                 inventoryService,

@@ -12,8 +12,7 @@ public final class SaleItemMapper implements RowMapper<SaleItem> {
         return new SaleItem(
                 rs.getLong("id"),
                 rs.getLong("sale_id"),
-                rs.getLong("variant_id"),
-                getOptionalColumn(rs, "variant_name"),
+                rs.getLong("product_id"),
                 getOptionalColumn(rs, "sku"),
                 getOptionalColumn(rs, "product_name"),
                 rs.getInt("quantity"),

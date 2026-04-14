@@ -26,7 +26,7 @@ class InventoryLotMapperTest {
     @DisplayName("Should map ResultSet to InventoryLot object properly")
     void mapInventoryLot_success() throws SQLException {
         lenient().when(resultSet.getLong("id")).thenReturn(1L);
-        lenient().when(resultSet.getLong("variant_id")).thenReturn(10L);
+        lenient().when(resultSet.getLong("product_id")).thenReturn(10L);
         lenient().when(resultSet.getString("batch_number")).thenReturn("B-123");
         lenient().when(resultSet.getString("manufactured_date")).thenReturn("2023-01-01 00:00:00");
         lenient().when(resultSet.getString("expiry_date")).thenReturn("2024-01-01 00:00:00");
@@ -40,7 +40,7 @@ class InventoryLotMapperTest {
 
         assertNotNull(lot);
         assertEquals(1L, lot.id());
-        assertEquals(10L, lot.variantId());
+        assertEquals(10L, lot.productId());
         assertEquals("B-123", lot.batchNumber());
         assertEquals(LocalDateTime.of(2023, 1, 1, 0, 0, 0), lot.manufacturedDate());
         assertEquals(LocalDateTime.of(2024, 1, 1, 0, 0, 0), lot.expiryDate());
@@ -53,7 +53,7 @@ class InventoryLotMapperTest {
     @DisplayName("Should handle nulls in InventoryLotMapper")
     void mapInventoryLot_nulls_success() throws SQLException {
         lenient().when(resultSet.getLong("id")).thenReturn(1L);
-        lenient().when(resultSet.getLong("variant_id")).thenReturn(10L);
+        lenient().when(resultSet.getLong("product_id")).thenReturn(10L);
         lenient().when(resultSet.getLong("purchase_order_item_id")).thenReturn(0L);
         lenient().when(resultSet.getString(anyString())).thenReturn(null);
         lenient().when(resultSet.wasNull()).thenReturn(true);

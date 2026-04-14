@@ -19,7 +19,7 @@ import java.util.Map;
 
 public class CheckoutService {
     private final SalesRepository salesRepository;
-    private final VariantRepository variantRepository;
+    private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final AuditRepository auditRepository;
     private final InventoryService inventoryService;
@@ -30,7 +30,7 @@ public class CheckoutService {
     private final InvoiceNumberService invoiceNumberService;
 
     public CheckoutService(SalesRepository salesRepository,
-                           VariantRepository variantRepository,
+                           ProductRepository productRepository,
                            CustomerRepository customerRepository,
                            AuditRepository auditRepository,
                            InventoryService inventoryService,
@@ -40,7 +40,7 @@ public class CheckoutService {
                            SettingsStore settingsStore,
                            InvoiceNumberService invoiceNumberService) {
         this.salesRepository = salesRepository;
-        this.variantRepository = variantRepository;
+        this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.auditRepository = auditRepository;
         this.inventoryService = inventoryService;
@@ -55,8 +55,8 @@ public class CheckoutService {
         com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_CREATE);
         request.validate();
 
-        List<Long> variantIds = request.items().stream().map(CreateSaleItemRequest::variantId).toList();
-        Map<Long, Variant> variantMap = fetchVariantsBatch(variantIds);
+        List<Long> productIds = request.items().stream().map(CreateSaleItemRequest::productId).toList();
+        Map<Long, Product> productMap = fetchProductsBatch(productIds);
 
         SaleDraft draft = new SaleDraft();
         if (request.customerId() != null) {
@@ -68,12 +68,12 @@ public class CheckoutService {
         draft.setDiscountFixed(true); 
 
         for (CreateSaleItemRequest itemReq : request.items()) {
-            Variant v = variantMap.get(itemReq.variantId());
-            if (v == null) {
-                throw new NotFoundException("Variant not found: " + itemReq.variantId());
+            Product p = productMap.get(itemReq.productId());
+            if (p == null) {
+                throw new NotFoundException("Product not found: " + itemReq.productId());
             }
-            CartItem cartItem = new CartItem(v, itemReq.quantity());
-            cartItem.setPricePerUnit(itemReq.pricePerUnit() != null ? itemReq.pricePerUnit() : v.price());
+            CartItem cartItem = new CartItem(p, itemReq.quantity());
+            cartItem.setPricePerUnit(itemReq.pricePerUnit() != null ? itemReq.pricePerUnit() : p.mrp());
             cartItem.setDiscountType("fixed");
             cartItem.setDiscountValue(itemReq.discount() != null ? itemReq.discount() : BigDecimal.ZERO);
             
@@ -111,13 +111,12 @@ public class CheckoutService {
                 SaleItem item = new SaleItem(
                         null,
                         newSaleId,
-                        cartItem.getVariant().id(),
-                        cartItem.getVariant().name(),
-                        cartItem.getVariant().sku(),
-                        cartItem.getVariant().productName(),
+                        cartItem.getProduct().id(),
+                        cartItem.getProduct().sku(),
+                        cartItem.getProduct().name(),
                         cartItem.getQuantity(),
                         cartItem.getPricePerUnit(),
-                        cartItem.getVariant().costPrice(),
+                        cartItem.getProduct().costPrice(),
                         cartItem.getTaxRate(),
                         cartItem.getTaxAmount(),
                         cartItem.getTaxRate(), 
@@ -129,14 +128,14 @@ public class CheckoutService {
                 salesRepository.insertSaleItem(item);
 
                 if (enforceInventoryRestrictions) {
-                    int currentStock = inventoryService.getVariantStock(cartItem.getVariant().id());
+                    int currentStock = inventoryService.getProductStock(cartItem.getProduct().id());
                     if (currentStock < cartItem.getQuantity()) {
                         throw new InsufficientStockException(currentStock, cartItem.getQuantity());
                     }
                 }
 
                 inventoryService.deductStock(
-                        cartItem.getVariant().id(),
+                        cartItem.getProduct().id(),
                         cartItem.getQuantity(),
                         userId,
                         InventoryReason.SALE,
@@ -180,10 +179,10 @@ public class CheckoutService {
         return new SaleResponse(saleResult, itemsResult, transactionsResult);
     }
 
-    private Map<Long, Variant> fetchVariantsBatch(List<Long> variantIds) {
-        Map<Long, Variant> map = new HashMap<>();
-        for (Long id : variantIds) {
-            variantRepository.findVariantByIdSync(id).ifPresent(v -> map.put(id, v));
+    private Map<Long, Product> fetchProductsBatch(List<Long> productIds) {
+        Map<Long, Product> map = new HashMap<>();
+        for (Long id : productIds) {
+            productRepository.findProductById(id).ifPresent(p -> map.put(id, p));
         }
         return map;
     }

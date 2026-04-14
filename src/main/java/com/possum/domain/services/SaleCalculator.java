@@ -37,7 +37,7 @@ public class SaleCalculator implements DomainService {
         for (CartItem it : draft.getItems()) {
             it.calculateBasics();
             grossTotal = grossTotal.add(it.getNetLineTotal());
-            mrpTotal = mrpTotal.add(it.getVariant().price().multiply(BigDecimal.valueOf(it.getQuantity())));
+            mrpTotal = mrpTotal.add(it.getProduct().mrp().multiply(BigDecimal.valueOf(it.getQuantity())));
             priceTotal = priceTotal.add(it.getPricePerUnit().multiply(BigDecimal.valueOf(it.getQuantity())));
         }
 
@@ -85,13 +85,11 @@ public class SaleCalculator implements DomainService {
                     : BigDecimal.ZERO;
 
             txItems.add(new TaxableItem(
-                    it.getVariant().productName(),
-                    it.getVariant().name(),
+                    it.getProduct().name(),
                     effectiveUnitPrice,
                     it.getQuantity(),
-                    null, // Tax category logic might need to be passed in or looked up
-                    it.getVariant().id(),
-                    it.getVariant().productId()
+                    it.getProduct().taxCategoryId(),
+                    it.getProduct().id()
             ));
         }
 

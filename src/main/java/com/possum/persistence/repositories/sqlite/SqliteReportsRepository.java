@@ -33,7 +33,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         
         List<Object> params = new ArrayList<>();
         
-        // 1. total_transactions (4 ?)
+        // 1. total_transactions
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
@@ -41,7 +41,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
 
-        // 2. total_sales (4 ?)
+        // 2. total_sales
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
@@ -49,37 +49,33 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
 
-        // 3. total_tax (4 ?)
-        // Subquery
+        // 3. total_tax
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
-        // Main
-        params.add(startDate);
-        params.add(endDate);
-        if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
-
-        // 4. total_discount (4 ?)
-        // Subquery
-        params.add(startDate);
-        params.add(endDate);
-        if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
-        // Main
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
 
-        // 5. total_collected (2 ?)
+        // 4. total_discount
+        params.add(startDate);
+        params.add(endDate);
+        if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
 
-        // 6. total_cost (2 ?)
+        // 5. total_collected
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
 
-        // 7. total_refunds (2 ?)
+        // 6. total_cost
+        params.add(startDate);
+        params.add(endDate);
+        if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
+
+        // 7. total_refunds
         params.add(startDate);
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
@@ -115,7 +111,6 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     map.put("total_discount", totalDiscount);
                     map.put("total_collected", totalCollected);
                     
-                    System.out.println("DEBUG REPO: sales=" + totalSales + ", tax=" + totalTax + ", cost=" + totalCost + ", discount=" + totalDiscount + ", refunds=" + totalRefunds);
                     BigDecimal netSales = totalSales.subtract(totalTax).subtract(totalRefunds).subtract(totalDiscount);
                     map.put("net_sales", netSales);
                     map.put("gross_profit", netSales.subtract(totalCost));
@@ -125,7 +120,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     return map;
                 },
                 params.toArray()
-        ).orElseGet(() -> defaultSummaryMap());
+        ).orElseGet(SqliteReportsRepository::defaultSummaryMap);
         return summary;
     }
 
@@ -163,18 +158,16 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                 SELECT
                   p.id AS product_id,
                   p.name AS product_name,
-                  v.name AS variant_name,
-                  v.sku,
+                  p.sku,
                   SUM(si.quantity) AS total_quantity_sold,
                   SUM(si.quantity * si.price_per_unit) AS total_revenue
                 FROM sale_items si
                 JOIN sales s ON si.sale_id = s.id
-                JOIN variants v ON si.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON si.product_id = p.id
                 WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ?
                   AND s.status NOT IN ('cancelled', 'draft')
                   %s
-                GROUP BY v.id, p.id, p.name, v.name, v.sku
+                GROUP BY p.id, p.name, p.sku
                 ORDER BY total_quantity_sold DESC
                 LIMIT ?
                 """.formatted(paymentFilter),
@@ -182,7 +175,6 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     Map<String, Object> map = new HashMap<>();
                     map.put("product_id", rs.getLong("product_id"));
                     map.put("product_name", rs.getString("product_name"));
-                    map.put("variant_name", rs.getString("variant_name"));
                     map.put("sku", rs.getString("sku"));
                     map.put("total_quantity_sold", rs.getInt("total_quantity_sold"));
                     map.put("total_revenue", rs.getBigDecimal("total_revenue"));
@@ -242,32 +234,20 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         Map<String, Map<String, Object>> merged = new HashMap<>();
         for (Map<String, Object> row : liveRows) {
             String paymentMethod = (String) row.get("payment_method");
-            if (paymentMethod == null) {
-                continue;
-            }
-            merged.put(canonicalPaymentName(paymentMethod), row);
+            if (paymentMethod != null) merged.put(canonicalPaymentName(paymentMethod), row);
         }
 
         for (Map<String, Object> legacy : legacyRows) {
             String paymentMethod = (String) legacy.get("payment_method");
-            if (paymentMethod == null) {
-                continue;
-            }
+            if (paymentMethod == null) continue;
             String key = canonicalPaymentName(paymentMethod);
             Map<String, Object> existing = merged.get(key);
             if (existing == null) {
                 merged.put(key, legacy);
                 continue;
             }
-            existing.put(
-                    "total_transactions",
-                    ((Number) existing.getOrDefault("total_transactions", 0)).intValue()
-                            + ((Number) legacy.getOrDefault("total_transactions", 0)).intValue()
-            );
-            existing.put(
-                    "total_amount",
-                    asBigDecimal(existing.get("total_amount")).add(asBigDecimal(legacy.get("total_amount")))
-            );
+            existing.put("total_transactions", ((Number) existing.getOrDefault("total_transactions", 0)).intValue() + ((Number) legacy.getOrDefault("total_transactions", 0)).intValue());
+            existing.put("total_amount", asBigDecimal(existing.get("total_amount")).add(asBigDecimal(legacy.get("total_amount"))));
         }
 
         return merged.values().stream()
@@ -288,11 +268,18 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         
         Map<String, Object> stockCounts = queryOne(
                 """
+                WITH ProductStock AS (
+                    SELECT 
+                        COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE product_id = p.id), 0) +
+                        COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE product_id = p.id), 0) as current_stock,
+                        p.stock_alert_cap
+                    FROM products p
+                    WHERE p.status = 'active' AND p.deleted_at IS NULL
+                )
                 SELECT 
-                    COUNT(CASE WHEN (SELECT SUM(remaining_quantity) FROM inventory_lots WHERE variant_id = v.id) <= v.stock_alert_cap AND (SELECT SUM(remaining_quantity) FROM inventory_lots WHERE variant_id = v.id) > 0 THEN 1 END) as low_stock,
-                    COUNT(CASE WHEN (SELECT SUM(remaining_quantity) FROM inventory_lots WHERE variant_id = v.id) <= 0 OR (SELECT SUM(remaining_quantity) FROM inventory_lots WHERE variant_id = v.id) IS NULL THEN 1 END) as out_of_stock
-                FROM variants v
-                WHERE v.status = 'active'
+                    COUNT(CASE WHEN current_stock <= stock_alert_cap AND current_stock > 0 THEN 1 END) as low_stock,
+                    COUNT(CASE WHEN current_stock <= 0 THEN 1 END) as out_of_stock
+                FROM ProductStock
                 """,
                 rs -> {
                     Map<String, Object> m = new HashMap<>();
@@ -310,31 +297,33 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     @Override
     public List<Map<String, Object>> getStockMovementSummary(String startDate, String endDate, Long categoryId) {
         String categoryFilter = categoryId == null ? "" : "AND p.category_id = ?";
-        Object[] params = categoryId == null ? new Object[]{startDate, endDate} : new Object[]{startDate, endDate, categoryId};
+        List<Object> params = new ArrayList<>();
+        params.add(startDate);
+        params.add(endDate);
+        if (categoryId != null) params.add(categoryId);
         
         return queryList(
                 """
                 SELECT 
                     p.name AS product_name,
-                    v.name AS variant_name,
-                    v.sku,
+                    p.sku,
                     SUM(CASE WHEN pf.event_type = 'PURCHASE' OR pf.event_type = 'RECEIVE' THEN pf.quantity ELSE 0 END) AS incoming,
                     SUM(CASE WHEN pf.event_type = 'SALE' THEN ABS(pf.quantity) ELSE 0 END) AS outgoing,
                     SUM(CASE WHEN pf.event_type = 'RETURN' THEN pf.quantity ELSE 0 END) AS returns,
                     SUM(CASE WHEN pf.event_type = 'ADJUSTMENT' THEN pf.quantity ELSE 0 END) AS adjustments,
-                    (SELECT COALESCE(SUM(remaining_quantity), 0) FROM inventory_lots WHERE variant_id = v.id) AS current_stock
+                    (COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0) +
+                     COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id), 0)) AS current_stock
                 FROM product_flow pf
-                JOIN variants v ON pf.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON pf.product_id = p.id
                 WHERE date(pf.event_date) >= ? AND date(pf.event_date) <= ?
+                  AND p.deleted_at IS NULL
                   %s
-                GROUP BY v.id
+                GROUP BY p.id
                 ORDER BY outgoing DESC
                 """.formatted(categoryFilter),
                 rs -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("product_name", rs.getString("product_name"));
-                    m.put("variant_name", rs.getString("variant_name"));
                     m.put("sku", rs.getString("sku"));
                     m.put("incoming", rs.getInt("incoming"));
                     m.put("outgoing", rs.getInt("outgoing"));
@@ -343,15 +332,11 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     m.put("current_stock", rs.getInt("current_stock"));
                     return m;
                 },
-                params
+                params.toArray()
         );
     }
 
-    private List<Map<String, Object>> groupedBreakdown(String expression,
-                                                       String alias,
-                                                       String startDate,
-                                                       String endDate,
-                                                       List<Long> paymentMethodIds) {
+    private List<Map<String, Object>> groupedBreakdown(String expression, String alias, String startDate, String endDate, List<Long> paymentMethodIds) {
         boolean hasPaymentFilter = paymentMethodIds != null && !paymentMethodIds.isEmpty();
         String paymentFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty()) 
             ? "" 
@@ -373,7 +358,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                   %s AS %s,
                   COUNT(DISTINCT s.id) AS total_transactions,
                   COALESCE(SUM(s.total_amount), 0) AS total_sales,
-                   COALESCE(SUM(s.total_tax), 0) + COALESCE(SUM((SELECT SUM(si.tax_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_tax,
+                  COALESCE(SUM(s.total_tax), 0) + COALESCE(SUM((SELECT SUM(si.tax_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_tax,
                   COALESCE(SUM(s.discount), 0) + COALESCE(SUM((SELECT SUM(si.discount_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_discount,
                   COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'Cash' AND t.status = 'completed' AND t.type = 'payment')), 0) AS cash,
                   COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'UPI' AND t.status = 'completed' AND t.type = 'payment')), 0) AS upi,
@@ -437,14 +422,11 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
 
         for (Map<String, Object> legacy : legacyRows) {
             String key = (String) legacy.get(alias);
-            if (key == null) {
-                continue;
-            }
+            if (key == null) continue;
             Map<String, Object> row = merged.computeIfAbsent(key, k -> createEmptyBreakdownRow(alias, k));
             int legacyTransactions = ((Number) legacy.getOrDefault("legacy_transactions", 0)).intValue();
             BigDecimal legacySales = asBigDecimal(legacy.get("legacy_sales"));
             String legacyPaymentMethodName = (String) legacy.get("payment_method_name");
-
             row.put("total_transactions", ((Number) row.getOrDefault("total_transactions", 0)).intValue() + legacyTransactions);
             row.put("total_sales", asBigDecimal(row.get("total_sales")).add(legacySales));
             addLegacyAmountToPaymentBucket(row, legacySales, legacyPaymentMethodName);
@@ -462,22 +444,15 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                 .toList();
     }
 
-    private Object[] buildLegacyBreakdownParams(String startDate,
-                                                String endDate,
-                                                List<Long> paymentMethodIds,
-                                                boolean hasPaymentFilter) {
+    private Object[] buildLegacyBreakdownParams(String startDate, String endDate, List<Long> paymentMethodIds, boolean hasPaymentFilter) {
         List<Object> params = new ArrayList<>();
         params.add(startDate);
         params.add(endDate);
-        if (hasPaymentFilter) {
-            params.addAll(paymentMethodIds);
-        }
+        if (hasPaymentFilter) params.addAll(paymentMethodIds);
         return params.toArray();
     }
 
-    private static void addLegacyAmountToPaymentBucket(Map<String, Object> row,
-                                                       BigDecimal amount,
-                                                       String paymentMethodName) {
+    private static void addLegacyAmountToPaymentBucket(Map<String, Object> row, BigDecimal amount, String paymentMethodName) {
         String normalized = canonicalPaymentName(paymentMethodName);
         switch (normalized) {
             case "cash" -> row.put("cash", asBigDecimal(row.get("cash")).add(amount));
@@ -485,21 +460,12 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
             case "debit card" -> row.put("debit_card", asBigDecimal(row.get("debit_card")).add(amount));
             case "credit card" -> row.put("credit_card", asBigDecimal(row.get("credit_card")).add(amount));
             case "gift card" -> row.put("gift_card", asBigDecimal(row.get("gift_card")).add(amount));
-            default -> {
-                // Keep legacy totals in total_sales/transaction count without misclassifying unknown methods.
-            }
         }
     }
 
     private static String canonicalPaymentName(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value
-                .trim()
-                .toLowerCase(java.util.Locale.ENGLISH)
-                .replace('_', ' ')
-                .replaceAll("\\s+", " ");
+        if (value == null) return "";
+        return value.trim().toLowerCase(java.util.Locale.ENGLISH).replace('_', ' ').replaceAll("\\s+", " ");
     }
     
     private String buildInPlaceholders(int count) {
@@ -508,12 +474,8 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     }
 
     private static BigDecimal asBigDecimal(Object value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        if (value instanceof BigDecimal bd) {
-            return bd;
-        }
+        if (value == null) return BigDecimal.ZERO;
+        if (value instanceof BigDecimal bd) return bd;
         return new BigDecimal(value.toString());
     }
 

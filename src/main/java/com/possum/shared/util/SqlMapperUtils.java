@@ -60,4 +60,9 @@ public final class SqlMapperUtils {
         }
         return LocalDate.parse(text);
     }
+
+    public static Long getNullableLong(ResultSet rs, String column) throws SQLException {
+        long value = rs.getLong(column);
+        return rs.wasNull() ? null : value;
+    }
 }

@@ -114,10 +114,7 @@
                                     </VBox>
 
                                     <HBox spacing="10">
-                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                                            <Label text="Variant" styleClass="form-label"/>
-                                            <TextField fx:id="quickVariantName" promptText="Standard, 1kg, Red" styleClass="search-field-pos" accessibleText="Quick Add Variant Name Input"/>
-                                        </VBox>
+
                                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                                             <Label text="Stock" styleClass="form-label"/>
                                             <TextField fx:id="quickStock" promptText="0" styleClass="search-field-pos" accessibleText="Quick Add Stock Input"/>

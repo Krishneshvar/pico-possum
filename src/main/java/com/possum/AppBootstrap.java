@@ -14,7 +14,6 @@ import com.possum.ui.DependencyInjector;
 import com.possum.application.auth.AuthBootstrapStatus;
 import com.possum.application.auth.AuthContext;
 import com.possum.ui.auth.SessionStore;
-import com.possum.ui.navigation.NavigationManager;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -53,7 +52,6 @@ public final class AppBootstrap {
     private ReturnsService returnsService;
     private ReportsService reportsService;
     private PurchaseService purchaseService;
-    private SqliteVariantRepository variantRepository;
     private SqliteSalesRepository salesRepository;
     private SqliteSupplierRepository supplierRepository;
     private SqliteTaxRepository taxRepository;
@@ -164,7 +162,6 @@ public final class AppBootstrap {
         SqliteSessionRepository sessionRepository = new SqliteSessionRepository(databaseManager);
 
         SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager);
-        variantRepository = new SqliteVariantRepository(databaseManager);
         SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager);
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
@@ -174,7 +171,7 @@ public final class AppBootstrap {
                 new com.possum.persistence.repositories.sqlite.SqliteCustomerRepository(databaseManager);
 
         applicationModule = new ApplicationModule(
-                userRepository, sessionRepository, productRepository, variantRepository,
+                userRepository, sessionRepository, productRepository,
                 categoryRepository, inventoryRepository, productFlowRepository, auditRepository,
                 customerRepository, transactionManager, passwordHasher, jsonService, appPaths,
                 serviceLocator.getSettingsStore(), databaseManager
@@ -197,12 +194,12 @@ public final class AppBootstrap {
         com.possum.application.sales.InvoiceNumberService invoiceNumberService =
                 new com.possum.application.sales.InvoiceNumberService(salesRepository);
         saleCalculator = new com.possum.domain.services.SaleCalculator(taxEngine);
-        salesService = new SalesService(salesRepository, variantRepository, productRepository,
+        salesService = new SalesService(salesRepository, productRepository,
                 customerRepository, auditRepository, applicationModule.getInventoryService(),
                 taxEngine, saleCalculator, paymentService, transactionManager, jsonService, serviceLocator.getSettingsStore(),
                 invoiceNumberService);
 
-        productSearchIndex = new ProductSearchIndex(variantRepository);
+        productSearchIndex = new ProductSearchIndex(productRepository);
 
         transactionService = new com.possum.application.transactions.TransactionServiceImpl(transactionRepo, salesRepository);
 
@@ -213,7 +210,7 @@ public final class AppBootstrap {
         com.possum.persistence.repositories.sqlite.SqliteReportsRepository reportsRepository =
                 new com.possum.persistence.repositories.sqlite.SqliteReportsRepository(databaseManager);
         reportsService = new ReportsService(reportsRepository, productFlowRepository);
-        purchaseService = new PurchaseService(purchaseOrderRepository, supplierRepository, variantRepository,
+        purchaseService = new PurchaseService(purchaseOrderRepository, supplierRepository, productRepository,
                 inventoryRepository, productFlowRepository, auditRepository, transactionManager, databaseManager, jsonService);
     }
 
@@ -223,7 +220,7 @@ public final class AppBootstrap {
                 new com.possum.application.sales.TaxEngine(taxRepository, jsonService);
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
                 taxEngine, saleCalculator, productSearchIndex, transactionService, returnsService,
-                reportsService, purchaseService, variantRepository, salesRepository, supplierRepository, taxRepository, appPaths);
+                reportsService, purchaseService, salesRepository, supplierRepository, taxRepository, appPaths);
 
         dependencyInjector.getToastService().setMainStage(null);
     }
@@ -301,7 +298,7 @@ public final class AppBootstrap {
             FXMLLoader loader = new FXMLLoader(AppBootstrap.class.getResource("/fxml/auth/login-view.fxml"));
             
             // Navigate to main shell on login
-            NavigationManager dummyNav = new NavigationManager(null, null) {
+            com.possum.ui.navigation.NavigationManager dummyNav = new com.possum.ui.navigation.NavigationManager(null, null) {
                 @Override
                 public void navigateTo(String routeId) {
                     if ("dashboard".equals(routeId)) {

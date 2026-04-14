@@ -11,9 +11,8 @@ public final class StockHistoryMapper implements RowMapper<StockHistoryDto> {
     public StockHistoryDto map(ResultSet rs) throws SQLException {
         return new StockHistoryDto(
                 rs.getLong("id"),
-                rs.getLong("variant_id"),
+                rs.getLong("product_id"),
                 rs.getString("product_name"),
-                rs.getString("variant_name"),
                 rs.getString("sku"),
                 rs.getInt("quantity_change"),
                 rs.getString("reason"),

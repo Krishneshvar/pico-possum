@@ -6,6 +6,10 @@ public record RefundCalculation(
         Long saleItemId,
         Integer quantity,
         BigDecimal refundAmount,
-        Long variantId
+        Long productId,
+        BigDecimal pricePerUnit,
+        BigDecimal taxRate,
+        String sku,
+        String productName
 ) {
 }

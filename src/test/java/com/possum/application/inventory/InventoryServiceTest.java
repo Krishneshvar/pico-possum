@@ -49,7 +49,7 @@ class InventoryServiceTest {
     @DisplayName("Should receive inventory and create lot/adjustment")
     void receiveInventory_success() {
         when(inventoryRepository.insertInventoryLot(any())).thenReturn(500L);
-        when(inventoryRepository.getStockByVariantId(1L)).thenReturn(20);
+        when(inventoryRepository.getStockByProductId(1L)).thenReturn(20);
 
         InventoryService.ReceiveInventoryResult result = inventoryService.receiveInventory(1L, 20, new BigDecimal("15.00"), "BATCH1", null, null, null, 1L);
 
@@ -64,11 +64,11 @@ class InventoryServiceTest {
     @Test
     @DisplayName("Should deduct stock using FIFO across multiple lots")
     void deductStock_fifo_success() {
-        when(inventoryRepository.getStockByVariantId(1L)).thenReturn(100);
+        when(inventoryRepository.getStockByProductId(1L)).thenReturn(100);
         // Lot 1: 10 units, Lot 2: 50 units
         when(inventoryRepository.findAvailableLots(1L)).thenReturn(List.of(
-            new AvailableLot(100L, 1L, null, null, null, 10, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 10),
-            new AvailableLot(101L, 1L, null, null, null, 50, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 50)
+            new AvailableLot(100L, 1L, null, null, 10, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 10),
+            new AvailableLot(101L, 1L, null, null, 50, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 50)
         ));
 
         // Deduct 15 units
@@ -76,8 +76,8 @@ class InventoryServiceTest {
 
         // Should create 2 adjustments: 10 from Lot 1, 5 from Lot 2
         verify(inventoryRepository, times(2)).insertInventoryAdjustment(any());
-        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() == 100L && adj.quantityChange() == -10));
-        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() == 101L && adj.quantityChange() == -5));
+        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() != null && adj.lotId() == 100L && adj.quantityChange() == -10));
+        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() != null && adj.lotId() == 101L && adj.quantityChange() == -5));
     }
 
     @Test
@@ -87,7 +87,7 @@ class InventoryServiceTest {
         when(settings.isInventoryAlertsAndRestrictionsEnabled()).thenReturn(true);
         when(settingsStore.loadGeneralSettings()).thenReturn(settings);
         
-        when(inventoryRepository.getStockByVariantId(1L)).thenReturn(5);
+        when(inventoryRepository.getStockByProductId(1L)).thenReturn(5);
 
         assertThrows(InsufficientStockException.class, () -> inventoryService.deductStock(1L, 10, 1L, InventoryReason.SALE, null, null));
     }
@@ -99,7 +99,7 @@ class InventoryServiceTest {
         when(settings.isInventoryAlertsAndRestrictionsEnabled()).thenReturn(false);
         when(settingsStore.loadGeneralSettings()).thenReturn(settings);
         
-        when(inventoryRepository.getStockByVariantId(1L)).thenReturn(5);
+        when(inventoryRepository.getStockByProductId(1L)).thenReturn(5);
         when(inventoryRepository.findAvailableLots(1L)).thenReturn(List.of());
 
         InventoryService.DeductStockResult result = inventoryService.deductStock(1L, 10, 1L, InventoryReason.SALE, null, null);

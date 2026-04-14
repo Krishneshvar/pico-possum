@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 public record AvailableLot(
         Long id,
-        Long variantId,
+        Long productId,
         String batchNumber,
         LocalDateTime manufacturedDate,
         LocalDateTime expiryDate,

@@ -53,8 +53,8 @@ class EnhancedTaxEngineTest {
         
         engine.init();
         
-        TaxableItem item1 = new TaxableItem("Product1", "Variant1", new BigDecimal("10.00"), 1, null, 1L, 1L);
-        TaxableItem item2 = new TaxableItem("Product2", "Variant2", new BigDecimal("10.00"), 1, null, 2L, 2L);
+        TaxableItem item1 = new TaxableItem("Product1", new BigDecimal("10.00"), 1, null, 1L);
+        TaxableItem item2 = new TaxableItem("Product2", new BigDecimal("10.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item1, item2));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -75,8 +75,8 @@ class EnhancedTaxEngineTest {
         
         engine.init();
         
-        TaxableItem item1 = new TaxableItem("Product1", "Variant1", new BigDecimal("10.00"), 1, null, 1L, 1L);
-        TaxableItem item2 = new TaxableItem("Product2", "Variant2", new BigDecimal("10.00"), 1, null, 2L, 2L);
+        TaxableItem item1 = new TaxableItem("Product1", new BigDecimal("10.00"), 1, null, 1L);
+        TaxableItem item2 = new TaxableItem("Product2", new BigDecimal("10.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item1, item2));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -97,7 +97,7 @@ class EnhancedTaxEngineTest {
         Customer exemptCustomer = new Customer(1L, "NGO", null, null, null, "ngo", true,
                 LocalDateTime.now(), LocalDateTime.now(), null);
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, exemptCustomer);
@@ -112,7 +112,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of());
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("-10.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("-10.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         assertThrows(IllegalArgumentException.class, () -> engine.calculate(invoice, null));
@@ -124,7 +124,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of());
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("10.00"), 0, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("10.00"), 0, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         assertThrows(IllegalArgumentException.class, () -> engine.calculate(invoice, null));
@@ -156,7 +156,7 @@ class EnhancedTaxEngineTest {
         Customer wholesaleCustomer = new Customer(1L, "Wholesale Co", null, null, null, "wholesale", false,
                 LocalDateTime.now(), LocalDateTime.now(), null);
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, wholesaleCustomer);
@@ -175,7 +175,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(futureRule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -195,7 +195,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(simpleRule, compoundRule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -209,7 +209,7 @@ class EnhancedTaxEngineTest {
         engine = new EnhancedTaxEngine(taxRepository, jsonService);
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -229,7 +229,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("110.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("110.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -252,7 +252,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule1, rule2));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("115.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("115.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -274,7 +274,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(simpleRule, compoundRule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("115.50"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("115.50"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -293,7 +293,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule1, rule2));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -313,7 +313,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("10.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("10.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -330,7 +330,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -347,7 +347,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -364,7 +364,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -381,7 +381,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -398,7 +398,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -415,7 +415,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -435,7 +435,7 @@ class EnhancedTaxEngineTest {
         Customer retailCustomer = new Customer(1L, "Retail Co", null, null, null, "retail", false,
                 LocalDateTime.now(), LocalDateTime.now(), null);
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, retailCustomer);
@@ -453,7 +453,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -471,7 +471,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -489,7 +489,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -506,7 +506,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, 5L, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, 5L, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -523,7 +523,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, 3L, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, 3L, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -542,7 +542,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(lowPriority, highPriority));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
         
         TaxCalculationResult result = engine.calculate(invoice, null);
@@ -559,7 +559,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         List<TaxRule> applicable = engine.getApplicableRules(item, new BigDecimal("100.00"), null);
         
         assertEquals(1, applicable.size());
@@ -574,7 +574,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         List<TaxRule> applicable = engine.getApplicableRules(item, new BigDecimal("100.00"), null);
         
         assertEquals(0, applicable.size());
@@ -589,7 +589,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         List<TaxRule> applicable = engine.getApplicableRules(item, new BigDecimal("100.00"), null);
         
         assertEquals(0, applicable.size());
@@ -605,7 +605,7 @@ class EnhancedTaxEngineTest {
         when(taxRepository.getTaxRulesByProfileId(1L)).thenReturn(List.of(rule));
         engine.init();
         
-        TaxableItem item = new TaxableItem("Product", "Variant", new BigDecimal("100.00"), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", new BigDecimal("100.00"), 1, null, 1L);
         List<TaxRule> applicable = engine.getApplicableRules(item, new BigDecimal("100.00"), null);
         
         assertEquals(0, applicable.size());

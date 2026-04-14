@@ -8,10 +8,9 @@ public record ReturnItem(
         Long saleItemId,
         Integer quantity,
         BigDecimal refundAmount,
-        Long variantId,
+        Long productId,
         BigDecimal pricePerUnit,
         BigDecimal taxRate,
-        String variantName,
         String sku,
         String productName
 ) {

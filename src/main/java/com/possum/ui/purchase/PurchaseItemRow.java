@@ -1,6 +1,6 @@
 package com.possum.ui.purchase;
 
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -10,23 +10,22 @@ import javafx.beans.property.SimpleObjectProperty;
 import java.math.BigDecimal;
 
 public class PurchaseItemRow {
-    private final Variant variant;
+    private final Product product;
     private final IntegerProperty quantity = new SimpleIntegerProperty();
     private final ObjectProperty<BigDecimal> unitCost = new SimpleObjectProperty<>();
     private final ObjectProperty<BigDecimal> total = new SimpleObjectProperty<>();
 
-    public PurchaseItemRow(Variant variant) {
-        this.variant = variant;
+    public PurchaseItemRow(Product product) {
+        this.product = product;
         this.quantity.set(1);
-        this.unitCost.set(variant.costPrice() != null ? variant.costPrice() : BigDecimal.ZERO);
+        this.unitCost.set(product.costPrice() != null ? product.costPrice() : BigDecimal.ZERO);
         total.bind(Bindings.createObjectBinding(() -> getUnitCost().multiply(BigDecimal.valueOf(getQuantity())), quantity, unitCost));
     }
 
-    public Long getVariantId() { return variant != null ? variant.id() : null; }
-    public String getProductName() { return variant != null ? variant.productName() : ""; }
-    public String getVariantName() { return variant != null ? variant.name() : ""; }
-    public String getSku() { return variant != null ? variant.sku() : ""; }
-    public String getDisplayName() { return variant != null ? variant.productName() + " - " + variant.name() : ""; }
+    public Long getProductId() { return product != null ? product.id() : null; }
+    public String getProductName() { return product != null ? product.name() : ""; }
+    public String getSku() { return product != null ? product.sku() : ""; }
+    public String getDisplayName() { return product != null ? product.name() + " (" + product.sku() + ")" : ""; }
     public int getQuantity() { return quantity.get(); }
     public void setQuantity(int q) { this.quantity.set(q); }
     public IntegerProperty quantityProperty() { return quantity; }

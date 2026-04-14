@@ -18,7 +18,7 @@ public class StockManager {
     /**
      * Plans a FIFO-based stock deduction.
      */
-    public List<InventoryAdjustment> planDeduction(long variantId, int quantity, List<AvailableLot> availableLots, 
+    public List<InventoryAdjustment> planDeduction(long productId, int quantity, List<AvailableLot> availableLots, 
                                                    InventoryReason reason, String referenceType, Long referenceId, long userId) {
         int remainingToDeduct = quantity;
         List<InventoryAdjustment> adjustments = new ArrayList<>();
@@ -29,7 +29,7 @@ public class StockManager {
             int deductionFromThisLot = Math.min(remainingToDeduct, lot.remainingQuantity());
 
             adjustments.add(new InventoryAdjustment(
-                    null, variantId, lot.id(),
+                    null, productId, lot.id(),
                     -deductionFromThisLot, reason.getValue(), referenceType, referenceId,
                     userId, null, TimeUtil.nowUTC()
             ));
@@ -40,7 +40,7 @@ public class StockManager {
         // Handle case where we deduct more than what's in lots (headless adjustment)
         if (remainingToDeduct > 0) {
             adjustments.add(new InventoryAdjustment(
-                    null, variantId, null,
+                    null, productId, null,
                     -remainingToDeduct, reason.getValue(), referenceType, referenceId,
                     userId, null, TimeUtil.nowUTC()
             ));
@@ -52,7 +52,7 @@ public class StockManager {
     /**
      * Plans a stock restoration based on original adjustments (e.g. for returns).
      */
-    public List<InventoryAdjustment> planRestoration(long variantId, int quantity, List<InventoryAdjustment> originalAdjustments,
+    public List<InventoryAdjustment> planRestoration(long productId, int quantity, List<InventoryAdjustment> originalAdjustments,
                                                      InventoryReason reason, String referenceType, Long referenceId, long userId) {
         // Sort logic: restore to the most recent deduction first
         List<InventoryAdjustment> sortedOriginals = new ArrayList<>(originalAdjustments);
@@ -68,7 +68,7 @@ public class StockManager {
             int restoreToThisLot = Math.min(remainingToRestore, originalDeduction);
 
             restorationAdjustments.add(new InventoryAdjustment(
-                    null, variantId, adj.lotId(),
+                    null, productId, adj.lotId(),
                     restoreToThisLot, reason.getValue(), referenceType, referenceId,
                     userId, null, TimeUtil.nowUTC()
             ));
@@ -79,7 +79,7 @@ public class StockManager {
         // If something remains (e.g. original deductions were missing), add a headless restoration
         if (remainingToRestore > 0) {
             restorationAdjustments.add(new InventoryAdjustment(
-                    null, variantId, null,
+                    null, productId, null,
                     remainingToRestore, reason.getValue(), referenceType, referenceId,
                     userId, null, TimeUtil.nowUTC()
             ));

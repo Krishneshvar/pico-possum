@@ -220,14 +220,11 @@ public class CreateReturnDialogController implements Parameterizable {
             Label nameLabel = new Label(item.productName());
             nameLabel.setStyle("-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: #0f172a;");
             
-            Label variantLabel = new Label(item.variantName() != null ? item.variantName() : "Standard Variant");
-            variantLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
-            
             Label detailsLabel = new Label(String.format("Unit Price: %s  |  Available: %d", 
                 CurrencyUtil.format(item.pricePerUnit()), maxQty));
             detailsLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px;");
 
-            VBox nameArea = new VBox(2, nameLabel, variantLabel, detailsLabel);
+            VBox nameArea = new VBox(2, nameLabel, detailsLabel);
             HBox itemInfo = new HBox(15, checkBox, nameArea);
             itemInfo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 

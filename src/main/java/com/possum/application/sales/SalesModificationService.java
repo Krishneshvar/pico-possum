@@ -25,7 +25,6 @@ import java.util.Objects;
 
 public class SalesModificationService {
     private final SalesRepository salesRepository;
-    private final VariantRepository variantRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final AuditRepository auditRepository;
@@ -36,7 +35,6 @@ public class SalesModificationService {
     private final SettingsStore settingsStore;
 
     public SalesModificationService(SalesRepository salesRepository,
-                                    VariantRepository variantRepository,
                                     ProductRepository productRepository,
                                     CustomerRepository customerRepository,
                                     AuditRepository auditRepository,
@@ -46,7 +44,6 @@ public class SalesModificationService {
                                     JsonService jsonService,
                                     SettingsStore settingsStore) {
         this.salesRepository = salesRepository;
-        this.variantRepository = variantRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.auditRepository = auditRepository;
@@ -72,7 +69,7 @@ public class SalesModificationService {
             
             for (SaleItem oldItem : oldItems) {
                 inventoryService.restoreStock(
-                        oldItem.variantId(),
+                        oldItem.productId(),
                         "sale_item",
                         oldItem.id(),
                         oldItem.quantity(),
@@ -84,13 +81,13 @@ public class SalesModificationService {
                 salesRepository.deleteSaleItem(oldItem.id());
             }
 
-            List<Long> variantIds = itemRequests.stream().map(UpdateSaleItemRequest::variantId).toList();
-            Map<Long, Variant> variantMap = fetchVariantsBatch(variantIds);
+            List<Long> productIds = itemRequests.stream().map(UpdateSaleItemRequest::productId).toList();
+            Map<Long, Product> productMap = fetchProductsBatch(productIds);
 
             boolean enforceInventoryRestrictions = isInventoryRestrictionsEnabled();
             for (UpdateSaleItemRequest req : itemRequests) {
                 if (enforceInventoryRestrictions) {
-                    int currentStock = inventoryService.getVariantStock(req.variantId());
+                    int currentStock = inventoryService.getProductStock(req.productId());
                     if (currentStock < req.quantity()) {
                         throw new InsufficientStockException(currentStock, req.quantity());
                     }
@@ -99,12 +96,12 @@ public class SalesModificationService {
 
             List<TaxableItem> itemsToCalculate = new ArrayList<>();
             for (UpdateSaleItemRequest req : itemRequests) {
-                Variant v = variantMap.get(req.variantId());
-                Product p = productRepository.findProductById(v.productId()).orElseThrow();
+                Product p = productMap.get(req.productId());
+                if (p == null) throw new NotFoundException("Product not found: " + req.productId());
                 
                 itemsToCalculate.add(new TaxableItem(
-                        p.name(), v.name(), req.pricePerUnit(), req.quantity(),
-                        p.taxCategoryId(), v.id(), p.id()
+                        p.name(), req.pricePerUnit(), req.quantity(),
+                        p.taxCategoryId(), p.id()
                 ));
             }
 
@@ -114,12 +111,11 @@ public class SalesModificationService {
             for (int i = 0; i < itemRequests.size(); i++) {
                 UpdateSaleItemRequest req = itemRequests.get(i);
                 TaxableItem calculated = taxResult.getItemByIndex(i);
-                Variant v = variantMap.get(req.variantId());
-                Product p = productRepository.findProductById(v.productId()).orElseThrow();
+                Product p = productMap.get(req.productId());
 
                 SaleItem item = new SaleItem(
-                        null, saleId, v.id(), v.name(), v.sku(), p.name(),
-                        req.quantity(), req.pricePerUnit(), v.costPrice(),
+                        null, saleId, p.id(), p.sku(), p.name(),
+                        req.quantity(), req.pricePerUnit(), p.costPrice(),
                         calculated.getTaxRate(), calculated.getTaxAmount(),
                         calculated.getTaxRate(), calculated.getTaxAmount(),
                         calculated.getTaxRuleSnapshot(), req.discount(), null
@@ -127,7 +123,7 @@ public class SalesModificationService {
                 long newItemId = salesRepository.insertSaleItem(item);
                 
                 inventoryService.deductStock(
-                        v.id(), req.quantity(), userId, InventoryReason.SALE,
+                        p.id(), req.quantity(), userId, InventoryReason.SALE,
                         "sale_item", newItemId
                 );
             }
@@ -170,7 +166,7 @@ public class SalesModificationService {
             List<SaleItem> items = salesRepository.findSaleItems(saleId);
             for (SaleItem item : items) {
                 inventoryService.restoreStock(
-                        item.variantId(),
+                        item.productId(),
                         "sale_item",
                         item.id(),
                         item.quantity(),
@@ -300,10 +296,10 @@ public class SalesModificationService {
         });
     }
 
-    private Map<Long, Variant> fetchVariantsBatch(List<Long> variantIds) {
-        Map<Long, Variant> map = new HashMap<>();
-        for (Long id : variantIds) {
-            variantRepository.findVariantByIdSync(id).ifPresent(v -> map.put(id, v));
+    private Map<Long, Product> fetchProductsBatch(List<Long> productIds) {
+        Map<Long, Product> map = new HashMap<>();
+        for (Long id : productIds) {
+            productRepository.findProductById(id).ifPresent(p -> map.put(id, p));
         }
         return map;
     }

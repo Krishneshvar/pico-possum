@@ -6,7 +6,7 @@ import com.possum.application.inventory.InventoryService;
 import com.possum.application.reports.ReportsService;
 import com.possum.application.reports.dto.SalesReportSummary;
 import com.possum.application.reports.dto.TopProduct;
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import com.possum.ui.JavaFXInitializer;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,9 +34,9 @@ class DashboardControllerTest {
     @Mock private javafx.scene.control.Label transactionsLabel;
     @Mock private javafx.scene.control.Label lowStockLabel;
     @Mock private com.possum.ui.common.controls.DataTableView<TopProduct> topProductsTable;
-    @Mock private com.possum.ui.common.controls.DataTableView<com.possum.domain.model.Variant> lowStockTable;
+    @Mock private com.possum.ui.common.controls.DataTableView<com.possum.domain.model.Product> lowStockTable;
     @Mock private javafx.scene.control.TableView<TopProduct> topTableView;
-    @Mock private javafx.scene.control.TableView<com.possum.domain.model.Variant> lowTableView;
+    @Mock private javafx.scene.control.TableView<com.possum.domain.model.Product> lowTableView;
     @Mock private com.possum.infrastructure.backup.DatabaseBackupService backupService;
     @Mock private javafx.scene.control.Label backupStatusLabel;
 
@@ -91,15 +91,15 @@ class DashboardControllerTest {
             new BigDecimal("1000.00"), new BigDecimal("100.00")
         );
         List<TopProduct> topProducts = List.of(
-            new TopProduct(1L, "Product A", "Standard", "SKU001", 5, new BigDecimal("500.00"))
+            new TopProduct(1L, "Product A", "SKU001", 5, new BigDecimal("500.00"))
         );
-        List<Variant> lowStockVariants = List.of(
-            createTestVariant(1L, "Low Stock Product", 2)
+        List<Product> lowStockProducts = List.of(
+            createTestProduct(1L, "Low Stock Product", 2)
         );
 
         when(reportsService.getSalesSummary(eq(today), eq(today), isNull())).thenReturn(summary);
         when(reportsService.getTopProducts(eq(today), eq(today), anyInt(), isNull())).thenReturn(topProducts);
-        when(inventoryService.getLowStockAlerts()).thenReturn(lowStockVariants);
+        when(inventoryService.getLowStockAlerts()).thenReturn(lowStockProducts);
 
         controller.refresh();
 
@@ -112,12 +112,11 @@ class DashboardControllerTest {
         verify(lowStockLabel, atLeastOnce()).setText("1");
     }
 
-    private com.possum.domain.model.Variant createTestVariant(Long id, String name, int stock) {
-        return new com.possum.domain.model.Variant(
-            id, 1L, "Test Product", name, "SKU" + id, 
-            java.math.BigDecimal.TEN, java.math.BigDecimal.valueOf(5), 5, true, 
-            "ACTIVE", null, stock, "Electronics", null, 
-            java.time.LocalDateTime.now(), java.time.LocalDateTime.now(), null
+    private com.possum.domain.model.Product createTestProduct(Long id, String name, int stock) {
+        return new com.possum.domain.model.Product(
+            id, name, "SKU" + id, "Description", 1L, "active",
+            new java.math.BigDecimal("10.00"), new java.math.BigDecimal("12.00"), 1L, stock, 5,
+            false, null, "Category 1", 1L, "HST", java.math.BigDecimal.valueOf(13.0)
         );
     }
 }

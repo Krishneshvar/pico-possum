@@ -1,18 +1,19 @@
 package com.possum.application.products;
 
-import com.possum.application.variants.VariantService;
 import com.possum.domain.exceptions.NotFoundException;
 import com.possum.domain.exceptions.ValidationException;
+import com.possum.domain.enums.InventoryReason;
+import com.possum.domain.model.InventoryAdjustment;
+import com.possum.domain.model.InventoryLot;
 import com.possum.domain.model.Product;
 import com.possum.domain.model.TaxRule;
-import com.possum.domain.model.Variant;
 import com.possum.infrastructure.filesystem.AppPaths;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.logging.LoggingConfig;
 import com.possum.persistence.db.TransactionManager;
 import com.possum.domain.repositories.AuditRepository;
+import com.possum.domain.repositories.InventoryRepository;
 import com.possum.domain.repositories.ProductRepository;
-import com.possum.domain.repositories.VariantRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
 
@@ -25,39 +26,39 @@ import java.util.Map;
 
 public class ProductService {
     private final ProductRepository productRepository;
-    private final VariantService variantService;
-    private final VariantRepository variantRepository;
+    private final InventoryRepository inventoryRepository;
     private final AuditRepository auditRepository;
     private final TransactionManager transactionManager;
     private final AppPaths appPaths;
     private final SettingsStore settingsStore;
 
     public ProductService(ProductRepository productRepository,
-                          VariantService variantService,
-                          VariantRepository variantRepository,
+                          InventoryRepository inventoryRepository,
                           AuditRepository auditRepository,
                           TransactionManager transactionManager,
                           AppPaths appPaths,
                           SettingsStore settingsStore) {
         this.productRepository = productRepository;
-        this.variantService = variantService;
-        this.variantRepository = variantRepository;
+        this.inventoryRepository = inventoryRepository;
         this.auditRepository = auditRepository;
         this.transactionManager = transactionManager;
         this.appPaths = appPaths;
         this.settingsStore = settingsStore;
     }
 
-    public long createProductWithVariants(CreateProductCommand command) {
+    public long createProduct(CreateProductCommand command) {
         com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
         if (command.name() == null || command.name().isBlank()) throw new ValidationException("Product name is required");
-        if (command.variants() == null || command.variants().isEmpty()) {
-            throw new ValidationException("At least one variant is required");
-        }
+        if (command.mrp() == null || command.mrp().compareTo(java.math.BigDecimal.ZERO) < 0)
+            throw new ValidationException("Product price must be zero or greater");
+        if (command.costPrice() == null || command.costPrice().compareTo(java.math.BigDecimal.ZERO) < 0)
+            throw new ValidationException("Product cost price must be zero or greater");
 
         return transactionManager.runInTransaction(() -> {
             boolean autoNumericSku = isNumericSkuGenerationEnabled();
-            int nextGeneratedSku = autoNumericSku ? variantRepository.getNextGeneratedNumericSku() : -1;
+            String effectiveSku = (autoNumericSku && (command.sku() == null || command.sku().isBlank())) 
+                    ? String.valueOf(productRepository.getNextGeneratedNumericSku()) 
+                    : command.sku();
 
             Product product = new Product(
                     null,
@@ -65,8 +66,12 @@ public class ProductService {
                     command.description(),
                     command.categoryId(),
                     null,
-                    command.taxIds() != null && !command.taxIds().isEmpty() ? command.taxIds().get(0) : null,
+                    command.taxCategoryId(),
                     null,
+                    effectiveSku,
+                    command.mrp(),
+                    command.costPrice(),
+                    command.stockAlertCap() != null ? command.stockAlertCap() : 10,
                     command.status() != null ? command.status() : "active",
                     command.imagePath(),
                     null,
@@ -77,50 +82,41 @@ public class ProductService {
 
             long productId = productRepository.insertProduct(product);
 
-            for (var variantCmd : command.variants()) {
-                if (variantCmd.name() == null || variantCmd.name().isBlank())
-                    throw new ValidationException("Variant name is required");
-                if (variantCmd.price() == null || variantCmd.price().compareTo(java.math.BigDecimal.ZERO) < 0)
-                    throw new ValidationException("Variant price must be zero or greater");
-                if (variantCmd.costPrice() == null || variantCmd.costPrice().compareTo(java.math.BigDecimal.ZERO) < 0)
-                    throw new ValidationException("Variant cost price must be zero or greater");
-
-                String effectiveSku = autoNumericSku ? String.valueOf(nextGeneratedSku++) : variantCmd.sku();
-                variantService.addVariantWithoutTransaction(new VariantService.AddVariantCommand(
-                        productId,
-                        variantCmd.name(),
-                        effectiveSku,
-                        variantCmd.price(),
-                        variantCmd.costPrice(),
-                        variantCmd.stockAlertCap(),
-                        variantCmd.isDefault(),
-                        variantCmd.status(),
-                        variantCmd.stock(),
-                        command.userId()
-                ));
-            }
-
             auditRepository.insertAuditLog(createAuditLog(
                     command.userId(),
                     "CREATE",
                     "products",
                     productId,
                     null,
-                    String.format("{\"name\":\"%s\",\"description\":\"%s\",\"category_id\":%s,\"status\":\"%s\",\"image_path\":\"%s\"}",
-                            command.name(), command.description(), command.categoryId(), command.status(), command.imagePath())
+                    String.format("{\"name\":\"%s\",\"sku\":\"%s\",\"mrp\":%s,\"cost_price\":%s}",
+                            command.name(), effectiveSku, command.mrp(), command.costPrice())
             ));
+
+            if (command.initialStock() != null && command.initialStock() > 0) {
+                InventoryLot lot = new InventoryLot(null, productId, null, null, null, command.initialStock(), command.costPrice(), null, null);
+                long lotId = inventoryRepository.insertInventoryLot(lot);
+
+                InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, lotId, command.initialStock(), "confirm_receive", null, null, command.userId(), null, null);
+                inventoryRepository.insertInventoryAdjustment(adjustment);
+
+                LoggingConfig.getLogger().info("Initial stock {} added for product {}", command.initialStock(), productId);
+            }
 
             return productId;
         });
     }
 
-    public ProductWithVariantsDTO getProductWithVariants(long id) {
-        var result = productRepository.findProductWithVariants(id)
+    public Product getProductById(long id) {
+        return productRepository.findProductById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
+    }
 
-        List<TaxRule> taxes = productRepository.findProductTaxes(id);
+    public int getNextGeneratedNumericSku() {
+        return productRepository.getNextGeneratedNumericSku();
+    }
 
-        return new ProductWithVariantsDTO(result.product(), result.variants(), taxes);
+    public List<TaxRule> getProductTaxes(long productId) {
+        return productRepository.findProductTaxes(productId);
     }
 
     public PagedResult<Product> getProducts(ProductFilter filter) {
@@ -131,70 +127,13 @@ public class ProductService {
         return productRepository.getProductStats();
     }
 
-    public Product getProductById(long id) {
-        return productRepository.findProductById(id).orElse(null);
-    }
-
     public void updateProduct(long productId, UpdateProductCommand command) {
         com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
         transactionManager.runInTransaction(() -> {
-            boolean autoNumericSku = isNumericSkuGenerationEnabled();
-            int nextGeneratedSku = autoNumericSku ? variantRepository.getNextGeneratedNumericSku() : -1;
-
             Product oldProduct = productRepository.findProductById(productId)
                     .orElseThrow(() -> new NotFoundException("Product not found"));
 
             String imagePath = command.newImagePath() != null ? command.newImagePath() : oldProduct.imagePath();
-            Long taxCategoryId = oldProduct.taxCategoryId();
-
-            if (command.taxIds() != null) {
-                taxCategoryId = command.taxIds() != null && !command.taxIds().isEmpty() ? command.taxIds().get(0) : null;
-            }
-
-            if (command.variants() != null) {
-                for (var variantCmd : command.variants()) {
-                    if (variantCmd.id() != null) {
-                        variantService.validateVariantOwnership(variantCmd.id(), productId);
-                        String effectiveSku = variantCmd.sku();
-                        if (autoNumericSku) {
-                            Variant existingVariant = variantRepository.findVariantByIdSync(variantCmd.id())
-                                    .orElseThrow(() -> new NotFoundException("Variant not found: " + variantCmd.id()));
-                            if (existingVariant.sku() == null || existingVariant.sku().trim().isEmpty()) {
-                                effectiveSku = String.valueOf(nextGeneratedSku++);
-                            } else {
-                                effectiveSku = existingVariant.sku();
-                            }
-                        }
-                        variantService.updateVariantWithoutTransaction(new VariantService.UpdateVariantCommand(
-                                variantCmd.id(),
-                                variantCmd.name(),
-                                effectiveSku,
-                                variantCmd.price(),
-                                variantCmd.costPrice(),
-                                variantCmd.stockAlertCap(),
-                                variantCmd.isDefault(),
-                                variantCmd.status(),
-                                variantCmd.stock(),
-                                variantCmd.stockAdjustmentReason(),
-                                command.userId()
-                        ));
-                    } else {
-                        String effectiveSku = autoNumericSku ? String.valueOf(nextGeneratedSku++) : variantCmd.sku();
-                        variantService.addVariantWithoutTransaction(new VariantService.AddVariantCommand(
-                                productId,
-                                variantCmd.name(),
-                                effectiveSku,
-                                variantCmd.price(),
-                                variantCmd.costPrice(),
-                                variantCmd.stockAlertCap(),
-                                variantCmd.isDefault(),
-                                variantCmd.status(),
-                                variantCmd.stock(),
-                                command.userId()
-                        ));
-                    }
-                }
-            }
 
             Product updatedProduct = new Product(
                     productId,
@@ -202,8 +141,12 @@ public class ProductService {
                     command.description() != null ? command.description() : oldProduct.description(),
                     command.categoryId() != null ? command.categoryId() : oldProduct.categoryId(),
                     null,
-                    taxCategoryId,
+                    command.taxCategoryId() != null ? command.taxCategoryId() : oldProduct.taxCategoryId(),
                     null,
+                    command.sku() != null ? command.sku() : oldProduct.sku(),
+                    command.mrp() != null ? command.mrp() : oldProduct.mrp(),
+                    command.costPrice() != null ? command.costPrice() : oldProduct.costPrice(),
+                    command.stockAlertCap() != null ? command.stockAlertCap() : oldProduct.stockAlertCap(),
                     command.status() != null ? command.status() : oldProduct.status(),
                     imagePath,
                     null,
@@ -218,24 +161,35 @@ public class ProductService {
                 deleteImageFile(oldProduct.imagePath());
             }
 
+            if (command.stock() != null) {
+                int targetStock = command.stock();
+                if (targetStock >= 0) {
+                    int currentStock = inventoryRepository.getStockByProductId(productId);
+                    int diff = targetStock - currentStock;
+
+                    if (diff != 0) {
+                        String reason = command.stockAdjustmentReason() != null ? command.stockAdjustmentReason() : "correction";
+                        InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, null, diff, reason, null, null, command.userId(), null, null);
+                        inventoryRepository.insertInventoryAdjustment(adjustment);
+                        LoggingConfig.getLogger().info("Stock adjusted for product {}: {} (reason: {})",
+                                productId, (diff > 0 ? "+" : "") + diff, reason);
+                    }
+                }
+            }
+
             if (changes > 0) {
-                Product newProduct = productRepository.findProductById(productId).orElse(null);
                 auditRepository.insertAuditLog(createAuditLog(
                         command.userId(),
                         "UPDATE",
                         "products",
                         productId,
-                        String.format("{\"name\":\"%s\",\"description\":\"%s\"}", oldProduct.name(), oldProduct.description()),
-                        String.format("{\"name\":\"%s\",\"description\":\"%s\"}", newProduct.name(), newProduct.description())
+                        String.format("{\"name\":\"%s\",\"mrp\":%s}", oldProduct.name(), oldProduct.mrp()),
+                        String.format("{\"name\":\"%s\",\"mrp\":%s}", updatedProduct.name(), updatedProduct.mrp())
                 ));
             }
 
             return null;
         });
-    }
-
-    public int getNextGeneratedNumericSku() {
-        return variantRepository.getNextGeneratedNumericSku();
     }
 
     public void deleteProduct(long id, long userId) {
@@ -244,6 +198,12 @@ public class ProductService {
             Product oldProduct = productRepository.findProductById(id)
                     .orElseThrow(() -> new NotFoundException("Product not found"));
 
+            int currentStock = inventoryRepository.getStockByProductId(id);
+            if (currentStock != 0) {
+                InventoryAdjustment adjustment = new InventoryAdjustment(null, id, null, -currentStock, InventoryReason.PRODUCT_DELETED.getValue(), null, null, userId, null, null);
+                inventoryRepository.insertInventoryAdjustment(adjustment);
+            }
+
             int changes = productRepository.softDeleteProduct(id);
 
             if (changes > 0 && oldProduct.imagePath() != null) {
@@ -251,39 +211,12 @@ public class ProductService {
             }
 
             if (changes > 0) {
-                // Fetch and delete all variants, adjusting their stock to 0
-                productRepository.findProductWithVariants(id).ifPresent(dto -> {
-                    for (com.possum.domain.model.Variant variant : dto.variants()) {
-                        try {
-                            // Adjust stock to 0
-                            variantService.updateVariantWithoutTransaction(new VariantService.UpdateVariantCommand(
-                                    variant.id(),
-                                    variant.name(),
-                                    variant.sku(),
-                                    variant.price(),
-                                    variant.costPrice(),
-                                    variant.stockAlertCap(),
-                                    variant.defaultVariant(),
-                                    variant.status(),
-                                    0,
-                                    "product_deleted",
-                                    userId
-                            ));
-                            // Soft delete variant
-                            variantService.deleteVariant(variant.id(), userId);
-                        } catch (Exception e) {
-                            LoggingConfig.getLogger().error("Failed to delete variant {} while deleting product {}: {}", 
-                                variant.id(), id, e.getMessage());
-                        }
-                    }
-                });
-
                 auditRepository.insertAuditLog(createAuditLog(
                         userId,
                         "DELETE",
                         "products",
                         id,
-                        String.format("{\"name\":\"%s\",\"description\":\"%s\"}", oldProduct.name(), oldProduct.description()),
+                        String.format("{\"name\":\"%s\",\"sku\":\"%s\"}", oldProduct.name(), oldProduct.sku()),
                         null
                 ));
             }
@@ -319,10 +252,14 @@ public class ProductService {
             String name,
             String description,
             Long categoryId,
+            Long taxCategoryId,
+            String sku,
+            java.math.BigDecimal mrp,
+            java.math.BigDecimal costPrice,
+            Integer stockAlertCap,
             String status,
             String imagePath,
-            List<VariantCommand> variants,
-            List<Long> taxIds,
+            Integer initialStock,
             Long userId
     ) {}
 
@@ -330,29 +267,15 @@ public class ProductService {
             String name,
             String description,
             Long categoryId,
-            String status,
-            String newImagePath,
-            List<VariantCommand> variants,
-            List<Long> taxIds,
-            Long userId
-    ) {}
-
-    public record VariantCommand(
-            Long id,
-            String name,
+            Long taxCategoryId,
             String sku,
-            java.math.BigDecimal price,
+            java.math.BigDecimal mrp,
             java.math.BigDecimal costPrice,
             Integer stockAlertCap,
-            Boolean isDefault,
             String status,
+            String newImagePath,
             Integer stock,
-            String stockAdjustmentReason
-    ) {}
-
-    public record ProductWithVariantsDTO(
-            Product product,
-            List<Variant> variants,
-            List<TaxRule> taxes
+            String stockAdjustmentReason,
+            Long userId
     ) {}
 }

@@ -1,6 +1,6 @@
 package com.possum.ui.sales;
 
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Point2D;
@@ -21,17 +21,17 @@ public class SaleDetailSearchHandler {
 
     private final TextField itemSearchField;
     private final ProductSearchIndex searchIndex;
-    private final Consumer<Variant> onVariantSelected;
+    private final Consumer<Product> onProductSelected;
 
     private final Popup searchPopup = new Popup();
-    private final ListView<Variant> searchResultsView = new ListView<>(FXCollections.observableArrayList());
+    private final ListView<Product> searchResultsView = new ListView<>(FXCollections.observableArrayList());
 
     public SaleDetailSearchHandler(TextField itemSearchField, 
                                    ProductSearchIndex searchIndex, 
-                                   Consumer<Variant> onVariantSelected) {
+                                   Consumer<Product> onProductSelected) {
         this.itemSearchField = itemSearchField;
         this.searchIndex = searchIndex;
-        this.onVariantSelected = onVariantSelected;
+        this.onProductSelected = onProductSelected;
     }
 
     public void setup() {
@@ -40,15 +40,15 @@ public class SaleDetailSearchHandler {
         searchPopup.setAutoHide(true);
         
         searchResultsView.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Variant item, boolean empty) {
+            @Override protected void updateItem(Product item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setGraphic(null); }
                 else {
                     VBox b = new VBox(2);
                     b.setPrefHeight(45);
-                    Label n = new Label(item.productName() + (item.name().equals("Standard") ? "" : " - " + item.name()));
+                    Label n = new Label(item.name());
                     n.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-                    Label d = new Label(item.sku() + " • " + CurrencyUtil.format(item.price()));
+                    Label d = new Label(item.sku() + " • " + CurrencyUtil.format(item.mrp()));
                     d.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
                     b.getChildren().addAll(n, d);
                     setGraphic(b);
@@ -57,17 +57,17 @@ public class SaleDetailSearchHandler {
         });
 
         searchResultsView.setOnMouseClicked(e -> {
-            Variant selected = searchResultsView.getSelectionModel().getSelectedItem();
+            Product selected = searchResultsView.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                selectVariant(selected);
+                selectProduct(selected);
             }
         });
 
         searchResultsView.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
-                Variant selected = searchResultsView.getSelectionModel().getSelectedItem();
+                Product selected = searchResultsView.getSelectionModel().getSelectedItem();
                 if (selected != null) {
-                    selectVariant(selected);
+                    selectProduct(selected);
                 }
             }
         });
@@ -80,14 +80,14 @@ public class SaleDetailSearchHandler {
             }
 
             // SKU Quick Add
-            Optional<Variant> bySku = searchIndex.findBySku(query);
+            Optional<Product> bySku = searchIndex.findBySku(query);
             if (bySku.isPresent()) {
-                selectVariant(bySku.get());
+                selectProduct(bySku.get());
                 return;
             }
 
             // Normal Search Popup
-            List<Variant> results = searchIndex.searchByName(query);
+            List<Product> results = searchIndex.searchByName(query);
             if (!results.isEmpty()) {
                 searchResultsView.getItems().setAll(results);
                 searchResultsView.setPrefHeight(Math.min(results.size() * 52 + 10, 400));
@@ -118,8 +118,8 @@ public class SaleDetailSearchHandler {
         });
     }
 
-    private void selectVariant(Variant variant) {
-        onVariantSelected.accept(variant);
+    private void selectProduct(Product product) {
+        onProductSelected.accept(product);
         searchPopup.hide();
         itemSearchField.clear();
     }

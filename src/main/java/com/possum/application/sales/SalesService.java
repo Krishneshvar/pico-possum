@@ -24,7 +24,6 @@ public class SalesService {
     private final SalesModificationService modificationService;
 
     public SalesService(SalesRepository salesRepository,
-                        VariantRepository variantRepository,
                         ProductRepository productRepository,
                         CustomerRepository customerRepository,
                         AuditRepository auditRepository,
@@ -41,11 +40,11 @@ public class SalesService {
         this.paymentService = paymentService;
 
         this.checkoutService = new CheckoutService(
-            salesRepository, variantRepository, customerRepository, auditRepository,
+            salesRepository, productRepository, customerRepository, auditRepository,
             inventoryService, saleCalculator, transactionManager, jsonService, settingsStore, invoiceNumberService
         );
         this.modificationService = new SalesModificationService(
-            salesRepository, variantRepository, productRepository, customerRepository, auditRepository,
+            salesRepository, productRepository, customerRepository, auditRepository,
             inventoryService, taxCalculator, transactionManager, jsonService, settingsStore
         );
     }

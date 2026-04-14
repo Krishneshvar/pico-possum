@@ -1,25 +1,23 @@
 package com.possum.persistence.repositories.sqlite;
 
 import com.possum.domain.model.*;
-import com.possum.domain.repositories.VariantRepository;
+import com.possum.domain.repositories.ProductRepository;
 import com.possum.persistence.db.ConnectionProvider;
 import com.possum.persistence.db.TransactionManager;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class SqlitePosDraftRepository extends BaseSqliteRepository {
 
-    private final VariantRepository variantRepository;
+    private final ProductRepository productRepository;
     private final TransactionManager transactionManager;
 
     public SqlitePosDraftRepository(ConnectionProvider connectionProvider, 
-                                     VariantRepository variantRepository,
+                                     ProductRepository productRepository,
                                      TransactionManager transactionManager) {
         super(connectionProvider);
-        this.variantRepository = variantRepository;
+        this.productRepository = productRepository;
         this.transactionManager = transactionManager;
     }
 
@@ -48,10 +46,10 @@ public class SqlitePosDraftRepository extends BaseSqliteRepository {
             executeUpdate("DELETE FROM pos_open_bill_items WHERE bill_index = ?", draft.getIndex());
             for (CartItem item : draft.getItems()) {
                 executeUpdate(
-                    "INSERT INTO pos_open_bill_items (bill_index, variant_id, quantity, price_per_unit, discount_value, discount_type) " +
+                    "INSERT INTO pos_open_bill_items (bill_index, product_id, quantity, price_per_unit, discount_value, discount_type) " +
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     draft.getIndex(),
-                    item.getVariant().id(),
+                    item.getProduct().id(),
                     item.getQuantity(),
                     item.getPricePerUnit(),
                     item.getDiscountValue(),
@@ -105,26 +103,26 @@ public class SqlitePosDraftRepository extends BaseSqliteRepository {
             ), pmId).ifPresent(draft::setSelectedPaymentMethod);
         }
 
-        // 3. Load Items separately to avoid nested queries using variantRepository
+        // 3. Load Items separately to avoid nested queries using productRepository
         class RawItem {
-            final long variantId;
+            final long productId;
             final int quantity;
             final java.math.BigDecimal pricePerUnit;
             final java.math.BigDecimal discountValue;
             final String discountType;
-            RawItem(long v, int q, java.math.BigDecimal p, java.math.BigDecimal d, String t) {
-                this.variantId = v; this.quantity = q; this.pricePerUnit = p; this.discountValue = d; this.discountType = t;
+            RawItem(long p, int q, java.math.BigDecimal price, java.math.BigDecimal d, String t) {
+                this.productId = p; this.quantity = q; this.pricePerUnit = price; this.discountValue = d; this.discountType = t;
             }
         }
 
         List<RawItem> rawItems = queryList("SELECT * FROM pos_open_bill_items WHERE bill_index = ?", rs -> 
-            new RawItem(rs.getLong("variant_id"), rs.getInt("quantity"), 
+            new RawItem(rs.getLong("product_id"), rs.getInt("quantity"), 
                       rs.getBigDecimal("price_per_unit"), rs.getBigDecimal("discount_value"), 
                       rs.getString("discount_type")), index);
 
         for (RawItem ri : rawItems) {
-            variantRepository.findVariantByIdSync(ri.variantId).ifPresent(v -> {
-                CartItem item = new CartItem(v, ri.quantity);
+            productRepository.findProductById(ri.productId).ifPresent(p -> {
+                CartItem item = new CartItem(p, ri.quantity);
                 item.setPricePerUnit(ri.pricePerUnit);
                 item.setDiscountValue(ri.discountValue);
                 item.setDiscountType(ri.discountType);

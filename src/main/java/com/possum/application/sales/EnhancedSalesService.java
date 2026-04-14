@@ -20,7 +20,6 @@ import java.util.*;
 
 public class EnhancedSalesService {
     private final SalesRepository salesRepository;
-    private final VariantRepository variantRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final InventoryService inventoryService;
@@ -34,7 +33,6 @@ public class EnhancedSalesService {
 
     public EnhancedSalesService(
             SalesRepository salesRepository,
-            VariantRepository variantRepository,
             ProductRepository productRepository,
             CustomerRepository customerRepository,
             InventoryService inventoryService,
@@ -47,7 +45,6 @@ public class EnhancedSalesService {
             AuditLogger auditLogger
     ) {
         this.salesRepository = salesRepository;
-        this.variantRepository = variantRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.inventoryService = inventoryService;
@@ -72,19 +69,19 @@ public class EnhancedSalesService {
             paymentService.validatePaymentMethod(payment.paymentMethodId());
         }
 
-        List<Long> variantIds = request.items().stream().map(CreateSaleItemRequest::variantId).toList();
-        Map<Long, Variant> variantMap = fetchVariantsBatch(variantIds);
+        List<Long> productIds = request.items().stream().map(CreateSaleItemRequest::productId).toList();
+        Map<Long, Product> productMap = fetchProductsBatch(productIds);
         boolean enforceInventoryRestrictions = isInventoryRestrictionsEnabled();
 
         return transactionManager.runInTransaction(() -> {
             for (CreateSaleItemRequest item : request.items()) {
-                Variant variant = variantMap.get(item.variantId());
-                if (variant == null) {
-                    throw new NotFoundException("Variant not found: " + item.variantId());
+                Product product = productMap.get(item.productId());
+                if (product == null) {
+                    throw new NotFoundException("Product not found: " + item.productId());
                 }
 
                 if (enforceInventoryRestrictions) {
-                    int currentStock = inventoryService.getVariantStock(item.variantId());
+                    int currentStock = inventoryService.getProductStock(item.productId());
                     if (currentStock < item.quantity()) {
                         throw new InsufficientStockException(currentStock, item.quantity());
                     }
@@ -97,8 +94,8 @@ public class EnhancedSalesService {
             List<TempItem> tempItems = new ArrayList<>();
 
             for (CreateSaleItemRequest item : request.items()) {
-                Variant variant = variantMap.get(item.variantId());
-                BigDecimal pricePerUnit = item.pricePerUnit() != null ? item.pricePerUnit() : variant.price();
+                Product product = productMap.get(item.productId());
+                BigDecimal pricePerUnit = item.pricePerUnit() != null ? item.pricePerUnit() : product.mrp();
                 BigDecimal lineTotal = pricePerUnit.multiply(BigDecimal.valueOf(item.quantity()));
                 BigDecimal lineDiscount = item.discount() != null ? item.discount() : BigDecimal.ZERO;
                 BigDecimal netLineTotal = lineTotal.subtract(lineDiscount).max(BigDecimal.ZERO);
@@ -112,9 +109,7 @@ public class EnhancedSalesService {
 
             for (int i = 0; i < tempItems.size(); i++) {
                 TempItem tempItem = tempItems.get(i);
-                Variant variant = variantMap.get(tempItem.item.variantId());
-                Product product = productRepository.findProductById(variant.productId())
-                        .orElseThrow(() -> new NotFoundException("Product not found"));
+                Product product = productMap.get(tempItem.item.productId());
 
                 BigDecimal itemGlobalDiscount = BigDecimal.ZERO;
                 if (grossTotal.compareTo(BigDecimal.ZERO) > 0 && discount.compareTo(BigDecimal.ZERO) > 0) {
@@ -135,11 +130,9 @@ public class EnhancedSalesService {
 
                 TaxableItem taxableItem = new TaxableItem(
                         product.name(),
-                        variant.name(),
                         effectiveUnitPrice,
                         tempItem.item.quantity(),
                         product.taxCategoryId(),
-                        variant.id(),
                         product.id()
                 );
                 calculationItems.add(taxableItem);
@@ -158,18 +151,16 @@ public class EnhancedSalesService {
             for (int i = 0; i < request.items().size(); i++) {
                 CreateSaleItemRequest item = request.items().get(i);
                 TaxableItem calculatedItem = taxResult.getItemByIndex(i);
-                Variant variant = variantMap.get(item.variantId());
-                Product product = productRepository.findProductById(variant.productId())
-                        .orElseThrow(() -> new NotFoundException("Product not found"));
+                Product product = productMap.get(item.productId());
 
-                BigDecimal pricePerUnit = item.pricePerUnit() != null ? item.pricePerUnit() : variant.price();
-                BigDecimal costPerUnit = variant.costPrice() != null ? variant.costPrice() : BigDecimal.ZERO;
+                BigDecimal pricePerUnit = item.pricePerUnit() != null ? item.pricePerUnit() : product.mrp();
+                BigDecimal costPerUnit = product.costPrice() != null ? product.costPrice() : BigDecimal.ZERO;
                 BigDecimal itemDiscount = item.discount() != null ? item.discount() : BigDecimal.ZERO;
 
                 processedItems.add(new ProcessedItem(
-                        item.variantId(),
-                        variant.name(),
-                        variant.sku(),
+                        item.productId(),
+                        product.name(),
+                        product.sku(),
                         product.name(),
                         item.quantity(),
                         pricePerUnit,
@@ -214,8 +205,7 @@ public class EnhancedSalesService {
                 SaleItem saleItem = new SaleItem(
                         null,
                         saleId,
-                        item.variantId,
-                        item.variantName,
+                        item.productId,
                         item.sku,
                         item.productName,
                         item.quantity,
@@ -227,13 +217,13 @@ public class EnhancedSalesService {
                         item.taxAmount,
                         item.taxRuleSnapshot,
                         item.discountAmount,
-                        null
+                        0 // returnedQuantity
                 );
 
                 long saleItemId = salesRepository.insertSaleItem(saleItem);
 
                 inventoryService.deductStock(
-                        item.variantId,
+                        item.productId,
                         item.quantity,
                         userId,
                         InventoryReason.SALE,
@@ -244,8 +234,7 @@ public class EnhancedSalesService {
                 insertedItems.add(new SaleItem(
                         saleItemId,
                         saleId,
-                        item.variantId,
-                        item.variantName,
+                        item.productId,
                         item.sku,
                         item.productName,
                         item.quantity,
@@ -257,7 +246,7 @@ public class EnhancedSalesService {
                         item.taxAmount,
                         item.taxRuleSnapshot,
                         item.discountAmount,
-                        null
+                        0
                 ));
             }
 
@@ -305,10 +294,10 @@ public class EnhancedSalesService {
         });
     }
 
-    private Map<Long, Variant> fetchVariantsBatch(List<Long> variantIds) {
-        Map<Long, Variant> map = new HashMap<>();
-        for (Long id : variantIds) {
-            variantRepository.findVariantByIdSync(id).ifPresent(v -> map.put(id, v));
+    private Map<Long, Product> fetchProductsBatch(List<Long> productIds) {
+        Map<Long, Product> map = new HashMap<>();
+        for (Long id : productIds) {
+            productRepository.findProductById(id).ifPresent(p -> map.put(id, p));
         }
         return map;
     }
@@ -332,7 +321,7 @@ public class EnhancedSalesService {
     }
 
     private record TempItem(CreateSaleItemRequest item, BigDecimal pricePerUnit, BigDecimal netLineTotal) {}
-    private record ProcessedItem(long variantId, String variantName, String sku, String productName,
+    private record ProcessedItem(long productId, String productName, String sku, String productFullName,
                                   int quantity, BigDecimal pricePerUnit, BigDecimal costPerUnit,
                                   BigDecimal taxRate, BigDecimal taxAmount, BigDecimal discountAmount,
                                   String taxRuleSnapshot) {}
@@ -367,7 +356,7 @@ public class EnhancedSalesService {
             List<SaleItem> items = salesRepository.findSaleItems(saleId);
             for (SaleItem item : items) {
                 inventoryService.restoreStock(
-                        item.variantId(),
+                        item.productId(),
                         "sale_item",
                         item.id(),
                         item.quantity(),

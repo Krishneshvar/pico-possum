@@ -85,11 +85,11 @@ public final class Fixtures {
     // -------------------------------------------------------------------------
 
     public static TaxableItem item(String price, int qty) {
-        return new TaxableItem("Product", "Default", new BigDecimal(price), qty, null, 1L, 1L);
+        return new TaxableItem("Product", new BigDecimal(price), qty, null, 1L);
     }
 
     public static TaxableItem item(String price, int qty, Long taxCategoryId) {
-        return new TaxableItem("Product", "Default", new BigDecimal(price), qty, taxCategoryId, 1L, 1L);
+        return new TaxableItem("Product", new BigDecimal(price), qty, taxCategoryId, 1L);
     }
 
     // -------------------------------------------------------------------------
@@ -145,16 +145,16 @@ public final class Fixtures {
     // SaleItem
     // -------------------------------------------------------------------------
 
-    public static SaleItem saleItem(long id, long saleId, long variantId, int qty, String price) {
-        return new SaleItem(id, saleId, variantId, "Variant", "SKU-" + id, "Product",
+    public static SaleItem saleItem(long id, long saleId, long productId, int qty, String price) {
+        return new SaleItem(id, saleId, productId, "SKU-" + id, "Product",
                 qty, new BigDecimal(price), new BigDecimal(price),
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 "[]", BigDecimal.ZERO, 0);
     }
 
-    public static SaleItem saleItemWithDiscount(long id, long saleId, long variantId,
+    public static SaleItem saleItemWithDiscount(long id, long saleId, long productId,
                                                 int qty, String price, String lineDiscount) {
-        return new SaleItem(id, saleId, variantId, "Variant", "SKU-" + id, "Product",
+        return new SaleItem(id, saleId, productId, "SKU-" + id, "Product",
                 qty, new BigDecimal(price), new BigDecimal(price),
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 "[]", new BigDecimal(lineDiscount), 0);
@@ -197,8 +197,8 @@ public final class Fixtures {
     // AvailableLot
     // -------------------------------------------------------------------------
 
-    public static AvailableLot lot(long id, long variantId, int remaining) {
-        return new AvailableLot(id, variantId, null, null, null, remaining,
+    public static AvailableLot lot(long id, long productId, int remaining) {
+        return new AvailableLot(id, productId, null, null, null, remaining,
                 BigDecimal.ZERO, null, LocalDateTime.now(), remaining);
     }
 
@@ -220,22 +220,15 @@ public final class Fixtures {
     }
 
     // -------------------------------------------------------------------------
-    // Variant
-    // -------------------------------------------------------------------------
-
-    public static Variant variant(long id, long productId, String price) {
-        return new Variant(id, productId, "Product", "Default", "SKU-" + id,
-                new BigDecimal(price), new BigDecimal(price),
-                null, true, "active", null, 100, null, null,
-                LocalDateTime.now(), LocalDateTime.now(), null);
-    }
-
-    // -------------------------------------------------------------------------
     // Product
     // -------------------------------------------------------------------------
 
+    public static Product product(long id, String name, String sku, String price, Long taxCategoryId) {
+        return new Product(id, name, null, null, null, taxCategoryId, null, sku,
+                new BigDecimal(price), new BigDecimal(price), 10, "active", null, null, 100, LocalDateTime.now(), LocalDateTime.now(), null);
+    }
+
     public static Product product(long id, Long taxCategoryId) {
-        return new Product(id, "Product", null, null, null, taxCategoryId, null,
-                "active", null, 100, LocalDateTime.now(), LocalDateTime.now(), null);
+        return product(id, "Product", "SKU-" + id, "100.00", taxCategoryId);
     }
 }

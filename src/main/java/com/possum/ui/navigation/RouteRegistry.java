@@ -20,7 +20,6 @@ public class RouteRegistry {
         register("products", "/fxml/products/products-view.fxml", "products.view");
         register("product-form", "/fxml/products/product-form-view.fxml", "products.manage");
         register("inventory", "/fxml/inventory/inventory-view.fxml", "inventory.view");
-        register("variants", "/fxml/inventory/variants-view.fxml", "inventory.view");
         register("categories", "/fxml/categories/categories-view.fxml", "categories.view");
         register("stock-history", "/fxml/inventory/stock-history-view.fxml", "inventory.view");
 

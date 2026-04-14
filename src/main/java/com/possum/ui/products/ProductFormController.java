@@ -4,6 +4,7 @@ import com.possum.application.auth.AuthContext;
 import com.possum.application.categories.CategoryService;
 import com.possum.application.products.ProductService;
 import com.possum.domain.model.Category;
+import com.possum.domain.model.Product;
 import com.possum.domain.model.TaxCategory;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.logging.LoggingConfig;
@@ -19,11 +20,11 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import org.kordamp.ikonli.javafx.FontIcon;
+
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class ProductFormController implements Parameterizable {
 
@@ -38,17 +39,22 @@ public class ProductFormController implements Parameterizable {
     @FXML private Label titleLabel;
     @FXML private TextField nameField;
     @FXML private TextArea descriptionField;
+    @FXML private TextField skuField;
+    @FXML private TextField barcodeField;
+    @FXML private TextField priceField;
+    @FXML private TextField costPriceField;
+    @FXML private TextField stockAlertField;
+    @FXML private TextField stockField;
+    @FXML private VBox adjustmentReasonBox;
+    @FXML private ComboBox<String> adjustmentReasonCombo;
     @FXML private SingleSelectFilter<CategoryItem> categoryFilter;
     @FXML private ComboBox<String> statusCombo;
     @FXML private SingleSelectFilter<TaxCategoryItem> taxFilter;
-    @FXML private VBox variantsContainer;
     @FXML private Button saveButton;
-    @FXML private Button addVariantButton;
 
     private Long productId = null;
-    private final List<ProductVariantRow> variantRows = new ArrayList<>();
-    private final ToggleGroup defaultVariantGroup = new ToggleGroup();
     private boolean numericSkuGenerationEnabled = false;
+    private int initialStock = 0;
 
     public ProductFormController(ProductService productService,
                                  CategoryService categoryService,
@@ -78,113 +84,63 @@ public class ProductFormController implements Parameterizable {
         } else {
             this.productId = null;
             titleLabel.setText("Add Product");
-            if (variantRows.isEmpty()) {
-                if (!recoverDraft()) {
-                    addVariantRow(true, "Default");
-                }
+            recoverDraft();
+            if (numericSkuGenerationEnabled && (skuField.getText() == null || skuField.getText().isEmpty())) {
+                skuField.setText(String.valueOf(productService.getNextGeneratedNumericSku()));
+                skuField.setEditable(false);
             }
         }
     }
 
-    private boolean recoverDraft() {
-        if (draftService == null) return false;
-        return draftService.recoverDraft("product_new", ProductService.CreateProductCommand.class).map(draft -> {
+    private void recoverDraft() {
+        if (draftService == null) return;
+        draftService.recoverDraft("product_new", ProductService.CreateProductCommand.class).ifPresent(draft -> {
             nameField.setText(draft.name() != null ? draft.name() : "");
             descriptionField.setText(draft.description() != null ? draft.description() : "");
+            skuField.setText(draft.sku() != null ? draft.sku() : "");
+            priceField.setText(draft.mrp() != null ? draft.mrp().toString() : "");
+            costPriceField.setText(draft.costPrice() != null ? draft.costPrice().toString() : "");
+            stockAlertField.setText(draft.stockAlertCap() != null ? draft.stockAlertCap().toString() : "10");
+            stockField.setText(draft.initialStock() != null ? draft.initialStock().toString() : "0");
+            
             if (draft.categoryId() != null) {
-                try {
-                    com.possum.domain.model.Category c = categoryService.getCategoryById(draft.categoryId());
-                    categoryFilter.setSelectedItem(new CategoryItem(c.id(), c.name()));
-                } catch (Exception ignored) {}
+                categoryService.findCategoryById(draft.categoryId()).ifPresent(c -> 
+                    categoryFilter.setSelectedItem(new CategoryItem(c.id(), c.name())));
             }
             statusCombo.setValue(draft.status() != null ? draft.status() : "active");
             
-            variantRows.clear();
-            variantsContainer.getChildren().clear();
-            if (draft.variants() != null) {
-                for (var v : draft.variants()) {
-                    ProductVariantRow row = new ProductVariantRow(Boolean.TRUE.equals(v.isDefault()), v.name(), defaultVariantGroup, this::removeVariantRow);
-                    row.setSku(v.sku());
-                    row.setPrice(v.price() != null ? v.price().toString() : "");
-                    row.setCostPrice(v.costPrice() != null ? v.costPrice().toString() : "");
-                    row.setStockAlert(v.stockAlertCap() != null ? v.stockAlertCap().toString() : "");
-                    row.setInitialStock(v.stock() != null ? v.stock() : 0);
-                    variantRows.add(row);
-                    variantsContainer.getChildren().add(row.getView());
-                    attachListenersToRow(row);
-                }
-            }
             NotificationService.success("Unsaved product draft restored.");
-            return true;
-        }).orElse(false);
+        });
     }
 
     private void loadProductDetails(boolean isView) {
         try {
-            ProductService.ProductWithVariantsDTO dto = productService.getProductWithVariants(productId);
+            Product p = productService.getProductById(productId);
 
-            nameField.setText(dto.product().name());
-            descriptionField.setText(dto.product().description());
+            nameField.setText(p.name());
+            descriptionField.setText(p.description());
+            skuField.setText(p.sku());
+            priceField.setText(p.mrp() != null ? p.mrp().toString() : "");
+            costPriceField.setText(p.costPrice() != null ? p.costPrice().toString() : "");
+            stockAlertField.setText(p.stockAlertCap() != null ? p.stockAlertCap().toString() : "10");
+            
+            initialStock = p.stock() != null ? p.stock() : 0;
+            stockField.setText(String.valueOf(initialStock));
 
-            if (dto.product().categoryId() != null) {
-                categoryFilter.setSelectedItem(new CategoryItem(dto.product().categoryId(), dto.product().categoryName()));
+            if (p.categoryId() != null) {
+                categoryFilter.setSelectedItem(new CategoryItem(p.categoryId(), p.categoryName()));
             }
 
-            statusCombo.setValue(dto.product().status() != null ? dto.product().status() : "active");
+            statusCombo.setValue(p.status() != null ? p.status() : "active");
 
-            if (dto.product().taxCategoryId() != null) {
-                taxFilter.setSelectedItem(new TaxCategoryItem(dto.product().taxCategoryId(), dto.product().taxCategoryName()));
-            }
-
-            variantRows.clear();
-            variantsContainer.getChildren().clear();
-
-            if (dto.variants() != null && !dto.variants().isEmpty()) {
-                for (com.possum.domain.model.Variant v : dto.variants()) {
-                    ProductVariantRow row = new ProductVariantRow(Boolean.TRUE.equals(v.defaultVariant()), null, defaultVariantGroup, this::removeVariantRow);
-                    row.setVariantId(v.id());
-                    row.setVariantName(v.name());
-                    row.setSku(v.sku() != null ? v.sku() : "");
-                    if (numericSkuGenerationEnabled) {
-                        row.setSkuReadOnly();
-                    }
-                    row.setPrice(v.price() != null ? v.price().toString() : "");
-                    row.setCostPrice(v.costPrice() != null ? v.costPrice().toString() : "");
-                    row.setStockAlert(v.stockAlertCap() != null ? v.stockAlertCap().toString() : "");
-                    row.setVariantStatus(v.status() != null ? v.status() : "active");
-                    row.setInitialStock(v.stock() != null ? v.stock() : 0);
-
-                    if (isView) {
-                        row.setReadOnly();
-                    }
-
-                    variantRows.add(row);
-                    variantsContainer.getChildren().add(row.getView());
-                }
-            } else {
-                addVariantRow(true, "Default");
-            }
-
-            if (numericSkuGenerationEnabled) {
-                refreshAutoGeneratedSkusForNewRows();
+            if (p.taxCategoryId() != null) {
+                taxFilter.setSelectedItem(new TaxCategoryItem(p.taxCategoryId(), p.taxCategoryName()));
             }
 
             if (isView) {
-                replaceFieldWithLabel(nameField, dto.product().name());
-                replaceFieldWithLabel(descriptionField, dto.product().description());
-                
-                String catName = categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().name() : "None";
-                replaceFieldWithLabel(categoryFilter, catName);
-                
-                replaceFieldWithLabel(statusCombo, formatStatus(statusCombo.getValue()));
-                
-                String taxName = taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().name() : "None";
-                replaceFieldWithLabel(taxFilter, taxName);
-
+                setAllFieldsReadOnly();
                 saveButton.setVisible(false);
                 saveButton.setManaged(false);
-                addVariantButton.setVisible(false);
-                addVariantButton.setManaged(false);
             }
 
         } catch (Exception e) {
@@ -193,169 +149,95 @@ public class ProductFormController implements Parameterizable {
         }
     }
 
+    private void setAllFieldsReadOnly() {
+        nameField.setEditable(false);
+        descriptionField.setEditable(false);
+        skuField.setEditable(false);
+        priceField.setEditable(false);
+        costPriceField.setEditable(false);
+        stockAlertField.setEditable(false);
+        stockField.setEditable(false);
+        categoryFilter.setDisable(true);
+        statusCombo.setDisable(true);
+        taxFilter.setDisable(true);
+    }
+
     @FXML
     public void initialize() {
-        if (addVariantButton != null) {
-            FontIcon plusIcon = new FontIcon("bx-plus");
-            plusIcon.setIconSize(16);
-            plusIcon.setIconColor(javafx.scene.paint.Color.WHITE);
-            addVariantButton.setGraphic(plusIcon);
-            addVariantButton.setText("Add Variant");
-        }
-
-        if (descriptionField != null) {
-            descriptionField.setPrefHeight(180);
-            descriptionField.setMinHeight(150);
-        }
-
         loadCategories();
         loadTaxCategories();
         loadSkuGenerationSettings();
 
         statusCombo.setItems(FXCollections.observableArrayList("active", "inactive", "discontinued"));
-        statusCombo.setConverter(new javafx.util.StringConverter<String>() {
-            @Override
-            public String toString(String object) {
-                if (object == null || object.isEmpty()) return "";
-                return object.substring(0, 1).toUpperCase() + object.substring(1).toLowerCase();
-            }
-            @Override
-            public String fromString(String string) {
-                if (string == null || string.isEmpty()) return "";
-                return string.toLowerCase();
+        adjustmentReasonCombo.setItems(FXCollections.observableArrayList("Correction", "Damage", "Return", "Stocktake", "Expiry", "Theft", "Other"));
+        adjustmentReasonCombo.setValue("Correction");
+
+        stockField.textProperty().addListener((obs, oldV, newV) -> {
+            if (productId != null) {
+                try {
+                    int current = Integer.parseInt(newV.trim());
+                    boolean changed = current != initialStock;
+                    adjustmentReasonBox.setVisible(changed);
+                    adjustmentReasonBox.setManaged(changed);
+                } catch (Exception e) {
+                    adjustmentReasonBox.setVisible(false);
+                    adjustmentReasonBox.setManaged(false);
+                }
             }
         });
-        statusCombo.setValue("active");
 
-        statusCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
-            updateVariantStatusesBasedOnProductStatus(newVal);
-        });
-
-        setupValidation();
         setupDrafting();
     }
 
     private void setupDrafting() {
-        if (productId != null) return; // Only draft new products for now
+        if (productId != null) return;
         
         nameField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        descriptionField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        categoryFilter.selectedItemProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        statusCombo.valueProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        taxFilter.selectedItemProperty().addListener((o, old, newVal) -> saveCurrentDraft());
+        skuField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
+        priceField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
     }
 
     private void saveCurrentDraft() {
         if (productId != null || draftService == null) return;
         
-        long userId = com.possum.application.auth.AuthContext.getCurrentUser().id();
-        List<ProductService.VariantCommand> variants = variantRows.stream().map(row -> 
-            new ProductService.VariantCommand(null, row.getName(), row.getSku(), 
-                parseSafeBigDecimal(row.getPrice()), parseSafeBigDecimal(row.getCostPrice()),
-                parseSafeInt(row.getStockAlert()), row.isDefault(), row.getStatus(), row.getStock(), null)
-        ).toList();
-
+        long userId = AuthContext.getCurrentUser().id();
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
             nameField.getText(), descriptionField.getText(), 
             categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
-            statusCombo.getValue(), null, variants, 
-            taxFilter.getSelectedItem() != null ? List.of(taxFilter.getSelectedItem().id()) : List.of(),
+            taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null,
+            skuField.getText(),
+            parseSafeBigDecimal(priceField.getText()),
+            parseSafeBigDecimal(costPriceField.getText()),
+            parseSafeInt(stockAlertField.getText()),
+            statusCombo.getValue(),
+            null,
+            parseSafeInt(stockField.getText()),
             userId
         );
 
         draftService.saveDraft("product_new", "product", cmd, userId);
     }
 
-    private java.math.BigDecimal parseSafeBigDecimal(String val) {
+    private BigDecimal parseSafeBigDecimal(String val) {
+        if (val == null || val.isBlank()) return BigDecimal.ZERO;
         try { 
-            String clean = val.replace(com.possum.shared.util.CurrencyUtil.getSymbol(), "").replace(",", "").trim();
-            return new java.math.BigDecimal(clean); 
-        } catch (Exception e) { return java.math.BigDecimal.ZERO; }
+            return new BigDecimal(val.trim()); 
+        } catch (Exception e) { return BigDecimal.ZERO; }
     }
 
     private Integer parseSafeInt(String val) {
+        if (val == null || val.isBlank()) return 0;
         try { return Integer.parseInt(val.trim()); } catch (Exception e) { return 0; }
-    }
-
-    private void setupValidation() {
-        com.possum.ui.common.validation.FieldValidator.of(nameField)
-                .addValidator(com.possum.ui.common.validation.Validators.required("Product Name"))
-                .validateOnType();
-    }
-
-    private void updateVariantStatusesBasedOnProductStatus(String productStatus) {
-        if (productStatus == null) return;
-        boolean isActive = "active".equals(productStatus.toLowerCase());
-
-        for (ProductVariantRow row : variantRows) {
-            row.updateAvailableStatuses(isActive);
-        }
     }
 
     private void loadCategories() {
         List<Category> categories = categoryService.getAllCategories();
-        List<CategoryItem> items = categories.stream()
-                .map(c -> new CategoryItem(c.id(), c.name()))
-                .toList();
-
-        categoryFilter.setItems(items);
+        categoryFilter.setItems(categories.stream().map(c -> new CategoryItem(c.id(), c.name())).toList());
     }
 
     private void loadTaxCategories() {
         List<TaxCategory> taxes = taxRepository.getAllTaxCategories();
-        List<TaxCategoryItem> items = taxes.stream()
-                .map(t -> new TaxCategoryItem(t.id(), t.name()))
-                .toList();
-        taxFilter.setItems(items);
-    }
-
-    @FXML
-    private void handleAddVariant() {
-        addVariantRow(false, null);
-    }
-
-    private void addVariantRow(boolean isDefault, String name) {
-        ProductVariantRow row = new ProductVariantRow(isDefault, name, defaultVariantGroup, this::removeVariantRow);
-
-        String productStatus = statusCombo != null ? statusCombo.getValue() : "active";
-        boolean isActive = productStatus == null || "active".equals(productStatus.toLowerCase());
-        row.updateAvailableStatuses(isActive);
-
-        variantRows.add(row);
-        variantsContainer.getChildren().add(row.getView());
-
-        if (numericSkuGenerationEnabled) {
-            refreshAutoGeneratedSkusForNewRows();
-        }
-        attachListenersToRow(row);
-        saveCurrentDraft();
-    }
-
-    private void attachListenersToRow(ProductVariantRow row) {
-        row.variantNameField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.skuField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.priceField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.costPriceField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.stockAlertField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.stockField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.variantStatusCombo.valueProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-        row.defaultRadio.selectedProperty().addListener((o, old, newVal) -> saveCurrentDraft());
-    }
-
-    private void removeVariantRow(ProductVariantRow row) {
-        if (variantRows.size() > 1) {
-            boolean wasDefault = row.isDefault();
-            variantRows.remove(row);
-            variantsContainer.getChildren().remove(row.getView());
-            
-            if (wasDefault && !variantRows.isEmpty()) {
-                variantRows.get(0).setDefault(true);
-            }
-
-            if (numericSkuGenerationEnabled) {
-                refreshAutoGeneratedSkusForNewRows();
-            }
-        }
+        taxFilter.setItems(taxes.stream().map(t -> new TaxCategoryItem(t.id(), t.name())).toList());
     }
 
     private void loadSkuGenerationSettings() {
@@ -366,81 +248,48 @@ public class ProductFormController implements Parameterizable {
         }
     }
 
-    private void refreshAutoGeneratedSkusForNewRows() {
-        if (!numericSkuGenerationEnabled) {
-            for (ProductVariantRow row : variantRows) {
-                row.setSkuEditable();
-            }
-            return;
-        }
-
-        int nextSku = productService.getNextGeneratedNumericSku();
-        for (ProductVariantRow row : variantRows) {
-            if (row.getVariantId() == null || row.getSku() == null || row.getSku().trim().isEmpty()) {
-                row.setAutoSku(String.valueOf(nextSku++));
-            } else {
-                row.setSkuReadOnly();
-            }
-        }
-    }
-
     @FXML
     private void handleSave() {
         try {
             validateInputs();
-
             long userId = AuthContext.getCurrentUser().id();
-
-            List<ProductService.VariantCommand> variants = variantRows.stream().map(row -> {
-                return new ProductService.VariantCommand(
-                        row.getVariantId(),
-                        row.getName(),
-                        row.getSku(),
-                        new BigDecimal(row.getPrice()),
-                        new BigDecimal(row.getCostPrice()),
-                        Integer.parseInt(row.getStockAlert()),
-                        row.isDefault(),
-                        row.getStatus(),
-                        row.getStock(),
-                        row.getAdjustmentReason()
-                );
-            }).toList();
-
-            Long categoryId = categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null;
-            Long taxId = taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null;
-            List<Long> taxIds = taxId != null ? List.of(taxId) : null;
 
             if (productId == null) {
                 ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
-                        nameField.getText(),
-                        descriptionField.getText(),
-                        categoryId,
+                        nameField.getText(), descriptionField.getText(),
+                        categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
+                        taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null,
+                        skuField.getText(),
+                        new BigDecimal(priceField.getText().trim()),
+                        new BigDecimal(costPriceField.getText().trim()),
+                        Integer.parseInt(stockAlertField.getText().trim()),
                         statusCombo.getValue(),
                         null,
-                        variants,
-                        taxIds,
+                        Integer.parseInt(stockField.getText().trim()),
                         userId
                 );
-                productService.createProductWithVariants(cmd);
+                productService.createProduct(cmd);
                 NotificationService.success("Product created successfully");
             } else {
                 ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
-                        nameField.getText(),
-                        descriptionField.getText(),
-                        categoryId,
+                        nameField.getText(), descriptionField.getText(),
+                        categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
+                        taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null,
+                        skuField.getText(),
+                        new BigDecimal(priceField.getText().trim()),
+                        new BigDecimal(costPriceField.getText().trim()),
+                        Integer.parseInt(stockAlertField.getText().trim()),
                         statusCombo.getValue(),
                         null,
-                        variants,
-                        taxIds,
+                        Integer.parseInt(stockField.getText().trim()),
+                        adjustmentReasonCombo.getValue().toLowerCase(),
                         userId
                 );
                 productService.updateProduct(productId, cmd);
                 NotificationService.success("Product updated successfully");
             }
 
-            if (productSearchIndex != null) {
-                productSearchIndex.refresh();
-            }
+            if (productSearchIndex != null) productSearchIndex.refresh();
             draftService.deleteDraft("product_new");
             workspaceManager.closeActiveWindow();
         } catch (Exception e) {
@@ -452,51 +301,11 @@ public class ProductFormController implements Parameterizable {
         if (nameField.getText() == null || nameField.getText().trim().isEmpty()) {
             throw new com.possum.domain.exceptions.ValidationException("Product name is required");
         }
-
-        if (variantRows.isEmpty()) {
-            throw new com.possum.domain.exceptions.ValidationException("At least one variant is required");
+        if (priceField.getText() == null || priceField.getText().trim().isEmpty()) {
+            throw new com.possum.domain.exceptions.ValidationException("Selling price is required");
         }
-
-        boolean hasDefault = false;
-        for (ProductVariantRow row : variantRows) {
-            if (row.getName() == null || row.getName().trim().isEmpty()) {
-                throw new com.possum.domain.exceptions.ValidationException("Variant name is required");
-            }
-            if (row.getPrice() == null || row.getPrice().trim().isEmpty()) {
-                throw new com.possum.domain.exceptions.ValidationException("Variant price is required");
-            }
-            if (row.getCostPrice() == null || row.getCostPrice().trim().isEmpty()) {
-                throw new com.possum.domain.exceptions.ValidationException("Variant cost price is required");
-            }
-            if (row.getStockAlert() == null || row.getStockAlert().trim().isEmpty()) {
-                throw new com.possum.domain.exceptions.ValidationException("Variant stock alert is required");
-            }
-            try {
-                new BigDecimal(row.getPrice());
-                new BigDecimal(row.getCostPrice());
-            } catch (NumberFormatException e) {
-                throw new com.possum.domain.exceptions.ValidationException("Price and Cost Price must be valid numbers");
-            }
-            try {
-                Integer.parseInt(row.getStockAlert());
-            } catch (NumberFormatException e) {
-                throw new com.possum.domain.exceptions.ValidationException("Stock Alert must be a valid integer");
-            }
-            if (row.stockField.getText() == null || row.stockField.getText().trim().isEmpty()) {
-                throw new com.possum.domain.exceptions.ValidationException("Current Stock is required");
-            }
-            try {
-                Integer.parseInt(row.stockField.getText().trim());
-            } catch (NumberFormatException e) {
-                throw new com.possum.domain.exceptions.ValidationException("Current Stock must be a valid integer");
-            }
-            if (row.isDefault()) {
-                hasDefault = true;
-            }
-        }
-
-        if (!hasDefault) {
-            throw new com.possum.domain.exceptions.ValidationException("One variant must be selected as default");
+        if (costPriceField.getText() == null || costPriceField.getText().trim().isEmpty()) {
+            throw new com.possum.domain.exceptions.ValidationException("Cost price is required");
         }
     }
 
@@ -505,44 +314,11 @@ public class ProductFormController implements Parameterizable {
         workspaceManager.closeActiveWindow();
     }
 
-    private void replaceFieldWithLabel(Control field, String text) {
-        if (field == null || field.getParent() == null) return;
-        Label label = new Label(text != null ? text : "");
-        label.setStyle("-fx-font-size: 14px; -fx-text-fill: #1e293b; -fx-padding: 8 12;");
-        label.setWrapText(true);
-        
-        javafx.scene.Parent parent = field.getParent();
-        if (parent instanceof VBox box) {
-            int index = box.getChildren().indexOf(field);
-            if (index != -1) {
-                box.getChildren().set(index, label);
-            }
-        } else if (parent instanceof HBox box) {
-            int index = box.getChildren().indexOf(field);
-            if (index != -1) {
-                box.getChildren().set(index, label);
-            }
-        }
-    }
-
     private record CategoryItem(Long id, String name) {
-        @Override
-        public String toString() {
-            return name;
-        }
+        @Override public String toString() { return name; }
     }
 
     private record TaxCategoryItem(Long id, String name) {
-        @Override
-        public String toString() {
-            return name;
-        }
-    }
-
-    private String formatStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return "Unknown";
-        }
-        return status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
+        @Override public String toString() { return name; }
     }
 }

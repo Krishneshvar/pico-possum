@@ -116,7 +116,6 @@ public class TaxCalculationCache {
         key.append("_ITEMS:");
         for (var item : invoice.items()) {
             key.append(item.getProductId())
-               .append("_").append(item.getVariantId())
                .append("_").append(item.getPrice())
                .append("_").append(item.getQuantity())
                .append("_").append(item.getTaxCategoryId())

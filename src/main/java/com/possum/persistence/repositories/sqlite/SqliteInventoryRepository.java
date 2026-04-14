@@ -2,11 +2,11 @@ package com.possum.persistence.repositories.sqlite;
 
 import com.possum.domain.model.InventoryAdjustment;
 import com.possum.domain.model.InventoryLot;
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import com.possum.persistence.db.ConnectionProvider;
 import com.possum.persistence.mappers.InventoryAdjustmentMapper;
 import com.possum.persistence.mappers.InventoryLotMapper;
-import com.possum.persistence.mappers.VariantMapper;
+import com.possum.persistence.mappers.ProductMapper;
 import com.possum.domain.repositories.InventoryRepository;
 import com.possum.shared.dto.AvailableLot;
 import com.possum.shared.util.SqlMapperUtils;
@@ -20,62 +20,62 @@ import java.util.Optional;
 public final class SqliteInventoryRepository extends BaseSqliteRepository implements InventoryRepository {
 
     private static final String STOCK_SQL = """
-            COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE variant_id = v.id), 0)
-            + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE variant_id = v.id AND (reason != 'confirm_receive' OR lot_id IS NULL)), 0)
+            COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE product_id = p.id), 0)
+            + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE product_id = p.id AND (reason != 'confirm_receive' OR lot_id IS NULL)), 0)
             """;
 
     private final InventoryLotMapper lotMapper = new InventoryLotMapper();
     private final InventoryAdjustmentMapper adjustmentMapper = new InventoryAdjustmentMapper();
-    private final VariantMapper variantMapper = new VariantMapper();
+    private final ProductMapper productMapper = new ProductMapper();
 
     public SqliteInventoryRepository(ConnectionProvider connectionProvider) {
         super(connectionProvider);
     }
 
     @Override
-    public int getStockByVariantId(long variantId) {
+    public int getStockByProductId(long productId) {
         return queryOne(
                 """
                 SELECT
-                  COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE variant_id = ?), 0)
-                  + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE variant_id = ? AND (reason != 'confirm_receive' OR lot_id IS NULL)), 0) AS stock
+                  COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE product_id = ?), 0)
+                  + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE product_id = ? AND (reason != 'confirm_receive' OR lot_id IS NULL)), 0) AS stock
                 """,
                 rs -> rs.getInt("stock"),
-                variantId,
-                variantId
+                productId,
+                productId
         ).orElse(0);
     }
 
     @Override
-    public List<InventoryLot> findLotsByVariantId(long variantId) {
+    public List<InventoryLot> findLotsByProductId(long productId) {
         return queryList(
                 """
                 SELECT il.*
                 FROM inventory_lots il
-                WHERE il.variant_id = ?
+                WHERE il.product_id = ?
                 ORDER BY il.created_at DESC
                 """,
                 lotMapper,
-                variantId
+                productId
         );
     }
 
     @Override
-    public List<AvailableLot> findAvailableLots(long variantId) {
+    public List<AvailableLot> findAvailableLotsByProductId(long productId) {
         return queryList(
                 """
                 SELECT 
-                  il.id, il.variant_id, il.batch_number, il.manufactured_date, il.expiry_date,
+                  il.id, il.product_id, il.batch_number, il.manufactured_date, il.expiry_date,
                   il.quantity AS initial_quantity, il.unit_cost, il.purchase_order_item_id, il.created_at,
                   (il.quantity + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE lot_id = il.id), 0)) AS remaining_quantity
                 FROM inventory_lots il
-                WHERE il.variant_id = ?
+                WHERE il.product_id = ?
                   AND (il.quantity + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE lot_id = il.id), 0)) > 0
                 ORDER BY il.created_at ASC
                 """,
                 rs -> new AvailableLot(
                         rs.getLong("id"),
-                        rs.getLong("variant_id"),
+                        rs.getLong("product_id"),
                         rs.getString("batch_number"),
                         SqlMapperUtils.getLocalDateTime(rs, "manufactured_date"),
                         SqlMapperUtils.getLocalDateTime(rs, "expiry_date"),
@@ -85,7 +85,7 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                         SqlMapperUtils.getLocalDateTime(rs, "created_at"),
                         rs.getInt("remaining_quantity")
                 ),
-                variantId
+                productId
         );
     }
 
@@ -99,17 +99,15 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         StringBuilder sql = new StringBuilder("""
                 SELECT
                     ia.id,
-                    ia.variant_id,
+                    ia.product_id,
                     p.name AS product_name,
-                    v.name AS variant_name,
-                    v.sku,
+                    p.sku,
                     ia.quantity_change,
                     ia.reason,
                     u.name AS adjusted_by_name,
                     ia.adjusted_at
                 FROM inventory_adjustments ia
-                JOIN variants v ON ia.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON ia.product_id = p.id
                 LEFT JOIN users u ON ia.adjusted_by = u.id
                 WHERE 1=1
                 """);
@@ -117,9 +115,8 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         java.util.List<Object> params = new java.util.ArrayList<>();
 
         if (search != null && !search.trim().isEmpty()) {
-            sql.append(" AND (p.name LIKE ? OR v.name LIKE ? OR v.sku LIKE ?) ");
+            sql.append(" AND (p.name LIKE ? OR p.sku LIKE ?) ");
             String searchPattern = "%" + search.trim() + "%";
-            params.add(searchPattern);
             params.add(searchPattern);
             params.add(searchPattern);
         }
@@ -158,18 +155,18 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
     }
 
     @Override
-    public List<InventoryAdjustment> findAdjustmentsByVariantId(long variantId, int limit, int offset) {
+    public List<InventoryAdjustment> findAdjustmentsByProductId(long productId, int limit, int offset) {
         return queryList(
                 """
                 SELECT ia.*, u.name AS adjusted_by_name
                 FROM inventory_adjustments ia
                 LEFT JOIN users u ON ia.adjusted_by = u.id
-                WHERE ia.variant_id = ?
+                WHERE ia.product_id = ?
                 ORDER BY ia.adjusted_at DESC
                 LIMIT ? OFFSET ?
                 """,
                 adjustmentMapper,
-                variantId,
+                productId,
                 limit,
                 offset
         );
@@ -190,11 +187,11 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         return executeInsert(
                 """
                 INSERT INTO inventory_lots (
-                  variant_id, batch_number, manufactured_date, expiry_date, quantity, unit_cost, purchase_order_item_id
+                  product_id, batch_number, manufactured_date, expiry_date, quantity, unit_cost, purchase_order_item_id
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                lot.variantId(),
+                lot.productId(),
                 lot.batchNumber(),
                 lot.manufacturedDate(),
                 lot.expiryDate(),
@@ -209,11 +206,11 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         return executeInsert(
                 """
                 INSERT INTO inventory_adjustments (
-                  variant_id, lot_id, quantity_change, reason, reference_type, reference_id, adjusted_by
+                  product_id, lot_id, quantity_change, reason, reference_type, reference_id, adjusted_by
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                adjustment.variantId(),
+                adjustment.productId(),
                 adjustment.lotId(),
                 adjustment.quantityChange(),
                 adjustment.reason(),
@@ -229,19 +226,21 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
     }
 
     @Override
-    public List<Variant> findLowStockVariants() {
+    public List<Product> findLowStockProducts() {
         return queryList(
                 """
                 SELECT
-                  v.id, v.product_id, p.name AS product_name, v.name, v.sku, v.mrp AS price, v.cost_price, v.stock_alert_cap,
-                  v.is_default, v.status, p.image_path, (%s) AS stock, v.created_at, v.updated_at, v.deleted_at
-                FROM variants v
-                JOIN products p ON v.product_id = p.id
-                WHERE v.deleted_at IS NULL AND p.deleted_at IS NULL
-                  AND (%s) <= v.stock_alert_cap
+                  p.id, p.name, p.description, p.category_id, c.name AS category_name, p.tax_category_id,
+                  tc.name AS tax_category_name, p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
+                  p.status, p.image_path, (%s) AS stock, p.created_at, p.updated_at, p.deleted_at
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
+                WHERE p.deleted_at IS NULL
+                  AND (%s) <= p.stock_alert_cap
                 ORDER BY stock ASC
                 """.formatted(STOCK_SQL, STOCK_SQL),
-                variantMapper
+                productMapper
         );
     }
 
@@ -251,12 +250,11 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                 """
                 SELECT il.*
                 FROM inventory_lots il
-                JOIN variants v ON il.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON il.product_id = p.id
                 WHERE il.expiry_date IS NOT NULL
                   AND il.expiry_date <= date('now', '+' || ? || ' days')
                   AND il.expiry_date >= date('now')
-                  AND v.deleted_at IS NULL
+                  AND p.deleted_at IS NULL
                 ORDER BY il.expiry_date ASC
                 """,
                 lotMapper,
@@ -268,20 +266,19 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
     public Map<String, Object> getInventoryStats() {
         return queryOne(
                 """
-                WITH VariantStock AS (
+                WITH ProductStock AS (
                   SELECT
-                    v.id,
-                    v.stock_alert_cap,
+                    p.id,
+                    p.stock_alert_cap,
                     (%s) AS current_stock
-                  FROM variants v
-                  JOIN products p ON v.product_id = p.id
-                  WHERE v.deleted_at IS NULL AND p.deleted_at IS NULL
+                  FROM products p
+                  WHERE p.deleted_at IS NULL
                 )
                 SELECT
                   COALESCE(SUM(current_stock), 0) AS totalItemsInStock,
                   COUNT(CASE WHEN current_stock = 0 THEN 1 END) AS productsWithNoStock,
                   COUNT(CASE WHEN current_stock <= stock_alert_cap THEN 1 END) AS productsWithLowStock
-                FROM VariantStock
+                FROM ProductStock
                 """.formatted(STOCK_SQL),
                 rs -> {
                     java.util.Map<String, Object> map = new java.util.HashMap<>();

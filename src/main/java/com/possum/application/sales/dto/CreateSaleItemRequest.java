@@ -3,14 +3,14 @@ package com.possum.application.sales.dto;
 import java.math.BigDecimal;
 
 public record CreateSaleItemRequest(
-        long variantId,
+        long productId,
         int quantity,
         BigDecimal discount,
         BigDecimal pricePerUnit
 ) {
     public void validate() {
-        if (variantId <= 0) {
-            throw new IllegalArgumentException("Variant ID must be positive");
+        if (productId <= 0) {
+            throw new IllegalArgumentException("Product ID must be positive");
         }
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");

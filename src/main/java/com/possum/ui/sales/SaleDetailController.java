@@ -2,6 +2,7 @@ package com.possum.ui.sales;
 
 import com.possum.application.sales.SalesService;
 import com.possum.application.sales.dto.SaleResponse;
+import com.possum.domain.model.Product;
 import com.possum.domain.model.Sale;
 import com.possum.domain.model.SaleItem;
 import com.possum.domain.model.Transaction;
@@ -108,7 +109,7 @@ public class SaleDetailController implements Parameterizable {
         tableManager.setupActiveItemsTable();
         tableManager.setupReturnedItemsTable();
 
-        searchHandler = new SaleDetailSearchHandler(itemSearchField, searchIndex, this::addVariantToEditingItems);
+        searchHandler = new SaleDetailSearchHandler(itemSearchField, searchIndex, this::addProductToEditingItems);
         searchHandler.setup();
 
         setupEditControls();
@@ -150,15 +151,15 @@ public class SaleDetailController implements Parameterizable {
         draftTotalLabel.setText(CurrencyUtil.format(subtotal.add(taxEstimate).subtract(discounts)));
     }
 
-    private void addVariantToEditingItems(com.possum.domain.model.Variant variant) {
+    private void addProductToEditingItems(Product product) {
         editingItems.stream()
-            .filter(i -> i.variantId() == variant.id())
+            .filter(i -> i.productId().equals(product.id()))
             .findFirst()
             .ifPresentOrElse(
                 existing -> {
                     int idx = editingItems.indexOf(existing);
                     editingItems.set(idx, new SaleItem(
-                        existing.id(), existing.saleId(), existing.variantId(), existing.variantName(),
+                        existing.id(), existing.saleId(), existing.productId(),
                         existing.sku(), existing.productName(), existing.quantity() + 1, existing.pricePerUnit(),
                         existing.costPerUnit(), existing.taxRate(), existing.taxAmount(),
                         existing.appliedTaxRate(), existing.appliedTaxAmount(), 
@@ -167,9 +168,9 @@ public class SaleDetailController implements Parameterizable {
                 },
                 () -> {
                     editingItems.add(new SaleItem(
-                        null, currentSale.id(), variant.id(), variant.name(),
-                        variant.sku(), variant.productName() != null ? variant.productName() : "New Product", 
-                        1, variant.price(), variant.costPrice(), 
+                        null, currentSale.id(), product.id(),
+                        product.sku(), product.name(), 
+                        1, product.mrp(), product.costPrice(), 
                         BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 
                         null, BigDecimal.ZERO, null
                     ));
@@ -342,18 +343,15 @@ public class SaleDetailController implements Parameterizable {
         tableManager.setEditingMode(editing);
 
         if (editing) {
-            // Populate selections
             customerCombo.setItems(FXCollections.observableArrayList(salesService.getAllCustomers()));
             paymentMethodCombo.setItems(FXCollections.observableArrayList(salesService.getPaymentMethods()));
             
-            // Pre-select current customer
             long currentCustomerId = currentSale.customerId() != null ? currentSale.customerId() : -1L;
             customerCombo.getItems().stream()
                 .filter(c -> c.id() == currentCustomerId)
                 .findFirst()
                 .ifPresent(customerCombo::setValue);
             
-            // Pre-select current payment method
             long currentMethodId = saleDetails.transactions().stream()
                     .filter(t -> "payment".equals(t.type()))
                     .map(com.possum.domain.model.Transaction::paymentMethodId)
@@ -372,7 +370,6 @@ public class SaleDetailController implements Parameterizable {
             itemsTable.getTableView().setItems(FXCollections.observableArrayList(saleDetails.items()));
         }
 
-        // Toggle layout visibility
         editButton.setVisible(!editing);
         editButton.setManaged(!editing);
         editActionsDock.setVisible(editing);
@@ -400,19 +397,17 @@ public class SaleDetailController implements Parameterizable {
             com.possum.domain.model.Customer selectedCustomer = customerCombo.getValue();
             com.possum.domain.model.PaymentMethod selectedMethod = paymentMethodCombo.getValue();
             
-            Long newCustomerId = selectedCustomer != null ? selectedCustomer.id() : null;
+            Long childCustomerId = selectedCustomer != null ? selectedCustomer.id() : null;
             long newMethodId = selectedMethod != null ? selectedMethod.id() : -1L;
             
             com.possum.application.auth.AuthUser currentUser = com.possum.application.auth.AuthContext.getCurrentUser();
             boolean changed = false;
 
-            // 1. Correct Customer
-            if (!java.util.Objects.equals(currentSale.customerId(), newCustomerId)) {
-                salesService.changeSaleCustomer(currentSale.id(), newCustomerId, currentUser.id());
+            if (!java.util.Objects.equals(currentSale.customerId(), childCustomerId)) {
+                salesService.changeSaleCustomer(currentSale.id(), childCustomerId, currentUser.id());
                 changed = true;
             }
 
-            // 2. Correct Payment Method
             long currentMethodId = saleDetails.transactions().stream()
                     .filter(t -> "payment".equals(t.type()))
                     .map(com.possum.domain.model.Transaction::paymentMethodId)
@@ -424,22 +419,19 @@ public class SaleDetailController implements Parameterizable {
                 changed = true;
             }
 
-            // 3. Batch Update Items
             List<UpdateSaleItemRequest> itemRequests = editingItems.stream()
                     .map(item -> new UpdateSaleItemRequest(
-                            item.variantId(), item.quantity(), item.pricePerUnit(), item.discountAmount()
+                            item.productId(), item.quantity(), item.pricePerUnit(), item.discountAmount()
                     )).toList();
             
-            // Note: We always update items if we're saving in edit mode to capture qty/price changes
             salesService.updateSaleItems(currentSale.id(), itemRequests, currentUser.id());
             changed = true;
 
             if (changed) {
                 NotificationService.success("Bill updated successfully");
-                loadSaleDetails(); // Reload data from DB
+                loadSaleDetails();
             }
-            
-            toggleEditMode(); // Exit edit mode
+            toggleEditMode();
             
         } catch (Exception e) {
             LoggingConfig.getLogger().error("Failed to save sale details update: {}", e.getMessage(), e);

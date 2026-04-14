@@ -7,7 +7,8 @@ public enum InventoryReason {
     SPOILAGE("spoilage"),
     DAMAGE("damage"),
     THEFT("theft"),
-    CORRECTION("correction");
+    CORRECTION("correction"),
+    PRODUCT_DELETED("product_deleted");
 
     private final String value;
 

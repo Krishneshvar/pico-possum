@@ -161,7 +161,7 @@ public class SalesAnalyticsController {
         series.setName("Quantity Sold");
         
         for (TopProduct product : topProducts) {
-            String label = product.productName() + (product.variantName() != null ? " - " + product.variantName() : "");
+            String label = product.productName();
             if (label.length() > 20) label = label.substring(0, 20) + "...";
             series.getData().add(new XYChart.Data<>(label, product.totalQuantitySold()));
         }

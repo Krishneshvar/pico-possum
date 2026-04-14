@@ -47,7 +47,7 @@ class TaxEngineTest {
         ));
         taxEngine.init();
 
-        TaxableItem item = new TaxableItem("Product", "Variant", BigDecimal.valueOf(100), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", BigDecimal.valueOf(100), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
 
         TaxCalculationResult result = taxEngine.calculate(invoice, null);
@@ -65,7 +65,7 @@ class TaxEngineTest {
         taxEngine.init();
 
         // If price is 110 inclusive of 10% tax, base is 100, tax is 10.
-        TaxableItem item = new TaxableItem("Product", "Variant", BigDecimal.valueOf(110), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", BigDecimal.valueOf(110), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
 
         TaxCalculationResult result = taxEngine.calculate(invoice, null);
@@ -83,7 +83,7 @@ class TaxEngineTest {
         ));
         taxEngine.init();
 
-        TaxableItem item = new TaxableItem("Product", "Variant", BigDecimal.valueOf(100), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", BigDecimal.valueOf(100), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
 
         TaxCalculationResult result = taxEngine.calculate(invoice, null);
@@ -100,7 +100,7 @@ class TaxEngineTest {
         Customer exemptCustomer = mock(Customer.class);
         when(exemptCustomer.isTaxExempt()).thenReturn(true);
 
-        TaxableItem item = new TaxableItem("Product", "Variant", BigDecimal.valueOf(100), 1, null, 1L, 1L);
+        TaxableItem item = new TaxableItem("Product", BigDecimal.valueOf(100), 1, null, 1L);
         TaxableInvoice invoice = new TaxableInvoice(List.of(item));
 
         TaxCalculationResult result = taxEngine.calculate(invoice, exemptCustomer);

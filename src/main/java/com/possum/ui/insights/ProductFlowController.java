@@ -4,7 +4,6 @@ import com.possum.application.inventory.ProductFlowService;
 import com.possum.application.products.ProductService;
 import com.possum.domain.model.Product;
 import com.possum.domain.model.ProductFlow;
-import com.possum.domain.model.Variant;
 import com.possum.ui.common.controls.*;
 import com.possum.ui.sales.ProductSearchIndex;
 import com.possum.shared.util.TimeUtil;
@@ -32,8 +31,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-
-
 public class ProductFlowController {
 
     @FXML private VBox root;
@@ -46,7 +43,6 @@ public class ProductFlowController {
     @FXML private Label totalReturnedLabel;
     @FXML private Label netMovementLabel;
 
-    private ComboBox<String> selectionTypeCombo;
     private MultiSelectFilter<String> eventTypeFilter;
     private DatePicker startDatePicker;
     private DatePicker endDatePicker;
@@ -54,14 +50,14 @@ public class ProductFlowController {
     @FXML private HBox searchDock;
     @FXML private TextField searchField;
     private Popup searchPopup = new Popup();
-    private ListView<Object> searchResultsView = new ListView<>(FXCollections.observableArrayList());
+    private ListView<Product> searchResultsView = new ListView<>(FXCollections.observableArrayList());
 
     private final ProductSearchIndex searchIndex;
     private final ProductFlowService productFlowService;
     private final ProductService productService;
     private final SalesService salesService;
     private final WorkspaceManager workspaceManager;
-    private Object selectedItem;
+    private Product selectedProduct;
 
     public ProductFlowController(ProductFlowService productFlowService,
                                  ProductService productService,
@@ -92,28 +88,10 @@ public class ProductFlowController {
         filterBar.setSearchVisible(false);
         filterBar.setResetInBottomRow(false);
         
-        // 1. Setup Top Row: [ Search Dock | Analyze By | Reset ]
-        selectionTypeCombo = filterBar.addFilter("analyzeBy", "Analyze By");
-        selectionTypeCombo.getItems().addAll("Product", "Variant");
-        selectionTypeCombo.setValue("Product");
-        
         HBox topRow = filterBar.getTopRow();
-        // Move Translate UI components to Top Row while preserving Right Actions/Spacer
-        filterBar.getBottomRow().getChildren().remove(selectionTypeCombo);
-        
-        // Remove standard components we want to replace/reorder
-        topRow.getChildren().remove(searchDock); // in case it was already there
-        topRow.getChildren().remove(selectionTypeCombo);
-        
-        filterBar.setResetInBottomRow(false); 
-        // topRow now has: [originalSearchField (hidden), resetButton, spacer, rightActions]
-        
-        // Final Arrangement: [searchDock, selectionTypeCombo, resetButton, spacer, rightActions]
+        topRow.getChildren().remove(searchDock); 
         topRow.getChildren().add(0, searchDock);
-        topRow.getChildren().add(1, selectionTypeCombo);
-        // resetButton is already at index 2 (was index 1 before our adds)
         
-        // 2. Setup Bottom Row: [ From Date | To Date | Event Type ]
         startDatePicker = filterBar.addDateFilter("startDate", "From Date");
         endDatePicker = filterBar.addDateFilter("endDate", "To Date");
         
@@ -124,24 +102,15 @@ public class ProductFlowController {
 
         setupSearchAutocomplete();
 
-        selectionTypeCombo.setOnAction(e -> {
-            selectedItem = null;
-            searchField.clear();
-            searchPopup.hide();
-            clearData();
-        });
-
         filterBar.setOnFilterChange(filters -> loadData());
         paginationBar.setOnPageChange((page, size) -> loadData());
     }
-
-
 
     private void setupTable() {
         flowTable.setEmptyIcon("⌕");
         flowTable.setEmptyIconStyle("-fx-font-size: 48px; -fx-opacity: 0.4; -fx-text-fill: -color-text-muted; -fx-font-family: 'Segoe UI Symbol';");
         flowTable.setEmptyMessage("Select a product to analyze its flow");
-        flowTable.setEmptySubtitle("Search for a product or variant above to monitor its stock history and performance.");
+        flowTable.setEmptySubtitle("Search for a product above to monitor its stock history and performance.");
 
         TableColumn<ProductFlow, String> billIdCol = new TableColumn<>("Bill ID");
         billIdCol.setCellValueFactory(cellData -> new SimpleStringProperty(
@@ -188,11 +157,7 @@ public class ProductFlowController {
 
         TableColumn<ProductFlow, String> productCol = new TableColumn<>("Product");
         productCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().productName()));
-        productCol.setPrefWidth(160);
-
-        TableColumn<ProductFlow, String> variantCol = new TableColumn<>("Variant");
-        variantCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().variantName()));
-        variantCol.setPrefWidth(140);
+        productCol.setPrefWidth(200);
 
         TableColumn<ProductFlow, Integer> quantityCol = new TableColumn<>("Quantity");
         quantityCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().quantity()));
@@ -245,13 +210,12 @@ public class ProductFlowController {
         });
 
         flowTable.getTableView().getColumns().setAll(List.of(
-            billIdCol, customerCol, productCol, variantCol, quantityCol, typeCol, dateCol
+            billIdCol, customerCol, productCol, quantityCol, typeCol, dateCol
         ));
     }
 
-
     private void loadData() {
-        if (selectedItem == null) {
+        if (selectedProduct == null) {
             clearData();
             return;
         }
@@ -259,7 +223,6 @@ public class ProductFlowController {
         flowTable.setLoading(true);
         Platform.runLater(() -> {
             try {
-                String type = selectionTypeCombo.getValue();
                 LocalDate start = startDatePicker.getValue();
                 LocalDate end = endDatePicker.getValue();
                 
@@ -267,21 +230,19 @@ public class ProductFlowController {
                 String endStr = end != null ? end.atTime(23, 59, 59).toString() : null;
 
                 List<String> eventTypes = eventTypeFilter.getSelectedItems();
-                List<ProductFlow> flow;
-                Map<String, Object> summary;
                 
-                if ("Product".equals(type)) {
-                    Product p = (Product) selectedItem;
-                    flow = productFlowService.getProductTimeline(p.id(), paginationBar.getPageSize(), paginationBar.getCurrentPage() * paginationBar.getPageSize(), startStr, endStr, eventTypes);
-                    summary = productFlowService.getProductFlowSummary(p.id());
-                } else {
-                    Variant v = (Variant) selectedItem;
-                    flow = productFlowService.getVariantTimeline(v.id(), paginationBar.getPageSize(), paginationBar.getCurrentPage() * paginationBar.getPageSize(), startStr, endStr, eventTypes);
-                    summary = productFlowService.getVariantFlowSummary(v.id());
-                }
+                List<ProductFlow> flow = productFlowService.getProductTimeline(
+                    selectedProduct.id(), 
+                    paginationBar.getPageSize(), 
+                    paginationBar.getCurrentPage() * paginationBar.getPageSize(), 
+                    startStr, 
+                    endStr, 
+                    eventTypes
+                );
+                
+                Map<String, Object> summary = productFlowService.getProductFlowSummary(selectedProduct.id());
 
                 flowTable.setItems(FXCollections.observableArrayList(flow));
-                // For now, if we have results, assume there might be more or just show actual count
                 paginationBar.setTotalItems(flow.size() < paginationBar.getPageSize() ? (paginationBar.getCurrentPage() * paginationBar.getPageSize() + flow.size()) : 1000); 
                 
                 updateSummary(summary);
@@ -305,25 +266,17 @@ public class ProductFlowController {
 
         searchResultsView.setCellFactory(lv -> new ListCell<>() {
             @Override
-            protected void updateItem(Object item, boolean empty) {
+            protected void updateItem(Product item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setGraphic(null);
                 } else {
                     VBox box = new VBox(2);
                     box.getStyleClass().add("search-item-box");
-                    Label nameLabel = new Label();
+                    Label nameLabel = new Label(item.name());
                     nameLabel.getStyleClass().add("search-item-name");
-                    Label detailsLabel = new Label();
+                    Label detailsLabel = new Label("Product - SKU: " + item.sku() + " | Stock: " + (item.stock() != null ? item.stock() : "0"));
                     detailsLabel.getStyleClass().add("search-item-details");
-
-                    if (item instanceof Product p) {
-                        nameLabel.setText(p.name());
-                        detailsLabel.setText("Product - ID: " + p.id());
-                    } else if (item instanceof Variant v) {
-                        nameLabel.setText(v.productName() + (v.name().equalsIgnoreCase("Standard") ? "" : " - " + v.name()));
-                        detailsLabel.setText("Variant - SKU: " + v.sku() + " | Price: " + v.price());
-                    }
 
                     box.getChildren().addAll(nameLabel, detailsLabel);
                     setGraphic(box);
@@ -345,9 +298,9 @@ public class ProductFlowController {
         });
 
         searchResultsView.setOnMouseClicked(e -> {
-            Object selected = searchResultsView.getSelectionModel().getSelectedItem();
+            Product selected = searchResultsView.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                selectItem(selected);
+                selectProduct(selected);
             }
         });
 
@@ -360,9 +313,9 @@ public class ProductFlowController {
 
         searchResultsView.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
-                Object selected = searchResultsView.getSelectionModel().getSelectedItem();
+                Product selected = searchResultsView.getSelectionModel().getSelectedItem();
                 if (selected != null) {
-                    selectItem(selected);
+                    selectProduct(selected);
                 }
             } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
                 searchPopup.hide();
@@ -372,24 +325,7 @@ public class ProductFlowController {
     }
 
     private void showAutocompletePopup(String query) {
-        String type = selectionTypeCombo.getValue();
-        List<Variant> variants = searchIndex.searchByName(query);
-        
-        List<Object> results = new java.util.ArrayList<>();
-        if ("Product".equals(type)) {
-            // Group variants by product and map to Product objects
-            java.util.Set<Long> productIds = new java.util.HashSet<>();
-            for (Variant v : variants) {
-                if (productIds.add(v.productId())) {
-                    try {
-                        Product p = productService.getProductById(v.productId());
-                        if (p != null) results.add(p);
-                    } catch (Exception e) {}
-                }
-            }
-        } else {
-            results.addAll(variants);
-        }
+        List<Product> results = searchIndex.searchByName(query);
 
         if (results.isEmpty()) {
             searchPopup.hide();
@@ -403,13 +339,9 @@ public class ProductFlowController {
         }
     }
 
-    private void selectItem(Object item) {
-        this.selectedItem = item;
-        if (item instanceof Product p) {
-            searchField.setText(p.name());
-        } else if (item instanceof Variant v) {
-            searchField.setText(v.productName() + (v.name().equalsIgnoreCase("Standard") ? "" : " - " + v.name()));
-        }
+    private void selectProduct(Product product) {
+        this.selectedProduct = product;
+        searchField.setText(product.name());
         searchPopup.hide();
         loadData();
     }
@@ -428,8 +360,6 @@ public class ProductFlowController {
         });
     }
 
-
-
     private void updateSummary(Map<String, Object> summary) {
         if (summary == null || summary.isEmpty()) {
             clearSummary();
@@ -445,12 +375,13 @@ public class ProductFlowController {
     }
 
     private void applyPopupListStyles(ListView<?> listView) {
-        String stylesheet = Objects.requireNonNull(
-                getClass().getResource("/styles/views/pos.css"),
-                "Missing stylesheet: /styles/views/pos.css").toExternalForm();
-        if (!listView.getStylesheets().contains(stylesheet)) {
-            listView.getStylesheets().add(stylesheet);
-        }
+        try {
+            String stylesheet = Objects.requireNonNull(
+                    getClass().getResource("/styles/views/pos.css")).toExternalForm();
+            if (!listView.getStylesheets().contains(stylesheet)) {
+                listView.getStylesheets().add(stylesheet);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void clearData() {
@@ -466,6 +397,7 @@ public class ProductFlowController {
         netMovementLabel.setText("0");
         netMovementLabel.setStyle("");
     }
+
     private void handleViewBill(ProductFlow flow) {
         if (flow.billRefId() == null) return;
         
@@ -481,7 +413,7 @@ public class ProductFlowController {
                 }
             } else if ("purchase_order".equalsIgnoreCase(flow.referenceType()) || "purchase".equalsIgnoreCase(flow.eventType())) {
                 Map<String, Object> params = new HashMap<>();
-                params.put("id", billId);
+                params.put("orderId", billId);
                 workspaceManager.openOrFocusWindow("PO: " + flow.billRefNumber(), "/fxml/purchase/purchase-order-detail.fxml", params);
             }
         } catch (Exception e) {

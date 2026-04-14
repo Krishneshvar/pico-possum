@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class CartItem {
-    private Variant variant;
+    private Product product;
     private int quantity;
     private BigDecimal pricePerUnit;
     private String discountType = "fixed"; // "fixed" or "pct"
@@ -19,10 +19,10 @@ public class CartItem {
 
     public CartItem() {}
 
-    public CartItem(Variant variant, int quantity) {
-        this.variant = variant;
+    public CartItem(Product product, int quantity) {
+        this.product = product;
         this.quantity = quantity;
-        this.pricePerUnit = variant.price();
+        this.pricePerUnit = product.mrp();
     }
 
     public void calculateBasics() {
@@ -37,8 +37,8 @@ public class CartItem {
     }
 
     // Getters and Setters
-    public Variant getVariant() { return variant; }
-    public void setVariant(Variant variant) { this.variant = variant; }
+    public Product getProduct() { return product; }
+    public void setProduct(Product product) { this.product = product; }
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public BigDecimal getPricePerUnit() { return pricePerUnit; }

@@ -199,9 +199,6 @@ public class BillRenderer {
             BigDecimal amount = rate.multiply(qty);
             
             String itemName = item.productName();
-            if (item.variantName() != null && !item.variantName().equals("Default")) {
-                itemName += " (" + item.variantName() + ")";
-            }
             
             html.append("<tr>")
                 .append("<td class=\"col-item\">").append(escapeHtml(itemName)).append("</td>")

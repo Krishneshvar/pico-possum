@@ -29,6 +29,10 @@ public class CategoryService {
                 .orElseThrow(() -> new NotFoundException("Category not found"));
     }
 
+    public java.util.Optional<Category> findCategoryById(long id) {
+        return categoryRepository.findCategoryById(id);
+    }
+
     public Category createCategory(String name, Long parentId) {
         com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.CATEGORIES_MANAGE);
         if (name == null || name.trim().isEmpty()) {

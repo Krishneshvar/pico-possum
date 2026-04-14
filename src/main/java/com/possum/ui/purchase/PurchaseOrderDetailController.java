@@ -69,7 +69,7 @@ public class PurchaseOrderDetailController implements Parameterizable {
     }
 
     private void setupItemsTable() {
-        TableColumn<PurchaseOrderItem, String> productCol = new TableColumn<>("Product | Variant");
+        TableColumn<PurchaseOrderItem, String> productCol = new TableColumn<>("Product");
         productCol.setPrefWidth(300);
         productCol.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -82,9 +82,9 @@ public class PurchaseOrderDetailController implements Parameterizable {
                     VBox vbox = new VBox(2);
                     Label productLabel = new Label(poi.productName());
                     productLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-                    Label variantLabel = new Label(poi.sku() + " (" + poi.variantName() + ")");
-                    variantLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 10px;");
-                    vbox.getChildren().addAll(productLabel, variantLabel);
+                    Label skuLabel = new Label(poi.sku());
+                    skuLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 10px;");
+                    vbox.getChildren().addAll(productLabel, skuLabel);
                     setGraphic(vbox);
                 }
             }

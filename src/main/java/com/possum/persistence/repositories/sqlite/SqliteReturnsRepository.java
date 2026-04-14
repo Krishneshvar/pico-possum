@@ -69,46 +69,19 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
     }
 
     @Override
-    public List<Return> findReturnsBySaleId(long saleId) {
-        return queryList(
-                """
-                SELECT
-                  r.*,
-                  s.invoice_number,
-                  u.name AS processed_by_name,
-                  COALESCE((SELECT SUM(refund_amount) FROM return_items WHERE return_id = r.id), 0) AS total_refund,
-                  t.payment_method_id,
-                  pm.name AS payment_method_name
-                FROM returns r
-                JOIN sales s ON r.sale_id = s.id
-                JOIN users u ON r.user_id = u.id
-                LEFT JOIN transactions t ON t.sale_id = r.sale_id AND t.type = 'refund'
-                LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
-                WHERE r.sale_id = ?
-                GROUP BY r.id
-                ORDER BY r.created_at DESC
-                """,
-                returnMapper,
-                saleId
-        );
-    }
-
-    @Override
     public List<ReturnItem> findReturnItems(long returnId) {
         return queryList(
                 """
                 SELECT
                   ri.*,
-                  si.variant_id,
+                  si.product_id,
                   si.price_per_unit,
                   si.tax_rate,
-                  v.name AS variant_name,
-                  v.sku,
+                  p.sku,
                   p.name AS product_name
                 FROM return_items ri
                 JOIN sale_items si ON ri.sale_item_id = si.id
-                JOIN variants v ON si.variant_id = v.id
-                JOIN products p ON v.product_id = p.id
+                JOIN products p ON si.product_id = p.id
                 WHERE ri.return_id = ?
                 ORDER BY ri.id ASC
                 """,
@@ -205,7 +178,6 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
             params.add(fuzzy);
         }
 
-        // Subquery for total refund amount to allow filtering by the calculated total
         String refundSub = "(SELECT COALESCE(SUM(ri.refund_amount), 0) FROM return_items ri WHERE ri.return_id = r.id)";
         if (filter.minAmount() != null) {
             joiner.add(refundSub + " >= ?");
@@ -226,5 +198,30 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
             return "";
         }
         return "WHERE " + joiner;
+    }
+
+    @Override
+    public List<Return> findReturnsBySaleId(long saleId) {
+        return queryList(
+                """
+                SELECT
+                  r.*,
+                  s.invoice_number,
+                  u.name AS processed_by_name,
+                  COALESCE((SELECT SUM(refund_amount) FROM return_items WHERE return_id = r.id), 0) AS total_refund,
+                  t.payment_method_id,
+                  pm.name AS payment_method_name
+                FROM returns r
+                JOIN sales s ON r.sale_id = s.id
+                JOIN users u ON r.user_id = u.id
+                LEFT JOIN transactions t ON t.sale_id = r.sale_id AND t.type = 'refund'
+                LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
+                WHERE r.sale_id = ?
+                GROUP BY r.id
+                ORDER BY r.created_at DESC
+                """,
+                returnMapper,
+                saleId
+        );
     }
 }

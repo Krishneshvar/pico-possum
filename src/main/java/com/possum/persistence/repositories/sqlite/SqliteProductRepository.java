@@ -2,15 +2,14 @@ package com.possum.persistence.repositories.sqlite;
 
 import com.possum.domain.model.Product;
 import com.possum.domain.model.TaxRule;
-import com.possum.domain.model.Variant;
 import com.possum.persistence.db.ConnectionProvider;
 import com.possum.persistence.mappers.ProductMapper;
 import com.possum.persistence.mappers.TaxRuleMapper;
-import com.possum.persistence.mappers.VariantMapper;
 import com.possum.domain.repositories.ProductRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,26 +19,27 @@ import java.util.StringJoiner;
 public final class SqliteProductRepository extends BaseSqliteRepository implements ProductRepository {
 
     private final ProductMapper productMapper = new ProductMapper();
-    private final VariantMapper variantMapper = new VariantMapper();
     private final TaxRuleMapper taxRuleMapper = new TaxRuleMapper();
-    private final SqliteInventoryRepository inventoryRepository;
 
     public SqliteProductRepository(ConnectionProvider connectionProvider) {
         super(connectionProvider);
-        this.inventoryRepository = new SqliteInventoryRepository(connectionProvider);
     }
 
     @Override
     public long insertProduct(Product product) {
         return executeInsert(
                 """
-                INSERT INTO products (name, description, category_id, tax_category_id, status, image_path)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO products (name, description, category_id, tax_category_id, sku, mrp, cost_price, stock_alert_cap, status, image_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 product.name(),
                 product.description(),
                 product.categoryId(),
                 product.taxCategoryId(),
+                product.sku(),
+                product.mrp(),
+                product.costPrice(),
+                product.stockAlertCap() == null ? 10 : product.stockAlertCap(),
                 product.status() == null ? "active" : product.status(),
                 product.imagePath()
         );
@@ -51,8 +51,13 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 """
                 SELECT
                   p.id, p.name, p.description, p.category_id, c.name AS category_name, p.tax_category_id,
-                  tc.name AS tax_category_name,
-                  p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at
+                  tc.name AS tax_category_name, p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
+                  p.status, p.image_path,
+                  (
+                    COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
+                    + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id AND ia.reason != 'confirm_receive'), 0)
+                  ) AS stock,
+                  p.created_at, p.updated_at, p.deleted_at
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
                 LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
@@ -89,6 +94,22 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
             sql.append(", tax_category_id = ?");
             params.add(product.taxCategoryId());
         }
+        if (product.sku() != null) {
+            sql.append(", sku = ?");
+            params.add(product.sku());
+        }
+        if (product.mrp() != null) {
+            sql.append(", mrp = ?");
+            params.add(product.mrp());
+        }
+        if (product.costPrice() != null) {
+            sql.append(", cost_price = ?");
+            params.add(product.costPrice());
+        }
+        if (product.stockAlertCap() != null) {
+            sql.append(", stock_alert_cap = ?");
+            params.add(product.stockAlertCap());
+        }
         if (product.status() != null) {
             sql.append(", status = ?");
             params.add(product.status());
@@ -114,117 +135,108 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
 
     @Override
     public PagedResult<Product> findProducts(ProductFilter filter) {
-        List<Object> params = new ArrayList<>();
-        String where = buildWhere(filter, params);
+        List<Object> countParams = new ArrayList<>();
+        List<Object> queryParams = new ArrayList<>();
+        
+        String baseSql = """
+            SELECT 
+                p.id, p.name, p.description, p.category_id, c.name AS category_name, 
+                p.tax_category_id, tc.name AS tax_category_name, p.sku, p.mrp, p.cost_price, 
+                p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
+                (
+                    COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
+                    + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id AND ia.reason != 'confirm_receive'), 0)
+                ) AS stock
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
+            WHERE p.deleted_at IS NULL
+        """;
+
+        StringJoiner filterJoiner = new StringJoiner(" AND ");
+        
+        if (filter.searchTerm() != null && !filter.searchTerm().trim().isEmpty()) {
+            filterJoiner.add("(p.name LIKE ? OR p.sku LIKE ?)");
+            String term = "%" + filter.searchTerm().trim() + "%";
+            countParams.add(term); countParams.add(term);
+            queryParams.add(term); queryParams.add(term);
+        }
+        
+        if (filter.categories() != null && !filter.categories().isEmpty()) {
+            filterJoiner.add("p.category_id IN (" + placeholders(filter.categories().size()) + ")");
+            countParams.addAll(filter.categories());
+            queryParams.addAll(filter.categories());
+        }
+        
+        if (filter.taxCategories() != null && !filter.taxCategories().isEmpty()) {
+            filterJoiner.add("p.tax_category_id IN (" + placeholders(filter.taxCategories().size()) + ")");
+            countParams.addAll(filter.taxCategories());
+            queryParams.addAll(filter.taxCategories());
+        }
+        
+        if (filter.status() != null && !filter.status().isEmpty()) {
+            filterJoiner.add("p.status IN (" + placeholders(filter.status().size()) + ")");
+            countParams.addAll(filter.status());
+            queryParams.addAll(filter.status());
+        }
+
+        if (filter.minPrice() != null) {
+            filterJoiner.add("p.mrp >= ?");
+            countParams.add(filter.minPrice());
+            queryParams.add(filter.minPrice());
+        }
+        
+        if (filter.maxPrice() != null) {
+            filterJoiner.add("p.mrp <= ?");
+            countParams.add(filter.maxPrice());
+            queryParams.add(filter.maxPrice());
+        }
+
+        String filterStr = filterJoiner.length() > 0 ? " AND " + filterJoiner.toString() : "";
+        
+        // Stock Status filtering requires wrapping in a subquery or CTE since stock is computed
+        String wrappedSql = "SELECT * FROM (" + baseSql + filterStr + ") AS t";
+        StringJoiner stockJoiner = new StringJoiner(" OR ");
+        
+        if (filter.stockStatuses() != null && !filter.stockStatuses().isEmpty()) {
+            for (String status : filter.stockStatuses()) {
+                switch (status.toLowerCase()) {
+                    case "in-stock" -> stockJoiner.add("stock > stock_alert_cap");
+                    case "low-stock" -> stockJoiner.add("(stock > 0 AND stock <= stock_alert_cap)");
+                    case "out-of-stock" -> stockJoiner.add("stock <= 0");
+                }
+            }
+        }
+        
+        String stockFilterMatch = stockJoiner.length() > 0 ? " WHERE " + stockJoiner.toString() : "";
+        String finalCountSql = "SELECT COUNT(*) FROM (" + wrappedSql + stockFilterMatch + ")";
+        
+        int total = queryOne(finalCountSql, rs -> rs.getInt(1), countParams.toArray()).orElse(0);
+        
         int page = Math.max(1, filter.currentPage() + 1);
         int limit = Math.max(1, filter.itemsPerPage());
         int offset = (page - 1) * limit;
 
-        int total = queryOne(
-                """
-                SELECT COUNT(DISTINCT p.id) AS count
-                FROM products p
-                LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
-                %s
-                """.formatted(where),
-                rs -> rs.getInt("count"),
-                params.toArray()
-        ).orElse(0);
-
-        String sortColumn = switch (filter.sortBy() == null ? "name" : filter.sortBy()) {
-            case "category_name" -> "c.name";
-            case "stock" -> "computed_stock";
-            default -> "p.name";
+        String sortCol = switch (filter.sortBy() == null ? "name" : filter.sortBy()) {
+            case "stock" -> "stock";
+            case "price" -> "mrp";
+            case "category_name" -> "category_name";
+            default -> "name";
         };
-        String sortOrder = "DESC".equalsIgnoreCase(filter.sortOrder()) ? "DESC" : "ASC";
+        String sortDir = "DESC".equalsIgnoreCase(filter.sortOrder()) ? "DESC" : "ASC";
 
-        params.add(limit);
-        params.add(offset);
-        List<Product> rows = queryList(
-                """
-                SELECT
-                  p.id, p.name, p.description, p.category_id, c.name AS category_name, p.tax_category_id,
-                  tc.name AS tax_category_name,
-                  p.status, p.image_path,
-                  v.id AS variant_id,
-                  (
-                    COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.variant_id = v.id), 0)
-                    + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.variant_id = v.id AND ia.reason != 'confirm_receive'), 0)
-                  ) AS computed_stock,
-                  (
-                    COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.variant_id = v.id), 0)
-                    + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.variant_id = v.id AND ia.reason != 'confirm_receive'), 0)
-                  ) AS stock,
-                  p.created_at, p.updated_at, p.deleted_at
-                FROM products p
-                LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
-                LEFT JOIN variants v ON v.id = (
-                  SELECT v2.id
-                  FROM variants v2
-                  WHERE v2.product_id = p.id AND v2.deleted_at IS NULL
-                  ORDER BY v2.is_default DESC, v2.id ASC
-                  LIMIT 1
-                )
-                %s
-                GROUP BY p.id
-                ORDER BY %s %s
-                LIMIT ? OFFSET ?
-                """.formatted(where, sortColumn, sortOrder),
-                productMapper,
-                params.toArray()
-        );
-
+        String finalQuerySql = wrappedSql + stockFilterMatch + " ORDER BY " + sortCol + " " + sortDir + " LIMIT ? OFFSET ?";
+        queryParams.add(limit);
+        queryParams.add(offset);
+        
+        List<Product> items = queryList(finalQuerySql, productMapper, queryParams.toArray());
         int totalPages = (int) Math.ceil((double) total / limit);
-        return new PagedResult<>(rows, total, totalPages, page, limit);
+        
+        return new PagedResult<>(items, total, totalPages, page, limit);
     }
 
-    @Override
-    public Optional<ProductWithVariants> findProductWithVariants(long productId) {
-        Optional<Product> product = findProductById(productId);
-        if (product.isEmpty()) {
-            return Optional.empty();
-        }
-        List<Variant> variants = queryList(
-                """
-                SELECT
-                  v.id, v.product_id, p.name AS product_name, v.name, v.sku, v.mrp AS price, v.cost_price, v.stock_alert_cap,
-                  v.is_default, v.status, p.image_path, 0 AS stock, c.name AS category_name, tc.name AS tax_category_name,
-                  v.created_at, v.updated_at, v.deleted_at
-                FROM variants v
-                JOIN products p ON v.product_id = p.id
-                LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
-                WHERE v.product_id = ? AND v.deleted_at IS NULL
-                ORDER BY v.is_default DESC, v.name ASC
-                """,
-                variantMapper,
-                productId
-        );
-        List<Variant> variantsWithStock = new ArrayList<>();
-        for (Variant variant : variants) {
-            variantsWithStock.add(new Variant(
-                    variant.id(),
-                    variant.productId(),
-                    variant.productName(),
-                    variant.name(),
-                    variant.sku(),
-                    variant.price(),
-                    variant.costPrice(),
-                    variant.stockAlertCap(),
-                    variant.defaultVariant(),
-                    variant.status(),
-                    variant.imagePath(),
-                    inventoryRepository.getStockByVariantId(variant.id()),
-                    variant.categoryName(),
-                    variant.taxCategoryName(),
-                    variant.createdAt(),
-                    variant.updatedAt(),
-                    variant.deletedAt()
-            ));
-        }
-        return Optional.of(new ProductWithVariants(product.get(), variantsWithStock));
+    private String placeholders(int count) {
+        return "?,".repeat(count).replaceAll(",$", "");
     }
 
     @Override
@@ -267,9 +279,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     }
 
     @Override
-    public void setProductTaxes(long productId, List<Long> taxIds) {
-        // Current Electron implementation intentionally no-ops this method.
-    }
+    public void setProductTaxes(long productId, List<Long> taxIds) { }
 
     @Override
     public Map<String, Object> getProductStats() {
@@ -277,21 +287,12 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 """
                 WITH ProductStats AS (
                   SELECT
-                    p.id,
-                    p.status,
-                    v.stock_alert_cap,
+                    p.id, p.status, p.stock_alert_cap,
                     (
-                      COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.variant_id = v.id), 0)
-                      + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.variant_id = v.id AND ia.reason != 'confirm_receive'), 0)
+                      COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
+                      + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id AND ia.reason != 'confirm_receive'), 0)
                     ) AS current_stock
                   FROM products p
-                  LEFT JOIN variants v ON v.id = (
-                    SELECT v2.id
-                    FROM variants v2
-                    WHERE v2.product_id = p.id AND v2.deleted_at IS NULL
-                    ORDER BY v2.is_default DESC, v2.id ASC
-                    LIMIT 1
-                  )
                   WHERE p.deleted_at IS NULL
                 )
                 SELECT
@@ -307,32 +308,11 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                     map.put("lowStockProducts", rs.getInt("lowStockProducts"));
                     return map;
                 }
-        ).orElse(Map.<String, Object>of("totalProducts", 0, "activeProducts", 0, "lowStockProducts", 0));
+        ).orElse(Map.of("totalProducts", 0, "activeProducts", 0, "lowStockProducts", 0));
     }
 
-    private static String buildWhere(ProductFilter filter, List<Object> params) {
-        StringJoiner joiner = new StringJoiner(" AND ");
-        joiner.add("p.deleted_at IS NULL");
-
-        if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
-            joiner.add("p.name LIKE ?");
-            params.add("%" + filter.searchTerm() + "%");
-        }
-        if (filter.categories() != null && !filter.categories().isEmpty()) {
-            String placeholders = "?,".repeat(filter.categories().size()).replaceAll(",$", "");
-            joiner.add("p.category_id IN (" + placeholders + ")");
-            params.addAll(filter.categories());
-        }
-        if (filter.status() != null && !filter.status().isEmpty()) {
-            String placeholders = "?,".repeat(filter.status().size()).replaceAll(",$", "");
-            joiner.add("p.status IN (" + placeholders + ")");
-            params.addAll(filter.status());
-        }
-        if (filter.taxCategories() != null && !filter.taxCategories().isEmpty()) {
-            String placeholders = "?,".repeat(filter.taxCategories().size()).replaceAll(",$", "");
-            joiner.add("p.tax_category_id IN (" + placeholders + ")");
-            params.addAll(filter.taxCategories());
-        }
-        return "WHERE " + joiner;
+    @Override
+    public int getNextGeneratedNumericSku() {
+        return queryOne("SELECT MAX(CAST(sku AS INTEGER)) AS max_sku FROM products WHERE sku GLOB '[0-9]*'", rs -> rs.getInt("max_sku")).orElse(0) + 1;
     }
 }

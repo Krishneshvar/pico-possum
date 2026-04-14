@@ -115,18 +115,18 @@ public final class ReportsService {
     }
 
 
-    public ProductFlowReport getProductFlowReport(long variantId, int limit, int offset, 
+    public ProductFlowReport getProductFlowReport(long productId, int limit, int offset, 
                                                    String startDate, String endDate, 
                                                    List<String> eventTypes) {
-        Map<String, Object> summary = productFlowRepository.getFlowSummary(variantId);
-        List<ProductFlow> flows = productFlowRepository.findFlowByVariantId(
-                variantId, limit, offset, startDate, endDate, eventTypes
+        Map<String, Object> summary = productFlowRepository.getProductFlowSummary(productId);
+        List<ProductFlow> flows = productFlowRepository.findFlowByProductId(
+                productId, limit, offset, startDate, endDate, eventTypes
         );
-        return new ProductFlowReport(variantId, summary, flows);
+        return new ProductFlowReport(productId, summary, flows);
     }
 
-    public List<ProductFlow> getInventoryMovement(long variantId, String startDate, String endDate) {
-        return productFlowRepository.findFlowByVariantId(variantId, 1000, 0, startDate, endDate, null);
+    public List<ProductFlow> getInventoryMovement(long productId, String startDate, String endDate) {
+        return productFlowRepository.findFlowByProductId(productId, 1000, 0, startDate, endDate, null);
     }
 
     public ComparisonReport getSalesComparison(LocalDate currentStart, LocalDate currentEnd,
@@ -190,7 +190,6 @@ public final class ReportsService {
         return new TopProduct(
                 ((Number) item.get("product_id")).longValue(),
                 (String) item.get("product_name"),
-                (String) item.get("variant_name"),
                 (String) item.get("sku"),
                 (int) item.get("total_quantity_sold"),
                 (BigDecimal) item.get("total_revenue")
@@ -208,7 +207,6 @@ public final class ReportsService {
     private StockMovementStat mapToStockMovementStat(Map<String, Object> item) {
         return new StockMovementStat(
                 (String) item.get("product_name"),
-                (String) item.get("variant_name"),
                 (String) item.get("sku"),
                 (int) item.get("incoming"),
                 (int) item.get("outgoing"),

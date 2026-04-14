@@ -57,8 +57,8 @@ public class EditableQuantityCell extends TableCell<CartItem, CartItem> {
             try {
                 int n = Integer.parseInt(tf.getText().trim());
                 int newQty = Math.max(1, n);
-                if (handler.isInventoryRestrictionsEnabled() && it.getVariant().stock() != null && newQty > it.getVariant().stock()) {
-                    NotificationService.warning("Insufficient stock! Available: " + it.getVariant().stock());
+                if (handler.isInventoryRestrictionsEnabled() && it.getProduct().stock() != null && newQty > it.getProduct().stock()) {
+                    NotificationService.warning("Insufficient stock! Available: " + it.getProduct().stock());
                     tf.setText(String.valueOf(it.getQuantity()));
                 } else {
                     it.setQuantity(newQty);

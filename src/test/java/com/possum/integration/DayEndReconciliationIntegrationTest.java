@@ -46,7 +46,7 @@ class DayEndReconciliationIntegrationTest {
     private static ReturnsService returnsService;
     private static SqliteSalesRepository salesRepository;
 
-    private static long testVariantId;
+    private static long testProductId;
     private static long testUserId;
     private static long cashPaymentMethodId;
 
@@ -63,7 +63,6 @@ class DayEndReconciliationIntegrationTest {
 
         SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager);
         SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager);
-        SqliteVariantRepository variantRepository = new SqliteVariantRepository(databaseManager);
         salesRepository = new SqliteSalesRepository(databaseManager);
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
@@ -77,13 +76,13 @@ class DayEndReconciliationIntegrationTest {
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
         SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        TaxEngine taxEngine = new TaxEngine(taxRepository, jsonService);
+        EnhancedTaxEngine taxEngine = new EnhancedTaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
-        salesService = new SalesService(salesRepository,  variantRepository,  productRepository,  customerRepository, 
-                auditRepository,  inventoryService,  taxEngine, new com.possum.domain.services.SaleCalculator( taxEngine),  paymentService,  transactionManager, 
-                jsonService,  settingsStore,  invoiceNumberService);
+        salesService = new SalesService(salesRepository, productRepository, customerRepository, 
+                auditRepository, inventoryService, taxEngine, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+                jsonService, settingsStore, invoiceNumberService);
 
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
                 auditRepository, transactionManager, jsonService, new com.possum.domain.services.ReturnCalculator());
@@ -96,7 +95,7 @@ class DayEndReconciliationIntegrationTest {
         testUserId = u.id();
 
         cashPaymentMethodId = getOrSeedPaymentMethod();
-        testVariantId = seedVariantWithStock(categoryRepository, productRepository, 1000);
+        testProductId = seedProductWithStock(categoryRepository, productRepository, 1000);
     }
 
     @AfterAll
@@ -121,10 +120,9 @@ class DayEndReconciliationIntegrationTest {
     @Order(1)
     @DisplayName("Empty day — all stats are zero")
     void emptyDatabase_allStatsAreZero() {
-        // For this test we use a filter that can never match any real sales
         SaleFilter filter = new SaleFilter(
                 null, null, null,
-                "2000-01-01", "2000-01-02", // Far past date range
+                "2000-01-01", "2000-01-02",
                 null, null, null, 1, 25, "sale_date", "DESC", null, null
         );
 
@@ -154,25 +152,22 @@ class DayEndReconciliationIntegrationTest {
     @Order(3)
     @DisplayName("Mixed statuses — counts reflect correct breakdown")
     void mixedStatuses_countsAreCorrect() {
-        // Create a paid sale
-        SaleResponse paidSale = createPaidSale(new BigDecimal("100.00"));
+        createPaidSale(new BigDecimal("100.00"));
 
-        // Create a draft (no payment)
         salesService.createSale(new CreateSaleRequest(
-                List.of(new CreateSaleItemRequest(testVariantId, 1, BigDecimal.ZERO, new BigDecimal("80.00"))),
+                List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("80.00"))),
                 null, BigDecimal.ZERO, List.of()
         ), testUserId);
 
-        // Create and cancel a sale
         SaleResponse toCancel = createPaidSale(new BigDecimal("60.00"));
         salesService.cancelSale(toCancel.sale().id(), testUserId);
 
         SaleStats stats = salesService.getSaleStats(filterAll());
 
         assertTrue(stats.totalBills() >= 3);
-        assertTrue(stats.paidCount() >= 1); // at least the paid one
-        assertTrue(stats.partialOrDraftCount() >= 1); // at least the draft
-        assertTrue(stats.cancelledOrRefundedCount() >= 1); // at least the cancelled
+        assertTrue(stats.paidCount() >= 1);
+        assertTrue(stats.partialOrDraftCount() >= 1);
+        assertTrue(stats.cancelledOrRefundedCount() >= 1);
     }
 
     @Test
@@ -180,7 +175,7 @@ class DayEndReconciliationIntegrationTest {
     @DisplayName("Fully refunded sale — counted in cancelled/refunded bucket")
     void fullyRefundedSale_appearsInRefundedBucket() {
         SaleResponse saleResp = salesService.createSale(new CreateSaleRequest(
-                List.of(new CreateSaleItemRequest(testVariantId, 2, BigDecimal.ZERO, new BigDecimal("50.00"))),
+                List.of(new CreateSaleItemRequest(testProductId, 2, BigDecimal.ZERO, new BigDecimal("50.00"))),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
         ), testUserId);
@@ -202,7 +197,6 @@ class DayEndReconciliationIntegrationTest {
     @Order(5)
     @DisplayName("findSales pagination — correct page sizes returned")
     void findSales_paginationWorks() {
-        // Create 5 more sales to ensure pagination data
         for (int i = 0; i < 5; i++) {
             createPaidSale(new BigDecimal("100.00"));
         }
@@ -234,11 +228,9 @@ class DayEndReconciliationIntegrationTest {
                 .anyMatch(s -> invoiceNum.equals(s.invoiceNumber())));
     }
 
-    // ─── helpers ──────────────────────────────────────────────────────────────
-
     private SaleResponse createPaidSale(BigDecimal amount) {
         return salesService.createSale(new CreateSaleRequest(
-                List.of(new CreateSaleItemRequest(testVariantId, 1, BigDecimal.ZERO, amount)),
+                List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, amount)),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(amount, cashPaymentMethodId))
         ), testUserId);
@@ -249,49 +241,30 @@ class DayEndReconciliationIntegrationTest {
                 null, null, null, 1, 1000, "sale_date", "DESC", null, null);
     }
 
-    private static long seedVariantWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
+    private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("DayCat-" + UUID.randomUUID(), null).id();
-        long prodId = prodRepo.insertProduct(new Product(
-                null, "DayProd-" + UUID.randomUUID(), "desc", catId, null, null, null, "active", null, null, null, null, null
+        long productId = prodRepo.insertProduct(new Product(
+            null, "DayProd-" + UUID.randomUUID(), "DSKU-" + UUID.randomUUID(), "desc", catId, "active",
+            new BigDecimal("100.00"), new BigDecimal("120.00"), 1L, 0, 5, false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
         ));
-        long variantId = insertVariant(prodId, "DSKU-" + UUID.randomUUID());
-        seedInventory(variantId, qty);
-        return variantId;
+        seedInventory(productId, qty);
+        return productId;
     }
 
-    private static long insertVariant(long productId, String sku) {
+    private static void seedInventory(long productId, int quantity) {
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO variants (product_id, name, sku, mrp, cost_price, is_default, status) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id")) {
+                "INSERT INTO inventory_lots (product_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
             stmt.setLong(1, productId);
-            stmt.setString(2, "Default");
-            stmt.setString(3, sku);
-            stmt.setBigDecimal(4, new BigDecimal("100.00"));
-            stmt.setBigDecimal(5, new BigDecimal("60.00"));
-            stmt.setInt(6, 1);
-            stmt.setString(7, "active");
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to insert variant", e);
-        }
-        throw new IllegalStateException("No variant ID returned");
-    }
-
-    private static void seedInventory(long variantId, int quantity) {
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_lots (variant_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, variantId);
             stmt.setInt(2, quantity);
             stmt.setBigDecimal(3, new BigDecimal("60.00"));
             stmt.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException("Seed lot failed", e); }
 
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_adjustments (variant_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
+                "INSERT INTO inventory_adjustments (product_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
                 "VALUES (?, ?, ?, 'correction', ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, variantId);
-            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE variant_id = ? ORDER BY id DESC LIMIT 1", variantId));
+            stmt.setLong(1, productId);
+            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
             stmt.setInt(3, quantity);
             stmt.setLong(4, 1);
             stmt.executeUpdate();

@@ -46,7 +46,8 @@ public class PosController implements CartCellHandler {
     @FXML private TextField searchField;
     @FXML private Label totalQtyLabel, bottomTotalLabel, bottomMrpLabel, bottomPriceTotalLabel;
 
-    @FXML private TextField quickProductName, quickVariantName, quickStock, quickPrice, quickCategorySearch;
+    @FXML private TextField quickProductName, quickStock, quickPrice, quickCategorySearch;
+    @FXML private Label quickAddTitle;
 
     @FXML private ComboBox<Customer>       customerCombo;
     @FXML private TextField customerNameField, customerPhoneField, customerEmailField, customerAddressField;
@@ -139,14 +140,14 @@ public class PosController implements CartCellHandler {
         taxEngine.init();
 
         autocomplete = new PosAutocompleteManager(new PosAutocompleteManager.Callbacks() {
-            public void onProductSelected(Variant v)             { addToCart(v); searchField.clear(); }
-            public void onProductSelectedForQuickAdd(Variant v)  { selectProductForQuickAdd(v); }
+            public void onProductSelected(Product p)             { addToCart(p); searchField.clear(); }
+            public void onProductSelectedForQuickAdd(Product p)  { selectProductForQuickAdd(p); }
             public void onCategorySelectedForQuickAdd(Category c){ selectCategoryForQuickAdd(c); }
             public ProductSearchIndex getSearchIndex()           { return searchIndex; }
             public com.possum.application.categories.CategoryService getCategoryService() { return categoryService; }
         });
         autocomplete.setupSearchAutocomplete(searchField);
-        autocomplete.setupQuickAddAutocomplete(quickProductName, quickVariantName);
+        autocomplete.setupQuickAddAutocomplete(quickProductName); 
         autocomplete.setupCategoryAutocomplete(quickCategorySearch);
 
         completionHandler = new SaleCompletionHandler(
@@ -190,15 +191,10 @@ public class PosController implements CartCellHandler {
         });
 
         colSku.setPrefWidth(95);
-        colSku.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getVariant().sku()));
+        colSku.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getProduct().sku()));
 
         colProduct.setPrefWidth(180);
-        colProduct.setCellValueFactory(c -> {
-            Variant v = c.getValue().getVariant();
-            String d = v.productName();
-            if (v.name() != null && !v.name().equalsIgnoreCase("Standard")) d += " (" + v.name() + ")";
-            return new SimpleStringProperty(d);
-        });
+        colProduct.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getProduct().name()));
 
         colQty.setPrefWidth(78);
         colQty.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue()));
@@ -209,7 +205,7 @@ public class PosController implements CartCellHandler {
         colPrice.setCellFactory(col -> new EditablePriceCell(this, col));
 
         colMrp.setPrefWidth(96);
-        colMrp.setCellValueFactory(c -> new SimpleStringProperty(CurrencyUtil.format(c.getValue().getVariant().price())));
+        colMrp.setCellValueFactory(c -> new SimpleStringProperty(CurrencyUtil.format(c.getValue().getProduct().mrp())));
 
         colDiscountPct.setPrefWidth(90);
         colDiscountPct.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue()));
@@ -298,12 +294,12 @@ public class PosController implements CartCellHandler {
         searchField.setOnAction(e -> {
             String q = searchField.getText().trim();
             if (q.isEmpty()) return;
-            Optional<Variant> barcode = searchIndex.findByBarcode(q);
+            Optional<Product> barcode = searchIndex.findBySku(q);
             if (barcode.isPresent()) { addToCart(barcode.get()); searchField.clear(); autocomplete.getSearchPopup().hide(); return; }
             if (autocomplete.getSearchPopup().isShowing() && !autocomplete.getSearchResultsView().getItems().isEmpty()) {
                 addToCart(autocomplete.getSearchResultsView().getItems().get(0)); searchField.clear(); autocomplete.getSearchPopup().hide();
             } else {
-                List<Variant> res = searchIndex.searchByName(q);
+                List<Product> res = searchIndex.searchByName(q);
                 if (!res.isEmpty()) { addToCart(res.get(0)); searchField.clear(); }
                 else NotificationService.warning("No product found");
             }
@@ -336,7 +332,6 @@ public class PosController implements CartCellHandler {
                     customerAddressField.setText(val.address() != null ? val.address() : "");
                 } else if (old != null && old.name().equals(customerNameField.getText().trim())
                         && old.phone().equals(customerPhoneField.getText().trim())) {
-                    System.out.println("DEBUG: Clearing customer fields because combo selection was removed");
                     customerNameField.clear(); customerPhoneField.clear(); customerEmailField.clear(); customerAddressField.clear();
                 }
             } finally { isAutofilling = false; }
@@ -377,9 +372,7 @@ public class PosController implements CartCellHandler {
         });
     }
 
-    private void setupLayoutSizing() {
-        // Relying on FXML hgrow for sizing to avoid layout pass conflicts
-    }
+    private void setupLayoutSizing() { }
 
     // ── Bill Management ───────────────────────────────────────────────────────
 
@@ -389,7 +382,6 @@ public class PosController implements CartCellHandler {
             List<javafx.scene.Node> children = billsFlowPane.getChildren();
             int count = Math.min(MAX_BILLS, bills.size());
             
-            // Re-use or populate initially to avoid modifying scene graph during layout
             if (children.isEmpty()) {
                 for (int i = 0; i < MAX_BILLS; i++) {
                     Button btn = new Button(String.valueOf(i + 1));
@@ -438,7 +430,6 @@ public class PosController implements CartCellHandler {
             String name = currentBill.getCustomerName();
             String phone = currentBill.getCustomerPhone();
             
-            // If we have a selected customer but the manual fields are empty (e.g. first load after migration)
             if (sel != null && (name == null || name.isEmpty())) {
                 name = sel.name();
                 phone = sel.phone();
@@ -473,14 +464,21 @@ public class PosController implements CartCellHandler {
 
     // ── Cart Mutations ────────────────────────────────────────────────────────
 
-    private void addToCart(Variant variant) {
-        Optional<CartItem> exists = currentBill.getItems().stream().filter(it -> it.getVariant().id().equals(variant.id())).findFirst();
+    private void addToCart(Product product) {
+        Optional<CartItem> exists = currentBill.getItems().stream().filter(it -> it.getProduct().id().equals(product.id())).findFirst();
         int nQty = exists.map(it -> it.getQuantity() + 1).orElse(1);
-        if (isInventoryRestrictionsEnabled() && variant.stock() != null && nQty > variant.stock()) {
-            NotificationService.warning("Insufficient stock! Available: " + variant.stock()); return;
+        
+        // Dynamic stock check
+        if (isInventoryRestrictionsEnabled()) {
+             int available = productService.getProductById(product.id()).stock();
+             if (nQty > available) {
+                 NotificationService.warning("Insufficient stock! Available: " + available); return;
+             }
         }
+        
         if (exists.isPresent()) exists.get().setQuantity(nQty);
-        else currentBill.getItems().add(new CartItem(variant, 1));
+        else currentBill.getItems().add(new CartItem(product, 1));
+        
         refreshCurrentBill();
         final CartItem target = exists.orElse(currentBill.getItems().get(currentBill.getItems().size() - 1));
         Platform.runLater(() -> {
@@ -524,11 +522,10 @@ public class PosController implements CartCellHandler {
 
     @FXML private void handleCompleteSale() { 
         completionHandler.execute(currentBill, completeButton); 
-        // Note: completionHandler should call a callback to delete the draft on success
     }
 
     @FXML private void handleQuickAddProduct() {
-        String pN = quickProductName.getText().trim(), vN = quickVariantName.getText().trim();
+        String pN = quickProductName.getText().trim();
         String pS = quickPrice.getText().trim(),       sS = quickStock.getText().trim();
         String cN = quickCategorySearch.getText().trim();
         if (pN.isEmpty() || pS.isEmpty() || cN.isEmpty()) { NotificationService.error("Please enter product name, price and select a category."); return; }
@@ -538,30 +535,24 @@ public class PosController implements CartCellHandler {
         try {
             BigDecimal price = new BigDecimal(pS); int stock = sS.isEmpty() ? 1 : Math.max(0, Integer.parseInt(sS));
             AuthUser cur = AuthContext.getCurrentUser(); long uId = cur != null ? cur.id() : 1L;
-            Variant vCart = null; Long pId = selectedProductIdForQuickAdd;
+            Product pCart = null; Long pId = selectedProductIdForQuickAdd;
             if (pId == null) {
-                Optional<Variant> m = searchIndex.searchByName(pN).stream().filter(v -> v.productName().equalsIgnoreCase(pN)).findFirst();
-                if (m.isPresent()) pId = m.get().productId();
+                Optional<Product> m = searchIndex.searchByName(pN).stream().filter(p -> p.name().equalsIgnoreCase(pN)).findFirst();
+                if (m.isPresent()) pId = m.get().id();
             }
             final Category finalCat = cat;
             if (pId != null) {
-                final String fvN = vN; final Long fId = pId;
-                Optional<Variant> ex = searchIndex.searchByName(pN).stream().filter(v -> v.productId().equals(fId) && v.name().equalsIgnoreCase(fvN)).findFirst();
-                if (ex.isPresent()) {
-                    vCart = ex.get();
-                    productService.updateProduct(fId, new ProductService.UpdateProductCommand(null, null, null, null, null, List.of(new ProductService.VariantCommand(vCart.id(), vCart.name(), vCart.sku(), price, vCart.costPrice(), vCart.stockAlertCap(), vCart.defaultVariant(), vCart.status(), stock, "Quick add adjustment")), null, uId));
-                } else {
-                    productService.updateProduct(fId, new ProductService.UpdateProductCommand(null, null, null, null, null, List.of(new ProductService.VariantCommand(null, vN, null, price, BigDecimal.ZERO, 0, false, "active", stock, null)), null, uId));
-                }
+                final Long fId = pId;
+                productService.updateProduct(fId, new ProductService.UpdateProductCommand(pN, null, finalCat.id(), null, null, price, BigDecimal.ZERO, 10, "active", null, stock, "Quick add adjustment", uId));
                 searchIndex.refresh();
-                final String fvN2 = vN; vCart = searchIndex.searchByName(pN).stream().filter(v -> v.productId().equals(fId) && v.name().equalsIgnoreCase(fvN2)).findFirst().orElse(null);
+                pCart = searchIndex.findBySku(productService.getProductById(fId).sku()).orElse(null);
             } else {
-                productService.createProductWithVariants(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), "active", null, List.of(new ProductService.VariantCommand(null, vN, null, price, BigDecimal.ZERO, 0, true, "active", stock, null)), null, uId));
-                searchIndex.refresh(); final String fvN = vN;
-                vCart = searchIndex.searchByName(pN).stream().filter(v -> v.productName().equalsIgnoreCase(pN) && v.name().equalsIgnoreCase(fvN)).findFirst().orElse(null);
+                long newId = productService.createProduct(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), null, null, price, BigDecimal.ZERO, 10, "active", null, stock, uId));
+                searchIndex.refresh();
+                pCart = productService.getProductById(newId);
             }
-            if (vCart != null) {
-                addToCart(vCart); quickProductName.clear(); quickVariantName.clear(); quickPrice.clear(); quickStock.clear(); quickCategorySearch.clear();
+            if (pCart != null) {
+                addToCart(pCart); quickProductName.clear(); quickPrice.clear(); quickStock.clear(); quickCategorySearch.clear();
                 selectedProductIdForQuickAdd = null; selectedCategoryForQuickAdd = null; NotificationService.success("Added to cart.");
             } else NotificationService.error("Failed to process quick add.");
         } catch (NumberFormatException e) { NotificationService.error("Please enter a valid numeric price/stock."); }
@@ -620,13 +611,13 @@ public class PosController implements CartCellHandler {
 
     // ── Quick-Add Selection Helpers ───────────────────────────────────────────
 
-    private void selectProductForQuickAdd(Variant v) {
+    private void selectProductForQuickAdd(Product p) {
         isAutofilling = true;
         try {
-            quickProductName.setText(v.productName()); selectedProductIdForQuickAdd = v.productId();
-            if (v.categoryName() != null)
-                categoryService.getAllCategories().stream().filter(c -> c.name().equalsIgnoreCase(v.categoryName())).findFirst().ifPresent(this::selectCategoryForQuickAdd);
-            quickVariantName.requestFocus();
+            quickProductName.setText(p.name()); selectedProductIdForQuickAdd = p.id();
+            if (p.categoryName() != null)
+                categoryService.getAllCategories().stream().filter(c -> c.name().equalsIgnoreCase(p.categoryName())).findFirst().ifPresent(this::selectCategoryForQuickAdd);
+            quickPrice.requestFocus();
         } finally { isAutofilling = false; }
     }
 

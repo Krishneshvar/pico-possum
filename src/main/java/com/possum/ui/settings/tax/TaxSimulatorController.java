@@ -109,11 +109,9 @@ public class TaxSimulatorController {
 
             TaxableItem item = new TaxableItem(
                 "Simulated Product",
-                "Default Variant",
                 amount,
                 quantity,
                 category != null ? category.id() : null,
-                1L,
                 1L
             );
 

@@ -33,11 +33,9 @@ public class SaleDetailTableManager {
     }
 
     public void setupActiveItemsTable() {
-        TableColumn<SaleItem, String> productCol = new TableColumn<>("Product / Variant");
+        TableColumn<SaleItem, String> productCol = new TableColumn<>("Product");
         productCol.setMinWidth(250);
-        productCol.setCellValueFactory(data -> new SimpleStringProperty(
-            data.getValue().productName() + (data.getValue().variantName() != null ? " - " + data.getValue().variantName() : "")
-        ));
+        productCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().productName()));
 
         TableColumn<SaleItem, Integer> qtyCol = new TableColumn<>("Qty");
         qtyCol.setPrefWidth(100);
@@ -59,7 +57,7 @@ public class SaleDetailTableManager {
                         if (index >= 0 && index < getTableView().getItems().size()) {
                             SaleItem current = getTableView().getItems().get(index);
                             getTableView().getItems().set(index, new SaleItem(
-                                    current.id(), current.saleId(), current.variantId(), current.variantName(),
+                                    current.id(), current.saleId(), current.productId(),
                                     current.sku(), current.productName(), newVal, current.pricePerUnit(),
                                     current.costPerUnit(), current.taxRate(), current.taxAmount(),
                                     current.appliedTaxRate(), current.appliedTaxAmount(), 
@@ -96,7 +94,7 @@ public class SaleDetailTableManager {
                                 if (index >= 0 && index < getTableView().getItems().size()) {
                                     SaleItem current = getTableView().getItems().get(index);
                                     getTableView().getItems().set(index, new SaleItem(
-                                            current.id(), current.saleId(), current.variantId(), current.variantName(),
+                                            current.id(), current.saleId(), current.productId(),
                                             current.sku(), current.productName(), current.quantity(), newVal,
                                             current.costPerUnit(), current.taxRate(), current.taxAmount(),
                                             current.appliedTaxRate(), current.appliedTaxAmount(), 
@@ -183,7 +181,7 @@ public class SaleDetailTableManager {
     }
 
     public void setupReturnedItemsTable() {
-        TableColumn<SaleItem, String> retProductCol = new TableColumn<>("Product / Variant");
+        TableColumn<SaleItem, String> retProductCol = new TableColumn<>("Product");
         TableColumn<SaleItem, String> retSkuCol = new TableColumn<>("SKU");
         TableColumn<SaleItem, Integer> retQtyCol = new TableColumn<>("Returned Qty");
         TableColumn<SaleItem, BigDecimal> retPriceCol = new TableColumn<>("Unit Price");
@@ -194,9 +192,7 @@ public class SaleDetailTableManager {
         returnedItemsTable.getTableView().setColumnResizePolicy(javafx.scene.control.TableView.CONSTRAINED_RESIZE_POLICY);
         returnedItemsTable.setEmptyMessage("No returned items recorded");
 
-        retProductCol.setCellValueFactory(data -> new SimpleStringProperty(
-            data.getValue().productName() + (data.getValue().variantName() != null ? " - " + data.getValue().variantName() : "")
-        ));
+        retProductCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().productName()));
         
         retSkuCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().sku()));
         

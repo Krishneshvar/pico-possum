@@ -4,7 +4,7 @@ import com.possum.application.inventory.InventoryService;
 import com.possum.application.reports.ReportsService;
 import com.possum.application.reports.dto.SalesReportSummary;
 import com.possum.application.reports.dto.TopProduct;
-import com.possum.domain.model.Variant;
+import com.possum.domain.model.Product;
 import com.possum.ui.common.controls.DataTableView;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -26,7 +26,7 @@ public class DashboardController {
     @FXML private Label lowStockLabel;
     @FXML private Label backupStatusLabel;
     @FXML private DataTableView<TopProduct> topProductsTable;
-    @FXML private DataTableView<Variant> lowStockTable;
+    @FXML private DataTableView<Product> lowStockTable;
     
     private ReportsService reportsService;
     private InventoryService inventoryService;
@@ -50,9 +50,6 @@ public class DashboardController {
         TableColumn<TopProduct, String> nameCol = new TableColumn<>("Product");
         nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().productName()));
         
-        TableColumn<TopProduct, String> variantCol = new TableColumn<>("Variant");
-        variantCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().variantName()));
-        
         TableColumn<TopProduct, Integer> qtyCol = new TableColumn<>("Qty Sold");
         qtyCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().totalQuantitySold()));
         
@@ -65,27 +62,24 @@ public class DashboardController {
                 setText(empty || item == null ? null : CurrencyUtil.format(item));
             }
         });
-        topProductsTable.getTableView().getColumns().setAll(List.of(nameCol, variantCol, qtyCol, revenueCol));
+        topProductsTable.getTableView().getColumns().setAll(List.of(nameCol, qtyCol, revenueCol));
         topProductsTable.setEmptyMessage("No data available");
         topProductsTable.setEmptySubtitle("Top selling products will appear here.");
     }
 
     private void setupLowStockTable() {
-        TableColumn<Variant, String> nameCol = new TableColumn<>("Product");
-        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().productName()));
+        TableColumn<Product, String> nameCol = new TableColumn<>("Product");
+        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
         
-        TableColumn<Variant, String> variantCol = new TableColumn<>("Variant");
-        variantCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
-        
-        TableColumn<Variant, String> skuCol = new TableColumn<>("SKU");
+        TableColumn<Product, String> skuCol = new TableColumn<>("SKU");
         skuCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().sku()));
         
-        TableColumn<Variant, Integer> stockCol = new TableColumn<>("Stock");
+        TableColumn<Product, Integer> stockCol = new TableColumn<>("Stock");
         stockCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().stock()));
         
-        TableColumn<Variant, Integer> alertCol = new TableColumn<>("Alert Level");
+        TableColumn<Product, Integer> alertCol = new TableColumn<>("Alert Level");
         alertCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().stockAlertCap()));
-        lowStockTable.getTableView().getColumns().setAll(List.of(nameCol, variantCol, skuCol, stockCol, alertCol));
+        lowStockTable.getTableView().getColumns().setAll(List.of(nameCol, skuCol, stockCol, alertCol));
         lowStockTable.setEmptyMessage("Inventory healthy");
         lowStockTable.setEmptySubtitle("No products are currently low on stock.");
     }
@@ -100,9 +94,9 @@ public class DashboardController {
         List<TopProduct> topProducts = reportsService.getTopProducts(today, today, 10, null);
         topProductsTable.setItems(FXCollections.observableArrayList(topProducts));
         
-        List<Variant> lowStockVariants = inventoryService.getLowStockAlerts();
-        lowStockLabel.setText(String.valueOf(lowStockVariants.size()));
-        lowStockTable.setItems(FXCollections.observableArrayList(lowStockVariants));
+        List<Product> lowStockProducts = inventoryService.getLowStockAlerts();
+        lowStockLabel.setText(String.valueOf(lowStockProducts.size()));
+        lowStockTable.setItems(FXCollections.observableArrayList(lowStockProducts));
 
         updateBackupStatus();
     }

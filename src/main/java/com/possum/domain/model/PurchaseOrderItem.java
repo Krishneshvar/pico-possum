@@ -5,8 +5,7 @@ import java.math.BigDecimal;
 public record PurchaseOrderItem(
         Long id,
         Long purchaseOrderId,
-        Long variantId,
-        String variantName,
+        Long productId,
         String sku,
         String productName,
         Integer quantity,

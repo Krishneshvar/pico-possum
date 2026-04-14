@@ -28,7 +28,6 @@ public class NavBarBuilder {
         createNavButton("Dashboard", "bx-home", "Dashboard", "/fxml/dashboard/dashboard-view.fxml", null);
         createNavMenu("Inventory", "bx-package", new Object[][]{
             {"Products",    "/fxml/products/products-view.fxml",         com.possum.application.auth.Permissions.PRODUCTS_VIEW},
-            {"Variants",    "/fxml/inventory/variants-view.fxml",        com.possum.application.auth.Permissions.INVENTORY_VIEW},
             {"Categories",  "/fxml/categories/categories-view.fxml",     com.possum.application.auth.Permissions.CATEGORIES_VIEW},
             {"Stock",       "/fxml/inventory/inventory-view.fxml",       com.possum.application.auth.Permissions.INVENTORY_VIEW},
             {"Stock History","/fxml/inventory/stock-history-view.fxml",  com.possum.application.auth.Permissions.INVENTORY_VIEW}

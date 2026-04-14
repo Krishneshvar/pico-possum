@@ -114,7 +114,7 @@
                                       text="Enable numerical SKU generation"
                                       selected="false"
                                       accessibleText="Toggle numerical SKU generation"/>
-                            <Label text="When enabled, new variants get sequential numeric SKUs automatically and SKU fields are read-only in product forms."
+                            <Label text="When enabled, new products get sequential numeric SKUs automatically and SKU fields are read-only in product forms."
                                    styleClass="field-helper"
                                    wrapText="true"
                                    maxWidth="560"/>

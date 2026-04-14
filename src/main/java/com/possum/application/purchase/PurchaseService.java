@@ -23,7 +23,7 @@ import java.util.*;
 public class PurchaseService {
     private final PurchaseRepository purchaseRepository;
     private final SupplierRepository supplierRepository;
-    private final VariantRepository variantRepository;
+    private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final ProductFlowRepository productFlowRepository;
     private final AuditRepository auditRepository;
@@ -33,7 +33,7 @@ public class PurchaseService {
 
     public PurchaseService(PurchaseRepository purchaseRepository,
                            SupplierRepository supplierRepository,
-                           VariantRepository variantRepository,
+                           ProductRepository productRepository,
                            InventoryRepository inventoryRepository,
                            ProductFlowRepository productFlowRepository,
                            AuditRepository auditRepository,
@@ -42,7 +42,7 @@ public class PurchaseService {
                            JsonService jsonService) {
         this.purchaseRepository = purchaseRepository;
         this.supplierRepository = supplierRepository;
-        this.variantRepository = variantRepository;
+        this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
         this.productFlowRepository = productFlowRepository;
         this.auditRepository = auditRepository;
@@ -71,7 +71,7 @@ public class PurchaseService {
             String invoiceNumber = generateInvoiceNumber(paymentMethodId);
 
             List<PurchaseOrderItem> itemsToCreate = items.stream()
-                    .map(req -> new PurchaseOrderItem(null, null, req.variantId(), null, null, null, req.quantity(), req.unitCost()))
+                    .map(req -> new PurchaseOrderItem(null, null, req.productId(), null, null, req.quantity(), req.unitCost()))
                     .toList();
 
             long poId = purchaseRepository.createPurchaseOrder(supplierId, invoiceNumber, paymentMethodId, createdBy, itemsToCreate);
@@ -105,7 +105,7 @@ public class PurchaseService {
 
         return transactionManager.runInTransaction(() -> {
             List<PurchaseOrderItem> itemsToUpdate = items.stream()
-                    .map(req -> new PurchaseOrderItem(null, null, req.variantId(), null, null, null, req.quantity(), req.unitCost()))
+                    .map(req -> new PurchaseOrderItem(null, null, req.productId(), null, null, req.quantity(), req.unitCost()))
                     .toList();
 
             purchaseRepository.updatePurchaseOrder(id, supplierId, paymentMethodId, itemsToUpdate);
@@ -148,17 +148,17 @@ public class PurchaseService {
                     throw new ValidationException("Purchase Order has invalid item data");
                 }
 
-                InventoryLot lot = new InventoryLot(null, item.variantId(), null, null, null,
+                InventoryLot lot = new InventoryLot(null, item.productId(), null, null, null,
                         item.quantity(), item.unitCost(), item.id(), TimeUtil.nowUTC());
                 long lotId = inventoryRepository.insertInventoryLot(lot);
 
-                InventoryAdjustment adjustment = new InventoryAdjustment(null, item.variantId(), lotId,
+                InventoryAdjustment adjustment = new InventoryAdjustment(null, item.productId(), lotId,
                         item.quantity(), "confirm_receive", "purchase_order_item", item.id(),
                         userId, null, TimeUtil.nowUTC());
                 inventoryRepository.insertInventoryAdjustment(adjustment);
 
-                ProductFlow flow = new ProductFlow(null, item.variantId(), FlowEventType.PURCHASE.getValue(),
-                        item.quantity(), "purchase_order_item", item.id(), null, null, null, existingPo.purchaseOrder().id(), existingPo.purchaseOrder().invoiceNumber(), null, TimeUtil.nowUTC());
+                ProductFlow flow = new ProductFlow(null, item.productId(), FlowEventType.PURCHASE.getValue(),
+                        item.quantity(), "purchase_order_item", item.id(), null, null, existingPo.purchaseOrder().id(), existingPo.purchaseOrder().invoiceNumber(), null, TimeUtil.nowUTC());
                 productFlowRepository.insertProductFlow(flow);
             }
 
@@ -224,7 +224,7 @@ public class PurchaseService {
             throw new ValidationException("Purchase Order must have at least one item");
         }
 
-        Set<Long> variantIds = new HashSet<>();
+        Set<Long> productIds = new HashSet<>();
         for (int i = 0; i < items.size(); i++) {
             PurchaseOrderItemRequest item = items.get(i);
 
@@ -236,12 +236,12 @@ public class PurchaseService {
                 throw new ValidationException("items[" + i + "].unit_cost must be a non-negative number");
             }
 
-            if (!variantIds.add(item.variantId())) {
-                throw new ValidationException("Duplicate variant_id " + item.variantId() + " is not allowed in a purchase order");
+            if (!productIds.add(item.productId())) {
+                throw new ValidationException("Duplicate product_id " + item.productId() + " is not allowed in a purchase order");
             }
 
-            if (variantRepository.findVariantByIdSync(item.variantId()).isEmpty()) {
-                throw new NotFoundException("Variant " + item.variantId() + " not found");
+            if (productRepository.findProductById(item.productId()).isEmpty()) {
+                throw new NotFoundException("Product " + item.productId() + " not found");
             }
         }
     }
@@ -314,6 +314,6 @@ public class PurchaseService {
         }
     }
 
-    public record PurchaseOrderItemRequest(long variantId, int quantity, BigDecimal unitCost) {}
+    public record PurchaseOrderItemRequest(long productId, int quantity, BigDecimal unitCost) {}
     public record PurchaseOrderDetail(PurchaseOrder purchaseOrder, List<PurchaseOrderItem> items) {}
 }
