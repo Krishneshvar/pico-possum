@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.shape.Circle?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import java.net.URL?>
+
+<ScrollPane fx:controller="com.possum.ui.insights.BusinessInsightsController" fitToWidth="true" styleClass="workspace-scroll-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <stylesheets>
+        <URL value="@../../styles/tokens.css" />
+        <URL value="@../../styles/views/insights.css" />
+    </stylesheets>
+    <VBox spacing="24" styleClass="dashboard-container">
+        <padding>
+            <Insets bottom="32" left="32" right="32" top="32" />
+        </padding>
+
+        <!-- Header -->
+        <HBox alignment="CENTER_LEFT" spacing="20">
+            <VBox HBox.hgrow="ALWAYS">
+                <Label styleClass="view-title" text="Business Insights" />
+                <Label styleClass="view-subtitle" text="Deep dive into profitability and performance trends" />
+            </VBox>
+            
+            <HBox spacing="12" alignment="CENTER_RIGHT">
+                <DatePicker fx:id="currentStartDate" promptText="Current Start" prefWidth="180" onAction="#handleFilterChange" />
+                <DatePicker fx:id="currentEndDate" promptText="Current End" prefWidth="180" onAction="#handleFilterChange" />
+                <Separator orientation="VERTICAL" />
+                <ComboBox fx:id="comparisonTypeCombo" promptText="Compare with..." prefWidth="180" onAction="#handleComparisonChange" />
+                <Button onAction="#handleRefresh" styleClass="btn-icon">
+                    <graphic>
+                        <FontIcon iconLiteral="bx-sync" iconSize="18" />
+                    </graphic>
+                </Button>
+            </HBox>
+        </HBox>
+
+        <!-- KPI Comparison Row -->
+        <HBox spacing="20">
+            <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+                <Label styleClass="insight-card-label" text="TOTAL SALES" />
+                <HBox spacing="10" alignment="BOTTOM_LEFT">
+                    <Label fx:id="salesValueLabel" styleClass="insight-card-value" text="\$0.00" />
+                    <HBox fx:id="salesTrendBox" styleClass="trend-container" alignment="CENTER" spacing="4">
+                        <FontIcon fx:id="salesTrendIcon" iconLiteral="bx-up-arrow-alt" iconSize="14" />
+                        <Label fx:id="salesTrendLabel" styleClass="trend-value" text="0.0%" />
+                    </HBox>
+                </HBox>
+                <Label fx:id="salesComparisonLabel" styleClass="insight-card-subtitle" text="vs previous period" />
+            </VBox>
+            
+            <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+                <Label styleClass="insight-card-label" text="GROSS PROFIT" />
+                <HBox spacing="10" alignment="BOTTOM_LEFT">
+                    <Label fx:id="profitValueLabel" styleClass="insight-card-value" text="\$0.00" />
+                    <HBox fx:id="profitTrendBox" styleClass="trend-container" alignment="CENTER" spacing="4">
+                        <FontIcon fx:id="profitTrendIcon" iconLiteral="bx-up-arrow-alt" iconSize="14" />
+                        <Label fx:id="profitTrendLabel" styleClass="trend-value" text="0.0%" />
+                    </HBox>
+                </HBox>
+                <Label fx:id="profitComparisonLabel" styleClass="insight-card-subtitle" text="vs previous period" />
+            </VBox>
+            
+            <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+                <Label styleClass="insight-card-label" text="NET MARGIN" />
+                <Label fx:id="marginValueLabel" styleClass="insight-card-value" text="0.0%" />
+                <Label fx:id="marginComparisonLabel" styleClass="insight-card-subtitle" text="profitability ratio" />
+            </VBox>
+        </HBox>
+
+        <!-- Main Charts Section -->
+        <HBox spacing="20" VBox.vgrow="ALWAYS">
+            <!-- Profitability Breakdown -->
+            <VBox styleClass="insight-section-card" HBox.hgrow="ALWAYS">
+                <Label styleClass="section-title" text="Profitability Analysis" />
+                <BarChart fx:id="profitabilityChart" animated="false" legendVisible="true" VBox.vgrow="ALWAYS">
+                    <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                    <yAxis><NumberAxis side="LEFT" /></yAxis>
+                </BarChart>
+            </VBox>
+            
+            <!-- Comparison Trend -->
+            <VBox styleClass="insight-section-card" HBox.hgrow="ALWAYS">
+                <Label styleClass="section-title" text="Period Comparison" />
+                <BarChart fx:id="comparisonChart" animated="false" legendVisible="true" VBox.vgrow="ALWAYS">
+                    <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                    <yAxis><NumberAxis side="LEFT" /></yAxis>
+                </BarChart>
+            </VBox>
+        </HBox>
+
+    </VBox>
+</ScrollPane>

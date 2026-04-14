@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.possum.ui.common.controls.DataTableView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.settings.tax.TaxProfilesController"
+      spacing="20"
+      style="-fx-padding: 20 0 20 0;"
+      stylesheets="@../../../styles/settings.css">
+
+    <HBox spacing="20" VBox.vgrow="ALWAYS">
+        <!-- Left Side: Table of Profiles -->
+        <VBox spacing="10" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="card">
+            <Label text="Tax Profiles List" styleClass="card-title"/>
+            <DataTableView fx:id="profilesTable" VBox.vgrow="ALWAYS" styleClass="data-table" />
+        </VBox>
+
+        <!-- Right Side: Details Form -->
+        <VBox spacing="15" styleClass="form-section" style="-fx-min-width: 480; -fx-max-width: 480;">
+            <Label text="Profile Details" styleClass="form-section-title"/>
+            <Label text="Define region, pricing mode, and active status for this tax profile." styleClass="form-section-subtitle"/>
+
+            <VBox spacing="15" VBox.vgrow="ALWAYS">
+                <VBox styleClass="form-group">
+                    <HBox spacing="4">
+                        <Label text="Profile Name" styleClass="form-label"/>
+                        <Label text="*" styleClass="required-indicator"/>
+                    </HBox>
+                    <TextField fx:id="nameField" promptText="e.g., GST India" styleClass="text-field" accessibleText="Profile Name"/>
+                    <Label fx:id="nameErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                </VBox>
+
+                <HBox spacing="10">
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <HBox spacing="4">
+                            <Label text="Country Code" styleClass="form-label"/>
+                            <Label text="*" styleClass="required-indicator"/>
+                        </HBox>
+                        <TextField fx:id="countryCodeField" promptText="e.g., IN" styleClass="text-field" accessibleText="Country Code"/>
+                        <Label fx:id="countryCodeErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                    </VBox>
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <Label text="Region Code" styleClass="form-label"/>
+                        <TextField fx:id="regionCodeField" promptText="Optional" styleClass="text-field" accessibleText="Region Code"/>
+                    </VBox>
+                </HBox>
+
+                <VBox styleClass="form-group">
+                    <Label text="Pricing Mode" styleClass="form-label"/>
+                    <ComboBox fx:id="pricingModeCombo" maxWidth="Infinity" styleClass="combo-box" accessibleText="Pricing Mode"/>
+                    <Label text="Determines if product prices include tax" styleClass="field-helper"/>
+                    <Label fx:id="pricingModeErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                </VBox>
+
+                <VBox style="-fx-padding: 10 0 0 0;">
+                    <CheckBox fx:id="activeCheckBox" text="Set as Active System Profile" styleClass="check-box" accessibleText="Set as active system profile"/>
+                </VBox>
+            </VBox>
+
+            <Separator/>
+
+            <HBox spacing="10" style="-fx-padding: 10 0 0 0;" styleClass="form-actions">
+                <Button text="Delete" fx:id="deleteButton" onAction="#handleDelete" styleClass="action-button" style="-fx-border-color: -color-error; -fx-border-width: 1; -fx-text-fill: -color-error;" accessibleText="Delete selected profile" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                    <graphic><FontIcon iconLiteral="bx-trash" iconSize="16" iconColor="#EF4444"/></graphic>
+                </Button>
+                <Button text="Update" fx:id="updateButton" onAction="#handleUpdate" styleClass="action-button" accessibleText="Update selected profile" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                    <graphic><FontIcon iconLiteral="bx-edit" iconSize="16"/></graphic>
+                </Button>
+                <Button text="Add Profile" fx:id="addButton" onAction="#handleAdd" styleClass="primary-button" accessibleText="Add new profile" defaultButton="true" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                    <graphic><FontIcon iconLiteral="bx-plus" iconSize="16" iconColor="white"/></graphic>
+                </Button>
+            </HBox>
+        </VBox>
+    </HBox>
+
+</VBox>

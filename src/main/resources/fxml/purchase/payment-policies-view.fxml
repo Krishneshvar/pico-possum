@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.possum.ui.common.controls.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.purchase.PaymentPoliciesController"
+      stylesheets="@../../styles/inventory.css"
+      styleClass="workspace-view">
+
+    <VBox>
+        <HBox styleClass="view-header,view-toolbar">
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Payment Policies" styleClass="view-title"/>
+                <Label text="Configure standard payment terms and maturity periods for suppliers" styleClass="view-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button"
+                    accessibleText="Refresh policies list">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+            </Button>
+            <Button fx:id="createButton" text="Create Policy" onAction="#handleCreate"
+                    styleClass="action-button, primary-button" defaultButton="true"
+                    accessibleText="Create new payment policy">
+                <graphic><FontIcon iconLiteral="bx-plus" iconSize="16" iconColor="white"/></graphic>
+            </Button>
+        </HBox>
+    </VBox>
+    
+    <VBox VBox.vgrow="ALWAYS" styleClass="card">
+        <FilterBar fx:id="filterBar"/>
+        <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS"/>
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+</VBox>

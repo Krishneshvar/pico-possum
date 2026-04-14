@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.PaginationBar?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.FilterBar?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.DataTableView?>
+
+<VBox fx:id="container" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.inventory.StockHistoryController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <!-- Header Area -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT" spacing="20">
+        <VBox spacing="4">
+            <Label text="Stock Activity Log" styleClass="view-title" accessibleRole="TEXT"/>
+            <Label text="Review a comprehensive audit trail of all manual adjustments and stock movements." styleClass="view-subtitle" accessibleRole="TEXT"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="12" alignment="CENTER_RIGHT">
+            <Button fx:id="refreshButton" text="Refresh Activity" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh stock history list" accessibleRole="BUTTON">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Fetch the latest historical records from the database"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <!-- Data Table -->
+    <VBox styleClass="card" VBox.vgrow="ALWAYS">
+        <FilterBar fx:id="filterBar"/>
+        <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS" accessibleText="Stock History Table"/>
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+</VBox>

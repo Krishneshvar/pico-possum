@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import java.net.URL?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:id="root"
+      fx:controller="com.possum.ui.insights.ProductFlowController"
+      styleClass="workspace-view">
+    
+    <stylesheets>
+        <URL value="@../../styles/inventory.css"/>
+        <URL value="@../../styles/views/pos.css"/>
+    </stylesheets>
+    
+    <fx:define>
+        <HBox fx:id="searchDock" alignment="CENTER_LEFT" spacing="8">
+            <TextField fx:id="searchField" promptText="Search products or variants..." HBox.hgrow="ALWAYS" styleClass="search-field-pos" prefWidth="300">
+                <tooltip>
+                    <Tooltip text="Start typing to select item"/>
+                </tooltip>
+            </TextField>
+        </HBox>
+    </fx:define>
+    
+    <!-- Header Area -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Product Flow Analysis" styleClass="view-title"/>
+            <Label text="Gain insights into stock movement, sales velocity, and inventory turnover." styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh product flow data">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Refresh the product flow data"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+    
+    <VBox VBox.vgrow="ALWAYS" styleClass="card">
+        <FilterBar fx:id="filterBar"/>
+        
+        <!-- Summary Statistics Section -->
+        <GridPane hgap="20" vgap="0" style="-fx-padding: 0 0 20 0;">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+            </columnConstraints>
+            
+            <VBox GridPane.columnIndex="0" styleClass="pos-card" spacing="5">
+                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
+                <Label text="TOTAL SOLD" styleClass="reports-totals-label"/>
+                <Label fx:id="totalSoldLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-error; -fx-font-size: 20px;"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="1" styleClass="pos-card" spacing="5">
+                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
+                <Label text="TOTAL PURCHASED" styleClass="reports-totals-label"/>
+                <Label fx:id="totalPurchasedLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-success; -fx-font-size: 20px;"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="2" styleClass="pos-card" spacing="5">
+                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
+                <Label text="RETURNS" styleClass="reports-totals-label"/>
+                <Label fx:id="totalReturnedLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-warning; -fx-font-size: 20px;"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="3" styleClass="pos-card" spacing="5">
+                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
+                <Label text="NET MOVEMENT" styleClass="reports-totals-label"/>
+                <Label fx:id="netMovementLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-info; -fx-font-size: 20px;"/>
+            </VBox>
+        </GridPane>
+
+        <DataTableView fx:id="flowTable" VBox.vgrow="ALWAYS"/>
+        
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+
+</VBox>

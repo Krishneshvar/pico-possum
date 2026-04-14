@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.DataTableView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.inventory.InventoryController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <!-- Header Area -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT" spacing="20">
+        <VBox spacing="4">
+            <Label text="Live Inventory Status" styleClass="view-title" accessibleRole="TEXT"/>
+            <Label text="Monitor real-time stock levels, check availability statuses, and perform quick adjustments." styleClass="view-subtitle" accessibleRole="TEXT"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="12" alignment="CENTER_RIGHT">
+            <Button fx:id="refreshButton" text="Sync Inventory Data" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh inventory list" accessibleRole="BUTTON">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Fetch the latest stock levels from the database"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+    
+    <!-- Main Content -->
+    <VBox styleClass="card" VBox.vgrow="ALWAYS">
+        <FilterBar fx:id="filterBar"/>
+
+        <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS" styleClass="data-table"/>
+
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+
+</VBox>

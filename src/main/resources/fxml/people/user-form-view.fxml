@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.possum.ui.people.UserFormController"
+            fitToWidth="true"
+            stylesheets="@../../styles/inventory.css"
+            styleClass="workspace-view">
+
+    <VBox spacing="25" alignment="TOP_CENTER" style="-fx-padding: 30 40;">
+        <VBox spacing="25" maxWidth="1000" alignment="TOP_LEFT">
+        <HBox styleClass="view-header">
+            <Label fx:id="titleLabel" text="Add Employee" styleClass="view-title"/>
+        </HBox>
+
+        <VBox spacing="20" maxWidth="600">
+            <VBox styleClass="form-section" spacing="15">
+                <Label text="Employee Profile" styleClass="form-section-title"/>
+                <Label text="Basic identifying information for this employee." styleClass="form-section-subtitle"/>
+                <Separator style="-fx-padding: 0 0 10 0;"/>
+
+                <HBox spacing="20">
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <HBox spacing="4">
+                            <Label text="Full Name" styleClass="form-label"/>
+                            <Label text="*" styleClass="required-indicator"/>
+                        </HBox>
+                        <TextField fx:id="nameField" promptText="e.g., John Smith" styleClass="text-field" accessibleText="Employee Full Name"/>
+                        <Label fx:id="nameErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox styleClass="form-section" spacing="15">
+                <Label text="System Access" styleClass="form-section-title"/>
+                <Label text="Authentication credentials and account status." styleClass="form-section-subtitle"/>
+                <Separator style="-fx-padding: 0 0 10 0;"/>
+
+                <HBox spacing="20">
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <HBox spacing="4">
+                            <Label text="Username" styleClass="form-label"/>
+                            <Label text="*" styleClass="required-indicator"/>
+                        </HBox>
+                        <TextField fx:id="usernameField" promptText="e.g., jsmith" styleClass="text-field" accessibleText="System Username"/>
+                        <Label fx:id="usernameErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                    </VBox>
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <HBox spacing="4">
+                            <Label text="Status" styleClass="form-label"/>
+                            <Label text="*" styleClass="required-indicator"/>
+                        </HBox>
+                        <ComboBox fx:id="statusCombo" maxWidth="Infinity" styleClass="combo-box" accessibleText="Account Status"/>
+                        <Label fx:id="statusErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                    </VBox>
+                </HBox>
+                <VBox styleClass="form-group">
+                    <Label text="Password" styleClass="form-label"/>
+                    <PasswordField fx:id="passwordField" promptText="Enter password" styleClass="text-field" accessibleText="Account Password"/>
+                    <Label fx:id="passwordHelper" text="Required for new employees. Leave blank to keep current password if editing." styleClass="field-helper"/>
+                    <Label fx:id="passwordErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                </VBox>
+            </VBox>
+
+            <HBox styleClass="form-actions">
+                <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true" accessibleText="Cancel and close"/>
+                <Button fx:id="saveButton" text="Save Employee" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true" accessibleText="Save employee details"/>
+            </HBox>
+        </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

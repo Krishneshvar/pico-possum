@@ -1,0 +1,59 @@
+@import "tokens.css";
+
+/* =====================================================
+   Foundation Base Styles
+   ===================================================== */
+
+.root {
+    -fx-background-color: -color-bg-canvas;
+    -fx-text-fill: -color-text-main;
+    -fx-font-size: 16px;
+}
+
+.label {
+    -fx-text-fill: -color-text-main;
+    -fx-font-size: 16px;
+}
+
+.view-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-main;
+}
+
+.view-subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: -color-text-muted;
+}
+
+.helper-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: -color-text-muted;
+}
+
+.workspace-view {
+    -fx-background-color: -color-bg-canvas;
+    -fx-background: -color-bg-canvas; /* Fix for ScrollPane backgrounds */
+    -fx-padding: 24;
+    -fx-spacing: 20;
+    -fx-alignment: top-left;
+}
+
+.view-header {
+    -fx-spacing: 15;
+    -fx-alignment: center-left;
+}
+
+.focus-visible,
+.button:focused,
+.menu-button:focused,
+.text-field:focused,
+.password-field:focused,
+.text-area:focused,
+.combo-box:focused,
+.date-picker:focused,
+.check-box:focused,
+.table-view:focused,
+.scroll-pane:focused {
+    -fx-effect: -shadow-focus;
+}

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.DataTableView?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.reports.SalesReportsController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Sales Reports" styleClass="view-title"/>
+            <Label text="Detailed period-wise sales breakdowns and financial health" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Reset" onAction="#handleReset" styleClass="action-button">
+                <graphic>
+                    <org.kordamp.ikonli.javafx.FontIcon iconLiteral="bx-reset" iconSize="16"/>
+                </graphic>
+            </Button>
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <VBox VBox.vgrow="ALWAYS" styleClass="card">
+        <HBox alignment="CENTER_LEFT" style="-fx-padding: 0 0 16 0;">
+            <HBox spacing="15" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                <VBox spacing="2">
+                    <Label text="Period Type:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                <ComboBox fx:id="reportTypeCombo" onAction="#handleReportTypeChange" prefWidth="120"/>
+            </VBox>
+            
+                <VBox spacing="2">
+                    <Label text="From Date:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                <DatePicker fx:id="startDatePicker" onAction="#handleDateChange" prefWidth="180"/>
+            </VBox>
+            
+                <VBox spacing="2">
+                    <Label text="To Date:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                <DatePicker fx:id="endDatePicker" onAction="#handleDateChange" prefWidth="180"/>
+            </VBox>
+
+            <Separator orientation="VERTICAL" style="-fx-padding: 0 5;"/>
+
+                <VBox spacing="2">
+                    <Label text="Filter Column:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                <ComboBox fx:id="amountFilterColCombo" prefWidth="120"/>
+            </VBox>
+
+                <VBox spacing="2">
+                    <Label text="Min Amount:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                <TextField fx:id="minAmountField" prefWidth="90" promptText="0.00"/>
+            </VBox>
+
+                <VBox spacing="2">
+                    <Label text="Max Amount:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                    <TextField fx:id="maxAmountField" prefWidth="90" promptText="Max"/>
+                </VBox>
+
+                <Separator orientation="VERTICAL" style="-fx-padding: 0 5;"/>
+
+                <VBox spacing="2" fx:id="columnFilterContainer">
+                    <Label text="Show Columns:" styleClass="form-label" style="-fx-font-size: 11px;"/>
+                    <!-- MultiSelectFilter will be added programmatically -->
+                </VBox>
+            </HBox>
+
+            <MenuButton text="Export" styleClass="action-button" minWidth="110">
+                <items>
+                    <MenuItem text="Export as CSV" onAction="#handleExportCsv"/>
+                    <MenuItem text="Export as XLSX" onAction="#handleExportExcel"/>
+                </items>
+                <graphic>
+                    <org.kordamp.ikonli.javafx.FontIcon iconLiteral="bx-download" iconSize="16"/>
+                </graphic>
+                <HBox.margin>
+                    <Insets top="15"/>
+                </HBox.margin>
+            </MenuButton>
+        </HBox>
+        
+        <Separator/>
+        <DataTableView fx:id="breakdownTable" VBox.vgrow="ALWAYS" />
+        
+        <HBox fx:id="totalsBar" alignment="CENTER_LEFT" styleClass="reports-totals-bar">
+            <Label fx:id="totalLabel" text="TOTALS" styleClass="reports-totals-label" style="-fx-padding: 0 0 0 10;"/>
+            <Label fx:id="totalTransactionsLabel" text="0" styleClass="reports-totals-value"/>
+            <Label fx:id="totalCashLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalUpiLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalDebitLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalCreditLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalGiftLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalSalesLabel" text="₹0.00" styleClass="reports-totals-value-primary" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalRefundsLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalNetSalesLabel" text="₹0.00" styleClass="reports-totals-value-accent" style="-fx-padding: 0 10 0 0;"/>
+        </HBox>
+    </VBox>
+
+</VBox>

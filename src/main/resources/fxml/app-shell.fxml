@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.possum.ui.AppShellController"
+            stylesheets="@../styles/app-shell.css,@../styles/workspace.css"
+            styleClass="app-shell">
+
+    <!-- Top: Navbar -->
+    <top>
+        <HBox fx:id="navbar" styleClass="navbar" alignment="CENTER_LEFT" spacing="0">
+            
+            <!-- Brand -->
+            <HBox fx:id="brandBox" styleClass="navbar-brand" alignment="CENTER_LEFT" spacing="12">
+                <padding>
+                    <Insets top="8" right="24" bottom="8" left="20"/>
+                </padding>
+                <ImageView fx:id="brandIcon" fitWidth="28" fitHeight="28" preserveRatio="true" smooth="true" cache="true" accessibleText="POSSUM logo"/>
+                <Label text="POSSUM" styleClass="brand-title"/>
+            </HBox>
+            
+            <!-- Nav Items -->
+            <HBox fx:id="navItems" styleClass="nav-items" spacing="4" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                <padding>
+                    <Insets top="0" right="16" bottom="0" left="16"/>
+                </padding>
+            </HBox>
+            
+            <!-- User Section -->
+            <HBox styleClass="navbar-user" alignment="CENTER">
+                <padding>
+                    <Insets top="8" right="20" bottom="8" left="20"/>
+                </padding>
+                <MenuButton fx:id="userMenuButton" styleClass="user-menu-btn">
+                    <graphic>
+                        <Label fx:id="userAvatar" text="A" styleClass="user-avatar"/>
+                    </graphic>
+                </MenuButton>
+            </HBox>
+        </HBox>
+    </top>
+
+    <!-- Center: Dynamic Content Container -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="content-area"/>
+    </center>
+
+</BorderPane>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.possum.ui.common.controls.DataTableView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.categories.CategoriesController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <!-- Header -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Categories" styleClass="view-title"/>
+            <Label text="Manage product classifications and hierarchy" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS" />
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <TextField fx:id="searchField" promptText="Search categories..." prefWidth="250" styleClass="search-field" />
+            <Button fx:id="refreshButton" text="Refresh" onAction="#handleRefresh" styleClass="action-button">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+            </Button>
+            <Button fx:id="importButton" text="Import CSV" onAction="#handleImport" styleClass="action-button" accessibleText="Import categories from CSV file">
+                <graphic><FontIcon iconLiteral="bx-upload" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Import categories from a CSV file (name, parent_name)"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="addButton" text="Add Category" onAction="#handleAddCategory" styleClass="action-button, primary-button" accessibleText="Create a new category">
+                <graphic><FontIcon iconLiteral="bx-plus" iconSize="16" iconColor="white"/></graphic>
+                <tooltip>
+                    <Tooltip text="Add a new category" />
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-padding: 0;">
+        <!-- Tree View on the left -->
+        <VBox styleClass="card">
+            <Label text="Category Hierarchy" styleClass="card-title" />
+            <TreeView fx:id="categoryTreeView" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: #cbd5e1; -fx-border-radius: 6;"/>
+        </VBox>
+
+        <!-- Table View on the right -->
+        <VBox styleClass="card">
+            <Label text="All Categories" styleClass="card-title" />
+            <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS" styleClass="categories-table" />
+        </VBox>
+    </SplitPane>
+
+</VBox>

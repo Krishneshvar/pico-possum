@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.possum.ui.purchase.PaymentPolicyFormController"
+            fitToWidth="true"
+            stylesheets="@../../styles/inventory.css"
+            styleClass="workspace-view, form-container">
+
+    <VBox spacing="25" alignment="TOP_CENTER" style="-fx-padding: 30 40;">
+        <VBox spacing="25" maxWidth="1000" alignment="TOP_LEFT">
+        <HBox styleClass="view-header" alignment="CENTER_LEFT">
+            <Button onAction="#handleCancel" styleClass="back-link" accessibleText="Go back to policies list">
+                <graphic><FontIcon iconLiteral="bx-arrow-back" iconSize="16"/></graphic>
+            </Button>
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label fx:id="titleLabel" text="Add Payment Policy" styleClass="view-title"/>
+                <Label text="Define payment terms and credit periods for business transactions" styleClass="view-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true"
+                    accessibleText="Cancel policy creation"/>
+            <Button fx:id="saveButton" text="Save Policy" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true"
+                    accessibleText="Save payment policy information"/>
+        </HBox>
+
+        <VBox spacing="20" maxWidth="600">
+            <VBox styleClass="form-section">
+                <Label text="Policy Information" styleClass="form-section-title"/>
+                <Label text="Specify terms like net maturity days and internal descriptions." styleClass="form-section-subtitle"/>
+                
+                <VBox styleClass="form-group">
+                    <HBox spacing="4">
+                        <Label text="Policy Name" styleClass="form-label" labelFor="$nameField"/>
+                        <Label text="*" styleClass="required-indicator"/>
+                    </HBox>
+                    <TextField fx:id="nameField" promptText="e.g., Net-30, Due on Receipt" styleClass="text-field"
+                               accessibleText="Policy Name. Required field"/>
+                </VBox>
+
+                <VBox styleClass="form-group">
+                    <HBox spacing="4">
+                        <Label text="Days to Pay" styleClass="form-label" labelFor="$daysToPayField"/>
+                        <Label text="*" styleClass="required-indicator"/>
+                    </HBox>
+                    <TextField fx:id="daysToPayField" promptText="Enter number of days" styleClass="text-field"
+                               accessibleText="Credit period in days. Required field"/>
+                </VBox>
+
+                <VBox styleClass="form-group">
+                    <Label text="Description" styleClass="form-label" labelFor="$descriptionField"/>
+                    <TextArea fx:id="descriptionField" promptText="Optional policy details..." prefRowCount="3" styleClass="text-area"
+                               accessibleText="Policy description"/>
+                </VBox>
+            </VBox>
+        </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

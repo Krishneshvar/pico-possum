@@ -1,0 +1,579 @@
+@import "../tokens.css";
+
+/* =====================================================
+   Inventory and Management Views
+   Production-grade styling with visual hierarchy
+   ===================================================== */
+
+/* ========== FORM CONTROLS - CONSISTENT SIZING ========== */
+
+.check-box {
+    -fx-text-fill: -color-text-main;
+    -fx-font-size: 14;
+}
+
+.icon-button {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+}
+
+/* Ensure all inputs have consistent 40 height */
+.workspace-view .text-field,
+.workspace-view .password-field,
+.workspace-view .combo-box,
+.workspace-view .date-picker {
+    -fx-min-height: 42;
+    -fx-pref-height: 42;
+}
+
+.workspace-view .text-area {
+    -fx-pref-height: 100;
+    -fx-min-height: 100;
+    -fx-max-height: 300;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+    -fx-font-size: 14;
+    -fx-wrap-text: true;
+}
+
+.workspace-view .text-area:focused {
+    -fx-border-color: -color-border-focus;
+    -fx-border-width: 2;
+    -fx-effect: -shadow-focus;
+}
+
+.workspace-view .text-area .content {
+    -fx-background-color: transparent;
+}
+
+.workspace-view .combo-box > .list-cell,
+.workspace-view .date-picker > .text-field {
+    -fx-padding: 6 12;
+}
+
+.workspace-view .multi-select-filter {
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-min-width: 176;
+    -fx-pref-width: 188;
+}
+
+.workspace-view .filter-bar .combo-box,
+.workspace-view .filter-bar .date-picker {
+    -fx-min-width: 180;
+    -fx-pref-width: 200;
+}
+
+.workspace-view .filter-bar .text-field {
+    -fx-min-width: 152;
+}
+
+/* Search field styling */
+.search-field {
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 9 12;
+    -fx-font-size: 14;
+}
+
+.search-field:focused {
+    -fx-border-color: -color-border-focus;
+    -fx-border-width: 2;
+    -fx-effect: -shadow-focus;
+}
+
+
+
+/* ========== ENHANCED TABLE STYLING ========== */
+
+/* Table header with bold brand dark backgrounds, high contrast white text, and curved top corners */
+.workspace-view .table-view .column-header-background,
+.workspace-view .data-table .column-header-background {
+    -fx-background-color: -color-brand-dark !important;
+    -fx-background-radius: 8 8 0 0;
+    -fx-border-color: transparent transparent -color-brand-dark-hover transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.workspace-view .table-view .column-header,
+.workspace-view .data-table .column-header {
+    -fx-background-color: transparent !important;
+    -fx-padding: 12 16;
+    -fx-border-color: -color-brand-dark-hover;
+    -fx-border-width: 0 1 0 0;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.workspace-view .table-view .column-header:last-visible,
+.workspace-view .data-table .column-header:last-visible {
+    -fx-border-width: 0;
+}
+
+.workspace-view .table-view .column-header .label,
+.workspace-view .data-table .column-header .label {
+    -fx-text-fill: white !important;
+    -fx-font-size: 13;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 1.0;
+    -fx-text-transform: uppercase;
+}
+
+/* Enhanced table rows */
+.workspace-view .table-view .table-row-cell,
+.workspace-view .data-table .table-row-cell {
+    -fx-background-color: -color-surface;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2 0;
+}
+
+/* Reduced height for category specific table */
+.workspace-view .data-table.categories-table .table-row-cell,
+.workspace-view .table-view.categories-table .table-row-cell {
+    -fx-padding: 0 0;
+}
+
+.workspace-view .data-table.categories-table .table-cell,
+.workspace-view .table-view.categories-table .table-cell {
+    -fx-padding: 4 16;
+}
+
+.workspace-view .table-view .table-row-cell:hover,
+.workspace-view .data-table .table-row-cell:hover {
+    -fx-background-color: -color-surface-hover;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.05), 8, 0, 0, 2);
+}
+
+.workspace-view .table-view .table-row-cell:selected,
+.workspace-view .data-table .table-row-cell:selected {
+    -fx-background-color: -color-accent-subtle;
+    -fx-border-color: -color-accent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.workspace-view .table-view .table-cell,
+.workspace-view .data-table .table-cell {
+    -fx-text-fill: -color-text-main;
+    -fx-font-size: 14;
+    -fx-padding: 8 16; /* Increased padding slightly for better touch/click targets */
+    -fx-alignment: center-left;
+    -fx-border-color: transparent -color-border transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.workspace-view .table-view .table-cell:last-visible,
+.workspace-view .data-table .table-cell:last-visible {
+    -fx-border-width: 0;
+}
+
+.workspace-view .table-view .table-cell .table-action-btn,
+.workspace-view .table-view .table-cell .table-action-menu-btn,
+.workspace-view .data-table .table-cell .table-action-btn,
+.workspace-view .data-table .table-cell .table-action-menu-btn {
+    -fx-min-width: 96;
+}
+
+/* ========== CATEGORY TREE VIEW ========== */
+
+.tree-view {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.tree-view .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-main;
+    -fx-font-size: 14;
+    -fx-padding: 8 10;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-content-display: left;
+    -fx-graphic-text-gap: 8;
+    -fx-indent: 28;
+}
+
+/* Indentation guides removed to resolve layout crash */
+.tree-view .tree-cell:filled {
+    -fx-background-color: transparent;
+    -fx-background-repeat: repeat-x;
+    -fx-background-size: 28px 100%;
+    -fx-background-position: left;
+}
+
+.tree-view .tree-cell:selected {
+    -fx-background-color: -color-accent-subtle;
+    -fx-background-size: 100% 100%;
+    -fx-text-fill: -color-accent-dark;
+    -fx-font-weight: 700;
+    -fx-border-color: -color-accent;
+    -fx-border-width: 0 0 0 3;
+}
+
+.tree-view .tree-cell:hover {
+    -fx-background-color: -color-surface-hover;
+}
+
+/* ========== SPLIT PANE STYLING ========== */
+
+.split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: -color-border;
+    -fx-padding: 0 1 0 1;
+}
+
+/* ========== STOCK STATUS INDICATORS ========== */
+
+.stock-indicator-high {
+    -fx-text-fill: -color-success;
+    -fx-font-weight: 700;
+}
+
+.stock-indicator-low {
+    -fx-text-fill: -color-warning;
+    -fx-font-weight: 700;
+}
+
+.stock-indicator-out {
+    -fx-text-fill: -color-error;
+    -fx-font-weight: 700;
+}
+
+/* ========== VARIANT ROW STYLING (Product Form) ========== */
+
+.variant-row-container {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 18;
+    -fx-spacing: 14;
+    -fx-effect: -shadow-sm;
+}
+
+.variant-row-container:hover {
+    -fx-border-color: -color-primary-light;
+    -fx-effect: -shadow-md;
+}
+
+.variant-row-header {
+    -fx-alignment: center-left;
+    -fx-spacing: 12;
+    -fx-padding: 0 0 8 0;
+}
+
+.variant-row-title {
+    -fx-font-size: 14;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-secondary;
+    -fx-letter-spacing: 0.3;
+}
+
+.variant-field-row {
+    -fx-spacing: 14;
+    -fx-alignment: center-left;
+}
+
+.variant-field-box {
+    -fx-spacing: 6;
+}
+
+.variant-field-label {
+    -fx-font-size: 12;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-text-secondary;
+    -fx-letter-spacing: 0.2;
+}
+
+/* ========== FILTER BAR ENHANCEMENTS ========== */
+
+.filter-bar {
+    -fx-background-color: #FAFBFC;
+    -fx-border-color: -color-border;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 16;
+    -fx-spacing: 10;
+}
+
+/* ========== PAGINATION BAR ========== */
+
+.pagination-bar {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 16 16;
+    -fx-alignment: center;
+}
+
+/* Pagination Core Styling */
+.pagination {
+    -fx-background-color: transparent;
+}
+
+.pagination > .pagination-control {
+    -fx-background-color: transparent;
+}
+
+.pagination .control-box {
+    -fx-spacing: 4;
+    -fx-alignment: center;
+}
+
+/* Page Buttons (Numbers) */
+.pagination .number-button,
+.pagination .left-arrow-button,
+.pagination .right-arrow-button {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-background-color: -color-surface;
+    -fx-background-insets: 0;
+    -fx-background-radius: 6;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 13;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.pagination .number-button:hover,
+.pagination .left-arrow-button:hover,
+.pagination .right-arrow-button:hover {
+    -fx-background-color: -color-surface-hover;
+    -fx-border-color: -color-primary;
+    -fx-text-fill: -color-primary;
+}
+
+/* Selected Page Button */
+.pagination .number-button:selected {
+    -fx-background-color: -color-primary;
+    -fx-border-color: -color-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.4), 10, 0, 0, 4);
+}
+
+/* Arrow Styling (Universal) */
+.pagination .left-arrow-button .arrow,
+.pagination .right-arrow-button .arrow {
+    -fx-background-color: -color-text-muted;
+    -fx-padding: 5; /* Size of arrow */
+}
+
+.pagination .left-arrow-button:hover .arrow,
+.pagination .right-arrow-button:hover .arrow {
+    -fx-background-color: -color-primary;
+}
+
+/* Page Info Text (e.g. "1/10") */
+.pagination .page-information {
+    -fx-padding: 12 0 0 0;
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 13;
+    -fx-font-weight: 600;
+}
+
+/* ========== EMPTY STATE ENHANCEMENTS ========== */
+
+.empty-state-view {
+    -fx-alignment: center;
+    -fx-padding: 48 24;
+    -fx-spacing: 12;
+    -fx-background-color: transparent;
+}
+
+.empty-state-icon {
+    -fx-font-size: 48;
+    -fx-opacity: 0.4;
+}
+
+.empty-state-title {
+    -fx-font-size: 18;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-main;
+}
+
+.empty-state-subtitle {
+    -fx-font-size: 14;
+    -fx-text-fill: -color-text-muted;
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+    -fx-max-width: 400;
+}
+
+/* ========== STOCK ADJUSTMENT BUTTON ========== */
+
+.btn-edit-stock {
+    -fx-min-width: 26;
+    -fx-min-height: 26;
+    -fx-pref-width: 26;
+    -fx-pref-height: 26;
+    -fx-max-width: 26;
+    -fx-max-height: 26;
+    -fx-background-color: -color-primary-subtle;
+    -fx-background-radius: 6;
+    -fx-border-color: -color-primary-light;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-text-fill: -color-primary-dark;
+    -fx-icon-color: -color-primary-dark;
+    -fx-font-size: 11;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-alignment: center;
+}
+
+.btn-edit-stock:hover {
+    -fx-background-color: -color-primary-dark;
+    -fx-text-fill: white;
+    -fx-border-color: -color-primary-dark;
+}
+
+.btn-edit-stock .ikonli-font-icon {
+    -fx-icon-color: -color-primary-dark;
+}
+
+.btn-edit-stock:hover .ikonli-font-icon {
+    -fx-icon-color: white;
+}
+
+.btn-delete {
+    -fx-min-width: 26;
+    -fx-min-height: 26;
+    -fx-pref-width: 26;
+    -fx-pref-height: 26;
+    -fx-max-width: 26;
+    -fx-max-height: 26;
+    -fx-background-color: #FEF2F2; /* Subtle error background */
+    -fx-background-radius: 6;
+    -fx-border-color: #FCA5A5; /* Light error border */
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-text-fill: #EF4444; /* Error red */
+    -fx-icon-color: #EF4444;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-alignment: center;
+}
+
+.btn-delete:hover {
+    -fx-background-color: #EF4444;
+    -fx-text-fill: white;
+    -fx-border-color: #EF4444;
+}
+
+.btn-delete .ikonli-font-icon {
+    -fx-icon-color: #EF4444;
+}
+
+.btn-delete:hover .ikonli-font-icon {
+    -fx-icon-color: white;
+}
+
+.btn-remove-variant {
+    -fx-text-fill: -color-error;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+    -fx-padding: 4 8;
+    -fx-background-radius: 4;
+}
+
+.btn-remove-variant:hover {
+    -fx-background-color: -color-error-bg;
+    -fx-text-fill: -color-error-text;
+    -fx-border-color: -color-error;
+    -fx-border-width: 0 0 0 0;
+}
+
+.single-select-filter {
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 0 12;
+    -fx-font-size: 14;
+    -fx-text-fill: -color-text-main;
+}
+
+.single-select-filter:focused {
+    -fx-border-color: -color-border-focus;
+    -fx-border-width: 2;
+    -fx-effect: -shadow-focus;
+}
+
+.multi-select-option-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 8 12;
+    -fx-text-fill: -color-text-main;
+    -fx-alignment: center-left;
+    -fx-cursor: hand;
+    -fx-font-size: 14;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.multi-select-option-btn:hover {
+    -fx-background-color: -color-surface-hover;
+}
+
+.multi-select-option-btn:pressed {
+    -fx-background-color: -color-accent-subtle;
+}
+
+/* Shared Form View Container Styling */
+.form-container {
+    -fx-background-color: -color-surface;
+}
+
+.form-container .viewport {
+    -fx-background-color: -color-surface;
+}
+
+/* Premium TextArea Styling */
+.workspace-view .text-area,
+.card .text-area,
+.text-area {
+    -fx-pref-height: 100;
+    -fx-min-height: 100;
+    -fx-max-height: 300;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+    -fx-font-size: 14;
+    -fx-wrap-text: true;
+}
+
+.workspace-view .text-area:focused,
+.card .text-area:focused,
+.text-area:focused {
+    -fx-border-color: -color-border-focus;
+    -fx-border-width: 2;
+    -fx-effect: -shadow-focus;
+}
+
+.text-area .content {
+    -fx-background-color: transparent;
+}

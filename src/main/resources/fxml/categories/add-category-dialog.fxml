@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.categories.AddCategoryDialogController"
+      style="-fx-background-color: #ffffff;"
+      stylesheets="@../../styles/inventory.css">
+
+    <padding>
+        <Insets top="24" right="32" bottom="24" left="32"/>
+    </padding>
+
+    <VBox spacing="24" VBox.vgrow="ALWAYS">
+        <!-- Header Area -->
+        <VBox spacing="4" style="-fx-padding: 0 0 10 0;">
+            <Label fx:id="titleLabel" text="Add Category" styleClass="view-title" style="-fx-font-size: 22px;"/>
+            <Label fx:id="subtitleLabel" text="Organize your catalog by creating distinct categories." styleClass="view-subtitle"/>
+        </VBox>
+
+        <Separator/>
+
+        <!-- Form Fields -->
+        <VBox spacing="24">
+            <VBox styleClass="form-group">
+                <HBox spacing="4" alignment="BOTTOM_LEFT">
+                    <Label text="Category Name" styleClass="form-label" labelFor="$nameField" style="-fx-font-weight: 600;"/>
+                    <Label text="*" style="-fx-text-fill: #ef4444; -fx-font-weight: bold;"/>
+                </HBox>
+                <TextField fx:id="nameField" promptText="e.g., Beverages" styleClass="text-field" accessibleText="Input category name"/>
+                <Label text="A concise and unique name for this category group." style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+            </VBox>
+
+            <VBox styleClass="form-group">
+                <Label text="Parent Category (Optional)" styleClass="form-label" labelFor="$parentCategoryComboBox" style="-fx-font-weight: 600;"/>
+                <ComboBox fx:id="parentCategoryComboBox" promptText="Select Parent Category..." maxWidth="Infinity" styleClass="combo-box" accessibleText="Select optional parent category"/>
+                <Label text="Nest this category under an existing one (creates a subcategory)." style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+            </VBox>
+        </VBox>
+
+        <Region VBox.vgrow="ALWAYS" />
+
+        <!-- Actions -->
+        <HBox alignment="CENTER_RIGHT" spacing="12">
+            <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true" accessibleText="Cancel category creation" accessibleRole="BUTTON">
+                <tooltip>
+                    <Tooltip text="Discard and close (Esc)"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="saveButton" text="Save Category" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true" accessibleText="Save new category" accessibleRole="BUTTON">
+                <graphic><FontIcon iconLiteral="bx-save" iconSize="16" iconColor="white"/></graphic>
+                <tooltip>
+                    <Tooltip text="Create the category (Enter)"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </VBox>
+
+</VBox>

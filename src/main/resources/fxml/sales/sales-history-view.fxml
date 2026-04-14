@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.possum.ui.common.controls.PaginationBar?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.sales.SalesHistoryController"
+      fx:id="container"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <!-- Header Area -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Bill History" styleClass="view-title"/>
+            <Label text="View and manage all past point-of-sale transactions and invoices" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button fx:id="importLegacyButton" text="Import Legacy CSV" onAction="#handleImportLegacySales" styleClass="action-button" accessibleText="Import legacy bill history from serieswise CSV">
+                <graphic><FontIcon iconLiteral="bx-upload" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Import legacy Serieswise Sales CSV for bill history and reports"/>
+                </tooltip>
+            </Button>
+            <Button text="Refresh" onAction="#loadHistory" styleClass="action-button" accessibleText="Refresh Bill History">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Refresh the bill history list"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <!-- Main Table Card -->
+    <VBox fx:id="mainCard" VBox.vgrow="ALWAYS" styleClass="card">
+        <com.possum.ui.common.controls.DataTableView fx:id="salesTable" VBox.vgrow="ALWAYS" />
+        
+        <PaginationBar fx:id="paginationBar" />
+    </VBox>
+
+</VBox>

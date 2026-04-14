@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.possum.ui.common.controls.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.products.ProductsController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <!-- Header Area -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT" spacing="20">
+        <VBox spacing="4">
+            <Label text="Products Library" styleClass="view-title" accessibleRole="TEXT"/>
+            <Label text="View, search, and manage your central product catalog and their configurations." styleClass="view-subtitle" accessibleRole="TEXT"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="12" alignment="CENTER_RIGHT">
+            <Button fx:id="refreshButton" text="Refresh List" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh products table" accessibleRole="BUTTON">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Reload the latest product data from the database"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="importButton" text="Import CSV" onAction="#handleImport" styleClass="action-button" accessibleText="Import products from CSV file" accessibleRole="BUTTON">
+                <graphic><FontIcon iconLiteral="bx-upload" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Import products from a CSV file (name, category_name, status)"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="addButton" text="Add New Product" onAction="#handleAdd" styleClass="action-button, primary-button" accessibleText="Create a new product record" accessibleRole="BUTTON" defaultButton="true">
+                <graphic><FontIcon iconLiteral="bx-plus" iconSize="16" iconColor="white"/></graphic>
+                <tooltip>
+                    <Tooltip text="Create a new product and define its variants"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <!-- Main Content -->
+    <VBox styleClass="card" VBox.vgrow="ALWAYS">
+        <FilterBar fx:id="filterBar"/>
+
+        <StackPane VBox.vgrow="ALWAYS">
+            <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS" styleClass="data-table"/>
+        </StackPane>
+
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+
+</VBox>

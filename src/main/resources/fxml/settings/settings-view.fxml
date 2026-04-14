@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.settings.SettingsController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/settings.css">
+    
+    <!-- Header -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT" spacing="20">
+        <VBox spacing="4">
+            <Label text="System Settings" styleClass="view-title" accessibleRole="TEXT"/>
+            <Label text="Configure store profile, billing, hardware, and tax settings for your business." styleClass="view-subtitle" accessibleRole="TEXT"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <FontIcon iconLiteral="bx-cog" iconSize="32" iconColor="#10B981" opacity="0.3"/>
+    </HBox>
+    
+    <!-- Settings Tabs -->
+    <TabPane VBox.vgrow="ALWAYS" styleClass="settings-tab-pane" tabClosingPolicy="UNAVAILABLE">
+        
+        <!-- General Settings Tab -->
+        <Tab closable="false">
+            <graphic>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <FontIcon iconLiteral="bx-store" iconSize="16"/>
+                    <Label text="General" style="-fx-font-weight: 600;"/>
+                </HBox>
+            </graphic>
+            <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 20 0 0 0;">
+                <VBox spacing="24">
+                    <!-- Store Profile Card -->
+                    <VBox styleClass="card" spacing="24">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <FontIcon iconLiteral="bx-building" iconSize="20" iconColor="#10B981"/>
+                            <VBox spacing="2">
+                                <Label text="Store Profile" styleClass="card-title"/>
+                                <Label text="Basic information about your business" styleClass="field-helper"/>
+                            </VBox>
+                        </HBox>
+                        
+                        <Separator/>
+                        
+                        <VBox spacing="20">
+                            <VBox styleClass="form-group">
+                                <Label text="Currency Symbol" styleClass="form-label"/>
+                                <TextField fx:id="currencyField" prefWidth="500" maxWidth="500"
+                                          promptText="e.g. $, ₹, €"
+                                          styleClass="text-field" accessibleText="Currency Symbol"/>
+                                <Label text="Used for financial reports and default billing" styleClass="field-helper"/>
+                            </VBox>
+                        </VBox>
+                    </VBox>
+                    
+                    <!-- Regional Settings Card -->
+                    <VBox styleClass="card" spacing="24">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <FontIcon iconLiteral="bx-world" iconSize="20" iconColor="#6366F1"/>
+                            <VBox spacing="2">
+                                <Label text="Regional Settings" styleClass="card-title"/>
+                                <Label text="Date and time display preferences" styleClass="field-helper"/>
+                            </VBox>
+                        </HBox>
+                        
+                        <Separator/>
+                        
+                        <VBox spacing="20">
+                            <VBox styleClass="form-group">
+                                <Label text="Date Format" styleClass="form-label"/>
+                                <ComboBox fx:id="dateFormatCombo" prefWidth="500" maxWidth="500"
+                                          promptText="Select date format"
+                                          styleClass="combo-box" accessibleText="Date Format"/>
+                                <Label text="Format for displaying dates across the application" styleClass="field-helper"/>
+                            </VBox>
+                            
+                            <VBox styleClass="form-group">
+                                <Label text="Time Format" styleClass="form-label"/>
+                                <ComboBox fx:id="timeFormatCombo" prefWidth="500" maxWidth="500"
+                                          promptText="Select time format"
+                                          styleClass="combo-box" accessibleText="Time Format"/>
+                                <Label text="Format for displaying times across the application" styleClass="field-helper"/>
+                            </VBox>
+                        </VBox>
+                    </VBox>
+
+                    <!-- Inventory Guardrails Card -->
+                    <VBox styleClass="card" spacing="24">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <FontIcon iconLiteral="bx-package" iconSize="20" iconColor="#F59E0B"/>
+                            <VBox spacing="2">
+                                <Label text="Inventory Guardrails" styleClass="card-title"/>
+                                <Label text="Control stock alerts and stock-based sales restrictions" styleClass="field-helper"/>
+                            </VBox>
+                        </HBox>
+
+                        <Separator/>
+
+                        <VBox spacing="12">
+                            <CheckBox fx:id="inventoryAlertsToggle"
+                                      text="Enable inventory alerts and stock restrictions"
+                                      selected="true"
+                                      accessibleText="Toggle inventory alerts and stock restrictions"/>
+                            <Label text="Turn this off to allow sales and deductions even when requested quantity is more than current stock."
+                                   styleClass="field-helper"
+                                   wrapText="true"
+                                   maxWidth="560"/>
+
+                            <CheckBox fx:id="numericalSkuToggle"
+                                      text="Enable numerical SKU generation"
+                                      selected="false"
+                                      accessibleText="Toggle numerical SKU generation"/>
+                            <Label text="When enabled, new variants get sequential numeric SKUs automatically and SKU fields are read-only in product forms."
+                                   styleClass="field-helper"
+                                   wrapText="true"
+                                   maxWidth="560"/>
+                        </VBox>
+                    </VBox>
+                    
+                    <!-- Save Button -->
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <Button text="Save General Settings" onAction="#handleSaveGeneral" styleClass="primary-button"
+                                defaultButton="true" accessibleText="Save General Settings">
+                            <graphic><FontIcon iconLiteral="bx-save" iconSize="16" iconColor="white"/></graphic>
+                        </Button>
+                        <Label text="Changes will take effect immediately" styleClass="field-helper"/>
+                    </HBox>
+                </VBox>
+            </ScrollPane>
+        </Tab>
+        
+        <!-- Bill Structure Tab -->
+        <Tab closable="false">
+            <graphic>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <FontIcon iconLiteral="bx-receipt" iconSize="16"/>
+                    <Label text="Bill Structure" style="-fx-font-weight: 600;"/>
+                </HBox>
+            </graphic>
+            <AnchorPane fx:id="billSettingsTabContent"/>
+        </Tab>
+        
+        <!-- Hardware & Printing Tab -->
+        <Tab closable="false">
+            <graphic>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <FontIcon iconLiteral="bx-printer" iconSize="16"/>
+                    <Label text="Hardware &amp; Printing" style="-fx-font-weight: 600;"/>
+                </HBox>
+            </graphic>
+            <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 20 0 0 0;">
+                <VBox spacing="24">
+                    <!-- Receipt Printer Card -->
+                    <VBox styleClass="card" spacing="24">
+                        <HBox alignment="CENTER_LEFT" spacing="15">
+                            <VBox HBox.hgrow="ALWAYS" spacing="2">
+                                <HBox alignment="CENTER_LEFT" spacing="12">
+                                    <FontIcon iconLiteral="bx-printer" iconSize="20" iconColor="#10B981"/>
+                                    <Label text="Receipt Printer" styleClass="card-title"/>
+                                </HBox>
+                                <Label text="Configure default printer for POS receipts and invoices" styleClass="field-helper"/>
+                            </VBox>
+                            <Button text="Refresh" onAction="#handleRefreshPrinters" styleClass="action-button"
+                                    accessibleText="Refresh connected printers list">
+                                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                            </Button>
+                        </HBox>
+                        
+                        <Separator/>
+                        
+                        <VBox spacing="20">
+                            <VBox styleClass="form-group">
+                                <Label text="Default Printer" styleClass="form-label"/>
+                                <ComboBox fx:id="printerCombo" prefWidth="500" maxWidth="500" 
+                                          promptText="Select a printer"
+                                          styleClass="combo-box"
+                                          accessibleText="Select Default Printer"/>
+                                <Label text="This printer will be used for all receipt printing operations" styleClass="field-helper"/>
+                            </VBox>
+                            
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <Button fx:id="testPrintBtn" text="Send Test Print" onAction="#handleTestPrint" 
+                                        styleClass="action-button" 
+                                        accessibleText="Send a test print to selected printer">
+                                    <graphic><FontIcon iconLiteral="bx-printer" iconSize="16"/></graphic>
+                                </Button>
+                                <Label text="Verify printer connection and output quality" styleClass="field-helper"/>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                    
+                    <!-- Hardware Info Card -->
+                    <VBox styleClass="card" spacing="20">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <FontIcon iconLiteral="bx-info-circle" iconSize="20" iconColor="#3B82F6"/>
+                            <VBox spacing="2">
+                                <Label text="Hardware Information" styleClass="card-title"/>
+                                <Label text="Tips for connecting and configuring hardware devices" styleClass="field-helper"/>
+                            </VBox>
+                        </HBox>
+                        
+                        <Separator/>
+                        
+                        <VBox spacing="12" style="-fx-padding: 8 0 0 0;">
+                            <HBox spacing="10" alignment="TOP_LEFT">
+                                <FontIcon iconLiteral="bx-check" iconSize="16" iconColor="#10B981"/>
+                                <Label text="Ensure your printer is connected and powered on" wrapText="true" maxWidth="450"
+                                       style="-fx-text-fill: #475569; -fx-font-size: 14;"/>
+                            </HBox>
+                            <HBox spacing="10" alignment="TOP_LEFT">
+                                <FontIcon iconLiteral="bx-check" iconSize="16" iconColor="#10B981"/>
+                                <Label text="Install the latest printer drivers from the manufacturer" wrapText="true" maxWidth="450"
+                                       style="-fx-text-fill: #475569; -fx-font-size: 14;"/>
+                            </HBox>
+                            <HBox spacing="10" alignment="TOP_LEFT">
+                                <FontIcon iconLiteral="bx-check" iconSize="16" iconColor="#10B981"/>
+                                <Label text="Use the refresh button if your printer doesn't appear in the list" wrapText="true" maxWidth="450"
+                                       style="-fx-text-fill: #475569; -fx-font-size: 14;"/>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </VBox>
+            </ScrollPane>
+        </Tab>
+
+        <!-- Backup & Restore Tab -->
+        <Tab closable="false">
+            <graphic>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <FontIcon iconLiteral="bx-data" iconSize="16"/>
+                    <Label text="Backup &amp; Restore" style="-fx-font-weight: 600;"/>
+                </HBox>
+            </graphic>
+            <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 20 0 0 0;">
+                <VBox spacing="24">
+                    <VBox styleClass="card" spacing="24">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <FontIcon iconLiteral="bx-shield-quarter" iconSize="20" iconColor="#0EA5E9"/>
+                            <VBox spacing="2">
+                                <Label text="Automatic Daily Backups" styleClass="card-title"/>
+                                <Label text="A mandatory backup is created once every day while the app is running" styleClass="field-helper"/>
+                            </VBox>
+                        </HBox>
+
+                        <Separator/>
+
+                        <VBox spacing="14">
+                            <VBox spacing="6">
+                                <Label text="Backup Location" styleClass="form-label"/>
+                                <Label fx:id="backupLocationLabel" text="Loading..." styleClass="field-helper" wrapText="true"/>
+                            </VBox>
+
+                            <VBox spacing="6">
+                                <Label text="Latest Backup" styleClass="form-label"/>
+                                <Label fx:id="latestBackupLabel" text="Checking backups..." styleClass="field-helper" wrapText="true"/>
+                            </VBox>
+                        </VBox>
+                    </VBox>
+
+                    <VBox styleClass="card" spacing="20">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <FontIcon iconLiteral="bx-transfer" iconSize="20" iconColor="#22C55E"/>
+                            <VBox spacing="2">
+                                <Label text="Manual Backup &amp; Restore" styleClass="card-title"/>
+                                <Label text="Create an on-demand backup or restore from a selected backup file" styleClass="field-helper"/>
+                            </VBox>
+                        </HBox>
+
+                        <Separator/>
+
+                        <VBox spacing="12">
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <Button fx:id="createBackupBtn" text="Create Backup Now" onAction="#handleCreateBackupNow" styleClass="primary-button">
+                                    <graphic><FontIcon iconLiteral="bx-save" iconSize="16" iconColor="white"/></graphic>
+                                </Button>
+                                <Label text="Recommended before major imports or updates" styleClass="field-helper"/>
+                            </HBox>
+
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <Button fx:id="openBackupFolderBtn" text="Open Backup Folder" onAction="#handleOpenBackupFolder" styleClass="action-button">
+                                    <graphic><FontIcon iconLiteral="bx-folder-open" iconSize="16"/></graphic>
+                                </Button>
+                                <Label text="View and copy backup files for external storage" styleClass="field-helper"/>
+                            </HBox>
+
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <Button fx:id="restoreBackupBtn" text="Restore From Backup File" onAction="#handleRestoreFromBackup" styleClass="secondary-button">
+                                    <graphic><FontIcon iconLiteral="bx-upload" iconSize="16"/></graphic>
+                                </Button>
+                                <Label text="This replaces current data and should be used carefully" styleClass="field-helper"/>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </VBox>
+            </ScrollPane>
+        </Tab>
+        
+        <!-- Tax Configuration Tab -->
+        <Tab closable="false">
+            <graphic>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <FontIcon iconLiteral="bx-calculator" iconSize="16"/>
+                    <Label text="Tax Configuration" style="-fx-font-weight: 600;"/>
+                </HBox>
+            </graphic>
+            <AnchorPane fx:id="taxSettingsTabContent"/>
+        </Tab>
+    </TabPane>
+
+</VBox>

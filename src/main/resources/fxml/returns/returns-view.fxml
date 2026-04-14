@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.returns.ReturnsController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+    
+    <!-- Header Area -->
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Returns Manager" styleClass="view-title"/>
+            <Label text="Process product returns and view past refund histories" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh Returns List">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Refresh the returns list"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="createReturnButton" text="Create Return" accessibleText="Create New Return" onAction="#handleCreateReturn" styleClass="action-button, danger-button" style="-fx-border-color: -color-error; -fx-border-width: 1;">
+                <graphic><FontIcon iconLiteral="bx-undo" iconSize="16" iconColor="#EF4444"/></graphic>
+                <tooltip>
+                    <Tooltip text="Create a new return from a sale"/>
+                </tooltip>
+            </Button>
+        </HBox>
+    </HBox>
+    
+    <VBox VBox.vgrow="ALWAYS" styleClass="card">
+        <FilterBar fx:id="filterBar"/>
+        
+        <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS"/>
+        
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+
+</VBox>

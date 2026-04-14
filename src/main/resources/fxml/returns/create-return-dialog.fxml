@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.returns.CreateReturnDialogController"
+      spacing="20"
+      prefWidth="650"
+      styleClass="card"
+      stylesheets="@../../styles/inventory.css">
+    
+    <padding>
+        <Insets top="28" right="32" bottom="28" left="32"/>
+    </padding>
+
+    <!-- Header Section -->
+    <VBox spacing="6">
+        <Label text="Process Return" styleClass="view-title" style="-fx-font-size: 22px;"/>
+        <Label text="Select items to return and provide a reason for the refund." styleClass="view-subtitle"/>
+    </VBox>
+
+    <!-- Find Sale Section -->
+    <HBox spacing="12" alignment="CENTER_LEFT" style="-fx-padding: 10 0;">
+        <TextField fx:id="saleInput" promptText="Enter Invoice # or Sale ID..." 
+                   accessibleText="Invoice or Sale ID Input" HBox.hgrow="ALWAYS" 
+                   styleClass="text-field" style="-fx-pref-height: 44;"/>
+        <Button fx:id="findSaleButton" text="Find Sale" accessibleText="Find Sale Button" 
+                defaultButton="true" styleClass="primary-button" style="-fx-pref-height: 44; -fx-min-width: 120;">
+            <graphic><FontIcon iconLiteral="bx-search" iconSize="16" iconColor="white"/></graphic>
+            <tooltip>
+                <Tooltip text="Locate sale details (Enter)"/>
+            </tooltip>
+        </Button>
+    </HBox>
+
+    <!-- Sale Details & Items Area -->
+    <VBox fx:id="saleDetailsArea" spacing="20" VBox.vgrow="ALWAYS">
+        
+        <!-- Premium Info Header -->
+        <GridPane hgap="30" vgap="10" style="-fx-background-color: -color-bg-canvas; -fx-padding: 18; -fx-background-radius: 10; -fx-border-color: -color-border; -fx-border-radius: 10;">
+            <columnConstraints>
+                <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+            </columnConstraints>
+            
+            <VBox GridPane.columnIndex="0">
+                <Label text="INVOICE NUMBER" style="-fx-text-fill: -color-text-muted; -fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 0.5;"/>
+                <Label fx:id="invoiceLabel" style="-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: -color-text-main;"/>
+            </VBox>
+            <VBox GridPane.columnIndex="1">
+                <Label text="TRANSACTION ID" style="-fx-text-fill: -color-text-muted; -fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 0.5;"/>
+                <Label fx:id="saleIdLabel" style="-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: -color-text-main;"/>
+            </VBox>
+            <VBox GridPane.columnIndex="2">
+                <Label text="CUSTOMER NAME" style="-fx-text-fill: -color-text-muted; -fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 0.5;"/>
+                <Label fx:id="customerLabel" style="-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: -color-text-main;"/>
+            </VBox>
+        </GridPane>
+
+        <!-- Dynamic Refund Info Card -->
+        <HBox fx:id="refundSummaryCard" spacing="20" alignment="CENTER_LEFT" 
+              style="-fx-background-color: #ECFDF5; -fx-border-color: #10B981; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 20; -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.1), 10, 0, 0, 5);">
+            <VBox HBox.hgrow="ALWAYS" spacing="4">
+                <Label text="TOTAL REFUND AMOUNT" style="-fx-text-fill: #065F46; -fx-font-size: 11px; -fx-font-weight: 800; -fx-letter-spacing: 0.8;"/>
+                <Label fx:id="totalRefundLabel" text="-" style="-fx-text-fill: #10B981; -fx-font-size: 32px; -fx-font-weight: 900;"/>
+            </VBox>
+            <VBox alignment="CENTER_RIGHT">
+                <Label fx:id="itemsSelectedLabel" text="0 items selected" style="-fx-text-fill: #065F46; -fx-font-weight: 700; -fx-font-size: 14px;"/>
+                <Label text="Click items below to add to refund" style="-fx-text-fill: #065F46; -fx-font-size: 11px; -fx-opacity: 0.8;"/>
+            </VBox>
+        </HBox>
+
+        <VBox spacing="12" VBox.vgrow="ALWAYS">
+            <Label text="Select Items for Return" styleClass="card-title" style="-fx-font-size: 15px;"/>
+            
+            <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" 
+                        styleClass="scroll-bar" VBox.vgrow="ALWAYS" minHeight="240" maxWidth="Infinity">
+                <VBox fx:id="itemsListContainer" spacing="14" style="-fx-padding: 5 10 5 0;"/>
+            </ScrollPane>
+        </VBox>
+
+        <!-- Reason Section -->
+        <VBox spacing="10" style="-fx-padding: 10 0 0 0;">
+            <Label text="Basis for Return Request" styleClass="form-label" style="-fx-font-weight: 700;"/>
+            <TextArea fx:id="reasonArea" promptText="Please specify why the items are being returned..." 
+                      accessibleText="Reason for Return Input" prefHeight="90" wrapText="true" 
+                      styleClass="text-area" style="-fx-background-radius: 8; -fx-border-radius: 8;"/>
+        </VBox>
+
+    </VBox>
+
+    <Separator style="-fx-opacity: 0.5;"/>
+
+    <!-- Footer Actions -->
+    <HBox spacing="15" alignment="CENTER_RIGHT" style="-fx-padding: 5 0 0 0;">
+        <Button fx:id="cancelButton" text="Discard" accessibleText="Cancel Button" 
+                cancelButton="true" styleClass="action-button" style="-fx-min-width: 100;">
+            <graphic><FontIcon iconLiteral="bx-x" iconSize="16"/></graphic>
+        </Button>
+        <Button fx:id="submitButton" text="Authorize Refund" accessibleText="Confirm Return Button" 
+                onAction="#handleSubmit" styleClass="danger-button" 
+                style="-fx-min-width: 160; -fx-pref-height: 46; -fx-border-color: -color-error; -fx-border-width: 1;">
+            <graphic><FontIcon iconLiteral="bx-undo" iconSize="16" iconColor="white"/></graphic>
+            <tooltip>
+                <Tooltip text="Complete refund processing"/>
+            </tooltip>
+        </Button>
+    </HBox>
+
+</VBox>

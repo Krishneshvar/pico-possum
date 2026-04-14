@@ -1,0 +1,129 @@
+/* Business Insights Design System */
+
+.insight-card {
+    background-color: -color-surface;
+    -fx-background-color: -color-surface;
+    padding: 24;
+    -fx-padding: 24;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    border-radius: 12;
+    -fx-border-color: -color-border;
+    border-color: -color-border;
+    -fx-border-width: 1;
+    border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.03), 10, 0, 0, 5);
+}
+
+.insight-card-label {
+    -fx-text-fill: -color-text-muted;
+    font-size: 11px;
+    -fx-font-size: 11px;
+    font-weight: 800;
+    -fx-font-weight: 800;
+    letter-spacing: 0.1em;
+    -fx-letter-spacing: 0.1em;
+    text-transform: uppercase;
+    -fx-text-transform: uppercase;
+}
+
+.insight-card-value {
+    -fx-text-fill: -color-text-main;
+    font-size: 32px;
+    -fx-font-size: 32px;
+    font-weight: 800;
+    -fx-font-weight: 800;
+}
+
+.insight-card-subtitle {
+    -fx-text-fill: -color-text-muted;
+    font-size: 12px;
+    -fx-font-size: 12px;
+    padding: 8 0 0 0;
+    -fx-padding: 8 0 0 0;
+}
+
+.trend-container {
+    padding: 4 10;
+    -fx-padding: 4 10;
+    -fx-background-radius: 20;
+    margin: 0 0 4 0;
+    -fx-margin: 0 0 4 0;
+}
+
+.trend-up {
+    background-color: rgba(16, 185, 129, 0.1);
+    -fx-background-color: rgba(16, 185, 129, 0.1);
+}
+
+.trend-up .trend-value,
+.trend-up .ikonli-font-icon {
+    -fx-text-fill: #10b981;
+}
+
+.trend-down {
+    background-color: rgba(239, 68, 68, 0.1);
+    -fx-background-color: rgba(239, 68, 68, 0.1);
+}
+
+.trend-down .trend-value,
+.trend-down .ikonli-font-icon {
+    -fx-text-fill: #ef4444;
+}
+
+.trend-neutral {
+    background-color: rgba(100, 116, 139, 0.1);
+    -fx-background-color: rgba(100, 116, 139, 0.1);
+}
+
+.trend-neutral .trend-value,
+.trend-neutral .ikonli-font-icon {
+    -fx-text-fill: #64748b;
+}
+
+.trend-value {
+    font-size: 13px;
+    -fx-font-size: 13px;
+    font-weight: 700;
+    -fx-font-weight: 700;
+}
+
+.insight-section-card {
+    background-color: -color-surface;
+    -fx-background-color: -color-surface;
+    padding: 24;
+    -fx-padding: 24;
+    -fx-background-radius: 16;
+    border-radius: 16;
+    -fx-border-radius: 16;
+    border-color: -color-border;
+    -fx-border-color: -color-border;
+    border-width: 1;
+    -fx-border-width: 1;
+}
+
+/* Chart Customization */
+.chart-content {
+    padding: 10;
+    -fx-padding: 10;
+}
+
+.chart-plot-background {
+    background-color: transparent;
+    -fx-background-color: transparent;
+}
+
+.chart-vertical-grid-lines, .chart-horizontal-grid-lines {
+    stroke: -color-border;
+    -fx-stroke: -color-border;
+    -fx-stroke-dash-array: 2 4;
+}
+
+/* Profitability Series Colors */
+.profitability-sales-series { -fx-bar-fill: -color-primary; }
+.profitability-cost-series { -fx-bar-fill: -color-text-muted; }
+.profitability-profit-series { -fx-bar-fill: -color-brand-dark; }
+
+/* Comparison Series Colors */
+.comparison-current-series { -fx-bar-fill: -color-primary; }
+.comparison-previous-series { -fx-bar-fill: -color-border; }

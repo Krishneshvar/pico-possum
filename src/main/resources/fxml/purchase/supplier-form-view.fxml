@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.possum.ui.purchase.SupplierFormController"
+            fitToWidth="true"
+            stylesheets="@../../styles/inventory.css"
+            styleClass="workspace-view, form-container">
+
+    <VBox spacing="25" alignment="TOP_CENTER" style="-fx-padding: 30 40;">
+        <VBox spacing="25" maxWidth="1000" alignment="TOP_LEFT">
+        <HBox styleClass="view-header" alignment="CENTER_LEFT">
+            <Button onAction="#handleCancel" styleClass="back-link" accessibleText="Go back to suppliers list">
+                <graphic><FontIcon iconLiteral="bx-arrow-back" iconSize="16"/></graphic>
+            </Button>
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label fx:id="titleLabel" text="Add Supplier" styleClass="view-title"/>
+                <Label text="Enter supplier details and payment terms" styleClass="view-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true"
+                    accessibleText="Cancel supplier creation"/>
+            <Button fx:id="saveButton" text="Save Supplier" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true"
+                    accessibleText="Save supplier information"/>
+        </HBox>
+
+        <VBox spacing="20" maxWidth="600">
+            <VBox styleClass="form-section">
+                <Label text="Supplier Information" styleClass="form-section-title"/>
+                <Label text="Business contact details, payment terms, and tax identifiers for procurement." styleClass="form-section-subtitle"/>
+                <VBox styleClass="form-group">
+                    <HBox spacing="4">
+                        <Label text="Supplier Name" styleClass="form-label" labelFor="$nameField"/>
+                        <Label text="*" styleClass="required-indicator"/>
+                    </HBox>
+                    <TextField fx:id="nameField" promptText="Enter supplier name" styleClass="text-field"
+                               accessibleText="Supplier Name. Required field"/>
+                    <Label fx:id="nameErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                </VBox>
+                <VBox styleClass="form-group">
+                    <Label text="Contact Person" styleClass="form-label" labelFor="$contactPersonField"/>
+                    <TextField fx:id="contactPersonField" promptText="Enter contact person name" styleClass="text-field"
+                               accessibleText="Contact Person name"/>
+                </VBox>
+                <VBox styleClass="form-group">
+                    <Label text="Phone Number" styleClass="form-label" labelFor="$phoneField"/>
+                    <TextField fx:id="phoneField" promptText="Enter phone number" styleClass="text-field"
+                               accessibleText="Phone Number"/>
+                    <Label fx:id="phoneErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                </VBox>
+                <VBox styleClass="form-group">
+                    <Label text="Email Address" styleClass="form-label" labelFor="$emailField"/>
+                    <TextField fx:id="emailField" promptText="Enter email address" styleClass="text-field"
+                               accessibleText="Email Address"/>
+                    <Label fx:id="emailErrorLabel" text="" styleClass="field-error" visible="false" managed="false"/>
+                </VBox>
+                <VBox styleClass="form-group">
+                    <Label text="GSTIN" styleClass="form-label" labelFor="$gstinField"/>
+                    <TextField fx:id="gstinField" promptText="Enter GSTIN" styleClass="text-field"
+                               accessibleText="GSTIN identification number"/>
+                </VBox>
+                <VBox styleClass="form-group">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="Payment Policy" styleClass="form-label" labelFor="$paymentPolicyCombo"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Hyperlink onAction="#handleManagePolicies" text="Manage Policies" style="-fx-font-size: 11px; -fx-padding: 0;"/>
+                    </HBox>
+                    <ComboBox fx:id="paymentPolicyCombo" promptText="Select payment policy" styleClass="combo-box" maxWidth="Infinity"
+                               accessibleText="Payment Policy selection"/>
+                </VBox>
+                <VBox styleClass="form-group">
+                    <Label text="Physical Address" styleClass="form-label" labelFor="$addressField"/>
+                    <TextArea fx:id="addressField" promptText="Enter full address" prefRowCount="3" styleClass="text-area"
+                              accessibleText="Physical Address"/>
+                </VBox>
+            </VBox>
+        </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

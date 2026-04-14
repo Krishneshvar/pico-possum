@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import java.net.URL?>
+
+<StackPane fx:id="rootPane" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.possum.ui.sales.PosController">
+    <BorderPane styleClass="pos-container">
+        <stylesheets>
+            <URL value="@../../styles/app-shell.css"/>
+            <URL value="@../../styles/pos.css"/>
+        </stylesheets>
+
+        <padding>
+            <Insets top="16" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <center>
+            <VBox spacing="16">
+                <HBox fx:id="searchDock" alignment="CENTER_LEFT" spacing="10" styleClass="pos-search-dock">
+                    <FontIcon iconLiteral="bx-search" iconSize="18" styleClass="pos-search-icon"/>
+                    <TextField fx:id="searchField" promptText="Search products, variants, or SKU... (Ctrl+K)" HBox.hgrow="ALWAYS" styleClass="search-field-pos" accessibleText="Product Search Input">
+                        <tooltip>
+                            <Tooltip text="Search-first workflow: start typing to add items quickly (Ctrl+K)"/>
+                        </tooltip>
+                    </TextField>
+                    <Label text="Ctrl+K" styleClass="search-shortcut-hint"/>
+                </HBox>
+
+                <HBox spacing="16" VBox.vgrow="ALWAYS">
+                    <VBox fx:id="leftVBox" spacing="16" HBox.hgrow="ALWAYS">
+                        <VBox fx:id="cartCardVBox" spacing="0" VBox.vgrow="ALWAYS" styleClass="pos-card">
+                            <HBox alignment="CENTER_LEFT" styleClass="pos-card-header">
+                                <Label text="Cart Items" styleClass="pos-card-title"/>
+                            </HBox>
+
+                            <com.possum.ui.common.controls.DataTableView fx:id="cartTable" VBox.vgrow="ALWAYS" />
+
+                            <HBox alignment="CENTER_RIGHT" spacing="24" styleClass="pos-cart-totals">
+                                <HBox spacing="8" alignment="CENTER_LEFT">
+                                    <Label text="TOTAL QTY" styleClass="totals-chip-label"/>
+                                    <Label fx:id="totalQtyLabel" text="0" styleClass="totals-chip-value"/>
+                                </HBox>
+                                <HBox spacing="8" alignment="CENTER_LEFT">
+                                    <Label text="MRP" styleClass="totals-chip-label"/>
+                                    <Label fx:id="bottomMrpLabel" text="-" styleClass="totals-chip-value-muted"/>
+                                </HBox>
+                                <HBox spacing="8" alignment="CENTER_LEFT">
+                                    <Label text="PRICE" styleClass="totals-chip-label"/>
+                                    <Label fx:id="bottomPriceTotalLabel" text="-" styleClass="totals-chip-value-muted"/>
+                                </HBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <HBox spacing="10" alignment="CENTER_LEFT">
+                                    <Label text="TOTAL" styleClass="totals-chip-label"/>
+                                    <Label fx:id="bottomTotalLabel" text="-" styleClass="totals-chip-value-accent"/>
+                                </HBox>
+                            </HBox>
+                        </VBox>
+
+                        <HBox spacing="16">
+                            <VBox spacing="12" styleClass="pos-card" style="-fx-padding: 16;" HBox.hgrow="ALWAYS">
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="Customer" styleClass="pos-card-title"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Button fx:id="btnResetCustomer" text="Clear" onAction="#handleResetCustomer" styleClass="action-btn" accessibleText="Clear Customer"/>
+                                </HBox>
+
+                                <GridPane hgap="12" vgap="8">
+                                    <columnConstraints>
+                                        <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                                        <ColumnConstraints hgrow="ALWAYS" minWidth="100"/>
+                                    </columnConstraints>
+
+                                    <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                        <Label text="Search / Select" styleClass="form-label"/>
+                                        <ComboBox fx:id="customerCombo" promptText="Walk-in Customer" maxWidth="Infinity" accessibleText="Customer Search Dropdown"/>
+                                    </VBox>
+
+                                    <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                        <Label text="Full Name" styleClass="form-label"/>
+                                        <TextField fx:id="customerNameField" promptText="Name" styleClass="search-field-pos" accessibleText="Customer Name Input"/>
+                                    </VBox>
+
+                                    <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                                        <Label text="Phone" styleClass="form-label"/>
+                                        <TextField fx:id="customerPhoneField" promptText="Phone" styleClass="search-field-pos" accessibleText="Customer Phone Input"/>
+                                    </VBox>
+
+                                    <VBox spacing="4" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                        <Label text="Email" styleClass="form-label"/>
+                                        <TextField fx:id="customerEmailField" promptText="Email" styleClass="search-field-pos" accessibleText="Customer Email Input"/>
+                                    </VBox>
+
+                                    <VBox spacing="4" GridPane.columnIndex="0" GridPane.rowIndex="2" GridPane.columnSpan="2">
+                                        <Label text="Address" styleClass="form-label"/>
+                                        <TextField fx:id="customerAddressField" promptText="Address" styleClass="search-field-pos" accessibleText="Customer Address Input"/>
+                                    </VBox>
+                                </GridPane>
+                            </VBox>
+
+                            <VBox spacing="12" styleClass="pos-card" style="-fx-padding: 16;" HBox.hgrow="ALWAYS">
+                                <Label text="Quick Add Product" styleClass="pos-card-title"/>
+
+                                <VBox spacing="8">
+                                    <VBox spacing="4">
+                                        <Label text="Product Name" styleClass="form-label"/>
+                                        <TextField fx:id="quickProductName" promptText="Search or type product name" styleClass="search-field-pos" accessibleText="Quick Add Product Name Input"/>
+                                    </VBox>
+
+                                    <HBox spacing="10">
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Variant" styleClass="form-label"/>
+                                            <TextField fx:id="quickVariantName" promptText="Standard, 1kg, Red" styleClass="search-field-pos" accessibleText="Quick Add Variant Name Input"/>
+                                        </VBox>
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Stock" styleClass="form-label"/>
+                                            <TextField fx:id="quickStock" promptText="0" styleClass="search-field-pos" accessibleText="Quick Add Stock Input"/>
+                                        </VBox>
+                                    </HBox>
+
+                                    <HBox spacing="10">
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Price" styleClass="form-label"/>
+                                            <TextField fx:id="quickPrice" promptText="0.00" styleClass="search-field-pos" accessibleText="Quick Add Price Input"/>
+                                        </VBox>
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Category" styleClass="form-label"/>
+                                            <TextField fx:id="quickCategorySearch" promptText="Search category" styleClass="search-field-pos" accessibleText="Quick Add Category Input"/>
+                                        </VBox>
+                                    </HBox>
+
+                                    <Button text="Add and Push to Cart" onAction="#handleQuickAddProduct" styleClass="complete-btn" maxWidth="Infinity" accessibleText="Quick Add Product Button"/>
+                                </VBox>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <StackPane fx:id="rightPane" prefWidth="380" minWidth="320" maxWidth="520" VBox.vgrow="ALWAYS">
+                        <VBox spacing="16" VBox.vgrow="ALWAYS">
+                            <VBox fx:id="paymentCard" spacing="14" styleClass="pos-card,payment-card" style="-fx-padding: 20;" VBox.vgrow="ALWAYS">
+                                <Label text="Payment" styleClass="pos-card-title"/>
+
+                                <VBox spacing="8">
+                                    <Label text="Payment Method" styleClass="billing-label"/>
+                                    <ComboBox fx:id="paymentMethodCombo" promptText="Select method" maxWidth="Infinity" accessibleText="Payment Method Dropdown"/>
+                                </VBox>
+
+                                <VBox spacing="8">
+                                    <Label text="Payment Type" styleClass="billing-label"/>
+                                    <HBox styleClass="toggle-group-neon">
+                                        <ToggleButton fx:id="btnFullPayment" text="Full Payment" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="toggle-btn-neon"/>
+                                        <ToggleButton fx:id="btnPartialPayment" text="Partial Payment" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="toggle-btn-neon"/>
+                                    </HBox>
+                                </VBox>
+
+                                <VBox spacing="8">
+                                    <Label text="Overall Discount" styleClass="billing-label"/>
+                                    <HBox spacing="8">
+                                        <TextField fx:id="discountField" promptText="0.00" HBox.hgrow="ALWAYS" accessibleText="Overall Discount Input"/>
+                                        <HBox styleClass="toggle-group-neon">
+                                            <ToggleButton fx:id="btnDiscountFixed" text="\$" prefWidth="45" styleClass="toggle-btn-neon"/>
+                                            <ToggleButton fx:id="btnDiscountPercent" text="\%" prefWidth="45" styleClass="toggle-btn-neon"/>
+                                        </HBox>
+                                    </HBox>
+                                </VBox>
+
+                                <Separator/>
+
+                                <VBox spacing="10">
+                                    <HBox>
+                                        <Label text="Subtotal" styleClass="billing-label"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Label fx:id="subtotalLabel" text="-" styleClass="billing-value"/>
+                                    </HBox>
+                                    <HBox>
+                                        <Label text="Discount" styleClass="billing-label"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Label fx:id="totalDiscountLabel" text="-" styleClass="billing-value" style="-fx-text-fill: #ef4444;"/>
+                                    </HBox>
+                                    <HBox>
+                                        <Label text="Tax" styleClass="billing-label"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Label fx:id="taxLabel" text="-" styleClass="billing-value"/>
+                                    </HBox>
+                                    <Separator/>
+                                    <HBox>
+                                        <Label text="Total" styleClass="total-label"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Label fx:id="totalLabel" text="-" styleClass="total-amount"/>
+                                    </HBox>
+                                </VBox>
+
+                                <HBox fx:id="tenderedBalanceContainer" spacing="10">
+                                    <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                        <Label text="Tendered" styleClass="billing-label"/>
+                                        <TextField fx:id="tenderedField" promptText="0.00" accessibleText="Amount Tendered Input"/>
+                                    </VBox>
+                                    <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                        <Label fx:id="balanceTypeLabel" text="Change" styleClass="billing-label"/>
+                                        <Label fx:id="balanceLabel" text="-" maxWidth="Infinity" styleClass="balance-value"/>
+                                    </VBox>
+                                </HBox>
+
+                                <Button fx:id="completeButton" text="Complete Sale" defaultButton="true" onAction="#handleCompleteSale" styleClass="complete-btn" maxWidth="Infinity" accessibleText="Complete Sale Button">
+                                    <tooltip>
+                                        <Tooltip text="Complete sale (Ctrl+Enter)"/>
+                                    </tooltip>
+                                </Button>
+                            </VBox>
+
+                            <VBox spacing="12" styleClass="pos-card" style="-fx-padding: 16;">
+                                <HBox alignment="CENTER_LEFT">
+                                    <Label text="Active Bills" styleClass="pos-card-title"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Label text="Ctrl+1..9" styleClass="helper-text"/>
+                                </HBox>
+                                <HBox fx:id="billsFlowPane" spacing="6"/>
+                                <Button text="Clear Current Cart" onAction="#handleClearCart" maxWidth="Infinity" styleClass="action-btn-destructive" accessibleText="Clear Current Cart Button"/>
+                            </VBox>
+                        </VBox>
+
+                    </StackPane>
+                </HBox>
+            </VBox>
+        </center>
+    </BorderPane>
+</StackPane>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.audit.AuditController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+    
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Audit Log" styleClass="view-title"/>
+            <Label text="Review system activities, including record changes and security events" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+            </Button>
+        </HBox>
+    </HBox>
+    
+    <VBox VBox.vgrow="ALWAYS" styleClass="card">
+        <FilterBar fx:id="filterBar"/>
+        
+        <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS"/>
+        
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+
+</VBox>

@@ -1,0 +1,75 @@
+/* =====================================================
+   POSSUM Design Tokens - Emerald & Slate System
+   JavaFX looked-up colors and sizing scales.
+   ===================================================== */
+
+/* Design tokens apply to root and as lookups for the scene */
+.root, .app-shell, .toast-container {
+    /* Primary - Emerald */
+    -color-primary: #10B981;
+    -color-primary-dark: #059669;
+    -color-primary-light: #D1FAE5;
+    -color-primary-subtle: #ECFDF5;
+    
+    /* Branding & Identity */
+    -color-brand-dark: #27323A;
+    -color-brand-dark-hover: #374151;
+
+    /* Upgraded Canvas and surfaces */
+    -color-bg-canvas: #F1F5F9;
+    -color-surface: #FFFFFF;
+    -color-surface-hover: #F8FAFC;
+    -color-surface-selected: #ECFDF5;
+
+    /* Accents & Gradients */
+    -color-primary-gradient: linear-gradient(to bottom right, #34D399, #059669);
+    -color-primary-gradient-hover: linear-gradient(to bottom right, #10B981, #047857);
+    -color-accent: #6366F1;
+    -color-accent-dark: #4338CA;
+    -color-accent-light: #A5B4FC;
+    -color-accent-subtle: #EEF2FF;
+
+    /* Borders */
+    -color-border: #CBD5E1;
+    -color-border-hover: #94A3B8;
+    -color-border-focus: #10B981;
+    -color-focus-ring: #10B981;
+    -color-focus-ring-soft: rgba(16, 185, 129, 0.22);
+
+    /* Text */
+    -color-text-main: #0F172A;
+    -color-text-secondary: #475569;
+    -color-text-muted: #64748B;
+    -color-text-disabled: #94A3B8;
+
+    /* Semantic */
+    -color-success: #10B981;
+    -color-success-bg: #ECFDF5;
+    -color-success-text: #064E3B;
+
+    -color-error: #EF4444;
+    -color-error-bg: #FEF2F2;
+    -color-error-text: #991B1B;
+
+    -color-warning: #F59E0B;
+    -color-warning-bg: #FFFBEB;
+    -color-warning-text: #78350F;
+
+    -color-info: #3B82F6;
+    -color-info-bg: #EFF6FF;
+    -color-info-text: #1E3A8A;
+
+    /* Typography */
+    -fx-font-family: "Inter", "Segoe UI", "Roboto", sans-serif;
+    -font-family-mono: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px; /* Reduce this (e.g., to 12px or 11px) to scale down the entire UI */
+
+    /* Enhanced Elevating Shadows */
+    -shadow-sm: dropshadow(three-pass-box, rgba(15, 23, 42, 0.05), 4, 0, 0, 1);
+    -shadow-md: dropshadow(three-pass-box, rgba(15, 23, 42, 0.08), 12, 0, 0, 4);
+    -shadow-lg: dropshadow(three-pass-box, rgba(15, 23, 42, 0.12), 24, 0, 0, 8);
+    -shadow-card: dropshadow(three-pass-box, rgba(15, 23, 42, 0.06), 20, 0, 0, 6);
+    -shadow-card-hover: dropshadow(three-pass-box, rgba(15, 23, 42, 0.12), 24, 0, 0, 8);
+    -shadow-primary-btn: dropshadow(three-pass-box, rgba(16, 185, 129, 0.35), 14, 0, 0, 4);
+    -shadow-focus: dropshadow(three-pass-box, rgba(16, 185, 129, 0.4), 10, 0, 0, 0);
+}

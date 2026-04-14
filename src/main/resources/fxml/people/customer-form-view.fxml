@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.possum.ui.people.CustomerFormController"
+            fitToWidth="true"
+            stylesheets="@../../styles/inventory.css"
+            styleClass="workspace-view">
+
+    <VBox spacing="20" alignment="TOP_LEFT">
+        <HBox styleClass="view-header">
+            <Label fx:id="titleLabel" text="Add Customer" styleClass="view-title"/>
+        </HBox>
+
+        <VBox spacing="20" maxWidth="600">
+            <VBox styleClass="card" spacing="15">
+                <Label text="Customer Information" styleClass="card-title"/>
+                <Label text="Primary details for contacting and identifying the customer." styleClass="helper-text" style="-fx-text-fill: #64748b; -fx-font-size: 12px;"/>
+                <Separator style="-fx-padding: 0 0 10 0;" />
+                <HBox spacing="20">
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <Label text="Full Name *" styleClass="form-label"/>
+                        <TextField fx:id="nameField" promptText="e.g., Jane Doe" styleClass="text-field" accessibleText="Full Name Required"/>
+                    </VBox>
+                </HBox>
+                <HBox spacing="20">
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <Label text="Customer Type" styleClass="form-label"/>
+                        <ComboBox fx:id="customerTypeCombo" maxWidth="Infinity" styleClass="combo-box" accessibleText="Customer Type"/>
+                    </VBox>
+                    <VBox styleClass="form-group" alignment="BOTTOM_LEFT" HBox.hgrow="ALWAYS">
+                        <CheckBox fx:id="isTaxExemptCheckbox" text="Tax Exempt" accessibleText="Mark customer as tax exempt"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox styleClass="card" spacing="15">
+                <Label text="Contact Details" styleClass="card-title"/>
+                <Label text="How to reach this customer." styleClass="helper-text" style="-fx-text-fill: #64748b; -fx-font-size: 12px;"/>
+                <Separator style="-fx-padding: 0 0 10 0;" />
+
+                <HBox spacing="20">
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <Label text="Phone Number" styleClass="form-label"/>
+                        <TextField fx:id="phoneField" promptText="e.g., 555-0199" styleClass="text-field" accessibleText="Phone Number"/>
+                    </VBox>
+                    <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                        <Label text="Email Address" styleClass="form-label"/>
+                        <TextField fx:id="emailField" promptText="e.g., email@example.com" styleClass="text-field" accessibleText="Email Address"/>
+                    </VBox>
+                </HBox>
+
+                <VBox styleClass="form-group">
+                    <Label text="Physical Address" styleClass="form-label"/>
+                    <TextArea fx:id="addressField" promptText="Street address, City, State, ZIP" prefRowCount="3" styleClass="text-area" accessibleText="Physical Address"/>
+                </VBox>
+            </VBox>
+
+            <HBox spacing="10" alignment="CENTER_RIGHT" style="-fx-padding: 10 0 0 0;">
+                <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true" accessibleText="Cancel and close"/>
+                <Button fx:id="saveButton" text="Save Customer" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true" accessibleText="Save customer details"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

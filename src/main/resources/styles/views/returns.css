@@ -1,0 +1,50 @@
+@import "../tokens.css";
+
+.returns-header {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-main;
+}
+
+.create-return-btn {
+    -fx-background-color: -color-error;
+    -fx-text-fill: white;
+    -fx-padding: 10 20;
+    -fx-background-radius: 6px;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+}
+
+.create-return-btn:hover {
+    -fx-background-color: #dc2626;
+}
+
+.return-item-card {
+    -fx-background-color: -color-bg-canvas;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 12;
+}
+
+.return-item-card-selected {
+    -fx-background-color: -color-error-bg;
+    -fx-border-color: #fecaca;
+}
+
+.refund-summary-box {
+    -fx-background-color: #f0f9ff;
+    -fx-border-color: #bae6fd;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 15;
+}
+
+.bill-preview-dialog {
+    -fx-background-color: -color-surface;
+}
+
+.bill-preview-webview {
+    -fx-border-color: -color-border;
+    -fx-border-radius: 4px;
+}

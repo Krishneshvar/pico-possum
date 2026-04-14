@@ -1,0 +1,368 @@
+@import "tokens.css";
+@import "base.css";
+@import "components.css";
+
+/* =====================================================
+   App Shell, Navbar, Global Toast and Modal Styling
+   ===================================================== */
+
+.app-shell {
+    -fx-background-color: -color-bg-canvas;
+}
+
+.content-area {
+    -fx-background-color: -color-bg-canvas;
+}
+
+/* ========== Navbar (Light Theme) ========== */
+
+.navbar {
+    -fx-background-color: -color-brand-dark;
+    -fx-border-color: transparent transparent -color-brand-dark-hover transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-min-height: 60;
+    -fx-pref-height: 60;
+}
+
+.navbar-brand {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent -color-brand-dark-hover transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-min-height: 56;
+    -fx-cursor: hand;
+}
+
+.navbar-brand:hover {
+    -fx-background-color: -color-brand-dark-hover;
+}
+
+.navbar-brand:hover .brand-title {
+    -fx-text-fill: -color-primary;
+}
+
+.navbar-brand:focused {
+    -fx-border-color: -color-border-focus;
+    -fx-border-width: 2;
+}
+
+.brand-title {
+    -fx-font-size: 18;
+    -fx-font-weight: 800;
+    -fx-text-fill: white;
+}
+
+.nav-items {
+    -fx-background-color: transparent;
+    -fx-alignment: center-left;
+}
+
+.nav-menu-btn {
+    -fx-min-height: 44;
+    -fx-pref-height: 44;
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 16;
+    -fx-font-weight: 700;
+    -fx-padding: 0 16;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-alignment: center-left;
+    -fx-content-display: left;
+    -fx-graphic-text-gap: 8;
+}
+
+.nav-menu-btn > .label,
+.nav-menu-btn > .text {
+    -fx-text-fill: white;
+    -fx-wrap-text: false;
+}
+
+.nav-menu-btn:hover,
+.nav-menu-btn:focused {
+    -fx-background-color: -color-brand-dark-hover;
+    -fx-text-fill: -color-primary;
+}
+
+.nav-menu-btn:hover > .label,
+.nav-menu-btn:focused > .label {
+    -fx-text-fill: -color-primary;
+}
+
+.nav-menu-btn.active {
+    -fx-background-color: -color-brand-dark-hover;
+    -fx-text-fill: -color-primary;
+    -fx-border-color: transparent transparent -color-primary transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-border-radius: 0;
+}
+
+.nav-menu-btn .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 2 0 6;
+}
+
+.nav-menu-btn .arrow-button .arrow {
+    -fx-background-color: rgba(255, 255, 255, 0.6);
+}
+
+.nav-menu-btn:hover .arrow-button .arrow,
+.nav-menu-btn:focused .arrow-button .arrow,
+.nav-menu-btn.active .arrow-button .arrow {
+    -fx-background-color: -color-primary-dark;
+}
+
+.nav-icon {
+    -fx-icon-color: rgba(255, 255, 255, 0.7);
+    -fx-icon-size: 16;
+}
+
+.nav-menu-btn:hover .nav-icon,
+.nav-menu-btn:focused .nav-icon,
+.nav-menu-btn.active .nav-icon {
+    -fx-icon-color: -color-primary;
+}
+
+/* ========== User Section ========== */
+
+.navbar-user {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-brand-dark-hover;
+    -fx-border-width: 0 0 0 1;
+}
+
+.user-menu-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 4;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+
+.user-menu-btn:hover {
+    -fx-background-color: -color-brand-dark-hover;
+    -fx-background-radius: 20;
+}
+
+.user-menu-btn:focused {
+    -fx-border-color: -color-border-focus;
+    -fx-border-width: 2;
+    -fx-border-radius: 20;
+}
+
+.user-menu-btn .arrow-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.user-menu-btn .arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: "";
+}
+
+.user-avatar {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-max-width: 32;
+    -fx-max-height: 32;
+    -fx-background-color: -color-primary;
+    -fx-background-radius: 16;
+    -fx-text-fill: white;
+    -fx-font-size: 14;
+    -fx-font-weight: 700;
+    -fx-alignment: center;
+}
+
+.user-name {
+    -fx-font-size: 14;
+    -fx-font-weight: 600;
+    -fx-text-fill: white;
+}
+
+/* ========== Menus ========== */
+
+.context-menu {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-padding: 6 0;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.10), 12, 0, 0, 4);
+}
+
+.menu-item {
+    -fx-padding: 8 16;
+    -fx-background-color: transparent;
+}
+
+.menu-item .label {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 16;
+    -fx-font-weight: 500;
+}
+
+.menu-item:hover,
+.menu-item:focused {
+    -fx-background-color: -color-primary-subtle;
+}
+
+.menu-item:hover .label,
+.menu-item:focused .label {
+    -fx-text-fill: -color-primary-dark;
+}
+
+.separator-menu-item {
+    -fx-padding: 4 0;
+}
+
+.separator-menu-item .line {
+    -fx-border-color: -color-border;
+    -fx-border-width: 1 0 0 0;
+}
+
+.logout-menu-item .label {
+    -fx-text-fill: -color-error;
+}
+
+.logout-menu-item:focused,
+.logout-menu-item:hover {
+    -fx-background-color: -color-error-bg;
+}
+
+.logout-menu-item:focused .label,
+.logout-menu-item:hover .label {
+    -fx-text-fill: -color-error-text;
+}
+
+.user-menu-header-name {
+    -fx-font-weight: 700;
+    -fx-font-size: 16;
+    -fx-text-fill: -color-text-main;
+    -fx-padding: 8 16 2 16;
+}
+
+.user-menu-header-role {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 14;
+    -fx-padding: 0 16 8 16;
+}
+
+/* ========== Toasts ========== */
+
+.toast-container {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.16), 14, 0, 0, 6);
+}
+
+.toast-message {
+    -fx-font-size: 14;
+    -fx-font-weight: 600;
+}
+
+.toast-success {
+    -fx-background-color: #ECFDF5; /* -color-success-bg */
+    -fx-border-color: #10B981; /* -color-success */
+}
+
+.toast-success .toast-icon {
+    -fx-icon-color: #059669; /* -color-primary-dark */
+}
+
+.toast-success .toast-message {
+    -fx-text-fill: #064E3B; /* -color-success-text */
+}
+
+.toast-error {
+    -fx-background-color: #FEF2F2; /* -color-error-bg */
+    -fx-border-color: #EF4444; /* -color-error */
+}
+
+.toast-error .toast-icon {
+    -fx-icon-color: #EF4444; 
+}
+
+.toast-error .toast-message {
+    -fx-text-fill: #991B1B; /* -color-error-text */
+}
+
+.toast-info {
+    -fx-background-color: #EFF6FF; /* -color-info-bg */
+    -fx-border-color: #3B82F6; /* -color-info */
+}
+
+.toast-info .toast-icon {
+    -fx-icon-color: #3B82F6;
+}
+
+.toast-info .toast-message {
+    -fx-text-fill: #1E3A8A; /* -color-info-text */
+}
+
+.toast-warning {
+    -fx-background-color: #FFFBEB; /* -color-warning-bg */
+    -fx-border-color: #F59E0B; /* -color-warning */
+}
+
+.toast-warning .toast-icon {
+    -fx-icon-color: #F59E0B;
+}
+
+.toast-warning .toast-message {
+    -fx-text-fill: #78350F; /* -color-warning-text */
+}
+
+/* ========== Modal / Dialog ========== */
+
+.dialog-pane,
+.modal-dialog {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 8;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: transparent;
+    -fx-padding: 8 8 4 8;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: -color-text-main;
+    -fx-font-size: 20;
+    -fx-font-weight: 700;
+}
+
+.dialog-pane .content.label,
+.dialog-pane > *.label.content {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 14;
+}
+
+.dialog-pane .button-bar {
+    -fx-padding: 6 2 2 2;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-min-height: 38;
+}
+
+.bill-preview-dialog {
+    -fx-background-color: -color-surface;
+}
+
+.bill-preview-dialog-content {
+    -fx-background-color: -color-surface;
+}
+
+.bill-preview-webview {
+    -fx-border-color: -color-border;
+    -fx-border-radius: 4;
+}

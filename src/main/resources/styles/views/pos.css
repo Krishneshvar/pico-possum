@@ -1,0 +1,385 @@
+@import "../tokens.css";
+
+/* =====================================================
+   POS View specific styling
+   ===================================================== */
+
+.pos-container {
+    -fx-background-color: -color-bg-canvas;
+}
+
+.pos-card {
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+}
+
+.pos-card-header {
+    -fx-padding: 0 16;
+    -fx-border-color: -color-bg-canvas;
+    -fx-border-width: 0 0 1 0;
+}
+
+.pos-card-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-main;
+}
+
+.pos-table .column-header {
+    -fx-size: 40;
+    -fx-background-color: #27323A;
+    -fx-background-radius: 6px 6px 0 0;
+    -fx-border-color: #374151;
+    -fx-border-width: 0 1 0 0;
+}
+
+.pos-table .column-header:last-visible,
+.pos-table .filler {
+    -fx-border-width: 0;
+}
+
+.pos-table .column-header-background {
+    -fx-background-color: #27323A;
+    -fx-background-radius: 6px 6px 0 0;
+}
+
+.pos-table .column-header:hover {
+    -fx-background-color: #374151;
+}
+
+.pos-table .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 1.0;
+    -fx-text-transform: uppercase;
+}
+
+.pos-table .table-row-cell:odd {
+    -fx-background-color: #fafbfc;
+}
+
+.pos-table .table-cell {
+    -fx-padding: 8 16;
+    -fx-alignment: center-left;
+    -fx-border-color: transparent #374151 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.pos-table .table-cell:last-visible {
+    -fx-border-width: 0;
+}
+
+.table-input {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border-hover;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 4 8;
+}
+
+.table-input:focused {
+    -fx-border-color: -color-primary;
+    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.14), 4, 0, 0, 0);
+}
+
+.search-row {
+    -fx-background-color: -color-bg-canvas;
+}
+
+.search-field-pos {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 8 12;
+    -fx-font-size: 14px;
+}
+
+.search-field-pos:focused {
+    -fx-border-color: #10B981;
+    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.15), 5, 0, 0, 0);
+}
+
+.billing-value {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-main;
+}
+
+.total-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-main;
+}
+
+.total-amount {
+    -fx-font-size: 32px;
+    -fx-font-family: -font-family-mono;
+    -fx-font-weight: 800;
+    -fx-text-fill: -color-primary-dark;
+}
+
+.toggle-group-neon {
+    -fx-background-color: -color-bg-canvas;
+    -fx-background-radius: 8px;
+    -fx-padding: 2;
+}
+
+.toggle-btn-neon {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-muted;
+    -fx-font-weight: 600;
+    -fx-font-size: 12px;
+    -fx-padding: 6 12;
+    -fx-background-radius: 6px;
+}
+
+.toggle-btn-neon:selected {
+    -fx-background-color: -color-primary;
+    -fx-text-fill: white;
+}
+
+.complete-btn {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-padding: 10 20;
+    -fx-min-height: 48px;
+    -fx-pref-height: 48px;
+    -fx-background-radius: 8px;
+    -fx-background-color: -color-primary;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+}
+
+.complete-btn:disabled {
+    -fx-background-color: -color-text-disabled;
+    -fx-opacity: 0.6;
+}
+
+.search-results-list {
+    /* Token definitions for isolated Popup contexts */
+    -color-surface: #FFFFFF;
+    -color-border: #CBD5E1;
+    -color-primary: #10B981;
+    -color-primary-dark: #059669;
+    -color-primary-subtle: #ECFDF5;
+    -color-text-main: #0F172A;
+    -color-text-secondary: #475569;
+    -color-text-muted: #64748B;
+
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.1), 12, 0, 0, 4);
+    -fx-padding: 2;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    
+    /* Branding */
+    -fx-selection-bar: -color-primary-subtle;
+    -fx-selection-bar-non-focused: -color-primary-subtle;
+}
+
+.search-results-list:focused {
+    -fx-border-color: -color-primary;
+    -fx-border-width: 1;
+}
+
+.search-results-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 0; 
+    -fx-cursor: hand;
+    -fx-background-radius: 8px;
+    -fx-text-fill: -color-text-main;
+}
+
+.search-results-list .list-cell:filled:hover {
+    -fx-background-color: #F8FAFC;
+}
+
+.search-results-list .list-cell:filled:selected,
+.search-results-list:focused .list-cell:filled:selected {
+    -fx-background-color: -color-primary-subtle;
+}
+
+.search-results-list .list-cell:filled:selected .search-item-details {
+    -fx-text-fill: -color-primary-dark !important;
+}
+
+.search-item-box {
+    -fx-padding: 12 12 12 16;
+    -fx-spacing: 2;
+    -fx-border-color: transparent transparent #F1F5F9 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.search-item-name {
+    -fx-font-weight: 800;
+    -fx-font-size: 13px;
+    -fx-text-fill: #1E293B;
+}
+
+.search-item-details {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748B;
+}
+
+.search-category-item {
+     -fx-padding: 10 16;
+     -fx-font-size: 13px;
+     -fx-text-fill: #475569;
+}
+
+.search-results-list .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-min-width: 10;
+    -fx-max-width: 10;
+    -fx-pref-width: 10;
+}
+
+.search-results-list .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+    -fx-min-height: 10;
+    -fx-max-height: 10;
+    -fx-pref-height: 10;
+}
+
+.search-results-list .scroll-bar .thumb {
+    -fx-background-color: #94A3B8;
+    -fx-background-radius: 10;
+    -fx-background-insets: 1;
+}
+
+.search-results-list .scroll-bar .thumb:hover {
+    -fx-background-color: -color-text-secondary;
+}
+
+.search-results-list .scroll-bar .track {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-border-color: transparent;
+    -fx-background-radius: 10;
+}
+
+.search-results-list .scroll-bar .increment-button,
+.search-results-list .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.search-results-list .scroll-bar .increment-arrow,
+.search-results-list .scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
+
+.action-btn,
+.action-btn-destructive {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 4 8;
+    -fx-cursor: hand;
+}
+
+.action-btn:hover {
+    -fx-background-color: -color-bg-canvas;
+    -fx-text-fill: -color-primary;
+    -fx-border-color: -color-primary;
+}
+
+.action-btn-destructive {
+    -fx-background-color: #FEF2F2;
+    -fx-border-color: #EF4444;
+    -fx-text-fill: #EF4444;
+}
+
+.action-btn-destructive:hover {
+    -fx-background-color: #FEE2E2;
+    -fx-border-color: #991B1B;
+}
+
+.badge-sale,
+.badge-purchase,
+.badge-return,
+.badge-adjustment {
+    -fx-min-width: 90;
+    -fx-alignment: center;
+}
+
+.pos-search-dock {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 10 14;
+    -fx-effect: -shadow-sm;
+}
+
+.pos-search-icon {
+    -fx-font-size: 16px;
+    -fx-text-fill: -color-text-muted;
+}
+
+.search-shortcut-hint {
+    -fx-background-color: -color-bg-canvas;
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12px;
+    -fx-padding: 4 8;
+    -fx-background-radius: 4px;
+}
+
+.pos-cart-totals {
+    -fx-padding: 10 14;
+    -fx-background-color: -color-bg-canvas;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1 0 0 0;
+}
+
+.totals-chip-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-muted;
+}
+
+.totals-chip-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -color-text-main;
+}
+
+.totals-chip-value-muted {
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.totals-chip-value-accent {
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -color-primary-dark;
+}
+
+.balance-value {
+    -fx-background-color: -color-bg-canvas;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 10 12;
+    -fx-font-weight: 800;
+    -fx-font-size: 15px;
+    -fx-text-fill: -color-text-main;
+}
+
+.payment-locked-overlay {
+    -fx-background-color: rgba(248, 250, 252, 0.90);
+    -fx-background-radius: 12px;
+    -fx-border-color: #d1fae5;
+    -fx-border-width: 1;
+    -fx-border-radius: 12px;
+    -fx-padding: 20;
+}

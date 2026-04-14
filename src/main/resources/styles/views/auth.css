@@ -1,0 +1,141 @@
+@import "../tokens.css";
+
+/* Authentication View Styles */
+
+.auth-container {
+    -fx-background-color: radial-gradient(focus-angle 0deg, focus-distance 0%, center 50% 50%, radius 100%, -color-bg-canvas 0%, #E2E8F0 100%);
+}
+
+/* Brand Panel (Left Side) */
+.brand-panel {
+    -fx-background-color: -color-brand-dark;
+    -fx-padding: 60;
+}
+
+.brand-logo-container {
+    -fx-spacing: 15;
+    -fx-alignment: CENTER;
+}
+
+.brand-title {
+    -fx-font-size: 56px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -color-primary;
+    -fx-letter-spacing: 2px;
+}
+
+.brand-logo-icon {
+    -fx-icon-color: -color-primary;
+}
+
+.brand-subtitle {
+    -fx-font-size: 18px;
+    -fx-text-fill: white;
+    -fx-opacity: 0.85;
+    -fx-font-weight: 500;
+}
+
+.brand-feature {
+    -fx-spacing: 12;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.brand-feature-icon {
+    -fx-icon-color: -color-primary;
+    -fx-icon-size: 20;
+}
+
+.brand-feature-text {
+    -fx-text-fill: white;
+    -fx-opacity: 0.75;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+}
+
+/* Form Panel (Right Side) */
+.form-panel {
+    -fx-background-color: -color-surface;
+    -fx-padding: 60 100;
+}
+
+.form-header-container {
+    -fx-spacing: 8;
+    -fx-alignment: TOP_LEFT;
+}
+
+.form-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -color-text-main;
+}
+
+.form-subtitle {
+    -fx-font-size: 15px;
+    -fx-text-fill: -color-text-muted;
+}
+
+/* Field Containers */
+.field-group {
+    -fx-spacing: 8;
+}
+
+.field-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text-secondary;
+}
+
+/* Input Styles */
+.text-field, .password-field {
+    -fx-background-color: transparent, -color-bg-canvas, -color-surface;
+    -fx-background-insets: 0, 0, 1;
+    -fx-background-radius: 0, 8, 8;
+    -fx-padding: 12 16;
+    -fx-font-size: 14px;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-transition: 0.2s;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: -color-primary;
+    -fx-effect: -shadow-focus;
+}
+
+/* Error Label */
+.error-message {
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-error;
+    -fx-font-weight: 600;
+    -fx-padding: 10;
+    -fx-background-color: -color-error-bg;
+    -fx-background-radius: 6;
+}
+
+/* Action Button */
+.auth-submit-button {
+    -fx-background-color: -color-primary-gradient;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+    -fx-padding: 14 0;
+    -fx-background-radius: 10;
+    -fx-cursor: hand;
+    -fx-effect: -shadow-primary-btn;
+}
+
+.auth-submit-button:hover {
+    -fx-background-color: -color-primary-gradient-hover;
+    -fx-translate-y: -1;
+}
+
+.auth-submit-button:pressed {
+    -fx-translate-y: 1;
+}
+
+.footer-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-text-disabled;
+    -fx-font-weight: 500;
+}

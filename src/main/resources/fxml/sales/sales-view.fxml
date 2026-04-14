@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <top>
+        <Label text="Sales / Point of Sale" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" BorderPane.alignment="CENTER_LEFT">
+            <BorderPane.margin>
+                <Insets bottom="20"/>
+            </BorderPane.margin>
+        </Label>
+    </top>
+
+    <center>
+        <HBox spacing="20">
+            <!-- Left: Product Selection -->
+            <VBox spacing="15" HBox.hgrow="ALWAYS" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 12; -fx-border-color: #e2e8f0; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.03), 5, 0, 0, 2);">
+                <TextField promptText="Search products..." accessibleText="Search Products Input" prefWidth="400" style="-fx-padding: 10; -fx-border-color: #e2e8f0; -fx-border-radius: 6; -fx-background-radius: 6;"/>
+                
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;">
+                    <VBox alignment="CENTER" spacing="10" style="-fx-padding: 40 10;">
+                        <FontIcon iconLiteral="bx-package" iconSize="48" iconColor="#cbd5e1" styleClass="empty-state-icon"/>
+                        <Label text="No products available" style="-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-font-weight: 600;"/>
+                        <Label text="Search for a product to add it to the cart." style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+            
+            <!-- Right: Cart -->
+            <VBox spacing="15" prefWidth="350" style="-fx-background-color: white; -fx-padding: 24; -fx-background-radius: 12; -fx-border-color: #e2e8f0; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.03), 5, 0, 0, 2);">
+                <Label text="Current Sale" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #0f172a;"/>
+                
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;">
+                    <VBox alignment="CENTER" spacing="10" style="-fx-padding: 40 10;">
+                        <FontIcon iconLiteral="bx-cart" iconSize="48" iconColor="#cbd5e1" styleClass="empty-state-icon"/>
+                        <Label text="Cart is empty" style="-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-font-weight: 600;"/>
+                        <Label text="Add items to see them here." style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+                    </VBox>
+                </ScrollPane>
+                
+                <Separator/>
+                
+                <HBox alignment="CENTER_LEFT">
+                    <Label text="Total" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #475569;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="\$0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: #2563eb;"/>
+                </HBox>
+                
+                <Button text="Complete Sale" defaultButton="true" accessibleText="Complete Sale Button" maxWidth="Infinity" style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 15 20; -fx-background-radius: 8; -fx-font-size: 16px; -fx-font-weight: 700; -fx-cursor: hand;">
+                    <tooltip>
+                        <Tooltip text="Complete the sale (Enter)"/>
+                    </tooltip>
+                </Button>
+            </VBox>
+        </HBox>
+    </center>
+
+</BorderPane>

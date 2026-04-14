@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.chart.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.reports.SalesAnalyticsController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <HBox styleClass="view-header" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Sales Analytics" styleClass="view-title"/>
+            <Label text="Visual performance trends and product insights" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Reset" onAction="#handleReset" styleClass="action-button">
+                <graphic>
+                    <org.kordamp.ikonli.javafx.FontIcon iconLiteral="bx-reset" iconSize="16"/>
+                </graphic>
+            </Button>
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button">
+                <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <VBox VBox.vgrow="ALWAYS" styleClass="card" style="-fx-padding: 0;">
+        <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 16;">
+            <VBox spacing="2">
+                <Label text="Breakdown By:" style="-fx-font-size: 11px; -fx-text-fill: -color-text-muted; -fx-font-weight: 700;"/>
+                <ComboBox fx:id="reportTypeCombo" onAction="#handleReportTypeChange" prefWidth="120"/>
+            </VBox>
+            
+            <VBox spacing="2">
+                <Label text="From Date:" style="-fx-font-size: 11px; -fx-text-fill: -color-text-muted; -fx-font-weight: 700;"/>
+                <DatePicker fx:id="startDatePicker" onAction="#handleDateChange" prefWidth="180"/>
+            </VBox>
+            
+            <VBox spacing="2">
+                <Label text="To Date:" style="-fx-font-size: 11px; -fx-text-fill: -color-text-muted; -fx-font-weight: 700;"/>
+                <DatePicker fx:id="endDatePicker" onAction="#handleDateChange" prefWidth="180"/>
+            </VBox>
+            
+            <VBox spacing="2" fx:id="paymentMethodContainer">
+                <Label text="Payment Method:" style="-fx-font-size: 11px; -fx-text-fill: -color-text-muted; -fx-font-weight: 700;"/>
+                <!-- MultiSelect Filter -->
+            </VBox>
+        </HBox>
+        <Separator/>
+    
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background: #f8fafc; -fx-background-color: transparent; -fx-padding: 0 20 20 20;">
+        <VBox spacing="20">
+            <VBox spacing="10" styleClass="card">
+                <Label text="Sales Summary" styleClass="card-title"/>
+                <GridPane hgap="20" vgap="10">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="25"/>
+                        <ColumnConstraints percentWidth="25"/>
+                        <ColumnConstraints percentWidth="25"/>
+                        <ColumnConstraints percentWidth="25"/>
+                    </columnConstraints>
+                    <VBox alignment="CENTER" spacing="5">
+                        <Label text="Total Sales" style="-fx-text-fill: -color-text-muted; -fx-font-size: 13px;"/>
+                        <Label fx:id="totalSalesLabel" text="0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-primary;"/>
+                    </VBox>
+                    <VBox alignment="CENTER" spacing="5" GridPane.columnIndex="1">
+                        <Label text="Transactions" style="-fx-text-fill: -color-text-muted; -fx-font-size: 13px;"/>
+                        <Label fx:id="transactionsLabel" text="0" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-text-main;"/>
+                    </VBox>
+                    <VBox alignment="CENTER" spacing="5" GridPane.columnIndex="2">
+                        <Label text="Average Sale" style="-fx-text-fill: -color-text-muted; -fx-font-size: 13px;"/>
+                        <Label fx:id="avgSaleLabel" text="0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-text-main;"/>
+                    </VBox>
+                    <VBox alignment="CENTER" spacing="5" GridPane.columnIndex="3">
+                        <Label text="Total Tax" style="-fx-text-fill: -color-text-muted; -fx-font-size: 13px;"/>
+                        <Label fx:id="totalTaxLabel" text="0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-text-main;"/>
+                    </VBox>
+                </GridPane>
+            </VBox>
+            
+            <VBox spacing="10" styleClass="card">
+                <Label text="Top Selling Products" styleClass="card-title"/>
+                <BarChart fx:id="topProductsChart" prefHeight="350" animated="false" legendVisible="false">
+                    <xAxis>
+                        <CategoryAxis side="BOTTOM"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis side="LEFT"/>
+                    </yAxis>
+                </BarChart>
+            </VBox>
+            
+            <HBox spacing="20">
+                <VBox spacing="10" HBox.hgrow="ALWAYS" styleClass="card">
+                    <Label text="Sales Trend" styleClass="card-title"/>
+                    <LineChart fx:id="salesTrendChart" prefHeight="350" animated="false">
+                        <xAxis>
+                            <CategoryAxis side="BOTTOM"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis side="LEFT"/>
+                        </yAxis>
+                    </LineChart>
+                </VBox>
+                
+                <VBox spacing="10" styleClass="pos-card" minWidth="400">
+                    <Label text="Sales by Payment Method" styleClass="pos-card-title"/>
+                    <PieChart fx:id="paymentMethodsChart" prefHeight="350" animated="false" legendSide="BOTTOM"/>
+                </VBox>
+            </HBox>
+            
+        </VBox>
+    </ScrollPane>
+
+    </VBox>
+</VBox>

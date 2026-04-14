@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import com.possum.ui.common.controls.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.possum.ui.people.UsersController"
+      styleClass="workspace-view"
+      stylesheets="@../../styles/inventory.css">
+
+    <!-- Header -->
+    <HBox styleClass="view-header,view-toolbar" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Employees" styleClass="view-title"/>
+            <Label text="Manage employees and system users" styleClass="view-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button">
+            <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
+            <tooltip>
+                <Tooltip text="Reload employee list"/>
+            </tooltip>
+        </Button>
+        <Button fx:id="addButton" text="Add Employee" onAction="#handleAdd" styleClass="action-button, primary-button" accessibleText="Add a new employee">
+            <graphic><FontIcon iconLiteral="bx-plus" iconSize="16" iconColor="white"/></graphic>
+            <tooltip>
+                <Tooltip text="Create a new employee record"/>
+            </tooltip>
+        </Button>
+    </HBox>
+
+    <!-- Main Content -->
+    <VBox styleClass="card" VBox.vgrow="ALWAYS">
+        <FilterBar fx:id="filterBar"/>
+
+        <DataTableView fx:id="dataTable" VBox.vgrow="ALWAYS" styleClass="data-table">
+            <emptyMessage>No employees found. Click + Add Employee to create one.</emptyMessage>
+        </DataTableView>
+
+        <PaginationBar fx:id="paginationBar"/>
+    </VBox>
+
+</VBox>
