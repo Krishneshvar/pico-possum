@@ -44,7 +44,8 @@ class SqliteReportsRepositoryTest {
                 mrp REAL, 
                 cost_price REAL, 
                 stock_alert_cap INTEGER DEFAULT 10, 
-                status TEXT DEFAULT 'active'
+                status TEXT DEFAULT 'active',
+                deleted_at TEXT
             )
         """);
         connection.createStatement().execute("CREATE TABLE payment_methods (id INTEGER PRIMARY KEY, name TEXT)");
@@ -57,7 +58,6 @@ class SqliteReportsRepositoryTest {
                 status TEXT DEFAULT 'completed',
                 total_amount REAL DEFAULT 0,
                 paid_amount REAL DEFAULT 0,
-                total_tax REAL DEFAULT 0,
                 discount REAL DEFAULT 0,
                 sale_date TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -70,7 +70,6 @@ class SqliteReportsRepositoryTest {
                 quantity INTEGER,
                 price_per_unit REAL,
                 cost_per_unit REAL DEFAULT 0,
-                tax_amount REAL DEFAULT 0,
                 discount_amount REAL DEFAULT 0
             )
         """);
@@ -112,6 +111,14 @@ class SqliteReportsRepositoryTest {
                 event_date TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """);
+        connection.createStatement().execute("""
+            CREATE TABLE inventory_adjustments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER,
+                quantity_change INTEGER,
+                reason TEXT
+            )
+        """);
     }
 
     private void seedData() throws SQLException {
@@ -125,9 +132,9 @@ class SqliteReportsRepositoryTest {
         connection.createStatement().execute("INSERT INTO products (id, name, category_id, sku, mrp, cost_price, stock_alert_cap) VALUES (2, 'Phone', 1, 'PHO1', 500.0, 300.0, 5)");
 
         // Sale 1
-        connection.createStatement().execute("INSERT INTO sales (id, customer_id, invoice_number, status, total_amount, paid_amount, total_tax, discount, sale_date) VALUES (1, 1, 'INV-001', 'completed', 1000.0, 1000.0, 50.0, 10.0, '2025-06-01 10:00:00')");
-        connection.createStatement().execute("INSERT INTO sale_items (id, sale_id, product_id, quantity, price_per_unit, cost_per_unit, tax_amount, discount_amount) VALUES (1, 1, 1, 3, 300.0, 200.0, 15.0, 5.0)");
-        connection.createStatement().execute("INSERT INTO sale_items (id, sale_id, product_id, quantity, price_per_unit, cost_per_unit, tax_amount, discount_amount) VALUES (2, 1, 2, 1, 100.0, 50.0, 5.0, 5.0)");
+        connection.createStatement().execute("INSERT INTO sales (id, customer_id, invoice_number, status, total_amount, paid_amount, discount, sale_date) VALUES (1, 1, 'INV-001', 'completed', 1000.0, 1000.0, 10.0, '2025-06-01 10:00:00')");
+        connection.createStatement().execute("INSERT INTO sale_items (id, sale_id, product_id, quantity, price_per_unit, cost_per_unit, discount_amount) VALUES (1, 1, 1, 3, 300.0, 200.0, 5.0)");
+        connection.createStatement().execute("INSERT INTO sale_items (id, sale_id, product_id, quantity, price_per_unit, cost_per_unit, discount_amount) VALUES (2, 1, 2, 1, 100.0, 50.0, 5.0)");
 
         // Transaction 1
         connection.createStatement().execute("INSERT INTO transactions (id, sale_id, type, status, amount, payment_method_id, transaction_date) VALUES (1, 1, 'payment', 'completed', 1000.0, 1, '2025-06-01 10:00:00')");

@@ -5,7 +5,6 @@ import java.util.List;
 
 public record ProductFilter(
         String searchTerm,
-        List<Long> taxCategories,
         List<String> status,
         List<Long> categories,
         List<String> stockStatuses,
@@ -18,7 +17,6 @@ public record ProductFilter(
 ) {
     public ProductFilter(
             String searchTerm,
-            List<Long> taxCategories,
             List<String> status,
             List<Long> categories,
             int currentPage,
@@ -26,6 +24,6 @@ public record ProductFilter(
             String sortBy,
             String sortOrder
     ) {
-        this(searchTerm, taxCategories, status, categories, null, null, null, currentPage, itemsPerPage, sortBy, sortOrder);
+        this(searchTerm, status, categories, null, null, null, currentPage, itemsPerPage, sortBy, sortOrder);
     }
 }

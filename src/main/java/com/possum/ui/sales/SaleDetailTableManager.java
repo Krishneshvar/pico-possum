@@ -59,9 +59,7 @@ public class SaleDetailTableManager {
                             getTableView().getItems().set(index, new SaleItem(
                                     current.id(), current.saleId(), current.productId(),
                                     current.sku(), current.productName(), newVal, current.pricePerUnit(),
-                                    current.costPerUnit(), current.taxRate(), current.taxAmount(),
-                                    current.appliedTaxRate(), current.appliedTaxAmount(), 
-                                    current.taxRuleSnapshot(), current.discountAmount(), null
+                                    current.costPerUnit(), current.discountAmount(), null
                             ));
                             onDataChanged.run();
                         }
@@ -96,9 +94,7 @@ public class SaleDetailTableManager {
                                     getTableView().getItems().set(index, new SaleItem(
                                             current.id(), current.saleId(), current.productId(),
                                             current.sku(), current.productName(), current.quantity(), newVal,
-                                            current.costPerUnit(), current.taxRate(), current.taxAmount(),
-                                            current.appliedTaxRate(), current.appliedTaxAmount(), 
-                                            current.taxRuleSnapshot(), current.discountAmount(), null
+                                            current.costPerUnit(), current.discountAmount(), null
                                     ));
                                     onDataChanged.run();
                                 }
@@ -116,9 +112,7 @@ public class SaleDetailTableManager {
             }
         });
 
-        TableColumn<SaleItem, BigDecimal> taxCol = new TableColumn<>("Tax");
-        taxCol.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue().taxAmount()));
-        setupCurrencyCell(taxCol);
+
 
         TableColumn<SaleItem, BigDecimal> discountCol = new TableColumn<>("Discount");
         discountCol.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue().discountAmount()));
@@ -128,7 +122,7 @@ public class SaleDetailTableManager {
         totalCol.setCellValueFactory(data -> {
             SaleItem item = data.getValue();
             BigDecimal base = item.pricePerUnit().multiply(BigDecimal.valueOf(item.quantity()));
-            BigDecimal total = base.add(item.taxAmount()).subtract(item.discountAmount());
+            BigDecimal total = base.subtract(item.discountAmount());
             return new SimpleObjectProperty<>(total);
         });
         totalCol.setCellFactory(col -> new TableCell<>() {
@@ -171,7 +165,7 @@ public class SaleDetailTableManager {
         });
 
         itemsTable.getTableView().getColumns().clear();
-        itemsTable.getTableView().getColumns().addAll(productCol, qtyCol, priceCol, taxCol, discountCol, totalCol);
+        itemsTable.getTableView().getColumns().addAll(productCol, qtyCol, priceCol, discountCol, totalCol);
         if (isEditingMode) {
             itemsTable.getTableView().getColumns().add(actionsCol);
         }

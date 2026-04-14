@@ -1,28 +1,19 @@
 package com.possum.domain.services;
 
-import com.possum.application.sales.dto.TaxCalculationResult;
-import com.possum.application.sales.dto.TaxableInvoice;
-import com.possum.application.sales.dto.TaxableItem;
 import com.possum.domain.model.CartItem;
-import com.possum.domain.model.Customer;
 import com.possum.domain.model.SaleDraft;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SaleCalculator implements DomainService {
-    private final TaxCalculator taxCalculator;
 
-    public SaleCalculator(TaxCalculator taxCalculator) {
-        this.taxCalculator = taxCalculator;
+    public SaleCalculator() {
     }
 
     public void recalculate(SaleDraft draft) {
         if (draft.getItems().isEmpty()) {
             draft.setSubtotal(BigDecimal.ZERO);
-            draft.setTaxAmount(BigDecimal.ZERO);
             draft.setDiscountTotal(BigDecimal.ZERO);
             draft.setTotal(BigDecimal.ZERO);
             draft.setTotalMrp(BigDecimal.ZERO);
@@ -60,59 +51,7 @@ public class SaleCalculator implements DomainService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         draft.setDiscountTotal(lineDiscounts.add(overallDiscount));
 
-        // Tax calculation prep
-        List<TaxableItem> txItems = new ArrayList<>();
-        BigDecimal distributedDiscount = BigDecimal.ZERO;
-        
-        for (int i = 0; i < draft.getItems().size(); i++) {
-            CartItem it = draft.getItems().get(i);
-            BigDecimal itemGlobalDiscount = BigDecimal.ZERO;
-            
-            if (grossTotal.compareTo(BigDecimal.ZERO) > 0 && overallDiscount.compareTo(BigDecimal.ZERO) > 0) {
-                if (i == draft.getItems().size() - 1) {
-                    itemGlobalDiscount = overallDiscount.subtract(distributedDiscount);
-                } else {
-                    itemGlobalDiscount = it.getNetLineTotal()
-                            .divide(grossTotal, 10, RoundingMode.HALF_UP)
-                            .multiply(overallDiscount);
-                    distributedDiscount = distributedDiscount.add(itemGlobalDiscount);
-                }
-            }
-
-            BigDecimal finalTaxableAmount = it.getNetLineTotal().subtract(itemGlobalDiscount).max(BigDecimal.ZERO);
-            BigDecimal effectiveUnitPrice = it.getQuantity() > 0
-                    ? finalTaxableAmount.divide(BigDecimal.valueOf(it.getQuantity()), 10, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
-
-            txItems.add(new TaxableItem(
-                    it.getProduct().name(),
-                    effectiveUnitPrice,
-                    it.getQuantity(),
-                    it.getProduct().taxCategoryId(),
-                    it.getProduct().id()
-            ));
-        }
-
-        Customer customer = draft.getSelectedCustomer();
-        if (customer == null && (!draft.getCustomerName().isEmpty() || !draft.getCustomerAddress().isEmpty())) {
-            customer = new Customer(null, draft.getCustomerName(), draft.getCustomerPhone(), 
-                                   draft.getCustomerEmail(), draft.getCustomerAddress(), 
-                                   null, null, null, null, null);
-        }
-
-        TaxCalculationResult tR = taxCalculator.calculate(new TaxableInvoice(txItems), customer);
-
-        // Update items with tax info
-        for (int i = 0; i < draft.getItems().size(); i++) {
-            CartItem it = draft.getItems().get(i);
-            TaxableItem calculated = tR.getItemByIndex(i);
-            it.setTaxAmount(calculated.getTaxAmount());
-            it.setTaxRate(calculated.getTaxRate());
-            it.setTaxRuleSnapshot(calculated.getTaxRuleSnapshot());
-        }
-
         draft.setSubtotal(grossTotal);
-        draft.setTaxAmount(tR.totalTax());
-        draft.setTotal(tR.grandTotal());
+        draft.setTotal(grossTotal.subtract(overallDiscount).max(BigDecimal.ZERO));
     }
 }

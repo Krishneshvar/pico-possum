@@ -9,7 +9,6 @@ public record Customer(
         String email,
         String address,
         String customerType,
-        Boolean isTaxExempt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         LocalDateTime deletedAt

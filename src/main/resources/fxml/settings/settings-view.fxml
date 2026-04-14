@@ -299,15 +299,6 @@
             </ScrollPane>
         </Tab>
         
-        <!-- Tax Configuration Tab -->
-        <Tab closable="false">
-            <graphic>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <FontIcon iconLiteral="bx-calculator" iconSize="16"/>
-                    <Label text="Tax Configuration" style="-fx-font-weight: 600;"/>
-                </HBox>
-            </graphic>
-            <AnchorPane fx:id="taxSettingsTabContent"/>
         </Tab>
     </TabPane>
 

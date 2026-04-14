@@ -57,7 +57,7 @@ class CustomerServiceTest {
     @Test
     @DisplayName("Should fetch customer by ID")
     void getCustomerById_success() {
-        Customer c = new Customer(1L, "John Doe", "1234567890", "john@example.com", "Address", "regular", false, LocalDateTime.now(), null, null);
+        Customer c = new Customer(1L, "John Doe", "1234567890", "john@example.com", "Address", "regular", LocalDateTime.now(), null, null);
         when(customerRepository.findCustomerById(1L)).thenReturn(Optional.of(c));
 
         Optional<Customer> result = customerService.getCustomerById(1L);
@@ -68,48 +68,48 @@ class CustomerServiceTest {
     @Test
     @DisplayName("Should create customer when valid")
     void createCustomer_success() {
-        Customer c = new Customer(1L, "Jane Doe", "9876543210", "jane@example.com", "Address", "vip", true, LocalDateTime.now(), null, null);
-        when(customerRepository.insertCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip", true)).thenReturn(Optional.of(c));
+        Customer c = new Customer(1L, "Jane Doe", "9876543210", "jane@example.com", "Address", "vip", LocalDateTime.now(), null, null);
+        when(customerRepository.insertCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip")).thenReturn(Optional.of(c));
 
-        Customer result = customerService.createCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip", true);
+        Customer result = customerService.createCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip");
         assertEquals(1L, result.id());
     }
 
     @Test
     @DisplayName("Should throw validation error if phone format is bad")
     void createCustomer_badPhone_fail() {
-        assertThrows(ValidationException.class, () -> customerService.createCustomer("Jane Doe", "invalid_phone", "jane@example.com", "Address", "vip", true));
+        assertThrows(ValidationException.class, () -> customerService.createCustomer("Jane Doe", "invalid_phone", "jane@example.com", "Address", "vip"));
     }
 
     @Test
     @DisplayName("Should throw validation error if email format is bad")
     void createCustomer_badEmail_fail() {
-        assertThrows(ValidationException.class, () -> customerService.createCustomer("Jane Doe", "9876543210", "invalid_email", "Address", "vip", true));
+        assertThrows(ValidationException.class, () -> customerService.createCustomer("Jane Doe", "9876543210", "invalid_email", "Address", "vip"));
     }
 
     @Test
     @DisplayName("Should throw auth error if missing permission")
     void createCustomer_unauthorized_fail() {
         AuthContext.setCurrentUser(new AuthUser(1L, "User", "user", List.of(), List.of()));
-        assertThrows(AuthorizationException.class, () -> customerService.createCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip", true));
+        assertThrows(AuthorizationException.class, () -> customerService.createCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip"));
     }
 
     @Test
     @DisplayName("Should update customer successfully")
     void updateCustomer_success() {
-        Customer c = new Customer(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip", true, LocalDateTime.now(), null, null);
-        when(customerRepository.updateCustomerById(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip", true)).thenReturn(Optional.of(c));
+        Customer c = new Customer(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip", LocalDateTime.now(), null, null);
+        when(customerRepository.updateCustomerById(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip")).thenReturn(Optional.of(c));
 
-        Customer result = customerService.updateCustomer(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip", true);
+        Customer result = customerService.updateCustomer(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip");
         assertEquals("Update Doe", result.name());
     }
 
     @Test
     @DisplayName("Should throw NotFound if update target missing")
     void updateCustomer_notFound_fail() {
-        when(customerRepository.updateCustomerById(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip", true)).thenReturn(Optional.empty());
+        when(customerRepository.updateCustomerById(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip")).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> customerService.updateCustomer(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip", true));
+        assertThrows(NotFoundException.class, () -> customerService.updateCustomer(1L, "Update Doe", "9876543210", "jane@example.com", "Address", "vip"));
     }
 
     @Test

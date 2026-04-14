@@ -23,10 +23,7 @@ class ReturnsServiceTest {
                 5, 
                 new BigDecimal("100.00"), 
                 new BigDecimal("50.00"),  
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                null,
-                BigDecimal.ZERO, 
-                null
+                BigDecimal.ZERO, 0
         );
         
         List<SaleItem> saleItems = List.of(saleItem);
@@ -52,10 +49,7 @@ class ReturnsServiceTest {
                 10,
                 new BigDecimal("100.00"),
                 new BigDecimal("50.00"),
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                null,
-                BigDecimal.ZERO,
-                null
+                BigDecimal.ZERO, 0
         );
         
         List<SaleItem> saleItems = List.of(saleItem);
@@ -79,10 +73,7 @@ class ReturnsServiceTest {
                 10,
                 new BigDecimal("100.00"),
                 new BigDecimal("50.00"),
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                null,
-                new BigDecimal("100.00"), // line discount
-                null
+                new BigDecimal("100.00"), 0
         );
         
         List<SaleItem> saleItems = List.of(saleItem);

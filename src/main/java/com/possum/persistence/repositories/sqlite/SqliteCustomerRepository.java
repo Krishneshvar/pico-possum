@@ -48,7 +48,7 @@ public final class SqliteCustomerRepository extends BaseSqliteRepository impleme
         List<Customer> rows = queryList(
                 """
                 SELECT
-                  id, name, phone, email, address, customer_type, is_tax_exempt, created_at, updated_at, deleted_at
+                  id, name, phone, email, address, customer_type, created_at, updated_at, deleted_at
                 FROM customers
                 %s
                 ORDER BY %s %s
@@ -66,7 +66,7 @@ public final class SqliteCustomerRepository extends BaseSqliteRepository impleme
     public Optional<Customer> findCustomerById(long id) {
         return queryOne(
                 """
-                SELECT id, name, phone, email, address, customer_type, is_tax_exempt, created_at, updated_at, deleted_at
+                SELECT id, name, phone, email, address, customer_type, created_at, updated_at, deleted_at
                 FROM customers
                 WHERE id = ? AND deleted_at IS NULL
                 """,
@@ -77,29 +77,27 @@ public final class SqliteCustomerRepository extends BaseSqliteRepository impleme
 
     @Override
     public Optional<Customer> insertCustomer(String name, String phone, String email, String address,
-                                              String customerType, Boolean isTaxExempt) {
+                                              String customerType) {
         long id = executeInsert(
                 """
-                INSERT INTO customers (name, phone, email, address, customer_type, is_tax_exempt)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO customers (name, phone, email, address, customer_type)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 name, phone, email, address,
-                customerType,
-                Boolean.TRUE.equals(isTaxExempt) ? 1 : 0
+                customerType
         );
         return findCustomerById(id);
     }
 
     @Override
     public Optional<Customer> updateCustomerById(long id, String name, String phone, String email, String address,
-                                                  String customerType, Boolean isTaxExempt) {
+                                                  String customerType) {
         UpdateBuilder builder = new UpdateBuilder("customers")
                 .set("name", name)
                 .set("phone", phone)
                 .set("email", email)
                 .set("address", address)
                 .set("customer_type", customerType)
-                .set("is_tax_exempt", Boolean.TRUE.equals(isTaxExempt) ? 1 : 0)
                 .where("id = ? AND deleted_at IS NULL", id);
 
         if (builder.hasFields()) {

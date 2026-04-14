@@ -43,7 +43,6 @@ public class SaleDetailController implements Parameterizable {
     @FXML private DataTableView<SaleItem> returnedItemsTable;
     
     @FXML private Label subtotalLabel;
-    @FXML private Label taxTotalLabel;
     @FXML private Label discountTotalLabel;
     @FXML private Label grandTotalLabel;
     @FXML private Label paidAmountLabel;
@@ -64,7 +63,6 @@ public class SaleDetailController implements Parameterizable {
     @FXML private javafx.scene.control.TextField itemSearchField;
     @FXML private javafx.scene.layout.HBox draftTotalsDock;
     @FXML private Label draftSubtotalLabel;
-    @FXML private Label draftTaxLabel;
     @FXML private Label draftTotalLabel;
     @FXML private Label refundTotalLabel;
     @FXML private javafx.scene.layout.HBox refundSummaryRow;
@@ -138,17 +136,12 @@ public class SaleDetailController implements Parameterizable {
                 .map(i -> i.pricePerUnit().multiply(BigDecimal.valueOf(i.quantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        BigDecimal taxEstimate = editingItems.stream()
-                .map(i -> i.taxAmount() != null ? i.taxAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
         BigDecimal discounts = editingItems.stream()
                 .map(i -> i.discountAmount() != null ? i.discountAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        draftSubtotalLabel.setText(CurrencyUtil.format(subtotal));
-        draftTaxLabel.setText(CurrencyUtil.format(taxEstimate));
-        draftTotalLabel.setText(CurrencyUtil.format(subtotal.add(taxEstimate).subtract(discounts)));
+
+        draftTotalLabel.setText(CurrencyUtil.format(subtotal.subtract(discounts)));
     }
 
     private void addProductToEditingItems(Product product) {
@@ -161,9 +154,7 @@ public class SaleDetailController implements Parameterizable {
                     editingItems.set(idx, new SaleItem(
                         existing.id(), existing.saleId(), existing.productId(),
                         existing.sku(), existing.productName(), existing.quantity() + 1, existing.pricePerUnit(),
-                        existing.costPerUnit(), existing.taxRate(), existing.taxAmount(),
-                        existing.appliedTaxRate(), existing.appliedTaxAmount(), 
-                        existing.taxRuleSnapshot(), existing.discountAmount(), null
+                        existing.costPerUnit(), existing.discountAmount(), existing.returnedQuantity()
                     ));
                 },
                 () -> {
@@ -171,8 +162,7 @@ public class SaleDetailController implements Parameterizable {
                         null, currentSale.id(), product.id(),
                         product.sku(), product.name(), 
                         1, product.mrp(), product.costPrice(), 
-                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 
-                        null, BigDecimal.ZERO, null
+                        BigDecimal.ZERO, 0
                     ));
                 }
             );
@@ -254,10 +244,6 @@ public class SaleDetailController implements Parameterizable {
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        BigDecimal totalTax = saleDetails.items().stream()
-                .map(i -> i.appliedTaxAmount() != null ? i.appliedTaxAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
         BigDecimal lineItemDiscount = saleDetails.items().stream()
                 .map(i -> i.discountAmount() != null ? i.discountAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -268,8 +254,6 @@ public class SaleDetailController implements Parameterizable {
         BigDecimal grandTotal = currentSale.totalAmount() != null ? currentSale.totalAmount() : BigDecimal.ZERO;
         BigDecimal paidAmount = currentSale.paidAmount() != null ? currentSale.paidAmount() : BigDecimal.ZERO;
         
-        subtotalLabel.setText(CurrencyUtil.format(subtotal));
-        taxTotalLabel.setText(CurrencyUtil.format(totalTax));
         discountTotalLabel.setText("-" + CurrencyUtil.format(totalDiscount));
         BigDecimal totalRefunded = saleDetails.transactions().stream()
                 .filter(t -> "refund".equals(t.type()) && "completed".equals(t.status()))

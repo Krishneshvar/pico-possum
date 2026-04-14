@@ -29,7 +29,6 @@ class CustomerMapperTest {
         when(resultSet.getString("email")).thenReturn("john@example.com");
         when(resultSet.getString("address")).thenReturn("123 Street");
         when(resultSet.getString("customer_type")).thenReturn("regular");
-        when(resultSet.getInt("is_tax_exempt")).thenReturn(1);
         when(resultSet.getString("created_at")).thenReturn("2023-01-01 10:00:00");
 
         Customer customer = mapper.map(resultSet);
@@ -39,7 +38,6 @@ class CustomerMapperTest {
         assertEquals("John Customer", customer.name());
         assertEquals("john@example.com", customer.email().trim());
         assertEquals("regular", customer.customerType());
-        assertTrue(customer.isTaxExempt());
         assertEquals(LocalDateTime.of(2023, 1, 1, 10, 0), customer.createdAt());
     }
 }

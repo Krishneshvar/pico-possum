@@ -8,23 +8,20 @@ import com.possum.domain.repositories.*;
 
 public class SalesModule {
     private final SalesService salesService;
-    private final TaxEngine taxEngine;
     private final PaymentService paymentService;
 
     public SalesModule(SalesRepository salesRepository,
                        ProductRepository productRepository,
                        CustomerRepository customerRepository,
                        AuditRepository auditRepository,
-                       TaxRepository taxRepository,
                        InventoryService inventoryService,
                        TransactionManager transactionManager,
                        JsonService jsonService,
                        SettingsStore settingsStore) {
         
-        this.taxEngine = new TaxEngine(taxRepository, jsonService);
         this.paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
-        com.possum.domain.services.SaleCalculator saleCalculator = new com.possum.domain.services.SaleCalculator(taxEngine);
+        com.possum.domain.services.SaleCalculator saleCalculator = new com.possum.domain.services.SaleCalculator();
         
         this.salesService = new SalesService(
                 salesRepository,
@@ -32,7 +29,6 @@ public class SalesModule {
                 customerRepository,
                 auditRepository,
                 inventoryService,
-                taxEngine,
                 saleCalculator,
                 paymentService,
                 transactionManager,
@@ -45,10 +41,6 @@ public class SalesModule {
 
     public SalesService getSalesService() {
         return salesService;
-    }
-
-    public TaxEngine getTaxEngine() {
-        return taxEngine;
     }
 
     public PaymentService getPaymentService() {

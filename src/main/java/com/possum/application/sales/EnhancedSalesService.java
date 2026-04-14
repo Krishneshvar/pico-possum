@@ -23,7 +23,6 @@ public class EnhancedSalesService {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final InventoryService inventoryService;
-    private final EnhancedTaxEngine taxEngine;
     private final PaymentService paymentService;
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
@@ -36,7 +35,6 @@ public class EnhancedSalesService {
             ProductRepository productRepository,
             CustomerRepository customerRepository,
             InventoryService inventoryService,
-            EnhancedTaxEngine taxEngine,
             PaymentService paymentService,
             TransactionManager transactionManager,
             JsonService jsonService,
@@ -48,7 +46,6 @@ public class EnhancedSalesService {
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.inventoryService = inventoryService;
-        this.taxEngine = taxEngine;
         this.paymentService = paymentService;
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
@@ -88,10 +85,8 @@ public class EnhancedSalesService {
                 }
             }
 
-            taxEngine.init();
-
-            BigDecimal grossTotal = BigDecimal.ZERO;
-            List<TempItem> tempItems = new ArrayList<>();
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            List<ProcessedItem> processedItems = new ArrayList<>();
 
             for (CreateSaleItemRequest item : request.items()) {
                 Product product = productMap.get(item.productId());
@@ -100,62 +95,9 @@ public class EnhancedSalesService {
                 BigDecimal lineDiscount = item.discount() != null ? item.discount() : BigDecimal.ZERO;
                 BigDecimal netLineTotal = lineTotal.subtract(lineDiscount).max(BigDecimal.ZERO);
 
-                grossTotal = grossTotal.add(netLineTotal);
-                tempItems.add(new TempItem(item, pricePerUnit, netLineTotal));
-            }
-
-            BigDecimal distributedGlobalDiscount = BigDecimal.ZERO;
-            List<TaxableItem> calculationItems = new ArrayList<>();
-
-            for (int i = 0; i < tempItems.size(); i++) {
-                TempItem tempItem = tempItems.get(i);
-                Product product = productMap.get(tempItem.item.productId());
-
-                BigDecimal itemGlobalDiscount = BigDecimal.ZERO;
-                if (grossTotal.compareTo(BigDecimal.ZERO) > 0 && discount.compareTo(BigDecimal.ZERO) > 0) {
-                    if (i == tempItems.size() - 1) {
-                        itemGlobalDiscount = discount.subtract(distributedGlobalDiscount);
-                    } else {
-                        itemGlobalDiscount = tempItem.netLineTotal
-                                .divide(grossTotal, 10, RoundingMode.HALF_UP)
-                                .multiply(discount);
-                        distributedGlobalDiscount = distributedGlobalDiscount.add(itemGlobalDiscount);
-                    }
-                }
-
-                BigDecimal finalTaxableAmount = tempItem.netLineTotal.subtract(itemGlobalDiscount).max(BigDecimal.ZERO);
-                BigDecimal effectiveUnitPrice = tempItem.item.quantity() > 0
-                        ? finalTaxableAmount.divide(BigDecimal.valueOf(tempItem.item.quantity()), 10, RoundingMode.HALF_UP)
-                        : BigDecimal.ZERO;
-
-                TaxableItem taxableItem = new TaxableItem(
-                        product.name(),
-                        effectiveUnitPrice,
-                        tempItem.item.quantity(),
-                        product.taxCategoryId(),
-                        product.id()
-                );
-                calculationItems.add(taxableItem);
-            }
-
-            Customer customer = null;
-            if (request.customerId() != null) {
-                customer = customerRepository.findCustomerById(request.customerId()).orElse(null);
-            }
-
-            TaxCalculationResult taxResult = taxEngine.calculate(new TaxableInvoice(calculationItems), customer);
-
-            BigDecimal totalTax = taxResult.totalTax();
-            List<ProcessedItem> processedItems = new ArrayList<>();
-
-            for (int i = 0; i < request.items().size(); i++) {
-                CreateSaleItemRequest item = request.items().get(i);
-                TaxableItem calculatedItem = taxResult.getItemByIndex(i);
-                Product product = productMap.get(item.productId());
-
-                BigDecimal pricePerUnit = item.pricePerUnit() != null ? item.pricePerUnit() : product.mrp();
+                totalAmount = totalAmount.add(netLineTotal);
+                
                 BigDecimal costPerUnit = product.costPrice() != null ? product.costPrice() : BigDecimal.ZERO;
-                BigDecimal itemDiscount = item.discount() != null ? item.discount() : BigDecimal.ZERO;
 
                 processedItems.add(new ProcessedItem(
                         item.productId(),
@@ -165,14 +107,12 @@ public class EnhancedSalesService {
                         item.quantity(),
                         pricePerUnit,
                         costPerUnit,
-                        calculatedItem.getTaxRate(),
-                        calculatedItem.getTaxAmount(),
-                        itemDiscount,
-                        calculatedItem.getTaxRuleSnapshot()
+                        item.discount() != null ? item.discount() : BigDecimal.ZERO
                 ));
             }
 
-            BigDecimal totalAmount = taxResult.grandTotal();
+            totalAmount = totalAmount.subtract(discount).max(BigDecimal.ZERO);
+
             BigDecimal paidAmount = payments.stream()
                     .map(PaymentRequest::amount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -190,7 +130,6 @@ public class EnhancedSalesService {
                     totalAmount,
                     paidAmount,
                     discount,
-                    totalTax,
                     status,
                     fulfillmentStatus,
                     request.customerId(),
@@ -211,11 +150,6 @@ public class EnhancedSalesService {
                         item.quantity,
                         item.pricePerUnit,
                         item.costPerUnit,
-                        item.taxRate,
-                        item.taxAmount,
-                        item.taxRate,
-                        item.taxAmount,
-                        item.taxRuleSnapshot,
                         item.discountAmount,
                         0 // returnedQuantity
                 );
@@ -240,11 +174,6 @@ public class EnhancedSalesService {
                         item.quantity,
                         item.pricePerUnit,
                         item.costPerUnit,
-                        item.taxRate,
-                        item.taxAmount,
-                        item.taxRate,
-                        item.taxAmount,
-                        item.taxRuleSnapshot,
                         item.discountAmount,
                         0
                 ));
@@ -320,11 +249,9 @@ public class EnhancedSalesService {
         }
     }
 
-    private record TempItem(CreateSaleItemRequest item, BigDecimal pricePerUnit, BigDecimal netLineTotal) {}
     private record ProcessedItem(long productId, String productName, String sku, String productFullName,
                                   int quantity, BigDecimal pricePerUnit, BigDecimal costPerUnit,
-                                  BigDecimal taxRate, BigDecimal taxAmount, BigDecimal discountAmount,
-                                  String taxRuleSnapshot) {}
+                                  BigDecimal discountAmount) {}
 
     public SaleResponse getSaleDetails(long saleId) {
         Sale sale = salesRepository.findSaleById(saleId)

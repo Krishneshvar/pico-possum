@@ -12,7 +12,6 @@ public record BreakdownItem(
         BigDecimal creditCard,
         BigDecimal giftCard,
         BigDecimal totalSales,
-        BigDecimal totalTax,
         BigDecimal totalDiscount,
         BigDecimal refunds
 ) {

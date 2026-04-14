@@ -3,8 +3,6 @@ package com.possum.application;
 import com.possum.application.auth.*;
 import com.possum.application.inventory.InventoryService;
 import com.possum.application.sales.*;
-import com.possum.application.sales.config.TaxConfiguration;
-import com.possum.application.taxes.TaxExemptionService;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.logging.AuditLogger;
 import com.possum.infrastructure.serialization.JsonService;
@@ -28,8 +26,6 @@ public class EnhancedServiceFactory {
     private final SalesRepository salesRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
-    private final TaxRepository taxRepository;
-    private final TaxExemptionRepository taxExemptionRepository;
     private final UserRepository userRepository;
     private final SessionRepository sessionRepository;
 
@@ -46,8 +42,6 @@ public class EnhancedServiceFactory {
             SalesRepository salesRepository,
             ProductRepository productRepository,
             CustomerRepository customerRepository,
-            TaxRepository taxRepository,
-            TaxExemptionRepository taxExemptionRepository,
             UserRepository userRepository,
             SessionRepository sessionRepository,
             AuditRepository auditRepository,
@@ -62,8 +56,6 @@ public class EnhancedServiceFactory {
         this.salesRepository = salesRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
-        this.taxRepository = taxRepository;
-        this.taxExemptionRepository = taxExemptionRepository;
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.inventoryService = inventoryService;
@@ -73,47 +65,19 @@ public class EnhancedServiceFactory {
     }
 
     /**
-     * Creates EnhancedTaxEngine with default configuration (INVOICE_LEVEL rounding).
-     */
-    public EnhancedTaxEngine createEnhancedTaxEngine() {
-        return new EnhancedTaxEngine(taxRepository, jsonService, TaxConfiguration.defaultConfig());
-    }
-
-    /**
-     * Creates EnhancedTaxEngine with custom configuration.
-     */
-    public EnhancedTaxEngine createEnhancedTaxEngine(TaxConfiguration config) {
-        return new EnhancedTaxEngine(taxRepository, jsonService, config);
-    }
-
-    /**
-     * Creates EnhancedSalesService with EnhancedTaxEngine integration.
+     * Creates EnhancedSalesService.
      */
     public EnhancedSalesService createEnhancedSalesService() {
-        EnhancedTaxEngine taxEngine = createEnhancedTaxEngine();
-        
         return new EnhancedSalesService(
                 salesRepository,
                 productRepository,
                 customerRepository,
                 inventoryService,
-                taxEngine,
                 paymentService,
                 transactionManager,
                 jsonService,
                 settingsStore,
                 invoiceNumberService,
-                auditLogger
-        );
-    }
-
-    /**
-     * Creates TaxExemptionService for managing tax exemptions.
-     */
-    public TaxExemptionService createTaxExemptionService() {
-        return new TaxExemptionService(
-                taxExemptionRepository,
-                customerRepository,
                 auditLogger
         );
     }

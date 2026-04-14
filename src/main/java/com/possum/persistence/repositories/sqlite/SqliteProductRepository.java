@@ -1,10 +1,8 @@
 package com.possum.persistence.repositories.sqlite;
 
 import com.possum.domain.model.Product;
-import com.possum.domain.model.TaxRule;
 import com.possum.persistence.db.ConnectionProvider;
 import com.possum.persistence.mappers.ProductMapper;
-import com.possum.persistence.mappers.TaxRuleMapper;
 import com.possum.domain.repositories.ProductRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
@@ -19,7 +17,6 @@ import java.util.StringJoiner;
 public final class SqliteProductRepository extends BaseSqliteRepository implements ProductRepository {
 
     private final ProductMapper productMapper = new ProductMapper();
-    private final TaxRuleMapper taxRuleMapper = new TaxRuleMapper();
 
     public SqliteProductRepository(ConnectionProvider connectionProvider) {
         super(connectionProvider);
@@ -29,13 +26,12 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public long insertProduct(Product product) {
         return executeInsert(
                 """
-                INSERT INTO products (name, description, category_id, tax_category_id, sku, mrp, cost_price, stock_alert_cap, status, image_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO products (name, description, category_id, sku, mrp, cost_price, stock_alert_cap, status, image_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 product.name(),
                 product.description(),
                 product.categoryId(),
-                product.taxCategoryId(),
                 product.sku(),
                 product.mrp(),
                 product.costPrice(),
@@ -50,8 +46,8 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         return queryOne(
                 """
                 SELECT
-                  p.id, p.name, p.description, p.category_id, c.name AS category_name, p.tax_category_id,
-                  tc.name AS tax_category_name, p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
+                  p.id, p.name, p.description, p.category_id, c.name AS category_name,
+                  p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
                   p.status, p.image_path,
                   (
                     COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
@@ -60,7 +56,6 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                   p.created_at, p.updated_at, p.deleted_at
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
                 WHERE p.id = ? AND p.deleted_at IS NULL
                 """,
                 productMapper,
@@ -89,10 +84,6 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         if (product.categoryId() != null) {
             sql.append(", category_id = ?");
             params.add(product.categoryId());
-        }
-        if (product.taxCategoryId() != null) {
-            sql.append(", tax_category_id = ?");
-            params.add(product.taxCategoryId());
         }
         if (product.sku() != null) {
             sql.append(", sku = ?");
@@ -141,7 +132,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         String baseSql = """
             SELECT 
                 p.id, p.name, p.description, p.category_id, c.name AS category_name, 
-                p.tax_category_id, tc.name AS tax_category_name, p.sku, p.mrp, p.cost_price, 
+                p.sku, p.mrp, p.cost_price, 
                 p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
                 (
                     COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
@@ -149,7 +140,6 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 ) AS stock
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
-            LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
             WHERE p.deleted_at IS NULL
         """;
 
@@ -166,12 +156,6 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
             filterJoiner.add("p.category_id IN (" + placeholders(filter.categories().size()) + ")");
             countParams.addAll(filter.categories());
             queryParams.addAll(filter.categories());
-        }
-        
-        if (filter.taxCategories() != null && !filter.taxCategories().isEmpty()) {
-            filterJoiner.add("p.tax_category_id IN (" + placeholders(filter.taxCategories().size()) + ")");
-            countParams.addAll(filter.taxCategories());
-            queryParams.addAll(filter.taxCategories());
         }
         
         if (filter.status() != null && !filter.status().isEmpty()) {
@@ -238,48 +222,6 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     private String placeholders(int count) {
         return "?,".repeat(count).replaceAll(",$", "");
     }
-
-    @Override
-    public List<TaxRule> findProductTaxes(long productId) {
-        Optional<Long> taxCategoryId = queryOne(
-                "SELECT tax_category_id AS value FROM products WHERE id = ?",
-                rs -> {
-                    long value = rs.getLong("value");
-                    return rs.wasNull() ? null : value;
-                },
-                productId
-        );
-        if (taxCategoryId.isEmpty() || taxCategoryId.get() == null) {
-            return List.of();
-        }
-        Optional<Long> activeProfile = queryOne(
-                "SELECT id FROM tax_profiles WHERE is_active = 1",
-                rs -> rs.getLong("id")
-        );
-        if (activeProfile.isEmpty()) {
-            return List.of();
-        }
-
-        return queryList(
-                """
-                SELECT
-                  tr.*, tc.name AS category_name
-                FROM tax_rules tr
-                INNER JOIN tax_categories tc ON tr.tax_category_id = tc.id
-                WHERE tr.tax_profile_id = ?
-                  AND tr.tax_category_id = ?
-                  AND (tr.valid_from IS NULL OR tr.valid_from <= date('now'))
-                  AND (tr.valid_to IS NULL OR tr.valid_to >= date('now'))
-                ORDER BY tr.priority DESC
-                """,
-                taxRuleMapper,
-                activeProfile.get(),
-                taxCategoryId.get()
-        );
-    }
-
-    @Override
-    public void setProductTaxes(long productId, List<Long> taxIds) { }
 
     @Override
     public Map<String, Object> getProductStats() {

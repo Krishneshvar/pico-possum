@@ -54,7 +54,6 @@ public final class AppBootstrap {
     private PurchaseService purchaseService;
     private SqliteSalesRepository salesRepository;
     private SqliteSupplierRepository supplierRepository;
-    private SqliteTaxRepository taxRepository;
     private com.possum.domain.services.SaleCalculator saleCalculator;
     private com.possum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
 
@@ -185,18 +184,15 @@ public final class AppBootstrap {
         supplierRepository = new SqliteSupplierRepository(databaseManager);
         com.possum.persistence.repositories.sqlite.SqlitePurchaseRepository purchaseOrderRepository =
                 new com.possum.persistence.repositories.sqlite.SqlitePurchaseRepository(databaseManager);
-        taxRepository = new SqliteTaxRepository(databaseManager);
 
-        com.possum.application.sales.TaxEngine taxEngine =
-                new com.possum.application.sales.TaxEngine(taxRepository, jsonService);
         com.possum.application.sales.PaymentService paymentService =
                 new com.possum.application.sales.PaymentService(salesRepository);
         com.possum.application.sales.InvoiceNumberService invoiceNumberService =
                 new com.possum.application.sales.InvoiceNumberService(salesRepository);
-        saleCalculator = new com.possum.domain.services.SaleCalculator(taxEngine);
+        saleCalculator = new com.possum.domain.services.SaleCalculator();
         salesService = new SalesService(salesRepository, productRepository,
                 customerRepository, auditRepository, applicationModule.getInventoryService(),
-                taxEngine, saleCalculator, paymentService, transactionManager, jsonService, serviceLocator.getSettingsStore(),
+                saleCalculator, paymentService, transactionManager, jsonService, serviceLocator.getSettingsStore(),
                 invoiceNumberService);
 
         productSearchIndex = new ProductSearchIndex(productRepository);
@@ -215,12 +211,9 @@ public final class AppBootstrap {
     }
 
     private void initializeUI() {
-        JsonService jsonService = new JsonService();
-        com.possum.application.sales.TaxEngine taxEngine =
-                new com.possum.application.sales.TaxEngine(taxRepository, jsonService);
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
-                taxEngine, saleCalculator, productSearchIndex, transactionService, returnsService,
-                reportsService, purchaseService, salesRepository, supplierRepository, taxRepository, appPaths);
+                saleCalculator, productSearchIndex, transactionService, returnsService,
+                reportsService, purchaseService, salesRepository, supplierRepository, appPaths);
 
         dependencyInjector.getToastService().setMainStage(null);
     }

@@ -41,11 +41,31 @@ class SqliteInventoryRepositoryTest {
             CREATE TABLE products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+                description TEXT,
+                category_id INTEGER,
+                category_name TEXT,
                 sku TEXT,
                 mrp REAL,
                 cost_price REAL,
                 stock_alert_cap INTEGER DEFAULT 10,
-                status TEXT DEFAULT 'active'
+                status TEXT DEFAULT 'active',
+                image_path TEXT,
+                stock INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TEXT
+            )
+        """);
+        connection.createStatement().execute("""
+            CREATE TABLE categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
+            )
+        """);
+        connection.createStatement().execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
             )
         """);
         connection.createStatement().execute("""
@@ -108,7 +128,7 @@ class SqliteInventoryRepositoryTest {
         repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH003", null, null, 30, new BigDecimal("50.00"), null, null));
         repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null, null));
 
-        List<AvailableLot> result = repository.findAvailableLots(1L);
+        List<AvailableLot> result = repository.findAvailableLotsByProductId(1L);
         assertEquals(2, result.size());
     }
 

@@ -6,7 +6,6 @@ import com.possum.application.inventory.InventoryService;
 import com.possum.application.categories.CategoryService;
 import com.possum.domain.model.Product;
 import com.possum.domain.repositories.ProductRepository;
-import com.possum.domain.repositories.TaxRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
 import com.possum.ui.common.controls.FilterBar;
@@ -36,7 +35,6 @@ class InventoryControllerTest {
     @Mock private InventoryService inventoryService;
     @Mock private ProductRepository productRepository;
     @Mock private CategoryService categoryService;
-    @Mock private TaxRepository taxRepository;
     @Mock private WorkspaceManager workspaceManager;
     @Mock private FilterBar filterBar;
     @Mock private PaginationBar paginationBar;
@@ -67,16 +65,15 @@ class InventoryControllerTest {
     @Test
     @DisplayName("Should fetch inventory data")
     void fetchData_success() {
-        ProductFilter filter = new ProductFilter(null, null, null, null, null, null, null, 0, 25, "stock", "ASC");
+        ProductFilter filter = new ProductFilter(null, null, null, null, null, null, 0, 25, "stock", "ASC");
         List<Product> products = List.of(
             createTestProduct(1L, "Product 1", 10),
             createTestProduct(2L, "Product 2", 5)
         );
         PagedResult<Product> pagedResult = new PagedResult<>(products, 2, 1, 0, 25);
-        
+
         when(productRepository.findProducts(any())).thenReturn(pagedResult);
 
-        // Call controller method
         PagedResult<Product> result = controller.fetchData(filter);
 
         assertNotNull(result);
@@ -90,8 +87,8 @@ class InventoryControllerTest {
         ProductFilter filter = controller.buildFilter();
 
         assertNotNull(filter);
-        assertEquals(0, filter.page());
-        assertEquals(25, filter.limit());
+        assertEquals(0, filter.currentPage());
+        assertEquals(25, filter.itemsPerPage());
     }
 
     @Test
@@ -103,9 +100,8 @@ class InventoryControllerTest {
 
     private Product createTestProduct(Long id, String name, int stock) {
         return new Product(
-            id, name, "SKU" + id, "Description", 1L, "active",
-            new BigDecimal("10.00"), new BigDecimal("12.00"), 1L, stock, 5,
-            false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
+            id, name, null, null, null, "SKU" + id,
+            new BigDecimal("10.00"), new BigDecimal("12.00"), stock, "active", null, 5, null, null, null
         );
     }
 }

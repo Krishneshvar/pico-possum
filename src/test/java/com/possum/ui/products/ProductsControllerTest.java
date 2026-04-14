@@ -6,7 +6,6 @@ import com.possum.application.categories.CategoryService;
 import com.possum.application.products.ProductService;
 import com.possum.domain.model.Category;
 import com.possum.domain.model.Product;
-import com.possum.domain.repositories.TaxRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
 import com.possum.ui.common.controls.FilterBar;
@@ -36,7 +35,6 @@ class ProductsControllerTest {
 
     @Mock private ProductService productService;
     @Mock private CategoryService categoryService;
-    @Mock private TaxRepository taxRepository;
     @Mock private WorkspaceManager workspaceManager;
     @Mock private FilterBar filterBar;
     @Mock private PaginationBar paginationBar;
@@ -68,7 +66,7 @@ class ProductsControllerTest {
     @DisplayName("Should fetch products with filters")
     void fetchProducts_withFilters_success() {
         ProductFilter filter = new ProductFilter(
-            "Test", null, List.of("active"), null, 0, 20, "name", "ASC"
+            "Test", List.of("active"), null, 0, 20, "name", "ASC"
         );
         List<Product> products = List.of(
             createTestProduct(1L, "Test Product 1", "active"),
@@ -123,8 +121,9 @@ class ProductsControllerTest {
 
     private Product createTestProduct(Long id, String name, String status) {
         return new Product(
-            id, name, "Description", 1L, "Electronics", 1L, "Standard",
-            status, null, 10, LocalDateTime.now(), LocalDateTime.now(), null
+            id, name, "Description", 1L, "Electronics",
+            "SKU-" + id, new java.math.BigDecimal("10.00"), new java.math.BigDecimal("8.00"),
+            10, status, null, 0, null, null, null
         );
     }
 }

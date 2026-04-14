@@ -96,8 +96,8 @@ class CustomersControllerTest {
         CustomerFilter filter = controller.buildFilter();
 
         assertNotNull(filter);
-        assertEquals(1, filter.page()); // buildFilter starts from page 1
-        assertEquals(25, filter.limit());
+        assertEquals(1, filter.currentPage()); // buildFilter starts from page 1
+        assertEquals(25, filter.itemsPerPage());
         assertEquals("name", filter.sortBy());
         assertEquals("ASC", filter.sortOrder());
     }
@@ -110,6 +110,6 @@ class CustomersControllerTest {
     }
 
     private Customer createTestCustomer(Long id, String name, String phone, String email) {
-        return new Customer(id, name, phone, email, "123 Main St", "retail", false, null, null, null);
+        return new Customer(id, name, phone, email, "123 Main St", "retail", null, null, null);
     }
 }

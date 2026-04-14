@@ -134,10 +134,7 @@
                         <ComboBox fx:id="statusCombo" promptText="Select..." maxWidth="Infinity" styleClass="combo-box" accessibleText="Product status selection"/>
                     </VBox>
 
-                    <VBox styleClass="form-group" spacing="8">
-                        <Label text="Tax Category" styleClass="form-label" labelFor="$taxFilter" style="-fx-font-weight: 600;"/>
-                        <SingleSelectFilter fx:id="taxFilter" title="Select Tax Category..." maxWidth="Infinity" styleClass="single-select-filter" accessibleText="Tax category selection"/>
-                    </VBox>
+
                 </VBox>
             </VBox>
 

@@ -1,9 +1,6 @@
 package com.possum.application.sales;
 
 import com.possum.application.inventory.InventoryService;
-import com.possum.application.sales.dto.TaxCalculationResult;
-import com.possum.application.sales.dto.TaxableInvoice;
-import com.possum.application.sales.dto.TaxableItem;
 import com.possum.application.sales.dto.UpdateSaleItemRequest;
 import com.possum.domain.enums.InventoryReason;
 import com.possum.domain.exceptions.InsufficientStockException;
@@ -13,10 +10,10 @@ import com.possum.domain.model.*;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.persistence.db.TransactionManager;
 import com.possum.domain.repositories.*;
-import com.possum.domain.services.TaxCalculator;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.shared.util.TimeUtil;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +26,6 @@ public class SalesModificationService {
     private final CustomerRepository customerRepository;
     private final AuditRepository auditRepository;
     private final InventoryService inventoryService;
-    private final TaxCalculator taxCalculator;
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
     private final SettingsStore settingsStore;
@@ -39,7 +35,6 @@ public class SalesModificationService {
                                     CustomerRepository customerRepository,
                                     AuditRepository auditRepository,
                                     InventoryService inventoryService,
-                                    TaxCalculator taxCalculator,
                                     TransactionManager transactionManager,
                                     JsonService jsonService,
                                     SettingsStore settingsStore) {
@@ -48,7 +43,6 @@ public class SalesModificationService {
         this.customerRepository = customerRepository;
         this.auditRepository = auditRepository;
         this.inventoryService = inventoryService;
-        this.taxCalculator = taxCalculator;
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
         this.settingsStore = settingsStore;
@@ -94,31 +88,22 @@ public class SalesModificationService {
                 }
             }
 
-            List<TaxableItem> itemsToCalculate = new ArrayList<>();
+            BigDecimal newSubtotal = BigDecimal.ZERO;
+            BigDecimal totalDiscount = sale.discount() != null ? sale.discount() : BigDecimal.ZERO;
+
             for (UpdateSaleItemRequest req : itemRequests) {
                 Product p = productMap.get(req.productId());
                 if (p == null) throw new NotFoundException("Product not found: " + req.productId());
-                
-                itemsToCalculate.add(new TaxableItem(
-                        p.name(), req.pricePerUnit(), req.quantity(),
-                        p.taxCategoryId(), p.id()
-                ));
-            }
 
-            Customer customer = sale.customerId() != null ? customerRepository.findCustomerById(sale.customerId()).orElse(null) : null;
-            TaxCalculationResult taxResult = taxCalculator.calculate(new TaxableInvoice(itemsToCalculate), customer);
-
-            for (int i = 0; i < itemRequests.size(); i++) {
-                UpdateSaleItemRequest req = itemRequests.get(i);
-                TaxableItem calculated = taxResult.getItemByIndex(i);
-                Product p = productMap.get(req.productId());
+                BigDecimal lineGross = req.pricePerUnit().multiply(BigDecimal.valueOf(req.quantity()));
+                BigDecimal lineDiscount = req.discount() != null ? req.discount() : BigDecimal.ZERO;
+                BigDecimal lineNet = lineGross.subtract(lineDiscount).max(BigDecimal.ZERO);
+                newSubtotal = newSubtotal.add(lineNet);
 
                 SaleItem item = new SaleItem(
                         null, saleId, p.id(), p.sku(), p.name(),
                         req.quantity(), req.pricePerUnit(), p.costPrice(),
-                        calculated.getTaxRate(), calculated.getTaxAmount(),
-                        calculated.getTaxRate(), calculated.getTaxAmount(),
-                        calculated.getTaxRuleSnapshot(), req.discount(), null
+                        req.discount(), null
                 );
                 long newItemId = salesRepository.insertSaleItem(item);
                 
@@ -128,15 +113,16 @@ public class SalesModificationService {
                 );
             }
 
+            BigDecimal grandTotal = newSubtotal.subtract(totalDiscount).max(BigDecimal.ZERO);
+
             salesRepository.updateSaleTotals(
                     saleId, 
-                    taxResult.grandTotal(), 
-                    taxResult.totalTax(), 
-                    sale.discount()
+                    grandTotal, 
+                    totalDiscount
             );
 
             Map<String, Object> oldSummary = Map.of("item_count", oldItems.size(), "total", sale.totalAmount());
-            Map<String, Object> newSummary = Map.of("item_count", itemRequests.size(), "total", taxResult.grandTotal());
+            Map<String, Object> newSummary = Map.of("item_count", itemRequests.size(), "total", grandTotal);
             
             AuditLog auditLog = new AuditLog(
                     null, userId, "UPDATE", "sales", saleId,

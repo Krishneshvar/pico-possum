@@ -72,16 +72,13 @@ class SalesWorkflowIntegrationTest {
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
-        SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        com.possum.domain.services.TaxCalculator taxCalculator = new com.possum.domain.services.TaxCalculator(taxRepository, jsonService);
-        TaxEngine taxEngine = new TaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
         SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
-        salesService = new SalesService(salesRepository, productRepository, customerRepository, 
-                auditRepository, inventoryService, taxCalculator, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+        salesService = new SalesService(salesRepository, productRepository, customerRepository,
+                auditRepository, inventoryService, new com.possum.domain.services.SaleCalculator(), paymentService, transactionManager,
                 jsonService, settingsStore, invoiceNumberService);
 
         // Seed test data
@@ -112,7 +109,7 @@ class SalesWorkflowIntegrationTest {
     @Order(1)
     @DisplayName("Full sale happy path — creates sale, deducts stock, logs audit")
     void fullSaleHappyPath_createsSale_deductsStock_logsAudit() {
-        int stockBefore = inventoryService.getStockByProductId(testProductId);
+        int stockBefore = inventoryService.getProductStock(testProductId);
 
         CreateSaleRequest request = new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 2, BigDecimal.ZERO, new BigDecimal("100.00"))),
@@ -130,7 +127,7 @@ class SalesWorkflowIntegrationTest {
         assertEquals(1, response.items().size());
         assertEquals(2, response.items().get(0).quantity());
 
-        int stockAfter = inventoryService.getStockByProductId(testProductId);
+        int stockAfter = inventoryService.getProductStock(testProductId);
         assertEquals(stockBefore - 2, stockAfter);
 
         long saleId = response.sale().id();
@@ -142,14 +139,14 @@ class SalesWorkflowIntegrationTest {
     @Order(2)
     @DisplayName("Cancel sale — stock is restored and status updated")
     void cancelSale_restoresStock_updatesStatus() {
-        int stockBefore = inventoryService.getStockByProductId(testProductId);
+        int stockBefore = inventoryService.getProductStock(testProductId);
         SaleResponse response = salesService.createSale(new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("100.00"))),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
         ), testUserId);
 
-        int stockAfterSale = inventoryService.getStockByProductId(testProductId);
+        int stockAfterSale = inventoryService.getProductStock(testProductId);
         assertEquals(stockBefore - 1, stockAfterSale);
 
         salesService.cancelSale(response.sale().id(), testUserId);
@@ -157,7 +154,7 @@ class SalesWorkflowIntegrationTest {
         Sale cancelled = salesRepository.findSaleById(response.sale().id()).orElseThrow();
         assertEquals("cancelled", cancelled.status());
 
-        int stockAfterCancel = inventoryService.getStockByProductId(testProductId);
+        int stockAfterCancel = inventoryService.getProductStock(testProductId);
         assertEquals(stockBefore, stockAfterCancel);
     }
 
@@ -174,7 +171,7 @@ class SalesWorkflowIntegrationTest {
 
     private static long seedProductWithStock() {
         long catId = categoryRepository.insertCategory("Cat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, 1L, null, "SKU-" + UUID.randomUUID(), new BigDecimal("100.00"), new BigDecimal("60.00"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, "SKU-" + UUID.randomUUID(), new BigDecimal("100.00"), new BigDecimal("60.00"), 10, "active", null, 0, null, null, null);
         long productId = productRepository.insertProduct(p);
         seedInventory(productId, 50);
         return productId;

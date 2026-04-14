@@ -57,7 +57,7 @@ public interface SalesRepository {
 
     int updateSaleItem(SaleItem item);
 
-    int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal totalTax, BigDecimal discount);
+    int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal discount);
 
     boolean upsertLegacySale(LegacySale legacySale);
 

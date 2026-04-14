@@ -29,21 +29,17 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     private final ProductService productService;
     private final CategoryService categoryService;
-    private final com.possum.domain.repositories.TaxRepository taxRepository;
     private final ImportHandler importHandler;
 
-    private List<Long> currentTaxCategoryFilters = java.util.Collections.emptyList();
     private List<String> currentStatusFilters = java.util.Collections.emptyList();
     private List<Long> currentCategoryFilters = java.util.Collections.emptyList();
 
     public ProductsController(ProductService productService,
                               CategoryService categoryService,
-                              com.possum.domain.repositories.TaxRepository taxRepository,
                               WorkspaceManager workspaceManager) {
         super(workspaceManager);
         this.productService = productService;
         this.categoryService = categoryService;
-        this.taxRepository = taxRepository;
         this.importHandler = new ImportHandler();
     }
 
@@ -119,25 +115,15 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     @Override
     protected void setupFilters() {
         List<Category> categories = categoryService.getAllCategories();
-        List<com.possum.domain.model.TaxCategory> taxCategories = taxRepository.getAllTaxCategories();
 
         filterBar.addMultiSelectFilter("status", "Status", List.of("active", "inactive", "discontinued"), 
             item -> item.substring(0, 1).toUpperCase() + item.substring(1), false);
-        filterBar.addMultiSelectFilter("taxCategory", "Tax Category", taxCategories, com.possum.domain.model.TaxCategory::name);
         filterBar.addMultiSelectFilter("categories", "Categories", categories, Category::name);
 
         setupStandardFilterListener((filters, reload) -> {
             @SuppressWarnings("unchecked")
             List<String> statusFilter = (List<String>) filters.get("status");
             currentStatusFilters = statusFilter != null ? statusFilter : java.util.Collections.emptyList();
-
-            @SuppressWarnings("unchecked")
-            List<com.possum.domain.model.TaxCategory> taxFilter = (List<com.possum.domain.model.TaxCategory>) filters.get("taxCategory");
-            if (taxFilter != null) {
-                currentTaxCategoryFilters = taxFilter.stream().map(com.possum.domain.model.TaxCategory::id).toList();
-            } else {
-                currentTaxCategoryFilters = java.util.Collections.emptyList();
-            }
 
             @SuppressWarnings("unchecked")
             List<Category> cats = (List<Category>) filters.get("categories");
@@ -156,7 +142,6 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     protected ProductFilter buildFilter() {
         return new ProductFilter(
             getSearchOrNull(),
-            currentTaxCategoryFilters.isEmpty() ? null : currentTaxCategoryFilters,
             currentStatusFilters.isEmpty() ? null : currentStatusFilters,
             currentCategoryFilters.isEmpty() ? null : currentCategoryFilters,
             getCurrentPage(),
@@ -281,7 +266,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
             productService.createProduct(
                 new ProductService.CreateProductCommand(
-                    record.name(), "", categoryId, null, record.sku(),
+                    record.name(), "", categoryId, record.sku(),
                     record.price(), record.costPrice(), record.stockAlert(), "active",
                     null, record.initialStock(), actorId
                 )

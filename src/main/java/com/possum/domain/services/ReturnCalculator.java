@@ -59,7 +59,6 @@ public class ReturnCalculator {
                     refundAmount,
                     saleItem.productId(),
                     saleItem.pricePerUnit(),
-                    saleItem.taxRate(),
                     saleItem.sku(),
                     saleItem.productName()
             ));

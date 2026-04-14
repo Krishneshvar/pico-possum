@@ -87,10 +87,7 @@
                         <Label text="SUBTOTAL" styleClass="form-label" style="-fx-font-size: 10; -fx-text-fill: #94a3b8;"/>
                         <Label fx:id="draftSubtotalLabel" text="-" style="-fx-font-weight: 700; -fx-font-size: 14;"/>
                     </HBox>
-                    <HBox spacing="8" alignment="CENTER_LEFT">
-                        <Label text="TAX" styleClass="form-label" style="-fx-font-size: 10; -fx-text-fill: #94a3b8;"/>
-                        <Label fx:id="draftTaxLabel" text="-" style="-fx-font-weight: 700; -fx-font-size: 14;"/>
-                    </HBox>
+
                     <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 0 0 0 20;">
                         <Label text="NEW TOTAL" styleClass="form-label" style="-fx-font-size: 10; -fx-text-fill: #64748b;"/>
                         <Label fx:id="draftTotalLabel" text="-" style="-fx-font-weight: 900; -fx-font-size: 18; -fx-text-fill: #10B981;"/>
@@ -153,10 +150,7 @@
                         <Label text="Subtotal" style="-fx-text-fill: #64748b;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                         <Label fx:id="subtotalLabel" text="0.00" style="-fx-font-weight: 600;"/>
                     </HBox>
-                    <HBox alignment="CENTER_LEFT">
-                        <Label text="Tax Total" style="-fx-text-fill: #64748b;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-                        <Label fx:id="taxTotalLabel" text="0.00" style="-fx-font-weight: 600;"/>
-                    </HBox>
+
                     <HBox alignment="CENTER_LEFT">
                         <Label text="Discount" style="-fx-text-fill: #64748b;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                         <Label fx:id="discountTotalLabel" text="-0.00" style="-fx-font-weight: 600; -fx-text-fill: #ef4444;"/>

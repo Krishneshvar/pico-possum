@@ -97,7 +97,6 @@ public class CheckoutService {
                     draft.getTotal(),
                     BigDecimal.ZERO,
                     draft.getDiscountTotal(),
-                    draft.getTaxAmount(),
                     "draft", 
                     "pending",
                     draft.getSelectedCustomer() != null ? draft.getSelectedCustomer().id() : null,
@@ -117,11 +116,6 @@ public class CheckoutService {
                         cartItem.getQuantity(),
                         cartItem.getPricePerUnit(),
                         cartItem.getProduct().costPrice(),
-                        cartItem.getTaxRate(),
-                        cartItem.getTaxAmount(),
-                        cartItem.getTaxRate(), 
-                        cartItem.getTaxAmount(), 
-                        cartItem.getTaxRuleSnapshot(),
                         cartItem.getDiscountAmount(),
                         null
                 );

@@ -13,9 +13,6 @@ public class CartItem {
     // Calculated fields
     private BigDecimal discountAmount = BigDecimal.ZERO;
     private BigDecimal netLineTotal = BigDecimal.ZERO;
-    private BigDecimal taxAmount = BigDecimal.ZERO;
-    private BigDecimal taxRate = BigDecimal.ZERO;
-    private String taxRuleSnapshot;
 
     public CartItem() {}
 
@@ -51,12 +48,6 @@ public class CartItem {
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
     public BigDecimal getNetLineTotal() { return netLineTotal; }
     public void setNetLineTotal(BigDecimal netLineTotal) { this.netLineTotal = netLineTotal; }
-    public BigDecimal getTaxAmount() { return taxAmount; }
-    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
-    public BigDecimal getTaxRate() { return taxRate; }
-    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
-    public String getTaxRuleSnapshot() { return taxRuleSnapshot; }
-    public void setTaxRuleSnapshot(String taxRuleSnapshot) { this.taxRuleSnapshot = taxRuleSnapshot; }
 
     public BigDecimal getGrossLineTotal() {
         return pricePerUnit.multiply(BigDecimal.valueOf(quantity));

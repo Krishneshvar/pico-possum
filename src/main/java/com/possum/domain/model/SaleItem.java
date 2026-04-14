@@ -11,11 +11,6 @@ public record SaleItem(
         Integer quantity,
         BigDecimal pricePerUnit,
         BigDecimal costPerUnit,
-        BigDecimal taxRate,
-        BigDecimal taxAmount,
-        BigDecimal appliedTaxRate,
-        BigDecimal appliedTaxAmount,
-        String taxRuleSnapshot,
         BigDecimal discountAmount,
         Integer returnedQuantity
 ) {

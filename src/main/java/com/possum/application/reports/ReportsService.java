@@ -143,7 +143,6 @@ public final class ReportsService {
     private SalesReportSummary mapToSummary(Map<String, Object> data) {
         int totalTransactions = (int) data.getOrDefault("total_transactions", 0);
         BigDecimal totalSales = (BigDecimal) data.getOrDefault("total_sales", BigDecimal.ZERO);
-        BigDecimal totalTax = (BigDecimal) data.getOrDefault("total_tax", BigDecimal.ZERO);
         BigDecimal totalDiscount = (BigDecimal) data.getOrDefault("total_discount", BigDecimal.ZERO);
         BigDecimal totalCollected = (BigDecimal) data.getOrDefault("total_collected", BigDecimal.ZERO);
         BigDecimal totalRefunds = (BigDecimal) data.getOrDefault("total_refunds", BigDecimal.ZERO);
@@ -155,7 +154,6 @@ public final class ReportsService {
         return new SalesReportSummary(
                 totalTransactions,
                 totalSales,
-                totalTax,
                 totalDiscount,
                 totalCollected,
                 totalRefunds,
@@ -172,7 +170,6 @@ public final class ReportsService {
         String name = formatter.apply(period);
         int totalTransactions = (int) item.getOrDefault("total_transactions", 0);
         BigDecimal totalSales = (BigDecimal) item.getOrDefault("total_sales", BigDecimal.ZERO);
-        BigDecimal totalTax = (BigDecimal) item.getOrDefault("total_tax", BigDecimal.ZERO);
         BigDecimal totalDiscount = (BigDecimal) item.getOrDefault("total_discount", BigDecimal.ZERO);
         
         BigDecimal cash = (BigDecimal) item.getOrDefault("cash", BigDecimal.ZERO);
@@ -182,7 +179,7 @@ public final class ReportsService {
         BigDecimal giftCard = (BigDecimal) item.getOrDefault("gift_card", BigDecimal.ZERO);
         BigDecimal refunds = (BigDecimal) item.getOrDefault("refunds", BigDecimal.ZERO);
 
-        return new BreakdownItem(period, name, totalTransactions, cash, upi, debitCard, creditCard, giftCard, totalSales, totalTax, totalDiscount, refunds);
+        return new BreakdownItem(period, name, totalTransactions, cash, upi, debitCard, creditCard, giftCard, totalSales, totalDiscount, refunds);
     }
 
 

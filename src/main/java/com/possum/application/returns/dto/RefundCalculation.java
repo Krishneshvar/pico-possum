@@ -8,7 +8,6 @@ public record RefundCalculation(
         BigDecimal refundAmount,
         Long productId,
         BigDecimal pricePerUnit,
-        BigDecimal taxRate,
         String sku,
         String productName
 ) {

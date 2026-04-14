@@ -31,9 +31,6 @@
                         <Label text="Customer Type" styleClass="form-label"/>
                         <ComboBox fx:id="customerTypeCombo" maxWidth="Infinity" styleClass="combo-box" accessibleText="Customer Type"/>
                     </VBox>
-                    <VBox styleClass="form-group" alignment="BOTTOM_LEFT" HBox.hgrow="ALWAYS">
-                        <CheckBox fx:id="isTaxExemptCheckbox" text="Tax Exempt" accessibleText="Mark customer as tax exempt"/>
-                    </VBox>
                 </HBox>
             </VBox>
 

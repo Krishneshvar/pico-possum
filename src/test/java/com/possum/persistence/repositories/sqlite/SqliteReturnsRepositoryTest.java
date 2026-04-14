@@ -64,7 +64,7 @@ class SqliteReturnsRepositoryTest {
         Return ret = new Return(null, 1L, 1L, "Defective", null, null, null, null, null, null);
         long returnId = repository.insertReturn(ret);
 
-        ReturnItem item = new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null);
+        ReturnItem item = new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product");
         long itemId = repository.insertReturnItem(item);
         assertTrue(itemId > 0);
     }
@@ -72,7 +72,7 @@ class SqliteReturnsRepositoryTest {
     @Test
     void findReturnById_found_returnsReturnWithJoins() {
         long returnId = repository.insertReturn(new Return(null, 1L, 1L, "Defective", null, null, null, null, null, null));
-        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null));
+        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
 
         Optional<Return> found = repository.findReturnById(returnId);
         assertTrue(found.isPresent());
@@ -94,7 +94,7 @@ class SqliteReturnsRepositoryTest {
     @Test
     void findReturnItems_returnsItemsWithMappedData() {
         long returnId = repository.insertReturn(new Return(null, 1L, 1L, "Defective", null, null, null, null, null, null));
-        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null));
+        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
 
         List<ReturnItem> items = repository.findReturnItems(returnId);
         assertEquals(1, items.size());
@@ -106,8 +106,8 @@ class SqliteReturnsRepositoryTest {
     @Test
     void getTotalReturnedQuantity_returnsSum() {
         long returnId = repository.insertReturn(new Return(null, 1L, 1L, "Defective", null, null, null, null, null, null));
-        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null));
-        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 3, new BigDecimal("150.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null));
+        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
+        repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 3, new BigDecimal("150.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
 
         int total = repository.getTotalReturnedQuantity(1L);
         assertEquals(5, total);
@@ -116,10 +116,10 @@ class SqliteReturnsRepositoryTest {
     @Test
     void findReturns_withFilters_returnsCorrectResults() {
         long returnId1 = repository.insertReturn(new Return(null, 1L, 1L, "Damaged", null, null, null, null, null, null));
-        repository.insertReturnItem(new ReturnItem(null, returnId1, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null));
+        repository.insertReturnItem(new ReturnItem(null, returnId1, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
         
         long returnId2 = repository.insertReturn(new Return(null, 1L, 1L, "Wrong item", null, null, null, null, null, null));
-        repository.insertReturnItem(new ReturnItem(null, returnId2, 1L, 1, new BigDecimal("50.00"), 1L, new BigDecimal("50.00"), new BigDecimal("5.0"), "SKU", "Product", null));
+        repository.insertReturnItem(new ReturnItem(null, returnId2, 1L, 1, new BigDecimal("50.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
         
         ReturnFilter all = new ReturnFilter(null, null, null, null, null, null, null, null, 1, 10, "r.created_at", "ASC");
         PagedResult<Return> allResult = repository.findReturns(all);

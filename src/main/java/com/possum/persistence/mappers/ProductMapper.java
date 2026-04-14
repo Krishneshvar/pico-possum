@@ -15,8 +15,6 @@ public final class ProductMapper implements RowMapper<Product> {
                 rs.getString("description"),
                 getNullableLong(rs, "category_id"),
                 getOptionalColumn(rs, "category_name"),
-                getNullableLong(rs, "tax_category_id"),
-                getOptionalColumn(rs, "tax_category_name"),
                 rs.getString("sku"),
                 rs.getBigDecimal("mrp"),
                 rs.getBigDecimal("cost_price"),

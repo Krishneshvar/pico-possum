@@ -10,7 +10,6 @@ public record ReturnItem(
         BigDecimal refundAmount,
         Long productId,
         BigDecimal pricePerUnit,
-        BigDecimal taxRate,
         String sku,
         String productName
 ) {

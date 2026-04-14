@@ -47,7 +47,7 @@ class DashboardControllerTest {
         AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("dashboard:view")));
         
         lenient().when(reportsService.getSalesSummary(any(), any(), any())).thenReturn(
-            new SalesReportSummary(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)
+            new SalesReportSummary(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)
         );
         lenient().when(reportsService.getTopProducts(any(), any(), anyInt(), any())).thenReturn(List.of());
         lenient().when(inventoryService.getLowStockAlerts()).thenReturn(List.of());
@@ -86,7 +86,7 @@ class DashboardControllerTest {
     void loadDashboardData_success() {
         LocalDate today = LocalDate.now();
         SalesReportSummary summary = new SalesReportSummary(
-            10, new BigDecimal("1000.00"), new BigDecimal("180.00"), new BigDecimal("100.00"),
+            10, new BigDecimal("1000.00"), new BigDecimal("100.00"),
             new BigDecimal("1080.00"), BigDecimal.ZERO, new BigDecimal("600.00"), new BigDecimal("400.00"),
             new BigDecimal("1000.00"), new BigDecimal("100.00")
         );
@@ -114,9 +114,8 @@ class DashboardControllerTest {
 
     private com.possum.domain.model.Product createTestProduct(Long id, String name, int stock) {
         return new com.possum.domain.model.Product(
-            id, name, "SKU" + id, "Description", 1L, "active",
-            new java.math.BigDecimal("10.00"), new java.math.BigDecimal("12.00"), 1L, stock, 5,
-            false, null, "Category 1", 1L, "HST", java.math.BigDecimal.valueOf(13.0)
+            id, name, "desc", 1L, null, "SKU" + id,
+            new java.math.BigDecimal("10.00"), new java.math.BigDecimal("12.00"), 5, "active", null, stock, null, null, null
         );
     }
 }

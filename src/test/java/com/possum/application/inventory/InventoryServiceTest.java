@@ -66,9 +66,9 @@ class InventoryServiceTest {
     void deductStock_fifo_success() {
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(100);
         // Lot 1: 10 units, Lot 2: 50 units
-        when(inventoryRepository.findAvailableLots(1L)).thenReturn(List.of(
-            new AvailableLot(100L, 1L, null, null, 10, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 10),
-            new AvailableLot(101L, 1L, null, null, 50, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 50)
+        when(inventoryRepository.findAvailableLotsByProductId(1L)).thenReturn(List.of(
+            new AvailableLot(100L, 1L, null, null, null, 10, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 10),
+            new AvailableLot(101L, 1L, null, null, null, 50, BigDecimal.TEN, null, java.time.LocalDateTime.now(), 50)
         ));
 
         // Deduct 15 units
@@ -100,7 +100,7 @@ class InventoryServiceTest {
         when(settingsStore.loadGeneralSettings()).thenReturn(settings);
         
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(5);
-        when(inventoryRepository.findAvailableLots(1L)).thenReturn(List.of());
+        when(inventoryRepository.findAvailableLotsByProductId(1L)).thenReturn(List.of());
 
         InventoryService.DeductStockResult result = inventoryService.deductStock(1L, 10, 1L, InventoryReason.SALE, null, null);
 

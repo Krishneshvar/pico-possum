@@ -7,7 +7,7 @@ import com.possum.infrastructure.filesystem.UploadStore;
 import com.possum.infrastructure.printing.PrinterService;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.infrastructure.monitoring.PerformanceMonitor;
-import com.possum.application.taxes.TaxExemptionService;
+import com.possum.infrastructure.monitoring.PerformanceMonitor;
 import com.possum.persistence.db.DatabaseManager;
 import com.possum.persistence.db.TransactionManager;
 import org.slf4j.Logger;
@@ -26,7 +26,6 @@ public class ServiceLocator {
     private final LazyService<PrinterService> printerService;
     private final LazyService<DatabaseBackupService> databaseBackupService;
     private final LazyService<PerformanceMonitor> performanceMonitor;
-    private final LazyService<TaxExemptionService> taxExemptionService;
     private final LazyService<com.possum.application.drafts.DraftService> draftService;
     
     public ServiceLocator(DatabaseManager databaseManager, TransactionManager transactionManager, AppPaths appPaths) {
@@ -63,16 +62,6 @@ public class ServiceLocator {
             return new PerformanceMonitor();
         });
         
-        this.taxExemptionService = new LazyService<>(() -> {
-            LOGGER.debug("Initializing TaxExemptionService");
-            var auditRepo = new com.possum.persistence.repositories.sqlite.SqliteAuditRepository(databaseManager);
-            return new TaxExemptionService(
-                new com.possum.persistence.repositories.sqlite.SqliteTaxExemptionRepository(databaseManager.getConnection()),
-                new com.possum.persistence.repositories.sqlite.SqliteCustomerRepository(databaseManager),
-                new com.possum.infrastructure.logging.AuditLogger(auditRepo)
-            );
-        });
-
         this.draftService = new LazyService<>(() -> {
             LOGGER.debug("Initializing DraftService");
             return new com.possum.application.drafts.DraftService(databaseManager, jsonService.get());
@@ -101,10 +90,6 @@ public class ServiceLocator {
     
     public PerformanceMonitor getPerformanceMonitor() {
         return performanceMonitor.get();
-    }
-    
-    public TaxExemptionService getTaxExemptionService() {
-        return taxExemptionService.get();
     }
     
     public com.possum.application.drafts.DraftService getDraftService() {

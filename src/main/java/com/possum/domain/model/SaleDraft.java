@@ -26,7 +26,6 @@ public class SaleDraft {
     // Summary fields
     private BigDecimal subtotal = BigDecimal.ZERO;
     private BigDecimal discountTotal = BigDecimal.ZERO;
-    private BigDecimal taxAmount = BigDecimal.ZERO;
     private BigDecimal total = BigDecimal.ZERO;
     private BigDecimal totalMrp = BigDecimal.ZERO;
     private BigDecimal totalPrice = BigDecimal.ZERO;
@@ -45,7 +44,6 @@ public class SaleDraft {
         amountTendered = BigDecimal.ZERO;
         subtotal = BigDecimal.ZERO;
         discountTotal = BigDecimal.ZERO;
-        taxAmount = BigDecimal.ZERO;
         total = BigDecimal.ZERO;
         totalMrp = BigDecimal.ZERO;
         totalPrice = BigDecimal.ZERO;
@@ -80,8 +78,6 @@ public class SaleDraft {
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getDiscountTotal() { return discountTotal; }
     public void setDiscountTotal(BigDecimal discountTotal) { this.discountTotal = discountTotal; }
-    public BigDecimal getTaxAmount() { return taxAmount; }
-    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
     public BigDecimal getTotal() { return total; }
     public void setTotal(BigDecimal total) { this.total = total; }
     public BigDecimal getTotalMrp() { return totalMrp; }

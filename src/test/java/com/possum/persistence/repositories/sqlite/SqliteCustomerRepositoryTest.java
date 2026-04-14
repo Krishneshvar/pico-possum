@@ -43,7 +43,6 @@ class SqliteCustomerRepositoryTest {
                 email TEXT,
                 address TEXT,
                 customer_type TEXT,
-                is_tax_exempt INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 deleted_at TEXT
@@ -54,7 +53,7 @@ class SqliteCustomerRepositoryTest {
     @Test
     void insert_validCustomer_insertsSuccessfully() {
         Optional<Customer> result = repository.insertCustomer(
-                "John Doe", "1234567890", "john@example.com", "123 Main St", null, false);
+                "John Doe", "1234567890", "john@example.com", "123 Main St", null);
 
         assertTrue(result.isPresent());
         assertEquals("John Doe", result.get().name());
@@ -64,9 +63,9 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void insert_duplicateEmail_insertsSuccessfully() {
-        repository.insertCustomer("Customer 1", "1111111111", "same@example.com", "Address 1", null, false);
+        repository.insertCustomer("Customer 1", "1111111111", "same@example.com", "Address 1", null);
         Optional<Customer> result = repository.insertCustomer(
-                "Customer 2", "2222222222", "same@example.com", "Address 2", null, false);
+                "Customer 2", "2222222222", "same@example.com", "Address 2", null);
 
         assertTrue(result.isPresent());
         assertEquals("Customer 2", result.get().name());
@@ -75,7 +74,7 @@ class SqliteCustomerRepositoryTest {
     @Test
     void findById_found_returnsCustomer() {
         Optional<Customer> inserted = repository.insertCustomer(
-                "Jane Doe", "9876543210", "jane@example.com", "456 Oak St", null, false);
+                "Jane Doe", "9876543210", "jane@example.com", "456 Oak St", null);
 
         Optional<Customer> result = repository.findCustomerById(inserted.get().id());
 
@@ -93,9 +92,9 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void findAll_withPagination_returnsPagedResult() {
-        repository.insertCustomer("Customer 1", "1111111111", "c1@example.com", "Address 1", null, false);
-        repository.insertCustomer("Customer 2", "2222222222", "c2@example.com", "Address 2", null, false);
-        repository.insertCustomer("Customer 3", "3333333333", "c3@example.com", "Address 3", null, false);
+        repository.insertCustomer("Customer 1", "1111111111", "c1@example.com", "Address 1", null);
+        repository.insertCustomer("Customer 2", "2222222222", "c2@example.com", "Address 2", null);
+        repository.insertCustomer("Customer 3", "3333333333", "c3@example.com", "Address 3", null);
 
         CustomerFilter filter = new CustomerFilter(null, null, null, 1, 2, "name", "ASC");
         PagedResult<Customer> result = repository.findCustomers(filter);
@@ -109,10 +108,10 @@ class SqliteCustomerRepositoryTest {
     @Test
     void update_validChanges_updatesSuccessfully() {
         Optional<Customer> inserted = repository.insertCustomer(
-                "Original Name", "1234567890", "original@example.com", "Original Address", null, false);
+                "Original Name", "1234567890", "original@example.com", "Original Address", null);
 
         Optional<Customer> updated = repository.updateCustomerById(
-                inserted.get().id(), "Updated Name", "9999999999", "updated@example.com", "Updated Address", null, false);
+                inserted.get().id(), "Updated Name", "9999999999", "updated@example.com", "Updated Address", null);
 
         assertTrue(updated.isPresent());
         assertEquals("Updated Name", updated.get().name());
@@ -122,7 +121,7 @@ class SqliteCustomerRepositoryTest {
     @Test
     void delete_softDelete_marksAsDeleted() {
         Optional<Customer> inserted = repository.insertCustomer(
-                "To Delete", "1234567890", "delete@example.com", "Address", null, false);
+                "To Delete", "1234567890", "delete@example.com", "Address", null);
 
         boolean deleted = repository.softDeleteCustomer(inserted.get().id());
 
@@ -133,7 +132,7 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void findByEmail_found_returnsCustomer() {
-        repository.insertCustomer("John Doe", "1234567890", "john@example.com", "123 Main St", null, false);
+        repository.insertCustomer("John Doe", "1234567890", "john@example.com", "123 Main St", null);
 
         CustomerFilter filter = new CustomerFilter("john@example.com", null, null, 1, 10, "name", "ASC");
         PagedResult<Customer> result = repository.findCustomers(filter);
@@ -144,7 +143,7 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void findByPhone_found_returnsCustomer() {
-        repository.insertCustomer("Jane Doe", "5555555555", "jane@example.com", "456 Oak St", null, false);
+        repository.insertCustomer("Jane Doe", "5555555555", "jane@example.com", "456 Oak St", null);
 
         CustomerFilter filter = new CustomerFilter("5555555555", null, null, 1, 10, "name", "ASC");
         PagedResult<Customer> result = repository.findCustomers(filter);
@@ -155,8 +154,8 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void search_byNameEmailPhone_returnsMatches() {
-        repository.insertCustomer("Alice Smith", "1111111111", "alice@example.com", "Address 1", null, false);
-        repository.insertCustomer("Bob Jones", "2222222222", "bob@example.com", "Address 2", null, false);
+        repository.insertCustomer("Alice Smith", "1111111111", "alice@example.com", "Address 1", null);
+        repository.insertCustomer("Bob Jones", "2222222222", "bob@example.com", "Address 2", null);
 
         CustomerFilter filter = new CustomerFilter("Alice", null, null, 1, 10, "name", "ASC");
         PagedResult<Customer> result = repository.findCustomers(filter);
@@ -167,9 +166,9 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void count_totalCustomers_returnsCount() {
-        repository.insertCustomer("Customer 1", "1111111111", "c1@example.com", "Address 1", null, false);
-        repository.insertCustomer("Customer 2", "2222222222", "c2@example.com", "Address 2", null, false);
-        repository.insertCustomer("Customer 3", "3333333333", "c3@example.com", "Address 3", null, false);
+        repository.insertCustomer("Customer 1", "1111111111", "c1@example.com", "Address 1", null);
+        repository.insertCustomer("Customer 2", "2222222222", "c2@example.com", "Address 2", null);
+        repository.insertCustomer("Customer 3", "3333333333", "c3@example.com", "Address 3", null);
 
         CustomerFilter filter = new CustomerFilter(null, null, null, 1, 100, "name", "ASC");
         PagedResult<Customer> result = repository.findCustomers(filter);
@@ -179,7 +178,7 @@ class SqliteCustomerRepositoryTest {
 
     @Test
     void exists_byEmail_checksExistence() {
-        repository.insertCustomer("Existing Customer", "1234567890", "exists@example.com", "Address", null, false);
+        repository.insertCustomer("Existing Customer", "1234567890", "exists@example.com", "Address", null);
 
         CustomerFilter filter = new CustomerFilter("exists@example.com", null, null, 1, 10, "name", "ASC");
         PagedResult<Customer> result = repository.findCustomers(filter);
@@ -190,7 +189,7 @@ class SqliteCustomerRepositoryTest {
     @Test
     void insert_withCustomerType_insertsSuccessfully() {
         Optional<Customer> result = repository.insertCustomer(
-                "Wholesale Customer", "1234567890", "wholesale@example.com", "123 Main St", "Wholesaler", false);
+                "Wholesale Customer", "1234567890", "wholesale@example.com", "123 Main St", "Wholesaler");
 
         assertTrue(result.isPresent());
         assertEquals("Wholesaler", result.get().customerType());

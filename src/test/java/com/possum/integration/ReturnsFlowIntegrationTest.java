@@ -76,14 +76,11 @@ class ReturnsFlowIntegrationTest {
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
-        SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        com.possum.domain.services.TaxCalculator taxCalculator = new com.possum.domain.services.TaxCalculator(taxRepository, jsonService);
-        TaxEngine taxEngine = new TaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
-                auditRepository, inventoryService, taxCalculator, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+                auditRepository, inventoryService, new com.possum.domain.services.SaleCalculator(), paymentService, transactionManager, 
                 jsonService, settingsStore, invoiceNumberService);
 
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
@@ -121,7 +118,7 @@ class ReturnsFlowIntegrationTest {
         SaleResponse saleResp = createSale(testProductId, 3, new BigDecimal("50.00"), new BigDecimal("150.00"));
         long saleId = saleResp.sale().id();
         long saleItemId = saleResp.items().get(0).id();
-        int stockAfterSale = inventoryService.getStockByProductId(testProductId);
+        int stockAfterSale = inventoryService.getProductStock(testProductId);
 
         // Return 1 of 3
         ReturnResponse returnResp = returnsService.createReturn(new CreateReturnRequest(
@@ -136,7 +133,7 @@ class ReturnsFlowIntegrationTest {
         assertTrue(returnResp.totalRefund().compareTo(BigDecimal.ZERO) > 0);
 
         // Stock should be restored by 1
-        assertEquals(stockAfterSale + 1, inventoryService.getStockByProductId(testProductId));
+        assertEquals(stockAfterSale + 1, inventoryService.getProductStock(testProductId));
 
         // A refund transaction should exist
         List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
@@ -203,7 +200,7 @@ class ReturnsFlowIntegrationTest {
 
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("ReturnsCat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, 1L, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
         long productId = prodRepo.insertProduct(p);
         seedInventory(productId, qty);
         return productId;

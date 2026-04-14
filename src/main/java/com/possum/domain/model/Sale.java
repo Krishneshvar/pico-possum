@@ -10,7 +10,6 @@ public record Sale(
         BigDecimal totalAmount,
         BigDecimal paidAmount,
         BigDecimal discount,
-        BigDecimal totalTax,
         String status,
         String fulfillmentStatus,
         Long customerId,

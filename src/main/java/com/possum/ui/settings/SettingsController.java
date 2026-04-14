@@ -1,14 +1,10 @@
 package com.possum.ui.settings;
 
-import com.possum.ui.settings.tax.TaxManagementController;
-import com.possum.application.taxes.TaxManagementService;
 import com.possum.infrastructure.backup.DatabaseBackupService;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.logging.LoggingConfig;
 import com.possum.infrastructure.printing.PrintOutcome;
 import com.possum.infrastructure.printing.PrinterService;
-import com.possum.infrastructure.serialization.JsonService;
-import com.possum.domain.repositories.TaxRepository;
 import com.possum.shared.dto.GeneralSettings;
 import com.possum.ui.common.controls.NotificationService;
 import com.possum.ui.common.dialogs.DialogStyler;
@@ -46,7 +42,6 @@ public class SettingsController {
     @FXML private CheckBox inventoryAlertsToggle;
     @FXML private CheckBox numericalSkuToggle;
     @FXML private ComboBox<String> printerCombo;
-    @FXML private AnchorPane taxSettingsTabContent;
     @FXML private AnchorPane billSettingsTabContent;
     @FXML private Button testPrintBtn;
     @FXML private Button createBackupBtn;
@@ -57,25 +52,15 @@ public class SettingsController {
     
     private SettingsStore settingsStore;
     private PrinterService printerService;
-    private TaxRepository taxRepository;
-    private TaxManagementService taxService;
-    private JsonService jsonService;
     private DatabaseBackupService backupService;
-    private com.possum.application.sales.TaxEngine taxEngine;
     private GeneralSettings generalSettings;
     private boolean syncingPrinterSelection = false;
 
     public SettingsController(SettingsStore settingsStore, PrinterService printerService, 
-                              TaxRepository taxRepository, JsonService jsonService,
-                              DatabaseBackupService backupService,
-                              com.possum.application.sales.TaxEngine taxEngine) {
+                              DatabaseBackupService backupService) {
         this.settingsStore = settingsStore;
         this.printerService = printerService;
-        this.taxRepository = taxRepository;
-        this.jsonService = jsonService;
         this.backupService = backupService;
-        this.taxEngine = taxEngine;
-        this.taxService = new TaxManagementService(taxRepository);
     }
 
     @FXML
@@ -85,7 +70,6 @@ public class SettingsController {
         configurePrinterSelectionPersistence();
         loadPrinters();
         setupBillSettings();
-        setupTaxSettings();
         setupBackupSettings();
     }
 
@@ -266,24 +250,6 @@ public class SettingsController {
         NotificationService.success("Printers refreshed");
     }
 
-    private void setupTaxSettings() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings/tax/tax-management.fxml"));
-            Parent taxSettingsView = loader.load();
-            
-            TaxManagementController controller = loader.getController();
-            controller.setServices(taxService, taxRepository, jsonService, taxEngine);
-            
-            taxSettingsTabContent.getChildren().setAll(taxSettingsView);
-            AnchorPane.setTopAnchor(taxSettingsView, 0.0);
-            AnchorPane.setBottomAnchor(taxSettingsView, 0.0);
-            AnchorPane.setLeftAnchor(taxSettingsView, 0.0);
-            AnchorPane.setRightAnchor(taxSettingsView, 0.0);
-        } catch (Exception e) {
-            LoggingConfig.getLogger().error("Failed to load embedded tax settings: {}", e.getMessage(), e);
-            NotificationService.error("Failed to load embedded tax settings: " + com.possum.ui.common.ErrorHandler.toUserMessage(e));
-        }
-    }
 
     private void setupBillSettings() {
         try {

@@ -49,13 +49,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         params.add(endDate);
         if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
 
-        // 3. total_tax
-        params.add(startDate);
-        params.add(endDate);
-        if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
-        params.add(startDate);
-        params.add(endDate);
-        if (paymentMethodIds != null && !paymentMethodIds.isEmpty()) params.addAll(paymentMethodIds);
+
 
         // 4. total_discount
         params.add(startDate);
@@ -87,16 +81,14 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                    (SELECT COUNT(*) FROM legacy_sales ls WHERE date(ls.sale_date) >= ? AND date(ls.sale_date) <= ? %s)) AS total_transactions,
                   ((SELECT COALESCE(SUM(total_amount), 0) FROM sales s WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ? AND s.status NOT IN ('cancelled', 'draft') %s) +
                    (SELECT COALESCE(SUM(net_amount), 0) FROM legacy_sales ls WHERE date(ls.sale_date) >= ? AND date(ls.sale_date) <= ? %s)) AS total_sales,
-                  (SELECT COALESCE(SUM(s.total_tax), 0) + COALESCE((SELECT SUM(si.tax_amount) FROM sale_items si JOIN sales s2 ON si.sale_id = s2.id WHERE date(s2.sale_date) >= ? AND date(s2.sale_date) <= ? AND s2.status NOT IN ('cancelled', 'draft') %s), 0) FROM sales s WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ? AND s.status NOT IN ('cancelled', 'draft') %s) AS total_tax,
                   (SELECT COALESCE(SUM(s.discount), 0) + COALESCE((SELECT SUM(si.discount_amount) FROM sale_items si JOIN sales s2 ON si.sale_id = s2.id WHERE date(s2.sale_date) >= ? AND date(s2.sale_date) <= ? AND s2.status NOT IN ('cancelled', 'draft') %s), 0) FROM sales s WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ? AND s.status NOT IN ('cancelled', 'draft') %s) AS total_discount,
                   (SELECT COALESCE(SUM(paid_amount), 0) FROM sales s WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ? AND s.status NOT IN ('cancelled', 'draft') %s) AS total_collected,
                   (SELECT COALESCE(SUM(si.quantity * si.cost_per_unit), 0) FROM sale_items si JOIN sales s2 ON si.sale_id = s2.id WHERE date(s2.sale_date) >= ? AND date(s2.sale_date) <= ? AND s2.status NOT IN ('cancelled', 'draft') %s) AS total_cost,
                   (SELECT COALESCE(SUM(ABS(t.amount)), 0) FROM transactions t WHERE t.type = 'refund' AND t.status = 'completed' AND date(t.transaction_date) >= ? AND date(t.transaction_date) <= ? %s) AS total_refunds
-                """.formatted(sFilter, lsFilter, sFilter, lsFilter, s2Filter, sFilter, s2Filter, sFilter, sFilter, s2Filter, tFilter),
+                """.formatted(sFilter, lsFilter, sFilter, lsFilter, s2Filter, sFilter, sFilter, s2Filter, tFilter),
                 rs -> {
                     Map<String, Object> map = new HashMap<>();
                     BigDecimal totalSales = rs.getBigDecimal("total_sales");
-                    BigDecimal totalTax = rs.getBigDecimal("total_tax");
                     BigDecimal totalRefunds = rs.getBigDecimal("total_refunds");
                     BigDecimal totalCost = rs.getBigDecimal("total_cost");
                     BigDecimal totalDiscount = rs.getBigDecimal("total_discount");
@@ -105,13 +97,12 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     
                     map.put("total_transactions", totalTransactions);
                     map.put("total_sales", totalSales);
-                    map.put("total_tax", totalTax);
                     map.put("total_refunds", totalRefunds);
                     map.put("total_cost", totalCost);
                     map.put("total_discount", totalDiscount);
                     map.put("total_collected", totalCollected);
                     
-                    BigDecimal netSales = totalSales.subtract(totalTax).subtract(totalRefunds).subtract(totalDiscount);
+                    BigDecimal netSales = totalSales.subtract(totalRefunds).subtract(totalDiscount);
                     map.put("net_sales", netSales);
                     map.put("gross_profit", netSales.subtract(totalCost));
                     map.put("average_sale", totalTransactions > 0 
@@ -358,7 +349,6 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                   %s AS %s,
                   COUNT(DISTINCT s.id) AS total_transactions,
                   COALESCE(SUM(s.total_amount), 0) AS total_sales,
-                  COALESCE(SUM(s.total_tax), 0) + COALESCE(SUM((SELECT SUM(si.tax_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_tax,
                   COALESCE(SUM(s.discount), 0) + COALESCE(SUM((SELECT SUM(si.discount_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_discount,
                   COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'Cash' AND t.status = 'completed' AND t.type = 'payment')), 0) AS cash,
                   COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'UPI' AND t.status = 'completed' AND t.type = 'payment')), 0) AS upi,
@@ -378,7 +368,6 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     map.put(alias, rs.getString(alias));
                     map.put("total_transactions", rs.getInt("total_transactions"));
                     map.put("total_sales", rs.getBigDecimal("total_sales"));
-                    map.put("total_tax", rs.getBigDecimal("total_tax"));
                     map.put("total_discount", rs.getBigDecimal("total_discount"));
                     map.put("cash", rs.getBigDecimal("cash"));
                     map.put("upi", rs.getBigDecimal("upi"));
@@ -483,7 +472,6 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         Map<String, Object> map = new HashMap<>();
         map.put("total_transactions", 0);
         map.put("total_sales", BigDecimal.ZERO);
-        map.put("total_tax", BigDecimal.ZERO);
         map.put("total_discount", BigDecimal.ZERO);
         map.put("total_collected", BigDecimal.ZERO);
         map.put("total_refunds", BigDecimal.ZERO);
@@ -499,7 +487,6 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         map.put(alias, period);
         map.put("total_transactions", 0);
         map.put("total_sales", BigDecimal.ZERO);
-        map.put("total_tax", BigDecimal.ZERO);
         map.put("total_discount", BigDecimal.ZERO);
         map.put("cash", BigDecimal.ZERO);
         map.put("upi", BigDecimal.ZERO);

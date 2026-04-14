@@ -1,7 +1,6 @@
 package com.possum.domain.repositories;
 
 import com.possum.domain.model.Product;
-import com.possum.domain.model.TaxRule;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
 
@@ -21,10 +20,6 @@ public interface ProductRepository {
     int softDeleteProduct(long id);
 
     PagedResult<Product> findProducts(ProductFilter filter);
-
-    List<TaxRule> findProductTaxes(long productId);
-
-    void setProductTaxes(long productId, List<Long> taxIds);
 
     Map<String, Object> getProductStats();
 

@@ -7,7 +7,6 @@ import com.possum.application.sales.dto.*;
 import com.possum.domain.model.*;
 import com.possum.domain.repositories.*;
 import com.possum.domain.services.SaleCalculator;
-import com.possum.domain.services.TaxCalculator;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.persistence.db.TransactionManager;
@@ -36,7 +35,6 @@ class SalesServiceTest {
     @Mock private CustomerRepository customerRepository;
     @Mock private AuditRepository auditRepository;
     @Mock private InventoryService inventoryService;
-    @Mock private TaxCalculator taxCalculator;
     @Mock private SaleCalculator saleCalculator;
     @Mock private PaymentService paymentService;
     @Mock private TransactionManager transactionManager;
@@ -50,7 +48,7 @@ class SalesServiceTest {
     void setUp() {
         salesService = new SalesService(
             salesRepository, productRepository, customerRepository, auditRepository,
-            inventoryService, taxCalculator, saleCalculator, paymentService,
+            inventoryService, saleCalculator, paymentService,
             transactionManager, jsonService, settingsStore, invoiceNumberService
         );
         AuthContext.setCurrentUser(new AuthUser(1L, "Cashier", "cashier", List.of(), List.of("sales.create", "sales.manage")));
@@ -69,8 +67,7 @@ class SalesServiceTest {
     @Test
     @DisplayName("Should fetch sale details correctly")
     void getSaleDetails_success() {
-        Sale sale = mock(Sale.class);
-        when(sale.id()).thenReturn(1L);
+        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", null, 1L, null, null, null, null, null, null);
         when(salesRepository.findSaleById(1L)).thenReturn(Optional.of(sale));
         when(salesRepository.findSaleItems(1L)).thenReturn(List.of());
         when(salesRepository.findTransactionsBySaleId(1L)).thenReturn(List.of());
@@ -92,7 +89,7 @@ class SalesServiceTest {
     @Test
     @DisplayName("Should get all customers")
     void getAllCustomers_success() {
-        com.possum.shared.dto.PagedResult<Customer> result = new com.possum.shared.dto.PagedResult<>(List.of(mock(Customer.class)), 1);
+        com.possum.shared.dto.PagedResult<Customer> result = new com.possum.shared.dto.PagedResult<>(List.of(mock(Customer.class)), 1, 1, 1, 15);
         when(customerRepository.findCustomers(any())).thenReturn(result);
 
         List<Customer> customers = salesService.getAllCustomers();

@@ -78,8 +78,8 @@
                         <Label fx:id="avgSaleLabel" text="0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-text-main;"/>
                     </VBox>
                     <VBox alignment="CENTER" spacing="5" GridPane.columnIndex="3">
-                        <Label text="Total Tax" style="-fx-text-fill: -color-text-muted; -fx-font-size: 13px;"/>
-                        <Label fx:id="totalTaxLabel" text="0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-text-main;"/>
+                        <Label text="Total Discount" style="-fx-text-fill: -color-text-muted; -fx-font-size: 13px;"/>
+                        <Label fx:id="totalDiscountLabel" text="0.00" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: -color-text-main;"/>
                     </VBox>
                 </GridPane>
             </VBox>

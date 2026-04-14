@@ -6,7 +6,6 @@ import com.possum.domain.enums.InventoryReason;
 import com.possum.domain.model.InventoryAdjustment;
 import com.possum.domain.model.InventoryLot;
 import com.possum.domain.model.Product;
-import com.possum.domain.model.TaxRule;
 import com.possum.infrastructure.filesystem.AppPaths;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.logging.LoggingConfig;
@@ -66,8 +65,6 @@ public class ProductService {
                     command.description(),
                     command.categoryId(),
                     null,
-                    command.taxCategoryId(),
-                    null,
                     effectiveSku,
                     command.mrp(),
                     command.costPrice(),
@@ -115,10 +112,6 @@ public class ProductService {
         return productRepository.getNextGeneratedNumericSku();
     }
 
-    public List<TaxRule> getProductTaxes(long productId) {
-        return productRepository.findProductTaxes(productId);
-    }
-
     public PagedResult<Product> getProducts(ProductFilter filter) {
         return productRepository.findProducts(filter);
     }
@@ -140,8 +133,6 @@ public class ProductService {
                     command.name() != null ? command.name() : oldProduct.name(),
                     command.description() != null ? command.description() : oldProduct.description(),
                     command.categoryId() != null ? command.categoryId() : oldProduct.categoryId(),
-                    null,
-                    command.taxCategoryId() != null ? command.taxCategoryId() : oldProduct.taxCategoryId(),
                     null,
                     command.sku() != null ? command.sku() : oldProduct.sku(),
                     command.mrp() != null ? command.mrp() : oldProduct.mrp(),
@@ -252,7 +243,6 @@ public class ProductService {
             String name,
             String description,
             Long categoryId,
-            Long taxCategoryId,
             String sku,
             java.math.BigDecimal mrp,
             java.math.BigDecimal costPrice,
@@ -267,7 +257,6 @@ public class ProductService {
             String name,
             String description,
             Long categoryId,
-            Long taxCategoryId,
             String sku,
             java.math.BigDecimal mrp,
             java.math.BigDecimal costPrice,

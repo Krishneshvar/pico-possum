@@ -213,18 +213,15 @@ public class BillRenderer {
 
     private static String renderTotals(BillSection section, Sale sale, String currency, String commonClasses) {
         BigDecimal discount = sale.discount() != null ? sale.discount() : BigDecimal.ZERO;
-        BigDecimal tax = sale.totalTax() != null ? sale.totalTax() : BigDecimal.ZERO;
         BigDecimal total = sale.totalAmount();
-        BigDecimal subtotal = total.subtract(tax).add(discount);
+        BigDecimal subtotal = total.add(discount);
 
         StringBuilder html = new StringBuilder();
         html.append("<div class=\"").append(commonClasses).append("\">")
             .append("<table style=\"width: 100%\">")
             .append("<tr><td>Subtotal:</td><td class=\"text-right\">").append(formatCurrency(subtotal, currency)).append("</td></tr>");
 
-        if (tax.compareTo(BigDecimal.ZERO) > 0) {
-            html.append("<tr><td>Tax:</td><td class=\"text-right\">").append(formatCurrency(tax, currency)).append("</td></tr>");
-        }
+
         if (discount.compareTo(BigDecimal.ZERO) > 0) {
             html.append("<tr><td>Discount:</td><td class=\"text-right\">-").append(formatCurrency(discount, currency)).append("</td></tr>");
         }

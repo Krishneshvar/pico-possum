@@ -61,7 +61,7 @@ class ProductServiceTest {
     @DisplayName("Should create product successfully")
     void createProduct_success() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
-                "iPhone", "Apple phone", 1L, 1L, "SKU1",
+                "iPhone", "Apple phone", 1L, "SKU1",
                 new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 5, 1L
         );
 
@@ -80,7 +80,7 @@ class ProductServiceTest {
     @DisplayName("Should throw validation error if name is missing")
     void createProduct_noName_fail() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
-                "", null, 1L, 1L, "SKU1",
+                "", null, 1L, "SKU1",
                 new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 0, 1L
         );
         assertThrows(ValidationException.class, () -> productService.createProduct(cmd));
@@ -96,7 +96,7 @@ class ProductServiceTest {
     @Test
     @DisplayName("Should fetch product successfully")
     void getProductById_success() {
-        Product p = new Product(1L, "Widget", null, 1L, null, 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 10, "active", null, null, null, null, null);
+        Product p = new Product(1L, "Widget", "Desc", 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 10, "active", null, 0, null, null, null);
         
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
 
@@ -109,14 +109,15 @@ class ProductServiceTest {
     @Test
     @DisplayName("Should update product successfully")
     void updateProduct_success() {
-        Product oldP = new Product(1L, "Old", null, 1L, null, 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 10, "active", null, null, null, null, null);
+        Product oldP = new Product(1L, "Old", "Desc", 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 10, "active", null, 0, null, null, null);
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(oldP));
         
         ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
-                "New", "Desc", 1L, 1L, "SKU2",
+                "New", "Desc", 1L, "SKU2",
                 new BigDecimal("20"), new BigDecimal("15"), 20, "active", null, 50, "correction", 1L
         );
 
+        when(productRepository.updateProductById(anyLong(), any())).thenReturn(1);
         productService.updateProduct(1L, cmd);
 
         verify(productRepository).updateProductById(eq(1L), any());

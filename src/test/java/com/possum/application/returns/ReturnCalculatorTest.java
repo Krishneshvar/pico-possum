@@ -111,8 +111,8 @@ class ReturnCalculatorTest {
     @Test
     void calculateTotalRefund_sumsAllRefundAmounts() {
         List<RefundCalculation> calcs = List.of(
-                new RefundCalculation(1L, 1, new BigDecimal("30.00"), 1L, BigDecimal.TEN, BigDecimal.ZERO, "S1", "P1"),
-                new RefundCalculation(2L, 1, new BigDecimal("70.00"), 2L, BigDecimal.TEN, BigDecimal.ZERO, "S2", "P2")
+                new RefundCalculation(1L, 1, new BigDecimal("30.00"), 1L, BigDecimal.TEN, "S1", "P1"),
+                new RefundCalculation(2L, 1, new BigDecimal("70.00"), 2L, BigDecimal.TEN, "S2", "P2")
         );
         assertEquals(new BigDecimal("100.00"), calculator.calculateTotalRefund(calcs));
     }

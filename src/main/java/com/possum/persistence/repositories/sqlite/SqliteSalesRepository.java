@@ -38,7 +38,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 s.total_amount AS total_amount,
                 s.paid_amount AS paid_amount,
                 s.discount AS discount,
-                s.total_tax AS total_tax,
                 s.status AS status,
                 s.fulfillment_status AS fulfillment_status,
                 s.customer_id AS customer_id,
@@ -62,7 +61,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 ls.net_amount AS total_amount,
                 ls.net_amount AS paid_amount,
                 0 AS discount,
-                0 AS total_tax,
                 'legacy' AS status,
                 'fulfilled' AS fulfillment_status,
                 NULL AS customer_id,
@@ -90,15 +88,14 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sales (
-                  invoice_number, total_amount, paid_amount, discount, total_tax, status, fulfillment_status, customer_id, user_id
+                  invoice_number, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, user_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sale.invoiceNumber(),
                 sale.totalAmount(),
                 sale.paidAmount(),
                 sale.discount(),
-                sale.totalTax(),
                 sale.status(),
                 sale.fulfillmentStatus() == null ? "pending" : sale.fulfillmentStatus(),
                 sale.customerId(),
@@ -111,22 +108,16 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sale_items (
-                  sale_id, product_id, quantity, price_per_unit, cost_per_unit, tax_rate, tax_amount, discount_amount,
-                  applied_tax_rate, applied_tax_amount, tax_rule_snapshot
+                  sale_id, product_id, quantity, price_per_unit, cost_per_unit, discount_amount
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 item.saleId(),
                 item.productId(),
                 item.quantity(),
                 item.pricePerUnit(),
                 item.costPerUnit(),
-                item.taxRate(),
-                item.taxAmount(),
-                item.discountAmount(),
-                item.appliedTaxRate(),
-                item.appliedTaxAmount(),
-                item.taxRuleSnapshot()
+                item.discountAmount()
         );
     }
 
@@ -460,29 +451,22 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 """
                 UPDATE sale_items SET 
                   quantity = ?, price_per_unit = ?, cost_per_unit = ?, 
-                  tax_rate = ?, tax_amount = ?, discount_amount = ?,
-                  applied_tax_rate = ?, applied_tax_amount = ?, tax_rule_snapshot = ?
+                  discount_amount = ?
                 WHERE id = ?
                 """,
                 item.quantity(),
                 item.pricePerUnit(),
                 item.costPerUnit(),
-                item.taxRate(),
-                item.taxAmount(),
                 item.discountAmount(),
-                item.appliedTaxRate(),
-                item.appliedTaxAmount(),
-                item.taxRuleSnapshot(),
                 item.id()
         );
     }
 
     @Override
-    public int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal totalTax, BigDecimal discount) {
+    public int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal discount) {
         return executeUpdate(
-                "UPDATE sales SET total_amount = ?, total_tax = ?, discount = ? WHERE id = ?",
+                "UPDATE sales SET total_amount = ?, discount = ? WHERE id = ?",
                 totalAmount,
-                totalTax,
                 discount,
                 saleId
         );

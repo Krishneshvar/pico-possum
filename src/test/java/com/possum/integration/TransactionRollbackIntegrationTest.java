@@ -75,13 +75,11 @@ class TransactionRollbackIntegrationTest {
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
-        SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        EnhancedTaxEngine taxEngine = new EnhancedTaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
-        salesService = new SalesService(salesRepository, productRepository, customerRepository, 
-                auditRepository, inventoryService, taxEngine, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+        salesService = new SalesService(salesRepository, productRepository, customerRepository,
+                auditRepository, inventoryService, new com.possum.domain.services.SaleCalculator(), paymentService, transactionManager,
                 jsonService, settingsStore, invoiceNumberService);
 
         long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin'");
@@ -219,7 +217,7 @@ class TransactionRollbackIntegrationTest {
         salesRepository.insertSale(new Sale(
                 null, invoice, null,
                 new BigDecimal("100.00"), new BigDecimal("100.00"),
-                BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO,
                 "paid", "fulfilled", null, testUserId,
                 null, null, null, null, null, null
         ));
@@ -229,7 +227,7 @@ class TransactionRollbackIntegrationTest {
                 salesRepository.insertSale(new Sale(
                         null, invoice, null,
                         new BigDecimal("50.00"), new BigDecimal("50.00"),
-                        BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.ZERO,
                         "paid", "fulfilled", null, testUserId,
                         null, null, null, null, null, null
                 ))
@@ -262,8 +260,8 @@ class TransactionRollbackIntegrationTest {
     private static long seedProductWithStock(int qty) {
         long catId = categoryRepository.insertCategory("RBCat-" + UUID.randomUUID(), null).id();
         long productId = productRepository.insertProduct(new Product(
-            null, "RBProd-" + UUID.randomUUID(), "RBSKU-" + UUID.randomUUID(), "desc", catId, "active",
-            new BigDecimal("50.00"), new BigDecimal("60.00"), 1L, 0, 5, false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
+            null, "RBProd-" + UUID.randomUUID(), "desc", catId, null,
+            "RBSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 5, "active", null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

@@ -6,7 +6,6 @@ import com.possum.application.categories.CategoryService;
 import com.possum.application.people.CustomerService;
 import com.possum.application.products.ProductService;
 import com.possum.application.sales.SalesService;
-import com.possum.application.sales.TaxEngine;
 import com.possum.domain.model.*;
 import com.possum.domain.services.SaleCalculator;
 import com.possum.infrastructure.filesystem.SettingsStore;
@@ -37,7 +36,6 @@ class PosControllerTest {
     @Mock private SalesService salesService;
     @Mock private CustomerService customerService;
     @Mock private ProductSearchIndex searchIndex;
-    @Mock private TaxEngine taxEngine;
     @Mock private PrinterService printerService;
     @Mock private SettingsStore settingsStore;
     @Mock private ProductService productService;
@@ -50,7 +48,7 @@ class PosControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("sales:create")));
-        controller = new PosController(salesService, customerService, searchIndex, taxEngine,
+        controller = new PosController(salesService, customerService, searchIndex,
                 printerService, settingsStore, productService, categoryService, saleCalculator, posDraftRepository);
         
         java.lang.reflect.Field billsField = PosController.class.getDeclaredField("bills");
@@ -127,13 +125,12 @@ class PosControllerTest {
 
     private Product createTestProduct(Long id, String name, String sku, BigDecimal price, Integer stock) {
         return new Product(
-            id, name, sku, "Description", 1L, "active",
-            price, price.multiply(new BigDecimal("1.2")), 1L, stock, 5,
-            false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
+            id, name, null, null, null, sku,
+            price, price, stock, "active", null, 5, null, null, null
         );
     }
 
     private Customer createTestCustomer(Long id, String name, String phone) {
-        return new Customer(id, name, phone, null, null, "retail", false, null, null, null);
+        return new Customer(id, name, phone, null, null, "retail", null, null, null);
     }
 }

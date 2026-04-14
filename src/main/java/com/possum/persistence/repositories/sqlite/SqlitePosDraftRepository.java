@@ -88,7 +88,7 @@ public class SqlitePosDraftRepository extends BaseSqliteRepository {
             queryOne("SELECT * FROM customers WHERE id = ?", crs -> new Customer(
                 crs.getLong("id"), crs.getString("name"), crs.getString("phone"),
                 crs.getString("email"), crs.getString("address"), crs.getString("customer_type"),
-                crs.getInt("is_tax_exempt") == 1, null, null, null
+                null, null, null
             ), customerId).ifPresent(draft::setSelectedCustomer);
         }
 

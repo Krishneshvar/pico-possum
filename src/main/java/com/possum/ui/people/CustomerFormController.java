@@ -16,7 +16,6 @@ public class CustomerFormController extends AbstractFormController<Customer> {
     @FXML private TextField emailField;
     @FXML private TextArea addressField;
     @FXML private ComboBox<String> customerTypeCombo;
-    @FXML private CheckBox isTaxExemptCheckbox;
 
     private static final List<String> CUSTOMER_TYPES =
             List.of("Retailer", "Wholesaler", "Government", "NGO", "Other");
@@ -61,7 +60,6 @@ public class CustomerFormController extends AbstractFormController<Customer> {
         if (emailField != null) emailField.setText(customer.email() != null ? customer.email() : "");
         if (addressField != null) addressField.setText(customer.address() != null ? customer.address() : "");
         if (customerTypeCombo != null) customerTypeCombo.setValue(customer.customerType());
-        if (isTaxExemptCheckbox != null) isTaxExemptCheckbox.setSelected(Boolean.TRUE.equals(customer.isTaxExempt()));
     }
 
     @Override
@@ -94,14 +92,12 @@ public class CustomerFormController extends AbstractFormController<Customer> {
             if (emailField != null) replaceWithLabel(emailField);
             if (addressField != null) replaceWithLabel(addressField);
             if (customerTypeCombo != null) replaceWithLabel(customerTypeCombo);
-            if (isTaxExemptCheckbox != null) isTaxExemptCheckbox.setDisable(true);
         } else {
             if (nameField != null) nameField.setEditable(true);
             if (phoneField != null) phoneField.setEditable(true);
             if (emailField != null) emailField.setEditable(true);
             if (addressField != null) addressField.setEditable(true);
             if (customerTypeCombo != null) customerTypeCombo.setDisable(false);
-            if (isTaxExemptCheckbox != null) isTaxExemptCheckbox.setDisable(false);
         }
     }
 
@@ -112,8 +108,7 @@ public class CustomerFormController extends AbstractFormController<Customer> {
                 phoneField.getText().trim(),
                 emailField.getText().trim(),
                 addressField.getText().trim(),
-                customerTypeCombo != null ? customerTypeCombo.getValue() : null,
-                isTaxExemptCheckbox != null && isTaxExemptCheckbox.isSelected()
+                customerTypeCombo != null ? customerTypeCombo.getValue() : null
         );
     }
 
@@ -125,8 +120,7 @@ public class CustomerFormController extends AbstractFormController<Customer> {
                 phoneField.getText().trim(),
                 emailField.getText().trim(),
                 addressField.getText().trim(),
-                customerTypeCombo != null ? customerTypeCombo.getValue() : null,
-                isTaxExemptCheckbox != null && isTaxExemptCheckbox.isSelected()
+                customerTypeCombo != null ? customerTypeCombo.getValue() : null
         );
     }
 }

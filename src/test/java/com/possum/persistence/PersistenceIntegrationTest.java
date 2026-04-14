@@ -99,7 +99,6 @@ class PersistenceIntegrationTest {
                         new BigDecimal("120.00"),
                         new BigDecimal("120.00"),
                         BigDecimal.ZERO,
-                        new BigDecimal("5.00"),
                         "paid",
                         "fulfilled",
                         null,
@@ -123,11 +122,6 @@ class PersistenceIntegrationTest {
                         2,
                         new BigDecimal("60.00"),
                         new BigDecimal("40.00"),
-                        new BigDecimal("2.50"),
-                        new BigDecimal("5.00"),
-                        new BigDecimal("2.50"),
-                        new BigDecimal("5.00"),
-                        null,
                         BigDecimal.ZERO,
                         0
                 )
@@ -158,7 +152,7 @@ class PersistenceIntegrationTest {
         } catch (Exception ignored) {}
 
         long categoryId = categoryRepository.insertCategory("Test Cat", null).id();
-        Product product = new Product(null, "Test Prod", "desc", categoryId, "Cat Name", 1L, "Tax Name", "SKU123", new BigDecimal("60.00"), new BigDecimal("40.00"), 10, "active", null, 0, null, null, null);
+        Product product = new Product(null, "Test Prod", "desc", categoryId, "Cat Name", "SKU123", new BigDecimal("60.00"), new BigDecimal("40.00"), 10, "active", null, 0, null, null, null);
         return productRepository.insertProduct(product);
     }
 

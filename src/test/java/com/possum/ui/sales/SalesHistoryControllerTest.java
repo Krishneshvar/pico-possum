@@ -72,7 +72,7 @@ class SalesHistoryControllerTest {
     private Sale createTestSale(Long id, String invoiceNumber, BigDecimal total) {
         return new Sale(
             id, invoiceNumber, LocalDateTime.now(), total, total, BigDecimal.ZERO,
-            BigDecimal.ZERO, "paid", "delivered", 1L, 1L, "Test Customer",
+            "paid", "delivered", 1L, 1L, "Test Customer",
             null, null, "Test User", 1L, "Cash"
         );
     }

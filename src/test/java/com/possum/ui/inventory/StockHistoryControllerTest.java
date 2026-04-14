@@ -54,8 +54,8 @@ class StockHistoryControllerTest {
         );
         
         List<StockHistoryDto> history = List.of(
-            new StockHistoryDto(1L, 1L, "Product A", "Standard", "SKU001", 10, "receive", "Admin", LocalDateTime.now()),
-            new StockHistoryDto(2L, 2L, "Product B", "Standard", "SKU002", -2, "sale", "Admin", LocalDateTime.now())
+            new StockHistoryDto(1L, 1L, "Product A", "SKU001", 10, "receive", "Admin", LocalDateTime.now()),
+            new StockHistoryDto(2L, 2L, "Product B", "SKU002", -2, "sale", "Admin", LocalDateTime.now())
         );
 
         when(inventoryService.getStockHistory(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(history);

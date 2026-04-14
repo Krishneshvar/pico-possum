@@ -89,7 +89,6 @@ public class ReturnsService {
                         refundCalc.refundAmount(),
                         refundCalc.productId(),
                         refundCalc.pricePerUnit(),
-                        refundCalc.taxRate(),
                         refundCalc.sku(),
                         refundCalc.productName()
                 );

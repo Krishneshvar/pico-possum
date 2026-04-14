@@ -19,37 +19,6 @@ public class AdvancedReportingService {
     }
     
     /**
-     * Generates tax summary report for a date range.
-     */
-    public TaxSummaryReport getTaxSummary(LocalDate startDate, LocalDate endDate) {
-        // This would query aggregated tax data from sales
-        // Placeholder implementation
-        return new TaxSummaryReport(
-                startDate,
-                endDate,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                0,
-                List.of()
-        );
-    }
-    
-    /**
-     * Generates customer tax exemption report.
-     */
-    public TaxExemptionReport getTaxExemptionReport(LocalDate startDate, LocalDate endDate) {
-        return new TaxExemptionReport(
-                startDate,
-                endDate,
-                0,
-                0,
-                BigDecimal.ZERO,
-                List.of()
-        );
-    }
-    
-    /**
      * Generates performance metrics report.
      */
     public PerformanceReport getPerformanceReport(LocalDateTime startTime, LocalDateTime endTime) {
@@ -63,45 +32,8 @@ public class AdvancedReportingService {
                 List.of()
         );
     }
-    
+
     // Report DTOs
-    public record TaxSummaryReport(
-            LocalDate startDate,
-            LocalDate endDate,
-            BigDecimal totalTaxCollected,
-            BigDecimal totalSalesAmount,
-            BigDecimal averageTaxRate,
-            int transactionCount,
-            List<TaxBreakdown> breakdownByCategory
-    ) {}
-    
-    public record TaxBreakdown(
-            String categoryName,
-            BigDecimal taxAmount,
-            int transactionCount
-    ) {}
-    
-    public record TaxExemptionReport(
-            LocalDate startDate,
-            LocalDate endDate,
-            int exemptTransactionCount,
-            int totalTransactionCount,
-            BigDecimal exemptAmount,
-            List<ExemptionBreakdown> breakdownByType
-    ) {
-        public double exemptionRate() {
-            return totalTransactionCount > 0 
-                    ? (double) exemptTransactionCount / totalTransactionCount * 100 
-                    : 0.0;
-        }
-    }
-    
-    public record ExemptionBreakdown(
-            String exemptionType,
-            int count,
-            BigDecimal amount
-    ) {}
-    
     public record PerformanceReport(
             LocalDateTime startTime,
             LocalDateTime endTime,

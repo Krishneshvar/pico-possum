@@ -5,10 +5,8 @@ import com.possum.application.categories.CategoryService;
 import com.possum.application.products.ProductService;
 import com.possum.domain.model.Category;
 import com.possum.domain.model.Product;
-import com.possum.domain.model.TaxCategory;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.logging.LoggingConfig;
-import com.possum.domain.repositories.TaxRepository;
 import com.possum.ui.common.ErrorHandler;
 import com.possum.ui.common.controls.NotificationService;
 import com.possum.ui.common.controls.SingleSelectFilter;
@@ -30,7 +28,6 @@ public class ProductFormController implements Parameterizable {
 
     private final ProductService productService;
     private final CategoryService categoryService;
-    private final TaxRepository taxRepository;
     private final WorkspaceManager workspaceManager;
     private final SettingsStore settingsStore;
     private final ProductSearchIndex productSearchIndex;
@@ -49,7 +46,6 @@ public class ProductFormController implements Parameterizable {
     @FXML private ComboBox<String> adjustmentReasonCombo;
     @FXML private SingleSelectFilter<CategoryItem> categoryFilter;
     @FXML private ComboBox<String> statusCombo;
-    @FXML private SingleSelectFilter<TaxCategoryItem> taxFilter;
     @FXML private Button saveButton;
 
     private Long productId = null;
@@ -58,14 +54,12 @@ public class ProductFormController implements Parameterizable {
 
     public ProductFormController(ProductService productService,
                                  CategoryService categoryService,
-                                 TaxRepository taxRepository,
                                  WorkspaceManager workspaceManager,
                                  SettingsStore settingsStore,
                                  ProductSearchIndex productSearchIndex,
                                  com.possum.application.drafts.DraftService draftService) {
         this.productService = productService;
         this.categoryService = categoryService;
-        this.taxRepository = taxRepository;
         this.workspaceManager = workspaceManager;
         this.settingsStore = settingsStore;
         this.productSearchIndex = productSearchIndex;
@@ -133,10 +127,6 @@ public class ProductFormController implements Parameterizable {
 
             statusCombo.setValue(p.status() != null ? p.status() : "active");
 
-            if (p.taxCategoryId() != null) {
-                taxFilter.setSelectedItem(new TaxCategoryItem(p.taxCategoryId(), p.taxCategoryName()));
-            }
-
             if (isView) {
                 setAllFieldsReadOnly();
                 saveButton.setVisible(false);
@@ -159,13 +149,11 @@ public class ProductFormController implements Parameterizable {
         stockField.setEditable(false);
         categoryFilter.setDisable(true);
         statusCombo.setDisable(true);
-        taxFilter.setDisable(true);
     }
 
     @FXML
     public void initialize() {
         loadCategories();
-        loadTaxCategories();
         loadSkuGenerationSettings();
 
         statusCombo.setItems(FXCollections.observableArrayList("active", "inactive", "discontinued"));
@@ -204,7 +192,6 @@ public class ProductFormController implements Parameterizable {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
             nameField.getText(), descriptionField.getText(), 
             categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
-            taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null,
             skuField.getText(),
             parseSafeBigDecimal(priceField.getText()),
             parseSafeBigDecimal(costPriceField.getText()),
@@ -235,11 +222,6 @@ public class ProductFormController implements Parameterizable {
         categoryFilter.setItems(categories.stream().map(c -> new CategoryItem(c.id(), c.name())).toList());
     }
 
-    private void loadTaxCategories() {
-        List<TaxCategory> taxes = taxRepository.getAllTaxCategories();
-        taxFilter.setItems(taxes.stream().map(t -> new TaxCategoryItem(t.id(), t.name())).toList());
-    }
-
     private void loadSkuGenerationSettings() {
         try {
             numericSkuGenerationEnabled = settingsStore.loadGeneralSettings().isNumericalSkuGenerationEnabled();
@@ -258,7 +240,6 @@ public class ProductFormController implements Parameterizable {
                 ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                         nameField.getText(), descriptionField.getText(),
                         categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
-                        taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null,
                         skuField.getText(),
                         new BigDecimal(priceField.getText().trim()),
                         new BigDecimal(costPriceField.getText().trim()),
@@ -274,7 +255,6 @@ public class ProductFormController implements Parameterizable {
                 ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
                         nameField.getText(), descriptionField.getText(),
                         categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
-                        taxFilter.getSelectedItem() != null ? taxFilter.getSelectedItem().id() : null,
                         skuField.getText(),
                         new BigDecimal(priceField.getText().trim()),
                         new BigDecimal(costPriceField.getText().trim()),
@@ -318,7 +298,4 @@ public class ProductFormController implements Parameterizable {
         @Override public String toString() { return name; }
     }
 
-    private record TaxCategoryItem(Long id, String name) {
-        @Override public String toString() { return name; }
-    }
 }

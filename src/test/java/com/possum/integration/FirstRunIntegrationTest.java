@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * seed data (roles, payment methods) and that all "empty" queries return
  * graceful zero/empty results — no null-pointer or SQL errors.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class FirstRunIntegrationTest {
 
     private static AppPaths appPaths;
@@ -60,6 +62,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(1)
     @DisplayName("Fresh DB — required roles are seeded by Flyway")
     void freshDatabase_hasSeededRoles() {
         int roleCount = queryInt("SELECT COUNT(*) FROM roles");
@@ -70,6 +73,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(2)
     @DisplayName("Fresh DB — at least one active payment method exists")
     void freshDatabase_hasDefaultPaymentMethods() {
         List<com.possum.domain.model.PaymentMethod> methods = salesRepository.findPaymentMethods();
@@ -78,10 +82,11 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(3)
     @DisplayName("Fresh DB — findProducts returns empty list, not null or exception")
     void freshDatabase_noProducts_returnsEmptyList() {
         var result = productRepository.findProducts(new ProductFilter(
-                null, null, null, null, 1, 25, "name", "ASC"
+                null, null, null, 1, 25, "name", "ASC"
         ));
         assertNotNull(result);
         assertNotNull(result.items());
@@ -90,6 +95,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(4)
     @DisplayName("Fresh DB — findSales returns empty list")
     void freshDatabase_noSales_returnsEmptyList() {
         var result = salesRepository.findSales(new SaleFilter(
@@ -101,6 +107,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(5)
     @DisplayName("Fresh DB — getSaleStats returns zero counts")
     void freshDatabase_saleStatsAreZero() {
         var stats = salesRepository.getSaleStats(new SaleFilter(
@@ -114,6 +121,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(6)
     @DisplayName("Fresh DB — findCustomers returns empty list")
     void freshDatabase_noCustomers_returnsEmptyList() {
         var result = customerRepository.findCustomers(new CustomerFilter(
@@ -124,6 +132,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(7)
     @DisplayName("Fresh DB — getInventoryStats returns non-null map with zero values")
     void freshDatabase_inventoryStats_returnsZeros() {
         var stats = inventoryRepository.getInventoryStats();
@@ -138,6 +147,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(8)
     @DisplayName("Fresh DB — categories list is empty")
     void freshDatabase_noCategories_returnsEmptyList() {
         List<Category> categories = categoryRepository.findAllCategories();
@@ -146,6 +156,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(9)
     @DisplayName("Fresh DB — can insert and retrieve a category immediately")
     void freshDatabase_canInsertCategory_afterSetup() {
         String name = "FirstCat-" + UUID.randomUUID();
@@ -162,12 +173,13 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(10)
     @DisplayName("Fresh DB — can insert a product and return non-null ID")
     void freshDatabase_canInsertProduct() {
         Category cat = categoryRepository.insertCategory("SeedCat-" + UUID.randomUUID(), null);
         long productId = productRepository.insertProduct(new Product(
                 null, "SeedProduct-" + UUID.randomUUID(), "First product", cat.id(),
-                null, null, null, "active", null, null, null, null, null
+                null, "SKU-" + UUID.randomUUID(), BigDecimal.TEN, BigDecimal.ONE, 10, "active", null, 0, null, null, null
         ));
         assertTrue(productId > 0, "Product ID should be positive");
     }

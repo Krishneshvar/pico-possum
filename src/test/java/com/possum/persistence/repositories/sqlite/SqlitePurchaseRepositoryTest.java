@@ -74,7 +74,7 @@ class SqlitePurchaseRepositoryTest {
 
     @Test
     void createPurchaseOrder_insertsSuccessfully() {
-        PurchaseOrderItem item = new PurchaseOrderItem(null, null, 1L, "LAP1", "Laptop", null, 5, new BigDecimal("100.00"));
+        PurchaseOrderItem item = new PurchaseOrderItem(null, null, 1L, "LAP1", "Laptop", 5, new BigDecimal("100.00"));
         long poId = repository.createPurchaseOrder(1L, "INV-100", 1L, 1L, List.of(item));
         assertTrue(poId > 0);
 
@@ -85,7 +85,7 @@ class SqlitePurchaseRepositoryTest {
 
     @Test
     void getPurchaseOrderById_returnsOrderWithAggregations() {
-        PurchaseOrderItem item = new PurchaseOrderItem(null, null, 1L, "LAP1", "Laptop", null, 5, new BigDecimal("100.00"));
+        PurchaseOrderItem item = new PurchaseOrderItem(null, null, 1L, "LAP1", "Laptop", 5, new BigDecimal("100.00"));
         long poId = repository.createPurchaseOrder(1L, "INV-100", 1L, 1L, List.of(item));
 
         Optional<PurchaseOrder> po = repository.getPurchaseOrderById(poId);

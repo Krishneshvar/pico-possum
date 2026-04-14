@@ -5,7 +5,6 @@ import com.possum.application.auth.AuthUser;
 import com.possum.application.categories.CategoryService;
 import com.possum.application.products.ProductService;
 import com.possum.application.sales.SalesService;
-import com.possum.application.sales.TaxEngine;
 import com.possum.domain.model.*;
 import com.possum.domain.services.SaleCalculator;
 import com.possum.infrastructure.filesystem.SettingsStore;
@@ -57,7 +56,7 @@ public class PosController implements CartCellHandler {
     @FXML private TextField    discountField;
     @FXML private ToggleButton btnDiscountFixed, btnDiscountPercent;
 
-    @FXML private Label subtotalLabel, totalDiscountLabel, taxLabel, totalLabel;
+    @FXML private Label subtotalLabel, totalDiscountLabel, totalLabel;
     @FXML private TextField tenderedField;
     @FXML private Label balanceTypeLabel, balanceLabel;
 
@@ -72,7 +71,6 @@ public class PosController implements CartCellHandler {
     private final SalesService             salesService;
     private final com.possum.application.people.CustomerService customerService;
     private final ProductSearchIndex       searchIndex;
-    private final TaxEngine                taxEngine;
     private final PrinterService           printerService;
     private final SettingsStore            settingsStore;
     private final ProductService           productService;
@@ -90,7 +88,7 @@ public class PosController implements CartCellHandler {
 
     public PosController(SalesService salesService,
                          com.possum.application.people.CustomerService customerService,
-                         ProductSearchIndex searchIndex, TaxEngine taxEngine,
+                         ProductSearchIndex searchIndex,
                          PrinterService printerService, SettingsStore settingsStore,
                          ProductService productService, CategoryService categoryService,
                          SaleCalculator saleCalculator,
@@ -98,7 +96,6 @@ public class PosController implements CartCellHandler {
         this.salesService     = salesService;
         this.customerService  = customerService;
         this.searchIndex      = searchIndex;
-        this.taxEngine        = taxEngine;
         this.printerService   = printerService;
         this.settingsStore    = settingsStore;
         this.productService   = productService;
@@ -137,7 +134,6 @@ public class PosController implements CartCellHandler {
         setupBillingToggles();
         renderBillsFlowPane();
         switchBill(0);
-        taxEngine.init();
 
         autocomplete = new PosAutocompleteManager(new PosAutocompleteManager.Callbacks() {
             public void onProductSelected(Product p)             { addToCart(p); searchField.clear(); }
@@ -543,11 +539,11 @@ public class PosController implements CartCellHandler {
             final Category finalCat = cat;
             if (pId != null) {
                 final Long fId = pId;
-                productService.updateProduct(fId, new ProductService.UpdateProductCommand(pN, null, finalCat.id(), null, null, price, BigDecimal.ZERO, 10, "active", null, stock, "Quick add adjustment", uId));
+                productService.updateProduct(fId, new ProductService.UpdateProductCommand(pN, null, finalCat.id(), null, price, BigDecimal.ZERO, 10, "active", null, stock, "Quick add adjustment", uId));
                 searchIndex.refresh();
                 pCart = searchIndex.findBySku(productService.getProductById(fId).sku()).orElse(null);
             } else {
-                long newId = productService.createProduct(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), null, null, price, BigDecimal.ZERO, 10, "active", null, stock, uId));
+                long newId = productService.createProduct(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), null, price, BigDecimal.ZERO, 10, "active", null, stock, uId));
                 searchIndex.refresh();
                 pCart = productService.getProductById(newId);
             }
@@ -566,7 +562,6 @@ public class PosController implements CartCellHandler {
     private void updateUI() {
         subtotalLabel.setText(CurrencyUtil.format(currentBill.getSubtotal()));
         totalDiscountLabel.setText(CurrencyUtil.format(currentBill.getDiscountTotal()));
-        taxLabel.setText(CurrencyUtil.format(currentBill.getTaxAmount()));
         totalLabel.setText(CurrencyUtil.format(currentBill.getTotal()));
         bottomTotalLabel.setText(CurrencyUtil.format(currentBill.getTotal()));
         bottomMrpLabel.setText(CurrencyUtil.format(currentBill.getTotalMrp()));

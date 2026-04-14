@@ -230,12 +230,11 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         return queryList(
                 """
                 SELECT
-                  p.id, p.name, p.description, p.category_id, c.name AS category_name, p.tax_category_id,
-                  tc.name AS tax_category_name, p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
+                  p.id, p.name, p.description, p.category_id, c.name AS category_name,
+                  p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
                   p.status, p.image_path, (%s) AS stock, p.created_at, p.updated_at, p.deleted_at
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN tax_categories tc ON p.tax_category_id = tc.id
                 WHERE p.deleted_at IS NULL
                   AND (%s) <= p.stock_alert_cap
                 ORDER BY stock ASC

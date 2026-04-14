@@ -71,13 +71,11 @@ class InventoryPerformanceIntegrationTest {
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
                 transactionManager, jsonService, settingsStore, new com.possum.domain.services.StockManager());
 
-        SqliteTaxRepository taxRepository = new SqliteTaxRepository(databaseManager);
-        EnhancedTaxEngine taxEngine = new EnhancedTaxEngine(taxRepository, jsonService);
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
-                auditRepository, inventoryService, taxEngine, new com.possum.domain.services.SaleCalculator(taxEngine), paymentService, transactionManager, 
+                auditRepository, inventoryService, new com.possum.domain.services.SaleCalculator(), paymentService, transactionManager, 
                 jsonService, settingsStore, invoiceNumberService);
 
         long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin'");
@@ -135,8 +133,8 @@ class InventoryPerformanceIntegrationTest {
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("PerfCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
-            null, "PerfProd-" + UUID.randomUUID(), "PSKU-" + UUID.randomUUID(), "desc", catId, "active",
-            new BigDecimal("100.00"), new BigDecimal("120.00"), 1L, 0, 5, false, null, "Category 1", 1L, "HST", BigDecimal.valueOf(13.0)
+            null, "PerfProd-" + UUID.randomUUID(), "desc", catId, null, "PSKU-" + UUID.randomUUID(),
+            new BigDecimal("100.00"), new BigDecimal("60.00"), 5, "active", null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;
@@ -163,7 +161,7 @@ class InventoryPerformanceIntegrationTest {
     }
 
     private static long getOrSeedPaymentMethod() {
-        List<com.possum.shared.dto.PaymentMethod> methods = salesRepository.findPaymentMethods();
+        List<com.possum.domain.model.PaymentMethod> methods = salesRepository.findPaymentMethods();
         if (!methods.isEmpty()) return methods.get(0).id();
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
                 "INSERT INTO payment_methods (name, code, is_active) VALUES ('Cash', 'CA', 1) RETURNING id")) {

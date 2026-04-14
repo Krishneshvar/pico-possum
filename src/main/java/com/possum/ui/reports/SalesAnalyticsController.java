@@ -29,7 +29,7 @@ public class SalesAnalyticsController {
     @FXML private Label totalSalesLabel;
     @FXML private Label transactionsLabel;
     @FXML private Label avgSaleLabel;
-    @FXML private Label totalTaxLabel;
+    @FXML private Label totalDiscountLabel;
     @FXML private BarChart<String, Number> topProductsChart;
     @FXML private LineChart<String, Number> salesTrendChart;
     @FXML private PieChart paymentMethodsChart;
@@ -141,7 +141,7 @@ public class SalesAnalyticsController {
         totalSalesLabel.setText(CurrencyUtil.format(summary.totalSales()));
         transactionsLabel.setText(String.valueOf(summary.totalTransactions()));
         avgSaleLabel.setText(CurrencyUtil.format(summary.averageSale()));
-        totalTaxLabel.setText(CurrencyUtil.format(summary.totalTax()));
+        totalDiscountLabel.setText(CurrencyUtil.format(summary.totalDiscount()));
     }
 
     private List<Long> getSelectedPaymentMethodIds() {

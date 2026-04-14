@@ -76,7 +76,6 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                   ri.*,
                   si.product_id,
                   si.price_per_unit,
-                  si.tax_rate,
                   p.sku,
                   p.name AS product_name
                 FROM return_items ri

@@ -8,8 +8,6 @@ public record Product(
         String description,
         Long categoryId,
         String categoryName,
-        Long taxCategoryId,
-        String taxCategoryName,
         String sku,
         java.math.BigDecimal mrp,
         java.math.BigDecimal costPrice,

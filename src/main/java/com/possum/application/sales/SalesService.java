@@ -7,7 +7,6 @@ import com.possum.domain.exceptions.ValidationException;
 import com.possum.domain.model.*;
 import com.possum.domain.repositories.*;
 import com.possum.domain.services.SaleCalculator;
-import com.possum.domain.services.TaxCalculator;
 import com.possum.infrastructure.filesystem.SettingsStore;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.persistence.db.TransactionManager;
@@ -28,7 +27,6 @@ public class SalesService {
                         CustomerRepository customerRepository,
                         AuditRepository auditRepository,
                         InventoryService inventoryService,
-                        TaxCalculator taxCalculator,
                         SaleCalculator saleCalculator,
                         PaymentService paymentService,
                         TransactionManager transactionManager,
@@ -45,7 +43,7 @@ public class SalesService {
         );
         this.modificationService = new SalesModificationService(
             salesRepository, productRepository, customerRepository, auditRepository,
-            inventoryService, taxCalculator, transactionManager, jsonService, settingsStore
+            inventoryService, transactionManager, jsonService, settingsStore
         );
     }
 

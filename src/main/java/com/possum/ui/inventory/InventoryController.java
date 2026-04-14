@@ -5,10 +5,8 @@ import com.possum.application.inventory.InventoryService;
 import com.possum.application.categories.CategoryService;
 import com.possum.domain.enums.InventoryReason;
 import com.possum.domain.model.Product;
-import com.possum.domain.model.TaxCategory;
 import com.possum.domain.model.Category;
 import com.possum.domain.repositories.ProductRepository;
-import com.possum.domain.repositories.TaxRepository;
 import com.possum.shared.dto.PagedResult;
 import com.possum.shared.dto.ProductFilter;
 import com.possum.ui.common.controllers.AbstractCrudController;
@@ -33,10 +31,8 @@ public class InventoryController extends AbstractCrudController<Product, Product
     private final InventoryService inventoryService;
     private final ProductRepository productRepository;
     private final CategoryService categoryService;
-    private final TaxRepository taxRepository;
     
     private List<Long> currentCategoryFilters = List.of();
-    private List<Long> currentTaxCategoryFilters = List.of();
     private List<String> currentStockFilters = List.of();
     private List<String> currentStatusFilters = List.of();
     private BigDecimal currentMinPrice = null;
@@ -45,13 +41,11 @@ public class InventoryController extends AbstractCrudController<Product, Product
     public InventoryController(InventoryService inventoryService, 
                                ProductRepository productRepository,
                                CategoryService categoryService,
-                               TaxRepository taxRepository,
                                WorkspaceManager workspaceManager) {
         super(workspaceManager);
         this.inventoryService = inventoryService;
         this.productRepository = productRepository;
         this.categoryService = categoryService;
-        this.taxRepository = taxRepository;
     }
 
     @Override
@@ -123,11 +117,7 @@ public class InventoryController extends AbstractCrudController<Product, Product
             }
         });
         
-        TableColumn<Product, String> taxCategoryCol = new TableColumn<>("Tax Category");
-        taxCategoryCol.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().taxCategoryName() != null ? cellData.getValue().taxCategoryName() : "-"
-        ));
-        
+
         TableColumn<Product, BigDecimal> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().mrp()));
         priceCol.setCellFactory(col -> new TableCell<>() {
@@ -162,13 +152,12 @@ public class InventoryController extends AbstractCrudController<Product, Product
         stockCol.setId("stock");
         priceCol.setId("price");
 
-        dataTable.getTableView().getColumns().addAll(productCol, skuCol, categoryCol, taxCategoryCol, priceCol, stockCol, statusCol);
+        dataTable.getTableView().getColumns().addAll(productCol, skuCol, categoryCol, priceCol, stockCol, statusCol);
     }
 
     @Override
     protected void setupFilters() {
         List<Category> categories = categoryService.getAllCategories();
-        List<TaxCategory> taxCategories = taxRepository.getAllTaxCategories();
         
         filterBar.addMultiSelectFilter("status", "Status", List.of("active", "inactive", "discontinued"),
             item -> item.substring(0, 1).toUpperCase() + item.substring(1).toLowerCase(), false);
@@ -177,7 +166,6 @@ public class InventoryController extends AbstractCrudController<Product, Product
                         .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
                         .collect(java.util.stream.Collectors.joining(" ")));
         filterBar.addMultiSelectFilter("categories", "Categories", categories, Category::name);
-        filterBar.addMultiSelectFilter("taxCategories", "Tax Categories", taxCategories, TaxCategory::name);
         filterBar.addTextFilter("minPrice", "Min Price");
         filterBar.addTextFilter("maxPrice", "Max Price");
     }
@@ -202,20 +190,13 @@ public class InventoryController extends AbstractCrudController<Product, Product
             currentCategoryFilters = List.of();
         }
 
-        @SuppressWarnings("unchecked")
-        List<TaxCategory> tcs = (List<TaxCategory>) filterBar.getFilterValue("taxCategories");
-        if (tcs != null) {
-            currentTaxCategoryFilters = tcs.stream().map(TaxCategory::id).toList();
-        } else {
-            currentTaxCategoryFilters = List.of();
-        }
+
 
         currentMinPrice = parseBigDecimal(filterBar.getFilterValue("minPrice"));
         currentMaxPrice = parseBigDecimal(filterBar.getFilterValue("maxPrice"));
 
         return new ProductFilter(
             searchTerm == null || searchTerm.isEmpty() ? null : searchTerm,
-            currentTaxCategoryFilters.isEmpty() ? null : currentTaxCategoryFilters,
             currentStatusFilters.isEmpty() ? null : currentStatusFilters,
             currentCategoryFilters.isEmpty() ? null : currentCategoryFilters,
             currentStockFilters.isEmpty() ? null : currentStockFilters,

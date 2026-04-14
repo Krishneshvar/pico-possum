@@ -349,7 +349,6 @@ public class BillSettingsController {
             BigDecimal.valueOf(315.50),
             BigDecimal.valueOf(315.50),
             BigDecimal.valueOf(10.0),
-            BigDecimal.valueOf(15.50),
             "COMPLETED",
             "DELIVERED",
             1L,
@@ -363,9 +362,9 @@ public class BillSettingsController {
         );
 
         List<SaleItem> items = new ArrayList<>();
-        items.add(new SaleItem(1L, 1L, 1L, "SKU001", "Product A", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(30), BigDecimal.valueOf(5), BigDecimal.valueOf(5), BigDecimal.valueOf(5), BigDecimal.valueOf(5), "[]", BigDecimal.ZERO, 0));
-        items.add(new SaleItem(2L, 1L, 2L, "SKU002", "Product B", 1, BigDecimal.valueOf(150), BigDecimal.valueOf(100), BigDecimal.valueOf(10), BigDecimal.valueOf(15), BigDecimal.valueOf(10), BigDecimal.valueOf(15), "[]", BigDecimal.ZERO, 0));
-        items.add(new SaleItem(3L, 1L, 3L, "SKU003", "Product C - Large", 3, BigDecimal.valueOf(20), BigDecimal.valueOf(10), BigDecimal.valueOf(0), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, "[]", BigDecimal.ZERO, 0));
+        items.add(new SaleItem(1L, 1L, 1L, "SKU001", "Product A", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(30), BigDecimal.ZERO, 0));
+        items.add(new SaleItem(2L, 1L, 2L, "SKU002", "Product B", 1, BigDecimal.valueOf(150), BigDecimal.valueOf(100), BigDecimal.ZERO, 0));
+        items.add(new SaleItem(3L, 1L, 3L, "SKU003", "Product C - Large", 3, BigDecimal.valueOf(20), BigDecimal.valueOf(10), BigDecimal.ZERO, 0));
 
         return new SaleResponse(sale, items, new ArrayList<>());
     }
