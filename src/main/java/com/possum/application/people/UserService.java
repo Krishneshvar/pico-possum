@@ -32,7 +32,6 @@ public class UserService {
     }
 
     public User createUser(String name, String username, String password, boolean active, List<Long> roleIds) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.USERS_MANAGE);
         if (name == null || name.isBlank()) throw new com.possum.domain.exceptions.ValidationException("User name is required");
         if (username == null || username.isBlank()) throw new com.possum.domain.exceptions.ValidationException("Username is required");
         if (username.contains(" ")) throw new com.possum.domain.exceptions.ValidationException("Username cannot contain spaces");
@@ -48,7 +47,6 @@ public class UserService {
     }
 
     public User updateUser(long id, String name, String username, String password, boolean active, List<Long> roleIds) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.USERS_MANAGE);
         if (name == null || name.isBlank()) throw new com.possum.domain.exceptions.ValidationException("User name is required");
         if (username == null || username.isBlank()) throw new com.possum.domain.exceptions.ValidationException("Username is required");
         User existingUser = userRepository.findUserById(id)
@@ -69,7 +67,6 @@ public class UserService {
     }
 
     public void deleteUser(long id) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.USERS_MANAGE);
         if (!userRepository.softDeleteUser(id)) {
             throw new com.possum.domain.exceptions.NotFoundException("User not found: " + id);
         }
@@ -92,7 +89,6 @@ public class UserService {
     }
 
     public void assignUserRoles(long userId, List<Long> roleIds) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.USERS_MANAGE);
         userRepository.assignUserRoles(userId, roleIds);
     }
 
@@ -101,7 +97,6 @@ public class UserService {
     }
 
     public void setUserPermission(long userId, long permissionId, boolean granted) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.USERS_MANAGE);
         userRepository.setUserPermission(userId, permissionId, granted);
     }
 

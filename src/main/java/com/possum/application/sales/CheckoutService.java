@@ -52,7 +52,6 @@ public class CheckoutService {
     }
 
     public SaleResponse createSale(CreateSaleRequest request, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_CREATE);
         request.validate();
 
         List<Long> productIds = request.items().stream().map(CreateSaleItemRequest::productId).toList();

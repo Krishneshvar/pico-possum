@@ -31,7 +31,6 @@ public class PaymentPoliciesController extends AbstractCrudController<PaymentPol
     @Override
     protected void setupPermissions() {
         if (createButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(createButton, com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
             FontIcon plusIcon = new FontIcon("bx-plus");
             plusIcon.setIconSize(16);
             plusIcon.setIconColor(javafx.scene.paint.Color.WHITE);
@@ -117,14 +116,12 @@ public class PaymentPoliciesController extends AbstractCrudController<PaymentPol
 
     @FXML
     private void handleCreate() {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
         Map<String, Object> params = new HashMap<>();
         params.put("onSave", (Runnable) this::loadData);
         workspaceManager.openWindow("Add Payment Policy", "/fxml/purchase/payment-policy-form-view.fxml", params);
     }
 
     private void handleEdit(PaymentPolicy policy) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
         Map<String, Object> params = new HashMap<>();
         params.put("policyId", policy.id());
         params.put("onSave", (Runnable) this::loadData);

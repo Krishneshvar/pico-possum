@@ -72,7 +72,7 @@ public class AppShellController {
         NotificationService.initialize(contentArea);
 
         // Navigation
-        RouteGuard routeGuard = new RouteGuard(new com.possum.application.auth.AuthorizationService());
+        RouteGuard routeGuard = new RouteGuard();
         navigationManager = new NavigationManager(contentArea, routeGuard);
         new NavBarBuilder(navItems, workspaceManager).build();
 

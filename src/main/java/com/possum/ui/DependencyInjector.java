@@ -75,8 +75,6 @@ public class DependencyInjector {
         registry.put(com.possum.application.categories.CategoryService.class, applicationModule::getCategoryService);
         registry.put(com.possum.application.inventory.InventoryService.class, applicationModule::getInventoryService);
         registry.put(com.possum.application.inventory.ProductFlowService.class, applicationModule::getProductFlowService);
-        registry.put(com.possum.application.auth.AuthService.class, () -> applicationModule.getAuthModule().getAuthService());
-        registry.put(com.possum.application.auth.AuthorizationService.class, com.possum.application.auth.AuthorizationService::new);
         registry.put(com.possum.application.audit.AuditService.class, applicationModule::getAuditService);
         registry.put(com.possum.application.people.UserService.class, applicationModule::getUserService);
         registry.put(com.possum.application.people.CustomerService.class, applicationModule::getCustomerService);
@@ -107,8 +105,6 @@ public class DependencyInjector {
         // UI
         registry.put(NavigationManager.class, () -> navigationManager);
         registry.put(com.possum.ui.workspace.WorkspaceManager.class, () -> workspaceManager);
-        registry.put(com.possum.ui.auth.SessionStore.class,
-                () -> new com.possum.ui.auth.SessionStore(appPaths, serviceLocator.getJsonService()));
         registry.put(DependencyInjector.class, () -> this);
 
         // Composite controllers

@@ -11,9 +11,8 @@ import com.possum.application.reports.ReportsService;
 import com.possum.application.purchase.PurchaseService;
 import com.possum.persistence.repositories.sqlite.*;
 import com.possum.ui.DependencyInjector;
-import com.possum.application.auth.AuthBootstrapStatus;
 import com.possum.application.auth.AuthContext;
-import com.possum.ui.auth.SessionStore;
+import com.possum.application.auth.AuthUser;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -27,7 +26,6 @@ import com.possum.infrastructure.filesystem.AppPaths;
 import com.possum.infrastructure.backup.DatabaseBackupService;
 import com.possum.persistence.db.DatabaseManager;
 import com.possum.persistence.db.TransactionManager;
-import com.possum.application.auth.AuthModule;
 import com.possum.infrastructure.lazy.ServiceLocator;
 import com.possum.infrastructure.serialization.JsonService;
 import com.possum.infrastructure.security.PasswordHasher;
@@ -41,8 +39,6 @@ public final class AppBootstrap {
     private AppPaths appPaths;
     private DatabaseManager databaseManager;
     private DatabaseBackupService backupService;
-    private TransactionManager transactionManager;
-    private AuthModule authModule;
     private ServiceLocator serviceLocator;
     private ApplicationModule applicationModule;
     private DependencyInjector dependencyInjector;
@@ -56,6 +52,8 @@ public final class AppBootstrap {
     private SqliteSupplierRepository supplierRepository;
     private com.possum.domain.services.SaleCalculator saleCalculator;
     private com.possum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
+    private TransactionManager transactionManager;
+    private com.possum.infrastructure.security.PasswordHasher passwordHasher;
 
 
 
@@ -64,31 +62,12 @@ public final class AppBootstrap {
             initializeCore();
             runStartupHealthChecks(stage);
 
-            // Check session/bootstrap status
-            AuthBootstrapStatus bootstrapStatus = authModule.getAuthService().getAuthBootstrapStatus();
+            // Auto-login for single-user application
+            AuthUser adminUser = new AuthUser(1L, "System Administrator", "admin", java.util.List.of("admin"), java.util.List.of());
+            AuthContext.setCurrentUser(adminUser);
+            loadMainShell(stage);
             
-            if (bootstrapStatus.requiresInitialSetup() || bootstrapStatus.requiresPasswordRotation()) {
-                loadLoginScreen(stage);
-            } else {
-                // Try to restore existing session
-                SessionStore sessionStore = new SessionStore(appPaths, new JsonService());
-                var tokenOpt = sessionStore.getToken();
-                if (tokenOpt.isPresent()) {
-                    try {
-                        var authUser = authModule.getAuthService().validateSession(tokenOpt.get());
-                        if (authUser != null) {
-                            AuthContext.setCurrentUser(authUser);
-                            loadMainShell(stage);
-                            return;
-                        }
-                    } catch (Exception e) {
-                        LOGGER.warn("Failed to validate existing session", e);
-                    }
-                }
-                loadLoginScreen(stage);
-            }
-            
-            LOGGER.info("Application bootstrap completed");
+            LOGGER.info("Application bootstrap completed with single-user mode");
         } catch (RuntimeException ex) {
             shutdown();
             throw ex;
@@ -103,10 +82,6 @@ public final class AppBootstrap {
             databaseManager.close();
         }
         LOGGER.info("Application shutdown completed");
-    }
-
-    public AuthModule getAuthModule() {
-        return authModule;
     }
 
     public ServiceLocator getServiceLocator() {
@@ -138,14 +113,8 @@ public final class AppBootstrap {
         databaseManager = new DatabaseManager(appPaths);
         databaseManager.initialize();
         transactionManager = new TransactionManager(databaseManager);
+        passwordHasher = new com.possum.infrastructure.security.PasswordHasher();
 
-        PasswordHasher passwordHasher = new PasswordHasher();
-        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
-        SqliteSessionRepository sessionRepository = new SqliteSessionRepository(databaseManager);
-
-        authModule = new AuthModule(userRepository, sessionRepository, transactionManager, passwordHasher,
-
-                new com.possum.persistence.repositories.sqlite.SqliteAuditRepository(databaseManager));
         com.possum.application.auth.ServiceSecurity.setAuditRepository(
                 new com.possum.persistence.repositories.sqlite.SqliteAuditRepository(databaseManager));
 
@@ -156,7 +125,6 @@ public final class AppBootstrap {
 
     private void initializeApplication() {
         JsonService jsonService = new JsonService();
-        PasswordHasher passwordHasher = new PasswordHasher();
         SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteSessionRepository sessionRepository = new SqliteSessionRepository(databaseManager);
 
@@ -283,44 +251,6 @@ public final class AppBootstrap {
         } catch (Exception e) {
             LOGGER.error("Repair action {} failed", action, e);
             Platform.runLater(() -> com.possum.ui.common.dialogs.GlobalErrorDialog.show(new RuntimeException("Repair failed: " + e.getMessage())));
-        }
-    }
-
-    private void loadLoginScreen(Stage stage) {
-        try {
-            FXMLLoader loader = new FXMLLoader(AppBootstrap.class.getResource("/fxml/auth/login-view.fxml"));
-            
-            // Navigate to main shell on login
-            com.possum.ui.navigation.NavigationManager dummyNav = new com.possum.ui.navigation.NavigationManager(null, null) {
-                @Override
-                public void navigateTo(String routeId) {
-                    if ("dashboard".equals(routeId)) {
-                        Platform.runLater(() -> loadMainShell(stage));
-                    }
-                }
-            };
-            
-            SessionStore sessionStore = new SessionStore(appPaths, new JsonService());
-            loader.setControllerFactory(type -> {
-                if (type.equals(com.possum.ui.auth.LoginController.class)) {
-                    return new com.possum.ui.auth.LoginController(
-                        authModule.getAuthService(),
-                        dummyNav,
-                        sessionStore,
-                        dependencyInjector.getToastService()
-                    );
-                }
-                return null;
-            });
-
-            Parent root = loader.load();
-            Scene scene = new Scene(root, 1200, 720);
-            stage.setTitle("POSSUM - Login");
-            stage.setScene(scene);
-            dependencyInjector.getToastService().setMainStage(stage);
-            stage.show();
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to load login screen", ex);
         }
     }
 

@@ -43,7 +43,6 @@ public class ReturnsService {
     }
 
     public ReturnResponse createReturn(CreateReturnRequest request) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.RETURNS_MANAGE);
         // Step 1: Input validation
         validateInputs(request);
 

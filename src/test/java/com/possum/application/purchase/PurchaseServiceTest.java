@@ -127,12 +127,6 @@ class PurchaseServiceTest {
         assertEquals(100L, result.purchaseOrder().id());
     }
 
-    @Test
-    @DisplayName("Should block unauthorized creation")
-    void createPurchaseOrder_unauthorized() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "User", "user", List.of(), List.of()));
-        assertThrows(AuthorizationException.class, () -> purchaseService.createPurchaseOrder(1L, 1L, 1L, List.of()));
-    }
 
     @Test
     @DisplayName("Should validate items during creation")

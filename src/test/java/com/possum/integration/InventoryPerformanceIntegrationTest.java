@@ -78,10 +78,9 @@ class InventoryPerformanceIntegrationTest {
                 auditRepository, inventoryService, new com.possum.domain.services.SaleCalculator(), paymentService, transactionManager, 
                 jsonService, settingsStore, invoiceNumberService);
 
-        long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin'");
         User u = userRepository.insertUserWithRoles(
                 new User(null, "Perf Tester", "perf-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of(roleId)
+                List.of()
         );
         testUserId = u.id();
         cashPaymentMethodId = getOrSeedPaymentMethod();

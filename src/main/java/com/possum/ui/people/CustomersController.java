@@ -34,12 +34,6 @@ public class CustomersController extends AbstractCrudController<Customer, Custom
 
     @Override
     protected void setupPermissions() {
-        if (addButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(addButton, com.possum.application.auth.Permissions.CUSTOMERS_MANAGE);
-        }
-        if (importHandler.importButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(importHandler.importButton, com.possum.application.auth.Permissions.CUSTOMERS_MANAGE);
-        }
     }
 
     @Override
@@ -108,10 +102,6 @@ public class CustomersController extends AbstractCrudController<Customer, Custom
 
     @Override
     protected List<MenuItem> buildActionMenu(Customer customer) {
-        if (!com.possum.ui.common.UIPermissionUtil.hasPermission(com.possum.application.auth.Permissions.CUSTOMERS_MANAGE)) {
-            return List.of();
-        }
-
         return com.possum.ui.common.components.MenuBuilder.create()
             .addEditAction("Edit", () -> workspaceManager.openDialog(
                 "Edit Customer: " + customer.name(), 

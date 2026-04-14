@@ -87,12 +87,6 @@ class CustomerServiceTest {
         assertThrows(ValidationException.class, () -> customerService.createCustomer("Jane Doe", "9876543210", "invalid_email", "Address", "vip"));
     }
 
-    @Test
-    @DisplayName("Should throw auth error if missing permission")
-    void createCustomer_unauthorized_fail() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "User", "user", List.of(), List.of()));
-        assertThrows(AuthorizationException.class, () -> customerService.createCustomer("Jane Doe", "9876543210", "jane@example.com", "Address", "vip"));
-    }
 
     @Test
     @DisplayName("Should update customer successfully")

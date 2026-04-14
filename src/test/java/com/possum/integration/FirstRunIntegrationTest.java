@@ -61,16 +61,6 @@ class FirstRunIntegrationTest {
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
-    @Test
-    @Order(1)
-    @DisplayName("Fresh DB — required roles are seeded by Flyway")
-    void freshDatabase_hasSeededRoles() {
-        int roleCount = queryInt("SELECT COUNT(*) FROM roles");
-        assertTrue(roleCount >= 1, "At least one role (admin) should be seeded");
-
-        int adminCount = queryInt("SELECT COUNT(*) FROM roles WHERE name = 'admin'");
-        assertEquals(1, adminCount, "Admin role must exist after first-run migration");
-    }
 
     @Test
     @Order(2)
@@ -205,10 +195,6 @@ class FirstRunIntegrationTest {
     void freshDatabase_reinitialise_isIdempotent() {
         // Calling initialize() again should not throw or corrupt data
         assertDoesNotThrow(() -> databaseManager.initialize());
-
-        // Data seeded earlier should still be consistent
-        int adminCount = queryInt("SELECT COUNT(*) FROM roles WHERE name = 'admin'");
-        assertEquals(1, adminCount, "Admin role should still exist after re-initialise");
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

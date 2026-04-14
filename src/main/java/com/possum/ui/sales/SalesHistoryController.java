@@ -69,9 +69,6 @@ public class SalesHistoryController {
 
     @FXML
     public void initialize() {
-        if (importLegacyButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(importLegacyButton, com.possum.application.auth.Permissions.SALES_MANAGE);
-        }
 
         actionsHandler = new SalesHistoryActionsHandler(salesService, settingsStore, printerService, workspaceManager, this::loadHistory);
         importer = new LegacySaleImporter(salesService, salesTable != null && salesTable.getScene() != null ? salesTable.getScene().getWindow() : null, this::loadHistory);

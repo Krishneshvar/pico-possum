@@ -72,12 +72,11 @@ class PersistenceIntegrationTest {
 
     @Test
     void shouldInsertAndQueryUser() {
-        long adminRoleId = queryLong("SELECT id FROM roles WHERE name = 'admin' LIMIT 1");
         String username = "test-user-" + UUID.randomUUID();
 
         User inserted = userRepository.insertUserWithRoles(
                 new User(null, "Test User", username, "hash-123", true, null, null, null),
-                List.of(adminRoleId)
+                List.of()
         );
 
         assertNotNull(inserted.id());
@@ -137,10 +136,9 @@ class PersistenceIntegrationTest {
             return userId;
         } catch (Exception ignored) {}
 
-        long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin' LIMIT 1");
         User user = userRepository.insertUserWithRoles(
                 new User(null, "Seed User", "seed-" + UUID.randomUUID(), "seed-hash", true, null, null, null),
-                List.of(roleId)
+                List.of()
         );
         return user.id();
     }

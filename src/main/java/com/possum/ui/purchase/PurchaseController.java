@@ -57,7 +57,6 @@ public class PurchaseController {
     @FXML
     public void initialize() {
         if (createButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(createButton, com.possum.application.auth.Permissions.PURCHASE_MANAGE);
             FontIcon plusIcon = new FontIcon("bx-plus");
             plusIcon.setIconSize(16);
             plusIcon.setIconColor(javafx.scene.paint.Color.WHITE);

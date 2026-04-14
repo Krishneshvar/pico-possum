@@ -54,15 +54,10 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     @Override
     protected void setupPermissions() {
         if (addButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(addButton, com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
             FontIcon addIcon = new FontIcon("bx-plus");
             addIcon.setIconSize(16);
             addIcon.setIconColor(javafx.scene.paint.Color.WHITE);
             addButton.setGraphic(addIcon);
-        }
-
-        if (importHandler.importButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(importHandler.importButton, com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
         }
 
         if (refreshButton != null) {

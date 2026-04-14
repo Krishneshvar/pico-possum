@@ -69,18 +69,16 @@ public class SalesHistoryActionsHandler {
             returnItem.setOnAction(e -> handleReturn(sale));
             items.add(returnItem);
 
-            if (com.possum.ui.common.UIPermissionUtil.hasPermission(com.possum.application.auth.Permissions.SALES_MANAGE)) {
-                MenuItem editItem = new MenuItem("✏️ Edit Bill");
-                editItem.setOnAction(e -> handleEdit(sale));
+            MenuItem editItem = new MenuItem("✏️ Edit Bill");
+            editItem.setOnAction(e -> handleEdit(sale));
 
-                MenuItem cancelItem = new MenuItem("❌ Cancel Sale");
-                cancelItem.getStyleClass().add("logout-menu-item");
-                cancelItem.setOnAction(e -> handleCancel(sale));
-                
-                items.add(new SeparatorMenuItem());
-                items.add(editItem);
-                items.add(cancelItem);
-            }
+            MenuItem cancelItem = new MenuItem("❌ Cancel Sale");
+            cancelItem.getStyleClass().add("logout-menu-item");
+            cancelItem.setOnAction(e -> handleCancel(sale));
+            
+            items.add(new SeparatorMenuItem());
+            items.add(editItem);
+            items.add(cancelItem);
         }
 
         return items;

@@ -46,7 +46,6 @@ public class ProductService {
     }
 
     public long createProduct(CreateProductCommand command) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
         if (command.name() == null || command.name().isBlank()) throw new ValidationException("Product name is required");
         if (command.mrp() == null || command.mrp().compareTo(java.math.BigDecimal.ZERO) < 0)
             throw new ValidationException("Product price must be zero or greater");
@@ -121,7 +120,6 @@ public class ProductService {
     }
 
     public void updateProduct(long productId, UpdateProductCommand command) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
         transactionManager.runInTransaction(() -> {
             Product oldProduct = productRepository.findProductById(productId)
                     .orElseThrow(() -> new NotFoundException("Product not found"));
@@ -184,7 +182,6 @@ public class ProductService {
     }
 
     public void deleteProduct(long id, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.PRODUCTS_MANAGE);
         transactionManager.runInTransaction(() -> {
             Product oldProduct = productRepository.findProductById(id)
                     .orElseThrow(() -> new NotFoundException("Product not found"));

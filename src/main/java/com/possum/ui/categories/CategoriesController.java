@@ -62,16 +62,11 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
     @Override
     protected void setupPermissions() {
         if (addButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(addButton, com.possum.application.auth.Permissions.CATEGORIES_MANAGE);
             ButtonFactory.applyAddButtonStyle(addButton);
         }
         
         if (refreshButton != null) {
             ButtonFactory.applyRefreshButtonStyle(refreshButton);
-        }
-
-        if (importHandler.importButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(importHandler.importButton, com.possum.application.auth.Permissions.CATEGORIES_MANAGE);
         }
     }
 

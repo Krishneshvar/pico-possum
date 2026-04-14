@@ -190,10 +190,9 @@ class ReturnsFlowIntegrationTest {
     }
 
     private static long seedUser(SqliteUserRepository userRepository) {
-        long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin' LIMIT 1");
         User user = userRepository.insertUserWithRoles(
                 new User(null, "Returns Tester", "rtester-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of(roleId)
+                List.of()
         );
         return user.id();
     }

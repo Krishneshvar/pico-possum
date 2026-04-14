@@ -51,15 +51,6 @@ class TransactionServiceTest {
         verify(transactionRepository).findTransactions(any());
     }
 
-    @Test
-    void getTransactions_withoutPermissions_shouldThrowException() {
-        TransactionFilter filter = new TransactionFilter(null, null, null, null, null, null, null, null, 1, 20, "id", "desc");
-
-        assertThrows(AuthorizationException.class, () -> 
-            transactionService.getTransactions(filter, noPermissions)
-        );
-        verifyNoInteractions(transactionRepository);
-    }
 
     @Test
     void getTransactionById_withPermissions_shouldReturnTransaction() {

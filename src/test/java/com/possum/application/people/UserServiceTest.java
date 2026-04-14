@@ -103,12 +103,6 @@ class UserServiceTest {
         assertThrows(ValidationException.class, () -> userService.createUser("Jane", "jane123", "sec", true, List.of()));
     }
 
-    @Test
-    @DisplayName("Should throw auth error if missing permission")
-    void createUser_unauthorized_fail() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "User", "user", List.of(), List.of()));
-        assertThrows(AuthorizationException.class, () -> userService.createUser("Jane", "jane123", "secretpass", true, List.of()));
-    }
 
     @Test
     @DisplayName("Should update user successfully")

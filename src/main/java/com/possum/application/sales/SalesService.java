@@ -102,7 +102,6 @@ public class SalesService {
     }
 
     public boolean upsertLegacySale(LegacySale legacySale) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_MANAGE);
         if (legacySale == null) {
             throw new ValidationException("Legacy sale data is required");
         }

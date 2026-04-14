@@ -85,12 +85,6 @@ class CategoryServiceTest {
         assertThrows(ValidationException.class, () -> categoryService.createCategory(null, null));
     }
 
-    @Test
-    @DisplayName("Should throw authorization error when permission is missing")
-    void createCategory_unauthorized_fail() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "User", "user", List.of(), List.of()));
-        assertThrows(AuthorizationException.class, () -> categoryService.createCategory("Secret", null));
-    }
 
     @Test
     @DisplayName("Should update category successfully")

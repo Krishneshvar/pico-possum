@@ -96,12 +96,6 @@ public class SaleDetailController implements Parameterizable {
 
     @FXML
     public void initialize() {
-        if (editButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(editButton, com.possum.application.auth.Permissions.SALES_MANAGE);
-        }
-        if (createReturnButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(createReturnButton, com.possum.application.auth.Permissions.SALES_REFUND);
-        }
 
         tableManager = new SaleDetailTableManager(itemsTable, returnedItemsTable, this::calculateDraftTotals);
         tableManager.setupActiveItemsTable();

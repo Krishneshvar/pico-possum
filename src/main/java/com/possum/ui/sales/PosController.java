@@ -108,9 +108,6 @@ public class PosController implements CartCellHandler {
     public void initialize() {
         isAutofilling = true;
         try {
-            if (completeButton != null)
-                com.possum.ui.common.UIPermissionUtil.requirePermission(completeButton,
-                        com.possum.application.auth.Permissions.SALES_CREATE);
 
         for (int i = 0; i < MAX_BILLS; i++) { 
             int idx = i;

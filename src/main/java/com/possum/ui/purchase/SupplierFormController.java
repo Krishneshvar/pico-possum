@@ -119,7 +119,6 @@ public class SupplierFormController extends AbstractFormController<Supplier> {
 
     @Override
     protected void createEntity() throws Exception {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
         
         PaymentPolicy selectedPolicy = paymentPolicyCombo.getValue();
         Long policyId = selectedPolicy != null ? selectedPolicy.id() : null;
@@ -146,7 +145,6 @@ public class SupplierFormController extends AbstractFormController<Supplier> {
 
     @Override
     protected void updateEntity() throws Exception {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
         
         PaymentPolicy selectedPolicy = paymentPolicyCombo.getValue();
         Long policyId = selectedPolicy != null ? selectedPolicy.id() : null;

@@ -50,10 +50,6 @@ public class ReturnsController extends AbstractCrudController<Return, ReturnFilt
     @Override
     protected void setupPermissions() {
         if (createReturnButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(
-                createReturnButton, 
-                com.possum.application.auth.Permissions.RETURNS_MANAGE
-            );
             FontIcon returnIcon = new FontIcon("bx-undo");
             returnIcon.setIconSize(16);
             returnIcon.setIconColor(javafx.scene.paint.Color.valueOf("#ef4444"));

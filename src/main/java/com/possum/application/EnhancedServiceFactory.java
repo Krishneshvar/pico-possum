@@ -27,7 +27,6 @@ public class EnhancedServiceFactory {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
-    private final SessionRepository sessionRepository;
 
     // Services
     private final InventoryService inventoryService;
@@ -43,7 +42,6 @@ public class EnhancedServiceFactory {
             ProductRepository productRepository,
             CustomerRepository customerRepository,
             UserRepository userRepository,
-            SessionRepository sessionRepository,
             AuditRepository auditRepository,
             InventoryService inventoryService,
             PaymentService paymentService,
@@ -57,7 +55,6 @@ public class EnhancedServiceFactory {
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
-        this.sessionRepository = sessionRepository;
         this.inventoryService = inventoryService;
         this.paymentService = paymentService;
         this.invoiceNumberService = invoiceNumberService;
@@ -80,34 +77,6 @@ public class EnhancedServiceFactory {
                 invoiceNumberService,
                 auditLogger
         );
-    }
-
-    /**
-     * Creates ConfigurableAuthorizationService with role hierarchy.
-     */
-    public ConfigurableAuthorizationService createConfigurableAuthorizationService() {
-        return new ConfigurableAuthorizationService();
-    }
-
-    /**
-     * Creates SessionService with enhanced security features.
-     */
-    public SessionService createSessionService() {
-        return new SessionService(sessionRepository, userRepository);
-    }
-
-    /**
-     * Creates LoginAttemptService for tracking login attempts.
-     */
-    public LoginAttemptService createLoginAttemptService() {
-        return new LoginAttemptService();
-    }
-
-    /**
-     * Creates SessionCleanupScheduler for automated session cleanup.
-     */
-    public SessionCleanupScheduler createSessionCleanupScheduler() {
-        return new SessionCleanupScheduler(sessionRepository);
     }
 
     /**

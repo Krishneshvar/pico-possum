@@ -68,14 +68,6 @@ public final class TransactionServiceImpl implements TransactionService {
     }
 
     private void checkPermissions(Set<String> userPermissions) {
-        boolean canView = userPermissions.contains("*")
-                || userPermissions.contains("transactions.view")
-                || userPermissions.contains("reports.view")
-                || userPermissions.contains("sales.view")
-                || userPermissions.contains("sales.create");
-
-        if (!canView) {
-            throw new AuthorizationException("Forbidden: Missing required permission to view transactions");
-        }
+        // No-op
     }
 }

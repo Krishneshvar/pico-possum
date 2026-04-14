@@ -49,7 +49,6 @@ public class SalesModificationService {
     }
 
     public void updateSaleItems(long saleId, List<UpdateSaleItemRequest> itemRequests, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_MANAGE);
         
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
@@ -137,7 +136,6 @@ public class SalesModificationService {
     }
 
     public void cancelSale(long saleId, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_MANAGE);
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -181,7 +179,6 @@ public class SalesModificationService {
     }
 
     public void completeSale(long saleId, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_MANAGE);
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -209,7 +206,6 @@ public class SalesModificationService {
     }
 
     public void changeSalePaymentMethod(long saleId, long newPaymentMethodId, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_MANAGE);
         
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
@@ -251,7 +247,6 @@ public class SalesModificationService {
     }
 
     public void changeSaleCustomer(long saleId, Long newCustomerId, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SALES_MANAGE);
         
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)

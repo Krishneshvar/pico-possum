@@ -34,7 +34,6 @@ public class SuppliersController extends AbstractCrudController<Supplier, Suppli
     @Override
     protected void setupPermissions() {
         if (createButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(createButton, com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
             FontIcon plusIcon = new FontIcon("bx-plus");
             plusIcon.setIconSize(16);
             plusIcon.setIconColor(javafx.scene.paint.Color.WHITE);
@@ -139,14 +138,12 @@ public class SuppliersController extends AbstractCrudController<Supplier, Suppli
 
     @FXML
     private void handleCreate() {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
         Map<String, Object> params = new HashMap<>();
         params.put("onSave", (Runnable) this::loadData);
         workspaceManager.openWindow("Add Supplier", "/fxml/purchase/supplier-form-view.fxml", params);
     }
 
     private void handleEdit(Supplier supplier) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.SUPPLIERS_MANAGE);
         Map<String, Object> params = new HashMap<>();
         params.put("supplierId", supplier.id());
         params.put("onSave", (Runnable) this::loadData);

@@ -1,7 +1,6 @@
 package com.possum.application;
 
 import com.possum.application.audit.AuditService;
-import com.possum.application.auth.AuthModule;
 import com.possum.application.categories.CategoryService;
 import com.possum.application.inventory.InventoryService;
 import com.possum.application.inventory.ProductFlowService;
@@ -20,7 +19,6 @@ import com.possum.application.drafts.DraftService;
 import com.possum.persistence.db.ConnectionProvider;
 
 public final class ApplicationModule {
-    private final AuthModule authModule;
     private final ProductModule productModule;
     private final CategoryService categoryService;
     private final InventoryService inventoryService;
@@ -44,7 +42,6 @@ public final class ApplicationModule {
                             AppPaths appPaths,
                             SettingsStore settingsStore,
                             ConnectionProvider connectionProvider) {
-        this.authModule = new AuthModule(userRepository, sessionRepository, transactionManager, passwordHasher);
         this.userService = new com.possum.application.people.UserService(userRepository, passwordHasher);
         this.customerService = new com.possum.application.people.CustomerService(customerRepository);
         
@@ -73,10 +70,6 @@ public final class ApplicationModule {
         
         this.categoryService = new CategoryService(categoryRepository);
         this.draftService = new DraftService(connectionProvider, jsonService);
-    }
-
-    public AuthModule getAuthModule() {
-        return authModule;
     }
 
     public ProductService getProductService() {

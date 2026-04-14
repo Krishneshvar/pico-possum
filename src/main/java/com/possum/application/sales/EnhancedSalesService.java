@@ -55,8 +55,6 @@ public class EnhancedSalesService {
     }
 
     public SaleResponse createSale(CreateSaleRequest request, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(
-                com.possum.application.auth.Permissions.SALES_CREATE);
         request.validate();
 
         BigDecimal discount = request.discount() != null ? request.discount() : BigDecimal.ZERO;
@@ -266,8 +264,6 @@ public class EnhancedSalesService {
     }
 
     public void cancelSale(long saleId, long userId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(
-                com.possum.application.auth.Permissions.SALES_MANAGE);
         
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)

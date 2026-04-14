@@ -29,9 +29,6 @@ public class UsersController extends AbstractCrudController<User, UserFilter> {
 
     @Override
     protected void setupPermissions() {
-        if (addButton != null) {
-            com.possum.ui.common.UIPermissionUtil.requirePermission(addButton, com.possum.application.auth.Permissions.USERS_MANAGE);
-        }
     }
 
     @Override
@@ -126,19 +123,11 @@ public class UsersController extends AbstractCrudController<User, UserFilter> {
 
     @Override
     protected List<MenuItem> buildActionMenu(User user) {
-        if (!com.possum.ui.common.UIPermissionUtil.hasPermission(com.possum.application.auth.Permissions.USERS_MANAGE)) {
-            return List.of();
-        }
-
         return com.possum.ui.common.components.MenuBuilder.create()
             .addEditAction("Edit", () -> workspaceManager.openDialog(
                 "Edit Employee: " + user.name(), 
                 "/fxml/people/user-form-view.fxml", 
                 Map.of("userId", user.id(), "mode", "edit")))
-            .addItem("bx-shield", "Roles & Permissions", () -> workspaceManager.openWindow(
-                "Roles & Permissions: " + user.name(), 
-                "/fxml/people/user-roles-view.fxml", 
-                Map.of("userId", user.id())))
             .addSeparator()
             .addDeleteAction("Delete", () -> handleDelete(user))
             .build();

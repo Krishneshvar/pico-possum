@@ -85,10 +85,9 @@ class DayEndReconciliationIntegrationTest {
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
                 auditRepository, transactionManager, jsonService, new com.possum.domain.services.ReturnCalculator());
 
-        long roleId = queryLong("SELECT id FROM roles WHERE name = 'admin'");
         User u = userRepository.insertUserWithRoles(
                 new User(null, "Day Closer", "dayclose-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of(roleId)
+                List.of()
         );
         testUserId = u.id();
 

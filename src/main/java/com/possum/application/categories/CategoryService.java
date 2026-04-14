@@ -34,7 +34,6 @@ public class CategoryService {
     }
 
     public Category createCategory(String name, Long parentId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.CATEGORIES_MANAGE);
         if (name == null || name.trim().isEmpty()) {
             throw new ValidationException("Category name is required");
         }
@@ -42,7 +41,6 @@ public class CategoryService {
     }
 
     public void updateCategory(long id, String name, Long parentId) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.CATEGORIES_MANAGE);
         if (name == null || name.trim().isEmpty()) {
             throw new ValidationException("Category name is required");
         }
@@ -54,7 +52,6 @@ public class CategoryService {
     }
 
     public void deleteCategory(long id) {
-        com.possum.application.auth.ServiceSecurity.requirePermission(com.possum.application.auth.Permissions.CATEGORIES_MANAGE);
         int changes = categoryRepository.softDeleteCategory(id);
         if (changes == 0) {
             throw new NotFoundException("Category not found");
