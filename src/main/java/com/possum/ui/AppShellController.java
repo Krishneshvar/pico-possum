@@ -6,7 +6,6 @@ import com.possum.ui.navigation.NavigationManager;
 import com.possum.ui.navigation.RouteGuard;
 import com.possum.ui.shell.GlobalShortcutHandler;
 import com.possum.ui.shell.NavBarBuilder;
-import com.possum.ui.shell.UserMenuManager;
 import com.possum.ui.workspace.WorkspaceDesktop;
 import com.possum.ui.workspace.WorkspaceManager;
 import com.possum.ui.common.accessibility.AccessibilityEnhancer;
@@ -36,8 +35,6 @@ public class AppShellController {
     @FXML private HBox brandBox;
     @FXML private HBox navItems;
     @FXML private StackPane contentArea;
-    @FXML private Label userAvatar;
-    @FXML private MenuButton userMenuButton;
     @FXML private ImageView brandIcon;
 
     private NavigationManager navigationManager;
@@ -75,9 +72,6 @@ public class AppShellController {
         RouteGuard routeGuard = new RouteGuard();
         navigationManager = new NavigationManager(contentArea, routeGuard);
         new NavBarBuilder(navItems, workspaceManager).build();
-
-        // User menu
-        new UserMenuManager(userMenuButton, userAvatar, dependencyInjector, currentUserName).build();
 
         // Brand icon
         loadBrandIcon();

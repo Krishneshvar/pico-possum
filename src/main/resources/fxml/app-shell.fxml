@@ -31,17 +31,7 @@
                 </padding>
             </HBox>
             
-            <!-- User Section -->
-            <HBox styleClass="navbar-user" alignment="CENTER">
-                <padding>
-                    <Insets top="8" right="20" bottom="8" left="20"/>
-                </padding>
-                <MenuButton fx:id="userMenuButton" styleClass="user-menu-btn">
-                    <graphic>
-                        <Label fx:id="userAvatar" text="A" styleClass="user-avatar"/>
-                    </graphic>
-                </MenuButton>
-            </HBox>
+
         </HBox>
     </top>
 
