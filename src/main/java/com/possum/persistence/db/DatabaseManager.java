@@ -31,6 +31,7 @@ public final class DatabaseManager implements ConnectionProvider, AutoCloseable 
         String jdbcUrl = "jdbc:sqlite:" + databasePath;
 
         runMigrations(jdbcUrl);
+        ensurePosOpenBillItemsCorrect(jdbcUrl);
 
         SQLiteConfig config = new SQLiteConfig();
         config.enforceForeignKeys(true);
@@ -63,6 +64,37 @@ public final class DatabaseManager implements ConnectionProvider, AutoCloseable 
                 .load();
         flyway.repair();
         flyway.migrate();
+    }
+
+    private static void ensurePosOpenBillItemsCorrect(String jdbcUrl) {
+        try (Connection conn = DriverManager.getConnection(jdbcUrl);
+             Statement stmt = conn.createStatement()) {
+            
+            boolean tableExists = false;
+            try (ResultSet rs = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='pos_open_bill_items'")) {
+                if (rs.next()) tableExists = true;
+            }
+            
+            if (tableExists) {
+                boolean hasProductId = false;
+                boolean hasVariantId = false;
+                try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(pos_open_bill_items)")) {
+                    while (rs.next()) {
+                        String name = rs.getString("name");
+                        if ("product_id".equalsIgnoreCase(name)) hasProductId = true;
+                        if ("variant_id".equalsIgnoreCase(name)) hasVariantId = true;
+                    }
+                }
+                
+                if (!hasProductId && hasVariantId) {
+                    // Rename variant_id to product_id
+                    stmt.execute("ALTER TABLE pos_open_bill_items RENAME COLUMN variant_id TO product_id");
+                    System.out.println("Database self-healing: Renamed 'variant_id' to 'product_id' in pos_open_bill_items");
+                }
+            }
+        } catch (SQLException ex) {
+            System.err.println("Database self-healing: Failed to fix pos_open_bill_items: " + ex.getMessage());
+        }
     }
 
     private static void ensureCodeColumnExists(String jdbcUrl) {

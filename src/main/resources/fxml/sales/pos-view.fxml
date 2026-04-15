@@ -36,11 +36,9 @@
                 <HBox spacing="16" VBox.vgrow="ALWAYS">
                     <VBox fx:id="leftVBox" spacing="16" HBox.hgrow="ALWAYS">
                         <VBox fx:id="cartCardVBox" spacing="0" VBox.vgrow="ALWAYS" styleClass="pos-card">
-                            <HBox alignment="CENTER_LEFT" styleClass="pos-card-header">
-                                <Label text="Cart Items" styleClass="pos-card-title"/>
-                            </HBox>
 
-                            <com.possum.ui.common.controls.DataTableView fx:id="cartTable" VBox.vgrow="ALWAYS" />
+
+                            <com.possum.ui.common.controls.DataTableView fx:id="cartTable" VBox.vgrow="ALWAYS" styleClass="pos-table" />
 
                             <HBox alignment="CENTER_RIGHT" spacing="24" styleClass="pos-cart-totals">
                                 <HBox spacing="8" alignment="CENTER_LEFT">
@@ -138,7 +136,7 @@
                         </HBox>
                     </VBox>
 
-                    <StackPane fx:id="rightPane" prefWidth="380" minWidth="320" maxWidth="520" VBox.vgrow="ALWAYS">
+                    <StackPane fx:id="rightPane" prefWidth="440" minWidth="340" maxWidth="600" VBox.vgrow="ALWAYS">
                         <VBox spacing="16" VBox.vgrow="ALWAYS">
                             <VBox fx:id="paymentCard" spacing="14" styleClass="pos-card,payment-card" style="-fx-padding: 20;" VBox.vgrow="ALWAYS">
                                 <Label text="Payment" styleClass="pos-card-title"/>

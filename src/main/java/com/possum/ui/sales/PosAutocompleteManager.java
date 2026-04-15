@@ -204,5 +204,8 @@ public class PosAutocompleteManager {
     private void applyStyles(ListView<?> lv) {
         String css = Objects.requireNonNull(getClass().getResource("/styles/pos.css")).toExternalForm();
         if (!lv.getStylesheets().contains(css)) lv.getStylesheets().add(css);
+        if (!lv.getStyleClass().contains("search-results-list")) {
+            lv.getStyleClass().add("search-results-list");
+        }
     }
 }
