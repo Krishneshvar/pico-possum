@@ -13,7 +13,7 @@
           styleClass="dashboard-container"
           stylesheets="@../../styles/views/dashboard.css">
     
-    <VBox spacing="30" alignment="TOP_LEFT">
+    <VBox spacing="30" alignment="TOP_LEFT" style="-fx-padding: 30;">
         <padding>
             <Insets top="30" right="30" bottom="30" left="30"/>
         </padding>
@@ -21,13 +21,20 @@
         <!-- Header -->
         <HBox spacing="10" alignment="CENTER_LEFT" styleClass="dashboard-header">
             <VBox spacing="5">
-                <Label text="Dashboard Overview" styleClass="dashboard-title"/>
-                <Label text="Monitor your business performance in real-time" styleClass="dashboard-subtitle-main"/>
+                <Label text="Dashboard Overview" styleClass="view-title"/>
+                <Label text="Monitor your business performance in real-time" styleClass="view-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS" />
-            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="status-badge">
-                 <Label text="●" styleClass="status-dot"/>
-                 <Label fx:id="backupStatusLabel" text="System Protected" styleClass="status-text"/>
+            <HBox spacing="16" alignment="CENTER_RIGHT">
+                <Button onAction="#handleRefresh" styleClass="action-button" text="Refresh">
+                    <graphic>
+                        <org.kordamp.ikonli.javafx.FontIcon iconLiteral="bx-sync" iconSize="16"/>
+                    </graphic>
+                </Button>
+                <HBox alignment="CENTER_LEFT" styleClass="status-badge">
+                     <Label text="●" styleClass="status-dot"/>
+                     <Label fx:id="backupStatusLabel" text="System Protected" styleClass="status-text"/>
+                </HBox>
             </HBox>
         </HBox>
         

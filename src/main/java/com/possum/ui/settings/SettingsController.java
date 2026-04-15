@@ -202,7 +202,7 @@ public class SettingsController {
             settingsStore.saveGeneralSettings(settings);
             generalSettings = settings;
             CurrencyUtil.refreshCache();
-            NotificationService.success("General settings saved. Currency format updated.");
+            NotificationService.success("General settings updated");
         } catch (Exception e) {
             NotificationService.error("Failed to save settings: " + e.getMessage());
         }

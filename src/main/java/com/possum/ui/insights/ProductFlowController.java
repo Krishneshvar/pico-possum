@@ -38,10 +38,7 @@ public class ProductFlowController {
     @FXML private DataTableView<ProductFlow> flowTable;
     @FXML private PaginationBar paginationBar;
     
-    @FXML private Label totalSoldLabel;
-    @FXML private Label totalPurchasedLabel;
-    @FXML private Label totalReturnedLabel;
-    @FXML private Label netMovementLabel;
+
 
     private MultiSelectFilter<String> eventTypeFilter;
     private DatePicker startDatePicker;
@@ -82,6 +79,7 @@ public class ProductFlowController {
     @FXML
     public void handleRefresh() {
         loadData();
+        NotificationService.success("Product flow data refreshed");
     }
 
     private void setupFilters() {
@@ -240,12 +238,9 @@ public class ProductFlowController {
                     eventTypes
                 );
                 
-                Map<String, Object> summary = productFlowService.getProductFlowSummary(selectedProduct.id());
-
                 flowTable.setItems(FXCollections.observableArrayList(flow));
                 paginationBar.setTotalItems(flow.size() < paginationBar.getPageSize() ? (paginationBar.getCurrentPage() * paginationBar.getPageSize() + flow.size()) : 1000); 
                 
-                updateSummary(summary);
                 flowTable.setLoading(false);
             } catch (Exception e) {
                 flowTable.setLoading(false);
@@ -360,19 +355,7 @@ public class ProductFlowController {
         });
     }
 
-    private void updateSummary(Map<String, Object> summary) {
-        if (summary == null || summary.isEmpty()) {
-            clearSummary();
-            return;
-        }
-        totalSoldLabel.setText(String.valueOf(summary.getOrDefault("totalSold", 0)));
-        totalPurchasedLabel.setText(String.valueOf(summary.getOrDefault("totalPurchased", 0)));
-        totalReturnedLabel.setText(String.valueOf(summary.getOrDefault("totalReturned", 0)));
-        netMovementLabel.setText(String.valueOf(summary.getOrDefault("netMovement", 0)));
-        
-        int net = (int) summary.getOrDefault("netMovement", 0);
-        netMovementLabel.setStyle("-fx-text-fill: " + (net >= 0 ? "#2563eb" : "#ef4444") + ";");
-    }
+
 
     private void applyPopupListStyles(ListView<?> listView) {
         try {
@@ -386,17 +369,10 @@ public class ProductFlowController {
 
     private void clearData() {
         flowTable.setItems(FXCollections.observableArrayList());
-        clearSummary();
         paginationBar.setTotalItems(0);
     }
 
-    private void clearSummary() {
-        totalSoldLabel.setText("0");
-        totalPurchasedLabel.setText("0");
-        totalReturnedLabel.setText("0");
-        netMovementLabel.setText("0");
-        netMovementLabel.setStyle("");
-    }
+
 
     private void handleViewBill(ProductFlow flow) {
         if (flow.billRefId() == null) return;

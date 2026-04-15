@@ -30,7 +30,7 @@ public class NavBarBuilder {
             {"Products",    "/fxml/products/products-view.fxml"},
             {"Categories",  "/fxml/categories/categories-view.fxml"},
             {"Stock",       "/fxml/inventory/inventory-view.fxml"},
-            {"Stock History","/fxml/inventory/stock-history-view.fxml"}
+            {"Stock Activity","/fxml/inventory/stock-history-view.fxml"}
         });
         createNavMenu("Commercial", "bx-cart", new Object[][]{
             {"Point of Sale", "/fxml/sales/pos-view.fxml"},

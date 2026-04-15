@@ -675,6 +675,13 @@ public class PosController implements CartCellHandler {
         }
     }
 
+    @FXML
+    protected void handleRefresh() {
+        searchIndex.refresh();
+        loadCombos();
+        NotificationService.info("POS indices and customers refreshed");
+    }
+
     public boolean isInventoryRestrictionsEnabled() {
         try { return settingsStore.loadGeneralSettings().isInventoryAlertsAndRestrictionsEnabled(); }
         catch (Exception ex) { return true; }

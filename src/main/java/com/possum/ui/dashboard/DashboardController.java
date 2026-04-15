@@ -119,7 +119,9 @@ public class DashboardController {
         }
     }
 
-    public void refresh() {
+    @FXML
+    public void handleRefresh() {
         loadDashboardData();
+        com.possum.ui.common.controls.NotificationService.success("Dashboard data refreshed");
     }
 }

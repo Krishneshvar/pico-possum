@@ -116,6 +116,13 @@ public final class TimeUtil {
      * Get just the date formatter based on settings.
      */
     public static DateTimeFormatter getDateFormatter() {
+        return DateTimeFormatter.ofPattern(getDatePattern());
+    }
+
+    /**
+     * Get the date pattern string based on settings.
+     */
+    public static String getDatePattern() {
         String dateFormat = "dd/MM/yyyy";
 
         if (settingsStore != null) {
@@ -142,6 +149,6 @@ public final class TimeUtil {
                 }
             }
         }
-        return DateTimeFormatter.ofPattern(dateFormat);
+        return dateFormat;
     }
 }

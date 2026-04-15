@@ -22,7 +22,7 @@
     <!-- Header Area -->
     <HBox styleClass="view-header" alignment="CENTER_LEFT" spacing="20">
         <VBox spacing="4">
-            <Label text="Stock Activity Log" styleClass="view-title" accessibleRole="TEXT"/>
+            <Label text="Stock Activity" styleClass="view-title" accessibleRole="TEXT"/>
             <Label text="Review a comprehensive audit trail of all manual adjustments and stock movements." styleClass="view-subtitle" accessibleRole="TEXT"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>

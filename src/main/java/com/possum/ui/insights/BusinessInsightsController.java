@@ -4,6 +4,7 @@ import com.possum.application.reports.ReportsService;
 import com.possum.application.reports.dto.ComparisonReport;
 import com.possum.application.reports.dto.SalesReportSummary;
 import com.possum.shared.util.CurrencyUtil;
+import com.possum.ui.common.controls.DateControlUtils;
 import com.possum.ui.common.controls.NotificationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -68,6 +69,8 @@ public class BusinessInsightsController {
     }
 
     private void setupDefaultDates() {
+        DateControlUtils.applyStandardFormat(currentStartDate);
+        DateControlUtils.applyStandardFormat(currentEndDate);
         currentStartDate.setValue(LocalDate.now().minusWeeks(1));
         currentEndDate.setValue(LocalDate.now());
     }
@@ -85,6 +88,14 @@ public class BusinessInsightsController {
     @FXML
     private void handleRefresh() {
         loadInsights();
+        NotificationService.success("Business insights refreshed");
+    }
+
+    @FXML
+    private void handleReset() {
+        setupComparisonTypes();
+        setupDefaultDates();
+        loadInsights();
     }
 
     private void loadInsights() {
@@ -98,6 +109,8 @@ public class BusinessInsightsController {
             LocalDate prevEnd;
             
             String compType = comparisonTypeCombo.getValue();
+            if (compType == null) compType = "Previous Period";
+            
             long days = ChronoUnit.DAYS.between(start, end) + 1;
             
             switch (compType) {

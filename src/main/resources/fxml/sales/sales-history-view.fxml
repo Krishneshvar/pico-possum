@@ -27,7 +27,7 @@
                     <Tooltip text="Import legacy Serieswise Sales CSV for bill history and reports"/>
                 </tooltip>
             </Button>
-            <Button text="Refresh" onAction="#loadHistory" styleClass="action-button" accessibleText="Refresh Bill History">
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh Bill History">
                 <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
                 <tooltip>
                     <Tooltip text="Refresh the bill history list"/>

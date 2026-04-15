@@ -4,6 +4,7 @@ import com.possum.application.reports.ReportsService;
 import com.possum.application.sales.SalesService;
 import com.possum.application.reports.dto.*;
 import com.possum.domain.model.PaymentMethod;
+import com.possum.ui.common.controls.DateControlUtils;
 import com.possum.ui.common.controls.NotificationService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -53,6 +54,9 @@ public class SalesAnalyticsController {
     }
 
     private void setupDatePickers() {
+        DateControlUtils.applyStandardFormat(startDatePicker);
+        DateControlUtils.applyStandardFormat(endDatePicker);
+
         // Default range: This month
         startDatePicker.setValue(LocalDate.now().withDayOfMonth(1));
         endDatePicker.setValue(LocalDate.now());
@@ -119,6 +123,7 @@ public class SalesAnalyticsController {
     @FXML
     private void handleRefresh() {
         loadReports();
+        NotificationService.success("Sales analytics refreshed");
     }
 
 
@@ -173,6 +178,7 @@ public class SalesAnalyticsController {
     private void loadSalesTrend() {
         List<Long> paymentMethodIds = getSelectedPaymentMethodIds();
         String type = reportTypeCombo.getValue();
+        if (type == null) type = "Daily";
         List<? extends BreakdownItem> breakdown;
         
         if ("Monthly".equals(type)) {

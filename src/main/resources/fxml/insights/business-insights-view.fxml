@@ -30,6 +30,11 @@
                 <DatePicker fx:id="currentEndDate" promptText="Current End" prefWidth="180" onAction="#handleFilterChange" />
                 <Separator orientation="VERTICAL" />
                 <ComboBox fx:id="comparisonTypeCombo" promptText="Compare with..." prefWidth="180" onAction="#handleComparisonChange" />
+                <Button onAction="#handleReset" styleClass="action-button">
+                    <graphic>
+                        <FontIcon iconLiteral="bx-reset" iconSize="18" />
+                    </graphic>
+                </Button>
                 <Button onAction="#handleRefresh" styleClass="btn-icon">
                     <graphic>
                         <FontIcon iconLiteral="bx-sync" iconSize="18" />

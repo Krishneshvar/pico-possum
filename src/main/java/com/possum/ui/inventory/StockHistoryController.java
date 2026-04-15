@@ -11,6 +11,7 @@ import com.possum.ui.common.controllers.AbstractCrudController;
 import com.possum.ui.common.components.BadgeFactory;
 import com.possum.ui.common.components.ButtonFactory;
 import com.possum.ui.workspace.WorkspaceManager;
+import com.possum.ui.common.controls.DateControlUtils;
 import com.possum.shared.util.TimeUtil;
 import com.possum.shared.util.TextFormatter;
 import javafx.application.Platform;
@@ -140,14 +141,12 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
             }
         });
 
-        // Load users asynchronously
-        CompletableFuture.supplyAsync(() -> userService.getUsers(new UserFilter(null, 1, 1000, null, null)).items())
-                .thenAccept(users -> Platform.runLater(() -> {
-                    filterBar.addMultiSelectFilter("adjustedBy", "Filter by User", users, User::name, true);
-                }));
 
-        setupDatePickerFormat(fromDate);
-        setupDatePickerFormat(toDate);
+
+        DateControlUtils.applyStandardFormat(fromDate);
+        DateControlUtils.applyStandardFormat(toDate);
+        
+        setupStandardFilterListener();
     }
 
     @Override
@@ -170,18 +169,7 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         currentFromDate = (LocalDate) filterBar.getFilterValue("fromDate");
         currentToDate = (LocalDate) filterBar.getFilterValue("toDate");
 
-        Object usersObj = filterBar.getFilterValue("adjustedBy");
-        if (usersObj instanceof List) {
-            @SuppressWarnings("unchecked")
-            List<User> selectedUsers = (List<User>) usersObj;
-            if (!selectedUsers.isEmpty()) {
-                currentUserIds = selectedUsers.stream().map(User::id).toList();
-            } else {
-                currentUserIds = null;
-            }
-        } else {
-            currentUserIds = null;
-        }
+        currentUserIds = null;
 
         return new StockHistoryFilter(
             searchTerm,
@@ -224,12 +212,12 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
 
     @Override
     protected String getEntityName() {
-        return "stock history";
+        return "stock activity";
     }
 
     @Override
     protected String getEntityNameSingular() {
-        return "Stock History Entry";
+        return "Stock Activity Entry";
     }
 
     @Override
@@ -253,37 +241,12 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         return TextFormatter.camelCaseToWords(reason.replace("_", " "));
     }
 
-    private void setupDatePickerFormat(DatePicker picker) {
-        picker.setConverter(new javafx.util.StringConverter<LocalDate>() {
-            @Override
-            public String toString(LocalDate date) {
-                if (date != null) {
-                    return TimeUtil.getDateFormatter().format(date);
-                } else {
-                    return "";
-                }
-            }
 
-            @Override
-            public LocalDate fromString(String string) {
-                if (string != null && !string.isEmpty()) {
-                    try {
-                        return LocalDate.parse(string, TimeUtil.getDateFormatter());
-                    } catch (Exception e) {
-                        return null;
-                    }
-                } else {
-                    return null;
-                }
-            }
-        });
-        
-        picker.setPromptText("DD/MM/YYYY");
-    }
 
     @FXML
     protected void handleRefresh() {
         loadData();
+        com.possum.ui.common.controls.NotificationService.success("Stock activity log refreshed");
     }
 }
 

@@ -4,6 +4,7 @@ import com.possum.application.reports.ReportsService;
 import com.possum.application.reports.dto.BreakdownItem;
 import com.possum.application.sales.SalesService;
 import com.possum.ui.common.controls.DataTableView;
+import com.possum.ui.common.controls.DateControlUtils;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -96,6 +97,7 @@ public class SalesReportsController {
     @FXML
     public void handleRefresh() {
         loadData();
+        com.possum.ui.common.controls.NotificationService.success("Sales report refreshed");
     }
 
     @FXML
@@ -160,6 +162,9 @@ public class SalesReportsController {
     private void setupFilters() {
         reportTypeCombo.setItems(FXCollections.observableArrayList("Daily", "Monthly", "Yearly"));
         reportTypeCombo.setValue("Daily");
+
+        DateControlUtils.applyStandardFormat(startDatePicker);
+        DateControlUtils.applyStandardFormat(endDatePicker);
 
         startDatePicker.setValue(LocalDate.now().withDayOfMonth(1));
         endDatePicker.setValue(LocalDate.now());

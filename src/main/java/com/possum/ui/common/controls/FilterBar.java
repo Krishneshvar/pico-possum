@@ -137,6 +137,9 @@ public class FilterBar extends VBox {
         picker.setPrefWidth(188);
         picker.setMinHeight(40);
         picker.setPrefHeight(40);
+        
+        DateControlUtils.applyStandardFormat(picker);
+        
         picker.valueProperty().addListener((obs, old, val) -> notifyFilterChange());
         
         dateFilters.put(key, picker);

@@ -168,6 +168,8 @@ public class InventoryController extends AbstractCrudController<Product, Product
         filterBar.addMultiSelectFilter("categories", "Categories", categories, Category::name);
         filterBar.addTextFilter("minPrice", "Min Price");
         filterBar.addTextFilter("maxPrice", "Max Price");
+        
+        setupStandardFilterListener();
     }
 
     @Override
@@ -296,5 +298,6 @@ public class InventoryController extends AbstractCrudController<Product, Product
     @FXML
     protected void handleRefresh() {
         loadData();
+        NotificationService.success("Inventory list refreshed");
     }
 }

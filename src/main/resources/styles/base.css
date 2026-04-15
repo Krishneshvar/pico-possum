@@ -16,14 +16,15 @@
 }
 
 .view-title {
-    -fx-font-size: 24px;
-    -fx-font-weight: 700;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
     -fx-text-fill: -color-text-main;
 }
 
 .view-subtitle {
-    -fx-font-size: 16px;
+    -fx-font-size: 14px;
     -fx-text-fill: -color-text-muted;
+    -fx-font-weight: normal;
 }
 
 .helper-text {
@@ -34,7 +35,7 @@
 .workspace-view {
     -fx-background-color: -color-bg-canvas;
     -fx-background: -color-bg-canvas; /* Fix for ScrollPane backgrounds */
-    -fx-padding: 24;
+    -fx-padding: 30;
     -fx-spacing: 20;
     -fx-alignment: top-left;
 }

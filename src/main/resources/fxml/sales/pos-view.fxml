@@ -30,6 +30,14 @@
                             <Tooltip text="Search-first workflow: start typing to add items quickly (Ctrl+K)"/>
                         </tooltip>
                     </TextField>
+                    <Button onAction="#handleRefresh" styleClass="action-btn">
+                        <graphic>
+                            <FontIcon iconLiteral="bx-sync" iconSize="18"/>
+                        </graphic>
+                        <tooltip>
+                            <Tooltip text="Refresh product indices and customers"/>
+                        </tooltip>
+                    </Button>
                     <Label text="Ctrl+K" styleClass="search-shortcut-hint"/>
                 </HBox>
 

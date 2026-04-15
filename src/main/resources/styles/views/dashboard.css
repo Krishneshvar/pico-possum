@@ -16,21 +16,26 @@
 
 .status-badge {
     -fx-background-color: -color-success-bg;
-    -fx-padding: 6 12;
-    -fx-background-radius: 20;
+    -fx-padding: 0 16;
+    -fx-min-height: 40;
+    -fx-max-height: 40;
+    -fx-background-radius: 50;
+    -fx-border-radius: 50;
     -fx-border-color: -color-success;
-    -fx-border-width: 0.5;
+    -fx-border-width: 1;
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
 }
 
 .status-dot {
     -fx-text-fill: -color-success;
-    -fx-font-size: 8px;
+    -fx-font-size: 10px;
 }
 
 .status-text {
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-text-fill: -color-success-text;
-    -fx-font-weight: bold;
+    -fx-font-weight: 700;
 }
 
 /* Stat Cards */

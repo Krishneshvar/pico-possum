@@ -52,39 +52,7 @@
     <VBox VBox.vgrow="ALWAYS" styleClass="card">
         <FilterBar fx:id="filterBar"/>
         
-        <!-- Summary Statistics Section -->
-        <GridPane hgap="20" vgap="0" style="-fx-padding: 0 0 20 0;">
-            <columnConstraints>
-                <ColumnConstraints percentWidth="25"/>
-                <ColumnConstraints percentWidth="25"/>
-                <ColumnConstraints percentWidth="25"/>
-                <ColumnConstraints percentWidth="25"/>
-            </columnConstraints>
-            
-            <VBox GridPane.columnIndex="0" styleClass="pos-card" spacing="5">
-                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
-                <Label text="TOTAL SOLD" styleClass="reports-totals-label"/>
-                <Label fx:id="totalSoldLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-error; -fx-font-size: 20px;"/>
-            </VBox>
-            
-            <VBox GridPane.columnIndex="1" styleClass="pos-card" spacing="5">
-                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
-                <Label text="TOTAL PURCHASED" styleClass="reports-totals-label"/>
-                <Label fx:id="totalPurchasedLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-success; -fx-font-size: 20px;"/>
-            </VBox>
-            
-            <VBox GridPane.columnIndex="2" styleClass="pos-card" spacing="5">
-                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
-                <Label text="RETURNS" styleClass="reports-totals-label"/>
-                <Label fx:id="totalReturnedLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-warning; -fx-font-size: 20px;"/>
-            </VBox>
-            
-            <VBox GridPane.columnIndex="3" styleClass="pos-card" spacing="5">
-                <padding><Insets top="15" right="20" bottom="15" left="20"/></padding>
-                <Label text="NET MOVEMENT" styleClass="reports-totals-label"/>
-                <Label fx:id="netMovementLabel" text="0" styleClass="reports-totals-value" style="-fx-text-fill: -color-info; -fx-font-size: 20px;"/>
-            </VBox>
-        </GridPane>
+
 
         <DataTableView fx:id="flowTable" VBox.vgrow="ALWAYS"/>
         

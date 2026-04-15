@@ -49,8 +49,7 @@
     -fx-font-size: 15;
 }
 
-.card-title,
-.view-title {
+.card-title {
     -fx-font-size: 16;
     -fx-font-weight: 700;
     -fx-text-fill: -color-text-main;

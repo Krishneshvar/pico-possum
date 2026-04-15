@@ -252,4 +252,10 @@ public class SalesHistoryController {
     private void handleImportLegacySales() {
         importer.handleImport();
     }
+
+    @FXML
+    private void handleRefresh() {
+        loadHistory();
+        NotificationService.success("Sale history refreshed");
+    }
 }
