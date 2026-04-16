@@ -10,7 +10,6 @@ public class GeneralSettings {
     private String timeFormat = "12 hour format";
     private String defaultPrinterName = "";
     private boolean inventoryAlertsAndRestrictionsEnabled = true;
-    private boolean numericalSkuGenerationEnabled = false;
 
     public String getStoreName() {
         return storeName;
@@ -74,13 +73,5 @@ public class GeneralSettings {
 
     public void setInventoryAlertsAndRestrictionsEnabled(boolean inventoryAlertsAndRestrictionsEnabled) {
         this.inventoryAlertsAndRestrictionsEnabled = inventoryAlertsAndRestrictionsEnabled;
-    }
-
-    public boolean isNumericalSkuGenerationEnabled() {
-        return numericalSkuGenerationEnabled;
-    }
-
-    public void setNumericalSkuGenerationEnabled(boolean numericalSkuGenerationEnabled) {
-        this.numericalSkuGenerationEnabled = numericalSkuGenerationEnabled;
     }
 }

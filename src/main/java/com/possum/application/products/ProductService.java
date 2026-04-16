@@ -53,8 +53,7 @@ public class ProductService {
             throw new ValidationException("Product cost price must be zero or greater");
 
         return transactionManager.runInTransaction(() -> {
-            boolean autoNumericSku = isNumericSkuGenerationEnabled();
-            String effectiveSku = (autoNumericSku && (command.sku() == null || command.sku().isBlank())) 
+            String effectiveSku = (command.sku() == null || command.sku().isBlank()) 
                     ? String.valueOf(productRepository.getNextGeneratedNumericSku()) 
                     : command.sku();
 
@@ -228,13 +227,7 @@ public class ProductService {
         return new com.possum.domain.model.AuditLog(null, userId, action, tableName, rowId, oldData, newData, null, null, null);
     }
 
-    private boolean isNumericSkuGenerationEnabled() {
-        try {
-            return settingsStore.loadGeneralSettings().isNumericalSkuGenerationEnabled();
-        } catch (Exception ex) {
-            return false;
-        }
-    }
+
 
     public record CreateProductCommand(
             String name,

@@ -49,7 +49,6 @@ public class ProductFormController implements Parameterizable {
     @FXML private Button saveButton;
 
     private Long productId = null;
-    private boolean numericSkuGenerationEnabled = false;
     private int initialStock = 0;
 
     public ProductFormController(ProductService productService,
@@ -79,9 +78,9 @@ public class ProductFormController implements Parameterizable {
             this.productId = null;
             titleLabel.setText("Add Product");
             recoverDraft();
-            if (numericSkuGenerationEnabled && (skuField.getText() == null || skuField.getText().isEmpty())) {
+            skuField.setEditable(false);
+            if (skuField.getText() == null || skuField.getText().isEmpty()) {
                 skuField.setText(String.valueOf(productService.getNextGeneratedNumericSku()));
-                skuField.setEditable(false);
             }
         }
     }
@@ -153,8 +152,8 @@ public class ProductFormController implements Parameterizable {
 
     @FXML
     public void initialize() {
+        skuField.setEditable(false);
         loadCategories();
-        loadSkuGenerationSettings();
 
         statusCombo.setItems(FXCollections.observableArrayList("active", "inactive", "discontinued"));
         adjustmentReasonCombo.setItems(FXCollections.observableArrayList("Correction", "Damage", "Return", "Stocktake", "Expiry", "Theft", "Other"));
@@ -222,13 +221,7 @@ public class ProductFormController implements Parameterizable {
         categoryFilter.setItems(categories.stream().map(c -> new CategoryItem(c.id(), c.name())).toList());
     }
 
-    private void loadSkuGenerationSettings() {
-        try {
-            numericSkuGenerationEnabled = settingsStore.loadGeneralSettings().isNumericalSkuGenerationEnabled();
-        } catch (Exception e) {
-            numericSkuGenerationEnabled = false;
-        }
-    }
+
 
     @FXML
     private void handleSave() {

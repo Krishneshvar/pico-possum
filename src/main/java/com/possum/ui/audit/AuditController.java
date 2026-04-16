@@ -91,6 +91,8 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
         filterBar.addMultiSelectFilter("actions", "All Actions", actions, String::toString);
         filterBar.addDateFilter("startDate", "From Date");
         filterBar.addDateFilter("endDate", "To Date");
+        
+        setupStandardFilterListener();
     }
 
     @Override

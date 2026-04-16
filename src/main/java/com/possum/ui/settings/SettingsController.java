@@ -40,7 +40,6 @@ public class SettingsController {
     @FXML private ComboBox<String> dateFormatCombo;
     @FXML private ComboBox<String> timeFormatCombo;
     @FXML private CheckBox inventoryAlertsToggle;
-    @FXML private CheckBox numericalSkuToggle;
     @FXML private ComboBox<String> printerCombo;
     @FXML private AnchorPane billSettingsTabContent;
     @FXML private Button testPrintBtn;
@@ -112,9 +111,7 @@ public class SettingsController {
             inventoryAlertsToggle.setSelected(generalSettings.isInventoryAlertsAndRestrictionsEnabled());
         }
 
-        if (numericalSkuToggle != null) {
-            numericalSkuToggle.setSelected(generalSettings.isNumericalSkuGenerationEnabled());
-        }
+
     }
 
     private void loadPrinters() {
@@ -194,9 +191,6 @@ public class SettingsController {
             settings.setTimeFormat(timeFormatCombo.getValue());
             settings.setInventoryAlertsAndRestrictionsEnabled(
                     inventoryAlertsToggle == null || inventoryAlertsToggle.isSelected()
-            );
-            settings.setNumericalSkuGenerationEnabled(
-                    numericalSkuToggle != null && numericalSkuToggle.isSelected()
             );
             
             settingsStore.saveGeneralSettings(settings);
