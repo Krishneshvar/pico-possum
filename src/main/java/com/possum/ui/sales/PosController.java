@@ -145,7 +145,7 @@ public class PosController implements CartCellHandler {
 
         completionHandler = new SaleCompletionHandler(
                 salesService, customerService, printerService, settingsStore,
-                rootPane, java.text.NumberFormat.getCurrencyInstance(), () -> { handleClearCart(); loadCombos(); });
+                rootPane, () -> { handleClearCart(); loadCombos(); });
 
             setupKeyboardShortcuts();
             updatePaymentSectionState();
@@ -243,7 +243,18 @@ public class PosController implements CartCellHandler {
             @Override public String toString(Customer c) { return c == null ? "Walk-in Customer" : c.name() + " (" + c.phone() + ")"; }
             @Override public Customer fromString(String s) { return null; }
         });
-        try { customerCombo.getItems().setAll(salesService.getAllCustomers()); } catch (Exception ignored) {}
+        Customer current = customerCombo.getValue();
+        isAutofilling = true;
+        try { 
+            List<Customer> customers = salesService.getAllCustomers();
+            customerCombo.getItems().setAll(customers); 
+            if (current != null) {
+                customers.stream().filter(c -> Objects.equals(c.id(), current.id())).findFirst().ifPresent(customerCombo::setValue);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            isAutofilling = false;
+        }
 
         paymentMethodCombo.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(PaymentMethod item, boolean empty) {
@@ -323,8 +334,8 @@ public class PosController implements CartCellHandler {
                     customerNameField.setText(val.name()); customerPhoneField.setText(val.phone());
                     customerEmailField.setText(val.email() != null ? val.email() : "");
                     customerAddressField.setText(val.address() != null ? val.address() : "");
-                } else if (old != null && old.name().equals(customerNameField.getText().trim())
-                        && old.phone().equals(customerPhoneField.getText().trim())) {
+                } else if (old != null && Objects.equals(old.name(), getSafeText(customerNameField))
+                        && Objects.equals(old.phone(), getSafeText(customerPhoneField))) {
                     customerNameField.clear(); customerPhoneField.clear(); customerEmailField.clear(); customerAddressField.clear();
                 }
             } finally { isAutofilling = false; }
@@ -342,26 +353,28 @@ public class PosController implements CartCellHandler {
     // ── Keyboard Shortcuts ────────────────────────────────────────────────────
 
     private void setupKeyboardShortcuts() {
-        Platform.runLater(() -> {
-            if (rootPane == null || rootPane.getScene() == null) return;
-            rootPane.getScene().addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
-                boolean cmd = e.isControlDown() || e.isMetaDown();
-                if (cmd && e.getCode() == KeyCode.K) { focusSearch(true); e.consume(); return; }
-                if (cmd && e.getCode() == KeyCode.ENTER) { if (!completeButton.isDisabled()) handleCompleteSale(); e.consume(); return; }
-                if (cmd && e.getCode() == KeyCode.N) { openOrSwitchToNextBill(); e.consume(); return; }
-                if (cmd && e.getCode().isDigitKey()) {
-                    String t = e.getText();
-                    if (t != null && !t.isEmpty()) { int d = t.charAt(0) - '1'; if (d >= 0 && d < MAX_BILLS) { switchBill(d); e.consume(); } }
-                    return;
+        rootPane.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            boolean cmd = e.isControlDown() || e.isMetaDown();
+            if (cmd && e.getCode() == KeyCode.K) { focusSearch(true); e.consume(); return; }
+            if (cmd && e.getCode() == KeyCode.ENTER) { if (!completeButton.isDisabled()) handleCompleteSale(); e.consume(); return; }
+            if (cmd && e.getCode() == KeyCode.N) { openOrSwitchToNextBill(); e.consume(); return; }
+            if (cmd && e.getCode().isDigitKey()) {
+                String t = e.getText();
+                if (t != null && !t.isEmpty()) { int d = t.charAt(0) - '1'; if (d >= 0 && d < MAX_BILLS) { switchBill(d); e.consume(); } }
+                return;
+            }
+            if (e.getCode() == KeyCode.F12) {
+                if (currentBill.getItems().isEmpty()) { NotificationService.warning("Add items to cart first"); e.consume(); return; }
+                
+                if (!completeButton.isDisabled()) {
+                    handleCompleteSale();
+                } else {
+                    tenderedField.requestFocus();
+                    tenderedField.selectAll();
                 }
-                if (e.getCode() == KeyCode.F12) {
-                    if (currentBill.getItems().isEmpty()) { NotificationService.warning("Add items to cart first"); e.consume(); return; }
-                    if (tenderedField.isFocused()) { if (!completeButton.isDisabled()) handleCompleteSale(); }
-                    else { tenderedField.requestFocus(); tenderedField.selectAll(); }
-                    e.consume(); return;
-                }
-                if (e.getCode() == KeyCode.ESCAPE) { autocomplete.getSearchPopup().hide(); autocomplete.getQuickProductPopup().hide(); autocomplete.getQuickCategoryPopup().hide(); rootPane.requestFocus(); e.consume(); }
-            });
+                e.consume(); return;
+            }
+            if (e.getCode() == KeyCode.ESCAPE) { autocomplete.getSearchPopup().hide(); autocomplete.getQuickProductPopup().hide(); autocomplete.getQuickCategoryPopup().hide(); rootPane.requestFocus(); e.consume(); }
         });
     }
 
@@ -574,6 +587,7 @@ public class PosController implements CartCellHandler {
     }
 
     private void updateBalanceLabel() {
+        updateTenderedVisibility();
         BigDecimal diff = currentBill.getAmountTendered().subtract(currentBill.getTotal());
         if (diff.compareTo(BigDecimal.ZERO) >= 0) {
             balanceTypeLabel.setText("Change"); balanceTypeLabel.setTextFill(Color.web("#16a34a"));
@@ -589,16 +603,27 @@ public class PosController implements CartCellHandler {
                     : (currentBill.getAmountTendered().compareTo(BigDecimal.ZERO) > 0 && currentBill.getAmountTendered().compareTo(currentBill.getTotal()) < 0);
             completeButton.setDisable(!valid);
         } else completeButton.setDisable(true);
-        updateTenderedVisibility();
     }
 
     private void updateTenderedVisibility() {
         if (tenderedBalanceContainer == null) return;
         PaymentMethod m = currentBill.getSelectedPaymentMethod(); boolean fp = currentBill.isFullPayment();
         if (m == null) { tenderedBalanceContainer.setVisible(true); tenderedBalanceContainer.setManaged(true); return; }
-        String n = m.name().toUpperCase(); boolean isDigital = n.contains("DEBIT") || n.contains("CREDIT") || n.contains("UPI") || n.contains("CARD");
+        String n = m.name().toUpperCase(); 
+        boolean isDigital = (n.contains("DEBIT") || n.contains("CREDIT") || n.contains("UPI") || n.contains("CARD")) 
+                          && !n.contains("GIFT");
         boolean hide = isDigital && fp; tenderedBalanceContainer.setVisible(!hide); tenderedBalanceContainer.setManaged(!hide);
-        if (hide) currentBill.setAmountTendered(currentBill.getTotal());
+        if (hide) {
+            currentBill.setAmountTendered(currentBill.getTotal());
+            if (tenderedField != null) {
+                isAutofilling = true;
+                try {
+                    tenderedField.setText(currentBill.getTotal().toString());
+                } finally {
+                    isAutofilling = false;
+                }
+            }
+        }
     }
 
     // ── Quick-Add Selection Helpers ───────────────────────────────────────────
@@ -669,7 +694,7 @@ public class PosController implements CartCellHandler {
         if (isAutofilling) return;
         Customer sel = customerCombo.getValue();
         if (sel != null) {
-            String n = customerNameField.getText().trim(), p = customerPhoneField.getText().trim();
+            String n = getSafeText(customerNameField), p = getSafeText(customerPhoneField);
             if (!n.equalsIgnoreCase(sel.name()) || !p.equals(sel.phone()))
                 Platform.runLater(() -> { if (customerCombo.getValue() != null) customerCombo.setValue(null); });
         }
@@ -680,6 +705,11 @@ public class PosController implements CartCellHandler {
         searchIndex.refresh();
         loadCombos();
         NotificationService.info("POS indices and customers refreshed");
+    }
+
+    private String getSafeText(TextField field) {
+        if (field == null || field.getText() == null) return "";
+        return field.getText().trim();
     }
 
     public boolean isInventoryRestrictionsEnabled() {

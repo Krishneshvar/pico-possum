@@ -10,8 +10,8 @@
           xmlns:fx="http://javafx.com/fxml"
           fx:controller="com.possum.ui.dashboard.DashboardController"
           fitToWidth="true"
-          styleClass="dashboard-container"
-          stylesheets="@../../styles/views/dashboard.css">
+          styleClass="workspace-scroll-pane, dashboard-container"
+          stylesheets="@../../styles/views/dashboard.css, @../../styles/views/reports.css">
     
     <VBox spacing="30" alignment="TOP_LEFT" style="-fx-padding: 30;">
         <padding>
@@ -26,13 +26,13 @@
             </VBox>
             <Region HBox.hgrow="ALWAYS" />
             <HBox spacing="16" alignment="CENTER_RIGHT">
-                <Button onAction="#handleRefresh" styleClass="action-button" text="Refresh">
+                <Button onAction="#handleRefresh" styleClass="action-button, refresh-btn" text="Refresh">
                     <graphic>
-                        <org.kordamp.ikonli.javafx.FontIcon iconLiteral="bx-sync" iconSize="16"/>
+                        <FontIcon iconLiteral="bx-sync" iconSize="16"/>
                     </graphic>
                 </Button>
-                <HBox alignment="CENTER_LEFT" styleClass="status-badge">
-                     <Label text="●" styleClass="status-dot"/>
+                <HBox alignment="CENTER_LEFT" fx:id="backupBadge" styleClass="status-badge">
+                     <FontIcon iconLiteral="bx-check-shield" iconSize="14" styleClass="status-icon"/>
                      <Label fx:id="backupStatusLabel" text="System Protected" styleClass="status-text"/>
                 </HBox>
             </HBox>
@@ -47,9 +47,9 @@
             </columnConstraints>
             
             <!-- Daily Sales -->
-            <VBox GridPane.columnIndex="0" styleClass="stat-card">
+            <VBox GridPane.columnIndex="0" fx:id="salesStatCard" styleClass="stat-card, card-sales">
                 <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container, stat-icon-sales">
+                    <StackPane styleClass="stat-icon-container">
                         <FontIcon iconLiteral="bx-dollar-circle" iconSize="28"/>
                     </StackPane>
                     <VBox spacing="2">
@@ -57,13 +57,13 @@
                         <Label text="Today" styleClass="stat-subtext"/>
                     </VBox>
                 </HBox>
-                <Label fx:id="dailySalesLabel" text="\$0.00" styleClass="stat-value"/>
+                <Label fx:id="dailySalesLabel" text="0.00" styleClass="stat-value"/>
             </VBox>
             
             <!-- Transactions -->
-            <VBox GridPane.columnIndex="1" styleClass="stat-card">
+            <VBox GridPane.columnIndex="1" fx:id="transStatCard" styleClass="stat-card, card-transactions">
                  <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container, stat-icon-transactions">
+                    <StackPane styleClass="stat-icon-container">
                         <FontIcon iconLiteral="bx-receipt" iconSize="28"/>
                     </StackPane>
                     <VBox spacing="2">
@@ -75,9 +75,9 @@
             </VBox>
             
             <!-- Low Stock -->
-            <VBox GridPane.columnIndex="2" styleClass="stat-card">
+            <VBox GridPane.columnIndex="2" fx:id="stockStatCard" styleClass="stat-card, card-alerts">
                 <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container, stat-icon-alerts">
+                    <StackPane styleClass="stat-icon-container">
                         <FontIcon iconLiteral="bx-error" iconSize="28"/>
                     </StackPane>
                     <VBox spacing="2">
@@ -90,25 +90,42 @@
         </GridPane>
         
         <!-- Detailed Sections -->
-        <HBox spacing="30" VBox.vgrow="ALWAYS">
-            <!-- Top Products -->
-            <VBox spacing="10" HBox.hgrow="ALWAYS" styleClass="dashboard-section">
+        <!-- Trend & Performance -->
+        <HBox spacing="25" VBox.vgrow="ALWAYS">
+            <!-- Sales Trend Chart -->
+            <VBox spacing="10" HBox.hgrow="ALWAYS" styleClass="dashboard-section, chart-section">
                 <VBox styleClass="section-title-container">
-                    <Label text="Performance Analytics" styleClass="section-title"/>
-                    <Label text="Highest revenue generating products today" styleClass="section-subtitle"/>
+                    <Label text="Sales Performance" styleClass="section-title"/>
+                    <Label text="Today's hourly sales volume trend" styleClass="section-subtitle"/>
                 </VBox>
-                <DataTableView fx:id="topProductsTable" VBox.vgrow="ALWAYS" prefHeight="400"/>
+                <javafx.scene.chart.LineChart fx:id="salesTrendChart" VBox.vgrow="ALWAYS" legendVisible="false" createSymbols="true">
+                    <xAxis>
+                        <javafx.scene.chart.CategoryAxis side="BOTTOM" label="Hour" fx:id="hourAxis" />
+                    </xAxis>
+                    <yAxis>
+                        <javafx.scene.chart.NumberAxis side="LEFT" label="Revenue" />
+                    </yAxis>
+                </javafx.scene.chart.LineChart>
             </VBox>
-            
-            <!-- Inventory Alerts -->
-            <VBox spacing="10" HBox.hgrow="ALWAYS" styleClass="dashboard-section">
+
+            <!-- Top Products -->
+            <VBox spacing="10" prefWidth="450" styleClass="dashboard-section">
                 <VBox styleClass="section-title-container">
-                    <Label text="Inventory Critical" styleClass="section-title"/>
-                    <Label text="Items requiring immediate restock attention" styleClass="section-subtitle"/>
+                    <Label text="Top Products" styleClass="section-title"/>
+                    <Label text="Highest revenue today" styleClass="section-subtitle"/>
                 </VBox>
-                <DataTableView fx:id="lowStockTable" VBox.vgrow="ALWAYS" prefHeight="400"/>
+                <DataTableView fx:id="topProductsTable" VBox.vgrow="ALWAYS"/>
             </VBox>
         </HBox>
+
+        <!-- Low Stock Alerts -->
+        <VBox spacing="10" styleClass="dashboard-section">
+            <VBox styleClass="section-title-container">
+                <Label text="Inventory Strategy" styleClass="section-title"/>
+                <Label text="Items requiring immediate restock and attention" styleClass="section-subtitle"/>
+            </VBox>
+            <DataTableView fx:id="lowStockTable" minHeight="200" prefHeight="250"/>
+        </VBox>
 
 
     </VBox>

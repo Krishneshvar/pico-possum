@@ -86,7 +86,7 @@ public class BusinessInsightsController {
     }
 
     @FXML
-    private void handleRefresh() {
+    public void handleRefresh() {
         loadInsights();
         NotificationService.success("Business insights refreshed");
     }
@@ -184,15 +184,24 @@ public class BusinessInsightsController {
     }
 
     private void updateProfitabilityChart(SalesReportSummary current) {
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Value breakdown");
+        XYChart.Series<String, Number> salesSeries = new XYChart.Series<>();
+        salesSeries.setName("Revenue");
+        salesSeries.getData().add(new XYChart.Data<>("Revenue", current.totalSales()));
         
-        series.getData().add(new XYChart.Data<>("Revenue", current.totalSales()));
-        series.getData().add(new XYChart.Data<>("Cost", current.totalCost()));
-        series.getData().add(new XYChart.Data<>("Profit", current.grossProfit()));
+        XYChart.Series<String, Number> costSeries = new XYChart.Series<>();
+        costSeries.setName("Cost");
+        costSeries.getData().add(new XYChart.Data<>("Cost", current.totalCost()));
+        
+        XYChart.Series<String, Number> profitSeries = new XYChart.Series<>();
+        profitSeries.setName("Profit");
+        profitSeries.getData().add(new XYChart.Data<>("Profit", current.grossProfit()));
         
         profitabilityChart.getData().clear();
-        profitabilityChart.getData().add(series);
+        profitabilityChart.getData().addAll(salesSeries, costSeries, profitSeries);
+
+        if (salesSeries.getNode() != null) salesSeries.getNode().getStyleClass().add("profitability-sales-series");
+        if (costSeries.getNode() != null) costSeries.getNode().getStyleClass().add("profitability-cost-series");
+        if (profitSeries.getNode() != null) profitSeries.getNode().getStyleClass().add("profitability-profit-series");
     }
 
     private void updateComparisonChart(ComparisonReport report) {
@@ -207,7 +216,9 @@ public class BusinessInsightsController {
         previousSeries.getData().add(new XYChart.Data<>("Profit", report.previous().grossProfit()));
 
         comparisonChart.getData().clear();
-        comparisonChart.getData().add(currentSeries);
-        comparisonChart.getData().add(previousSeries);
+        comparisonChart.getData().addAll(currentSeries, previousSeries);
+
+        if (currentSeries.getNode() != null) currentSeries.getNode().getStyleClass().add("comparison-current-series");
+        if (previousSeries.getNode() != null) previousSeries.getNode().getStyleClass().add("comparison-previous-series");
     }
 }

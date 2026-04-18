@@ -208,7 +208,7 @@
 
                                 <Button fx:id="completeButton" text="Complete Sale" defaultButton="true" onAction="#handleCompleteSale" styleClass="complete-btn" maxWidth="Infinity" accessibleText="Complete Sale Button">
                                     <tooltip>
-                                        <Tooltip text="Complete sale (Ctrl+Enter)"/>
+                                        <Tooltip text="Complete sale (F12)"/>
                                     </tooltip>
                                 </Button>
                             </VBox>

@@ -174,9 +174,9 @@ public class SalesReportsController {
         ));
         amountFilterColCombo.setValue("None");
 
-        minAmountField.textProperty().addListener((obs, oldVal, newVal) -> handleRefresh());
-        maxAmountField.textProperty().addListener((obs, oldVal, newVal) -> handleRefresh());
-        amountFilterColCombo.setOnAction(e -> handleRefresh());
+        minAmountField.textProperty().addListener((obs, oldVal, newVal) -> loadData());
+        maxAmountField.textProperty().addListener((obs, oldVal, newVal) -> loadData());
+        amountFilterColCombo.setOnAction(e -> loadData());
     }
 
     private BigDecimal parseAmount(String text, BigDecimal defaultValue) {

@@ -20,9 +20,10 @@ public class ProductSearchIndex {
     }
 
     private void buildIndex() {
-        ProductFilter filter = new ProductFilter(null, null, null, 0, 10000, "name", "ASC");
+        ProductFilter filter = new ProductFilter(null, List.of("active"), null, 0, 10000, "name", "ASC");
         PagedResult<Product> result = productRepository.findProducts(filter);
         
+        allProducts.clear();
         allProducts.addAll(result.items());
         
         for (Product product : allProducts) {

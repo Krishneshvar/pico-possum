@@ -1,4 +1,16 @@
+@import "../tokens.css";
+
 /* Business Insights Design System */
+
+.workspace-view,
+.dashboard-container,
+.workspace-scroll-pane {
+    -fx-background-color: -color-bg-canvas;
+}
+
+.workspace-scroll-pane .viewport {
+    -fx-background-color: -color-bg-canvas;
+}
 
 .insight-card {
     background-color: -color-surface;
@@ -120,10 +132,10 @@
 }
 
 /* Profitability Series Colors */
-.profitability-sales-series { -fx-bar-fill: -color-primary; }
-.profitability-cost-series { -fx-bar-fill: -color-text-muted; }
-.profitability-profit-series { -fx-bar-fill: -color-brand-dark; }
+.profitability-sales-series .chart-bar { -fx-bar-fill: -color-primary; }
+.profitability-cost-series .chart-bar { -fx-bar-fill: -color-text-muted; }
+.profitability-profit-series .chart-bar { -fx-bar-fill: -color-brand-dark; }
 
 /* Comparison Series Colors */
-.comparison-current-series { -fx-bar-fill: -color-primary; }
-.comparison-previous-series { -fx-bar-fill: -color-border; }
+.comparison-current-series .chart-bar { -fx-bar-fill: -color-primary; }
+.comparison-previous-series .chart-bar { -fx-bar-fill: -color-border; }

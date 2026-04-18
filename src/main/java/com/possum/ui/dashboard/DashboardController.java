@@ -25,8 +25,15 @@ public class DashboardController {
     @FXML private Label transactionsLabel;
     @FXML private Label lowStockLabel;
     @FXML private Label backupStatusLabel;
+    @FXML private javafx.scene.layout.HBox backupBadge;
+    @FXML private javafx.scene.layout.VBox salesStatCard;
+    @FXML private javafx.scene.layout.VBox transStatCard;
+    @FXML private javafx.scene.layout.VBox stockStatCard;
+    
     @FXML private DataTableView<TopProduct> topProductsTable;
     @FXML private DataTableView<Product> lowStockTable;
+    @FXML private javafx.scene.chart.LineChart<String, Number> salesTrendChart;
+    @FXML private javafx.scene.chart.CategoryAxis hourAxis;
     
     private ReportsService reportsService;
     private InventoryService inventoryService;
@@ -99,6 +106,36 @@ public class DashboardController {
         lowStockTable.setItems(FXCollections.observableArrayList(lowStockProducts));
 
         updateBackupStatus();
+        updateTrendChart();
+        updateStatCardStates(lowStockProducts.size());
+    }
+
+    private void updateTrendChart() {
+        salesTrendChart.getData().clear();
+        javafx.scene.chart.XYChart.Series<String, Number> series = new javafx.scene.chart.XYChart.Series<>();
+        series.setName("Revenue");
+
+        List<com.possum.application.reports.dto.BreakdownItem> hourlyData = reportsService.getHourlyAnalytics(LocalDate.now(), null);
+        
+        // Ensure all hours are represented for a nice chart
+        for (int h = 9; h <= 21; h++) { // Typical business hours 9 AM - 9 PM
+            String hourStr = String.format("%02d:00", h);
+            BigDecimal revenue = hourlyData.stream()
+                .filter(item -> item.name().equals(hourStr))
+                .map(item -> item.totalSales())
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+            series.getData().add(new javafx.scene.chart.XYChart.Data<>(hourStr, revenue));
+        }
+
+        salesTrendChart.getData().add(series);
+    }
+
+    private void updateStatCardStates(int lowStockCount) {
+        stockStatCard.getStyleClass().remove("critical");
+        if (lowStockCount > 0) {
+            stockStatCard.getStyleClass().add("critical");
+        }
     }
 
     private void updateBackupStatus() {

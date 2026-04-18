@@ -131,6 +131,11 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     }
 
     @Override
+    public List<Map<String, Object>> getHourlyBreakdown(String date, List<Long> paymentMethodIds) {
+        return groupedBreakdown("strftime('%H', sale_date)", "hour", date, date, paymentMethodIds);
+    }
+
+    @Override
     public List<Map<String, Object>> getTopSellingProducts(String startDate, String endDate, int limit, List<Long> paymentMethodIds) {
         String paymentFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty()) 
             ? "" 

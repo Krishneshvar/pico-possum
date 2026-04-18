@@ -70,6 +70,16 @@ public final class ReportsService {
         return new YearlyReport(startDate, endDate, "yearly", summary, breakdown);
     }
 
+    public List<BreakdownItem> getHourlyAnalytics(LocalDate date, List<Long> paymentMethodIds) {
+        List<Map<String, Object>> rawBreakdown = reportsRepository.getHourlyBreakdown(
+                date.toString(),
+                paymentMethodIds
+        );
+        return rawBreakdown.stream()
+                .map(item -> mapToBreakdownItem(item, "hour", hour -> hour + ":00"))
+                .toList();
+    }
+
     public List<TopProduct> getTopProducts(LocalDate startDate, LocalDate endDate, int limit, List<Long> paymentMethodIds) {
         List<Map<String, Object>> rawProducts = reportsRepository.getTopSellingProducts(
                 startDate.toString(),

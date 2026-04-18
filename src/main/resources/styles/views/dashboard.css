@@ -1,6 +1,13 @@
+@import "../tokens.css";
+
 /* Dashboard Styles */
 
-.dashboard-container {
+.dashboard-container,
+.workspace-scroll-pane {
+    -fx-background-color: -color-bg-canvas;
+}
+
+.workspace-scroll-pane .viewport {
     -fx-background-color: -color-bg-canvas;
 }
 
@@ -15,68 +22,85 @@
 }
 
 .status-badge {
-    -fx-background-color: -color-success-bg;
+    -fx-background-color: rgba(16, 185, 129, 0.08); /* Transparent success green */
     -fx-padding: 0 16;
     -fx-min-height: 40;
     -fx-max-height: 40;
     -fx-background-radius: 50;
     -fx-border-radius: 50;
-    -fx-border-color: -color-success;
-    -fx-border-width: 1;
-    -fx-spacing: 8;
+    -fx-border-color: rgba(16, 185, 129, 0.2);
+    -fx-border-width: 1.5;
+    -fx-spacing: 10;
     -fx-alignment: center-left;
+    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.05), 10, 0, 0, 2);
 }
 
-.status-dot {
-    -fx-text-fill: -color-success;
-    -fx-font-size: 10px;
+.status-icon {
+    -fx-icon-color: #10B981;
 }
 
 .status-text {
-    -fx-font-size: 12px;
-    -fx-text-fill: -color-success-text;
+    -fx-font-size: 13px;
+    -fx-text-fill: #059669;
     -fx-font-weight: 700;
 }
 
 /* Stat Cards */
+/* New Stat Cards with Glassmorphism */
 .stat-card {
-    -fx-background-color: -color-surface;
+    -fx-background-color: white;
     -fx-padding: 24;
-    -fx-background-radius: 12;
-    -fx-effect: -shadow-card;
-    -fx-spacing: 12;
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
+    -fx-border-color: rgba(0, 0, 0, 0.08);
+    -fx-border-width: 1.2;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.06), 15, 0, 0, 8);
+    -fx-spacing: 15;
 }
 
 .stat-card:hover {
-    -fx-effect: -shadow-card-hover;
-    -fx-translate-y: -2px;
+    -fx-border-color: rgba(79, 70, 229, 0.3); /* Primary glow on hover */
+    -fx-effect: dropshadow(three-pass-box, rgba(79, 70, 229, 0.12), 25, 0, 0, 12);
+    -fx-translate-y: -4px;
 }
 
 .stat-icon-container {
-    -fx-padding: 12;
-    -fx-background-radius: 10;
+    -fx-padding: 14;
+    -fx-background-radius: 14;
     -fx-alignment: center;
 }
 
-.stat-icon-sales {
-    -fx-background-color: -color-primary-subtle;
+.card-sales .stat-icon-container {
+    -fx-background-color: linear-gradient(to bottom right, #f0fdf4, #dcfce7);
 }
-.stat-icon-sales .font-icon {
-    -fx-icon-color: -color-primary;
-}
-
-.stat-icon-transactions {
-    -fx-background-color: -color-info-bg;
-}
-.stat-icon-transactions .font-icon {
-    -fx-icon-color: -color-info;
+.card-sales .font-icon {
+    -fx-icon-color: #16A34A;
 }
 
-.stat-icon-alerts {
-    -fx-background-color: -color-error-bg;
+.card-transactions .stat-icon-container {
+    -fx-background-color: linear-gradient(to bottom right, #eff6ff, #dbeafe);
 }
-.stat-icon-alerts .font-icon {
-    -fx-icon-color: -color-error;
+.card-transactions .font-icon {
+    -fx-icon-color: #2563EB;
+}
+
+.card-alerts .stat-icon-container {
+    -fx-background-color: linear-gradient(to bottom right, #fff4ed, #ffedd5);
+}
+.card-alerts .font-icon {
+    -fx-icon-color: #EA580C;
+}
+
+/* Alert state for stock */
+.card-alerts.critical {
+    -fx-border-color: rgba(239, 68, 68, 0.3);
+    -fx-effect: dropshadow(three-pass-box, rgba(239, 68, 68, 0.1), 20, 0, 0, 10);
+}
+.card-alerts.critical .stat-icon-container {
+    -fx-background-color: #FEF2F2;
+}
+.card-alerts.critical .font-icon {
+    -fx-icon-color: #DC2626;
 }
 
 .stat-label {
@@ -125,24 +149,45 @@
 
 
 /* Sections */
-.dashboard-section {
-    -fx-background-color: -color-surface;
-    -fx-padding: 24;
-    -fx-background-radius: 12;
-    -fx-effect: -shadow-sm;
+/* Chart Styling */
+.chart-section {
+    -fx-padding: 20;
 }
 
-.section-title-container {
-    -fx-padding: 0 0 15 0;
+.chart-section .chart-plot-background {
+    -fx-background-color: transparent;
 }
 
-.section-title {
-    -fx-font-size: 18px;
-    -fx-font-weight: 700;
-    -fx-text-fill: -color-text-main;
+.chart-section .chart-series-line {
+    -fx-stroke: linear-gradient(to right, #6366f1, #a855f7);
+    -fx-stroke-width: 4px;
 }
 
-.section-subtitle {
-     -fx-font-size: 12px;
-     -fx-text-fill: -color-text-muted;
+.chart-section .chart-line-symbol {
+    -fx-background-color: #6366f1, white;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 10;
+    -fx-padding: 5px;
+}
+
+.chart-section .axis {
+    -fx-tick-label-fill: -color-text-muted;
+    -fx-font-size: 11px;
+}
+
+.chart-section .axis-label {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.refresh-btn {
+    -fx-background-color: white;
+    -fx-border-color: #E2E8F0;
+    -fx-text-fill: #475569;
+}
+
+.refresh-btn:hover {
+    -fx-background-color: #F8FAFC;
+    -fx-border-color: #CBD5E1;
 }

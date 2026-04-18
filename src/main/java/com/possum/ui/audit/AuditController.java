@@ -14,6 +14,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
+import com.possum.ui.common.controls.NotificationService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -190,5 +191,12 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
         
         alert.setContentText(content.toString());
         alert.showAndWait();
+    }
+
+    @Override
+    @FXML
+    public void handleRefresh() {
+        loadData();
+        NotificationService.success("Audit log refreshed");
     }
 }

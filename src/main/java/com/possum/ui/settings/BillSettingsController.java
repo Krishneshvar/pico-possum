@@ -52,12 +52,13 @@ public class BillSettingsController {
         setupFormatOptions();
         loadSettings();
         buildSectionsUI();
+        updatePreviewWidth();
         updatePreview();
     }
 
     private void setupFormatOptions() {
         paperWidthCombo.getItems().addAll("2 inch (58 mm)", "3 inch (80 mm)");
-        dateFormatCombo.getItems().addAll("standard", "ISO", "short", "long");
+        dateFormatCombo.getItems().addAll("Standard", "ISO", "Short", "Long");
         timeFormatCombo.getItems().addAll("12h", "24h");
     }
 
@@ -66,15 +67,16 @@ public class BillSettingsController {
         generalSettings = settingsStore.loadGeneralSettings();
 
         paperWidthCombo.setValue(formatPaperWidth(billSettings.getPaperWidth()));
-        dateFormatCombo.setValue(billSettings.getDateFormat());
+        dateFormatCombo.setValue(capitalize(billSettings.getDateFormat()));
         timeFormatCombo.setValue(billSettings.getTimeFormat());
 
         paperWidthCombo.setOnAction(e -> {
             billSettings.setPaperWidth(parsePaperWidth(paperWidthCombo.getValue()));
+            updatePreviewWidth();
             updatePreview();
         });
         dateFormatCombo.setOnAction(e -> {
-            billSettings.setDateFormat(dateFormatCombo.getValue());
+            billSettings.setDateFormat(dateFormatCombo.getValue().toLowerCase());
             updatePreview();
         });
         timeFormatCombo.setOnAction(e -> {
@@ -98,8 +100,7 @@ public class BillSettingsController {
 
     private VBox createSectionEditor(BillSection section, int index, boolean isFirst, boolean isLast) {
         VBox container = new VBox(10);
-        container.getStyleClass().add("card");
-        container.setStyle("-fx-padding: 15; -fx-border-color: #e2e8f0; -fx-background-color: #ffffff; -fx-border-radius: 6;");
+        container.getStyleClass().add("bill-section-card");
 
         HBox header = new HBox(10);
         header.setStyle("-fx-alignment: center-left;");
@@ -160,10 +161,10 @@ public class BillSettingsController {
                 ComboBox<String> alignCombo = new ComboBox<>();
                 alignCombo.getStyleClass().add("combo-box");
                 alignCombo.setMaxWidth(Double.MAX_VALUE);
-                alignCombo.getItems().addAll("left", "center", "right");
-                alignCombo.setValue(section.getOptionAsString("alignment", "left"));
+                alignCombo.getItems().addAll("Left", "Center", "Right");
+                alignCombo.setValue(capitalize(section.getOptionAsString("alignment", "left")));
                 alignCombo.setOnAction(e -> {
-                    section.setOption("alignment", alignCombo.getValue());
+                    section.setOption("alignment", alignCombo.getValue().toLowerCase());
                     updatePreview();
                 });
                 alignBox.getChildren().addAll(alignLabel, alignCombo);
@@ -179,10 +180,10 @@ public class BillSettingsController {
                 ComboBox<String> sizeCombo = new ComboBox<>();
                 sizeCombo.getStyleClass().add("combo-box");
                 sizeCombo.setMaxWidth(Double.MAX_VALUE);
-                sizeCombo.getItems().addAll("small", "medium", "large");
-                sizeCombo.setValue(section.getOptionAsString("fontSize", "medium"));
+                sizeCombo.getItems().addAll("Small", "Medium", "Large");
+                sizeCombo.setValue(capitalize(section.getOptionAsString("fontSize", "medium")));
                 sizeCombo.setOnAction(e -> {
-                    section.setOption("fontSize", sizeCombo.getValue());
+                    section.setOption("fontSize", sizeCombo.getValue().toLowerCase());
                     updatePreview();
                 });
                 sizeBox.getChildren().addAll(sizeLabel, sizeCombo);
@@ -328,8 +329,23 @@ public class BillSettingsController {
         updatePreview();
     }
 
+    private void updatePreviewWidth() {
+        String width = billSettings.getPaperWidth();
+        if ("58mm".equals(width)) {
+            previewWebView.setPrefWidth(220); // Accurate simulation of 2-inch tape
+        } else {
+            previewWebView.setPrefWidth(320); // Accurate simulation of 3-inch (80mm) tape
+        }
+    }
+
     private String formatSectionName(String id) {
-        return id.replaceAll("([A-Z])", " $1").trim();
+        String name = id.replaceAll("([A-Z])", " $1").trim();
+        return capitalize(name);
+    }
+
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) return str;
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 
     private void updatePreview() {

@@ -16,13 +16,16 @@ import com.possum.shared.dto.GeneralSettings;
 import com.possum.ui.common.ErrorHandler;
 import com.possum.ui.common.controls.NotificationService;
 import com.possum.ui.common.dialogs.BillPreviewDialog;
+import com.possum.ui.common.dialogs.DialogStyler;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.NumberFormat;
+import com.possum.shared.util.CurrencyUtil;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,7 +45,6 @@ public class SaleCompletionHandler {
     private final PrinterService printerService;
     private final SettingsStore settingsStore;
     private final StackPane rootPane;
-    private final NumberFormat currencyFormat;
     private final Callbacks callbacks;
 
     public SaleCompletionHandler(SalesService salesService,
@@ -50,14 +52,12 @@ public class SaleCompletionHandler {
                                   PrinterService printerService,
                                   SettingsStore settingsStore,
                                   StackPane rootPane,
-                                  NumberFormat currencyFormat,
                                   Callbacks callbacks) {
         this.salesService = salesService;
         this.customerService = customerService;
         this.printerService = printerService;
         this.settingsStore = settingsStore;
         this.rootPane = rootPane;
-        this.currencyFormat = currencyFormat;
         this.callbacks = callbacks;
     }
 
@@ -134,8 +134,12 @@ public class SaleCompletionHandler {
         task.setOnSucceeded(e -> {
             SaleResponse resp = task.getValue();
             completeButton.setText("Complete Sale");
-            if (confirmPrint()) printReceipt(resp);
-            NotificationService.success("Sale completed! Total: " + currencyFormat.format(totalToDisplay));
+            
+            BigDecimal change = bill.getAmountTendered().subtract(totalToDisplay).max(BigDecimal.ZERO);
+            if (showCompletionSuccessDialog(change)) {
+                printReceipt(resp);
+            }
+            
             callbacks.onSaleSuccess();
             completeButton.setDisable(false);
         });
@@ -151,14 +155,31 @@ public class SaleCompletionHandler {
         new Thread(task).start();
     }
 
-    private boolean confirmPrint() {
+    private boolean showCompletionSuccessDialog(BigDecimal change) {
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
-        a.setTitle("Print Receipt"); a.setHeaderText(null);
-        a.setContentText("Do you want to print the bill?");
+        DialogStyler.apply(a);
         a.initOwner(rootPane.getScene().getWindow());
-        ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.YES);
-        ButtonType no  = new ButtonType("No",  ButtonBar.ButtonData.NO);
+        
+        a.setTitle("Sale Completed Successfully");
+        a.setHeaderText("Change to return: " + CurrencyUtil.format(change));
+        
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new javafx.geometry.Insets(10, 0, 10, 0));
+        
+        Label changeLabel = new Label(CurrencyUtil.format(change));
+        changeLabel.setStyle("-fx-font-size: 48px; -fx-font-weight: 900; -fx-text-fill: -color-success;");
+        
+        Label printLabel = new Label("Would you like to print the receipt?");
+        printLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: -color-text-secondary;");
+        
+        content.getChildren().addAll(changeLabel, printLabel);
+        a.getDialogPane().setContent(content);
+        
+        ButtonType yes = new ButtonType("Print Receipt", ButtonBar.ButtonData.YES);
+        ButtonType no  = new ButtonType("No Receipt",  ButtonBar.ButtonData.NO);
         a.getButtonTypes().setAll(yes, no);
+        
         return a.showAndWait().filter(r -> r == yes).isPresent();
     }
 

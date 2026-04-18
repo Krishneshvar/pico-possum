@@ -5,12 +5,16 @@
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.chart.*?>
+<?import java.net.URL?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.possum.ui.reports.SalesAnalyticsController"
-      styleClass="workspace-view"
-      stylesheets="@../../styles/inventory.css">
+      styleClass="workspace-view">
+    <stylesheets>
+        <URL value="@../../styles/tokens.css" />
+        <URL value="@../../styles/views/reports.css" />
+    </stylesheets>
 
     <HBox styleClass="view-header" alignment="CENTER_LEFT">
         <VBox>
@@ -86,7 +90,7 @@
             
             <VBox spacing="10" styleClass="card">
                 <Label text="Top Selling Products" styleClass="card-title"/>
-                <BarChart fx:id="topProductsChart" prefHeight="350" animated="false" legendVisible="false">
+                <BarChart fx:id="topProductsChart" prefHeight="350" animated="false" legendVisible="false" styleClass="top-products-chart">
                     <xAxis>
                         <CategoryAxis side="BOTTOM"/>
                     </xAxis>
@@ -99,7 +103,7 @@
             <HBox spacing="20">
                 <VBox spacing="10" HBox.hgrow="ALWAYS" styleClass="card">
                     <Label text="Sales Trend" styleClass="card-title"/>
-                    <LineChart fx:id="salesTrendChart" prefHeight="350" animated="false">
+                    <LineChart fx:id="salesTrendChart" prefHeight="350" animated="false" styleClass="sales-trend-chart">
                         <xAxis>
                             <CategoryAxis side="BOTTOM"/>
                         </xAxis>
@@ -111,7 +115,7 @@
                 
                 <VBox spacing="10" styleClass="pos-card" minWidth="400">
                     <Label text="Sales by Payment Method" styleClass="pos-card-title"/>
-                    <PieChart fx:id="paymentMethodsChart" prefHeight="350" animated="false" legendSide="BOTTOM"/>
+                    <PieChart fx:id="paymentMethodsChart" prefHeight="350" animated="false" legendSide="BOTTOM" styleClass="payment-methods-chart"/>
                 </VBox>
             </HBox>
             

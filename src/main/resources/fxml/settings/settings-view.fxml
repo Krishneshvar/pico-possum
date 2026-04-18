@@ -33,84 +33,69 @@
                 </HBox>
             </graphic>
             <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 20 0 0 0;">
-                <VBox spacing="24">
-                    <!-- Store Profile Card -->
-                    <VBox styleClass="card" spacing="24">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <FontIcon iconLiteral="bx-building" iconSize="20" iconColor="#10B981"/>
-                            <VBox spacing="2">
-                                <Label text="Store Profile" styleClass="card-title"/>
-                                <Label text="Basic information about your business" styleClass="field-helper"/>
-                            </VBox>
-                        </HBox>
+                <VBox spacing="24" style="-fx-padding: 0 0 40 0;">
+                    <GridPane hgap="24" vgap="24">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" percentWidth="50.0" />
+                            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" percentWidth="50.0" />
+                        </columnConstraints>
                         
-                        <Separator/>
-                        
-                        <VBox spacing="20">
-                            <VBox styleClass="form-group">
+                        <!-- Store Profile Card -->
+                        <VBox styleClass="card" spacing="24" GridPane.columnIndex="0" GridPane.rowIndex="0" maxHeight="Infinity">
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <FontIcon iconLiteral="bx-building" iconSize="20" iconColor="#10B981"/>
+                                <VBox spacing="2">
+                                    <Label text="Store Profile" styleClass="card-title"/>
+                                    <Label text="Basic business information" styleClass="field-helper"/>
+                                </VBox>
+                            </HBox>
+                            <Separator/>
+                            <VBox styleClass="form-group" VBox.vgrow="ALWAYS">
                                 <Label text="Currency Symbol" styleClass="form-label"/>
-                                <TextField fx:id="currencyField" prefWidth="500" maxWidth="500"
-                                          promptText="e.g. $, ₹, €"
-                                          styleClass="text-field" accessibleText="Currency Symbol"/>
-                                <Label text="Used for financial reports and default billing" styleClass="field-helper"/>
+                                <TextField fx:id="currencyField" promptText="e.g. $, ₹, €" styleClass="text-field" accessibleText="Currency Symbol"/>
+                                <Label text="Used for financial reports and billing" styleClass="field-helper"/>
                             </VBox>
                         </VBox>
-                    </VBox>
-                    
-                    <!-- Regional Settings Card -->
-                    <VBox styleClass="card" spacing="24">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <FontIcon iconLiteral="bx-world" iconSize="20" iconColor="#6366F1"/>
-                            <VBox spacing="2">
-                                <Label text="Regional Settings" styleClass="card-title"/>
-                                <Label text="Date and time display preferences" styleClass="field-helper"/>
-                            </VBox>
-                        </HBox>
                         
-                        <Separator/>
-                        
-                        <VBox spacing="20">
-                            <VBox styleClass="form-group">
-                                <Label text="Date Format" styleClass="form-label"/>
-                                <ComboBox fx:id="dateFormatCombo" prefWidth="500" maxWidth="500"
-                                          promptText="Select date format"
-                                          styleClass="combo-box" accessibleText="Date Format"/>
-                                <Label text="Format for displaying dates across the application" styleClass="field-helper"/>
-                            </VBox>
-                            
-                            <VBox styleClass="form-group">
-                                <Label text="Time Format" styleClass="form-label"/>
-                                <ComboBox fx:id="timeFormatCombo" prefWidth="500" maxWidth="500"
-                                          promptText="Select time format"
-                                          styleClass="combo-box" accessibleText="Time Format"/>
-                                <Label text="Format for displaying times across the application" styleClass="field-helper"/>
+                        <!-- Regional Settings Card -->
+                        <VBox styleClass="card" spacing="24" GridPane.columnIndex="1" GridPane.rowIndex="0" maxHeight="Infinity">
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <FontIcon iconLiteral="bx-world" iconSize="20" iconColor="#6366F1"/>
+                                <VBox spacing="2">
+                                    <Label text="Regional Settings" styleClass="card-title"/>
+                                    <Label text="Display preferences" styleClass="field-helper"/>
+                                </VBox>
+                            </HBox>
+                            <Separator/>
+                            <HBox spacing="20">
+                                <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                                    <Label text="Date Format" styleClass="form-label"/>
+                                    <ComboBox fx:id="dateFormatCombo" maxWidth="Infinity" promptText="Select" styleClass="combo-box" accessibleText="Date Format"/>
+                                </VBox>
+                                <VBox styleClass="form-group" HBox.hgrow="ALWAYS">
+                                    <Label text="Time Format" styleClass="form-label"/>
+                                    <ComboBox fx:id="timeFormatCombo" maxWidth="Infinity" promptText="Select" styleClass="combo-box" accessibleText="Time Format"/>
+                                </VBox>
+                            </HBox>
+                            <Label text="Format for displaying dates and times across the app" styleClass="field-helper"/>
+                        </VBox>
+
+                        <!-- Inventory Guardrails Card -->
+                        <VBox styleClass="card" spacing="24" GridPane.columnIndex="0" GridPane.rowIndex="1" GridPane.columnSpan="2">
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <FontIcon iconLiteral="bx-package" iconSize="20" iconColor="#F59E0B"/>
+                                <VBox spacing="2">
+                                    <Label text="Inventory Guardrails" styleClass="card-title"/>
+                                    <Label text="Control stock alerts and sales restrictions" styleClass="field-helper"/>
+                                </VBox>
+                            </HBox>
+                            <Separator/>
+                            <VBox spacing="12">
+                                <CheckBox fx:id="inventoryAlertsToggle" text="Enable inventory alerts and stock restrictions" selected="true"/>
+                                <Label text="Turn this off to allow sales even when requested quantity exceeds current stock." styleClass="field-helper" wrapText="true"/>
                             </VBox>
                         </VBox>
-                    </VBox>
-
-                    <!-- Inventory Guardrails Card -->
-                    <VBox styleClass="card" spacing="24">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <FontIcon iconLiteral="bx-package" iconSize="20" iconColor="#F59E0B"/>
-                            <VBox spacing="2">
-                                <Label text="Inventory Guardrails" styleClass="card-title"/>
-                                <Label text="Control stock alerts and stock-based sales restrictions" styleClass="field-helper"/>
-                            </VBox>
-                        </HBox>
-
-                        <Separator/>
-
-                        <VBox spacing="12">
-                            <CheckBox fx:id="inventoryAlertsToggle"
-                                      text="Enable inventory alerts and stock restrictions"
-                                      selected="true"
-                                      accessibleText="Toggle inventory alerts and stock restrictions"/>
-                            <Label text="Turn this off to allow sales and deductions even when requested quantity is more than current stock."
-                                   styleClass="field-helper"
-                                   wrapText="true"
-                                   maxWidth="560"/>
-                        </VBox>
-                    </VBox>
+                    </GridPane>
                     
                     <!-- Save Button -->
                     <HBox alignment="CENTER_LEFT" spacing="12">
@@ -144,7 +129,7 @@
                 </HBox>
             </graphic>
             <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 20 0 0 0;">
-                <VBox spacing="24">
+                <VBox spacing="24" style="-fx-padding: 0 0 40 0;">
                     <!-- Receipt Printer Card -->
                     <VBox styleClass="card" spacing="24">
                         <HBox alignment="CENTER_LEFT" spacing="15">
@@ -227,7 +212,7 @@
                 </HBox>
             </graphic>
             <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 20 0 0 0;">
-                <VBox spacing="24">
+                <VBox spacing="24" style="-fx-padding: 0 0 40 0;">
                     <VBox styleClass="card" spacing="24">
                         <HBox alignment="CENTER_LEFT" spacing="12">
                             <FontIcon iconLiteral="bx-shield-quarter" iconSize="20" iconColor="#0EA5E9"/>

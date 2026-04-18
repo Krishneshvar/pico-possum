@@ -254,7 +254,7 @@ public class SalesHistoryController {
     }
 
     @FXML
-    private void handleRefresh() {
+    public void handleRefresh() {
         loadHistory();
         NotificationService.success("Sale history refreshed");
     }

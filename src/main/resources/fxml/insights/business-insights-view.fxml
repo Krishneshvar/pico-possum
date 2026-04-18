@@ -13,7 +13,7 @@
         <URL value="@../../styles/tokens.css" />
         <URL value="@../../styles/views/insights.css" />
     </stylesheets>
-    <VBox spacing="24" styleClass="dashboard-container">
+    <VBox spacing="24" styleClass="workspace-view">
         <padding>
             <Insets bottom="32" left="32" right="32" top="32" />
         </padding>
@@ -30,12 +30,12 @@
                 <DatePicker fx:id="currentEndDate" promptText="Current End" prefWidth="180" onAction="#handleFilterChange" />
                 <Separator orientation="VERTICAL" />
                 <ComboBox fx:id="comparisonTypeCombo" promptText="Compare with..." prefWidth="180" onAction="#handleComparisonChange" />
-                <Button onAction="#handleReset" styleClass="action-button">
+                <Button onAction="#handleReset" text="Reset" styleClass="action-button">
                     <graphic>
                         <FontIcon iconLiteral="bx-reset" iconSize="18" />
                     </graphic>
                 </Button>
-                <Button onAction="#handleRefresh" styleClass="btn-icon">
+                <Button onAction="#handleRefresh" text="Refresh" styleClass="action-button">
                     <graphic>
                         <FontIcon iconLiteral="bx-sync" iconSize="18" />
                     </graphic>

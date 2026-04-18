@@ -72,4 +72,24 @@
     -shadow-card-hover: dropshadow(three-pass-box, rgba(15, 23, 42, 0.12), 24, 0, 0, 8);
     -shadow-primary-btn: dropshadow(three-pass-box, rgba(16, 185, 129, 0.35), 14, 0, 0, 4);
     -shadow-focus: dropshadow(three-pass-box, rgba(16, 185, 129, 0.4), 10, 0, 0, 0);
+
+    /* Data Visualization Palette */
+    -color-chart-1: #10B981; /* Emerald */
+    -color-chart-2: #6366F1; /* Indigo */
+    -color-chart-3: #F59E0B; /* Amber/Orange */
+    -color-chart-4: #EC4899; /* Pink */
+    -color-chart-5: #3B82F6; /* Blue */
+    -color-chart-6: #8B5CF6; /* Violet */
+
+    /* Emerald Shades (for Pie Charts/Shading) */
+    -color-emerald-50:  #ECFDF5;
+    -color-emerald-100: #D1FAE5;
+    -color-emerald-200: #A7F3D0;
+    -color-emerald-300: #6EE7B7;
+    -color-emerald-400: #34D399;
+    -color-emerald-500: #10B981;
+    -color-emerald-600: #059669;
+    -color-emerald-700: #047857;
+    -color-emerald-800: #065F46;
+    -color-emerald-900: #064E3B;
 }

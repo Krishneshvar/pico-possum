@@ -19,5 +19,7 @@ public interface ReportsRepository {
     Map<String, Object> getBusinessHealthOverview(String startDate, String endDate);
 
     List<Map<String, Object>> getStockMovementSummary(String startDate, String endDate, Long categoryId);
+
+    List<Map<String, Object>> getHourlyBreakdown(String date, List<Long> paymentMethodIds);
 }
 

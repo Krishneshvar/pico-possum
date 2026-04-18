@@ -15,6 +15,9 @@ import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.stage.Popup;
+import javafx.scene.layout.VBox;
+import javafx.scene.Node;
 
 import com.possum.shared.util.CurrencyUtil;
 import java.time.LocalDate;
@@ -39,6 +42,11 @@ public class SalesAnalyticsController {
     private SalesService salesService;
     private LocalDate startDate;
     private LocalDate endDate;
+    
+    // Tooltip elements
+    private Popup tooltip;
+    private Label tooltipTitle;
+    private Label tooltipValue;
 
     public SalesAnalyticsController(ReportsService reportsService, SalesService salesService) {
         this.reportsService = reportsService;
@@ -50,6 +58,7 @@ public class SalesAnalyticsController {
         setupReportTypes();
         setupPaymentMethods();
         setupDatePickers();
+        setupTooltip();
         loadReports();
     }
 
@@ -70,6 +79,22 @@ public class SalesAnalyticsController {
             "Daily", "Monthly", "Yearly"
         ));
         reportTypeCombo.setValue("Daily");
+    }
+
+    private void setupTooltip() {
+        tooltip = new Popup();
+        VBox card = new VBox(4);
+        card.getStyleClass().add("chart-tooltip-card");
+        
+        tooltipTitle = new Label();
+        tooltipTitle.getStyleClass().add("chart-tooltip-title");
+        
+        tooltipValue = new Label();
+        tooltipValue.getStyleClass().add("chart-tooltip-value");
+        
+        card.getChildren().addAll(tooltipTitle, tooltipValue);
+        tooltip.getContent().add(card);
+        tooltip.setAutoHide(false);
     }
 
     private void setupPaymentMethods() {
@@ -121,7 +146,7 @@ public class SalesAnalyticsController {
 
 
     @FXML
-    private void handleRefresh() {
+    public void handleRefresh() {
         loadReports();
         NotificationService.success("Sales analytics refreshed");
     }
@@ -199,6 +224,27 @@ public class SalesAnalyticsController {
         salesTrendChart.getData().clear();
         salesTrendChart.getData().add(series);
         salesTrendChart.setTitle(type + " Sales Trend");
+
+        // Apply interactivity
+        for (XYChart.Data<String, Number> data : series.getData()) {
+            Node node = data.getNode();
+            if (node != null) {
+                node.setOnMouseEntered(e -> {
+                    tooltipTitle.setText(data.getXValue());
+                    tooltipValue.setText(CurrencyUtil.format(new java.math.BigDecimal(data.getYValue().toString())));
+                    
+                    tooltip.show(node, e.getScreenX() + 15, e.getScreenY() - 40);
+                    node.setScaleX(1.5);
+                    node.setScaleY(1.5);
+                });
+                
+                node.setOnMouseExited(e -> {
+                    tooltip.hide();
+                    node.setScaleX(1.0);
+                    node.setScaleY(1.0);
+                });
+            }
+        }
     }
 
     private void loadSalesByPaymentMethod() {

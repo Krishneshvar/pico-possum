@@ -100,7 +100,7 @@ public class ProductFormController implements Parameterizable {
                 categoryService.findCategoryById(draft.categoryId()).ifPresent(c -> 
                     categoryFilter.setSelectedItem(new CategoryItem(c.id(), c.name())));
             }
-            statusCombo.setValue(draft.status() != null ? draft.status() : "active");
+            statusCombo.setValue(draft.status() != null ? com.possum.shared.util.TextFormatter.toTitleCase(draft.status()) : "Active");
             
             NotificationService.success("Unsaved product draft restored.");
         });
@@ -124,7 +124,7 @@ public class ProductFormController implements Parameterizable {
                 categoryFilter.setSelectedItem(new CategoryItem(p.categoryId(), p.categoryName()));
             }
 
-            statusCombo.setValue(p.status() != null ? p.status() : "active");
+            statusCombo.setValue(p.status() != null ? com.possum.shared.util.TextFormatter.toTitleCase(p.status()) : "Active");
 
             if (isView) {
                 setAllFieldsReadOnly();
@@ -155,7 +155,7 @@ public class ProductFormController implements Parameterizable {
         skuField.setEditable(false);
         loadCategories();
 
-        statusCombo.setItems(FXCollections.observableArrayList("active", "inactive", "discontinued"));
+        statusCombo.setItems(FXCollections.observableArrayList("Active", "Inactive", "Discontinued"));
         adjustmentReasonCombo.setItems(FXCollections.observableArrayList("Correction", "Damage", "Return", "Stocktake", "Expiry", "Theft", "Other"));
         adjustmentReasonCombo.setValue("Correction");
 
@@ -195,7 +195,7 @@ public class ProductFormController implements Parameterizable {
             parseSafeBigDecimal(priceField.getText()),
             parseSafeBigDecimal(costPriceField.getText()),
             parseSafeInt(stockAlertField.getText()),
-            statusCombo.getValue(),
+            statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
             null,
             parseSafeInt(stockField.getText()),
             userId
@@ -237,7 +237,7 @@ public class ProductFormController implements Parameterizable {
                         new BigDecimal(priceField.getText().trim()),
                         new BigDecimal(costPriceField.getText().trim()),
                         Integer.parseInt(stockAlertField.getText().trim()),
-                        statusCombo.getValue(),
+                        statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
                         null,
                         Integer.parseInt(stockField.getText().trim()),
                         userId
@@ -252,7 +252,7 @@ public class ProductFormController implements Parameterizable {
                         new BigDecimal(priceField.getText().trim()),
                         new BigDecimal(costPriceField.getText().trim()),
                         Integer.parseInt(stockAlertField.getText().trim()),
-                        statusCombo.getValue(),
+                        statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
                         null,
                         Integer.parseInt(stockField.getText().trim()),
                         adjustmentReasonCombo.getValue().toLowerCase(),

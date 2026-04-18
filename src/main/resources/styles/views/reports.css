@@ -1,0 +1,81 @@
+@import "../tokens.css";
+
+/* Sales Analytics Chart Styling */
+
+.chart-content {
+    -fx-padding: 10;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.chart-vertical-grid-lines, .chart-horizontal-grid-lines {
+    -fx-stroke: -color-border;
+    -fx-stroke-dash-array: 2 4;
+}
+
+/* Series Colors for Sales Analytics */
+
+/* Top Products Bar Chart */
+.top-products-chart .series0.chart-bar {
+    -fx-bar-fill: -color-warning;
+}
+
+/* Sales Trend Line Chart */
+.sales-trend-chart .series0.chart-series-line {
+    -fx-stroke: -color-chart-2;
+    -fx-stroke-width: 3px;
+}
+
+.sales-trend-chart .series0.chart-line-symbol {
+    -fx-background-color: white, -color-chart-2;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 10;
+    -fx-padding: 5px;
+}
+
+/* Payment Methods Pie Chart - Distinct High-Contrast Colors */
+.payment-methods-chart .default-color0.chart-pie { -fx-pie-color: #10B981; } /* Emerald */
+.payment-methods-chart .default-color1.chart-pie { -fx-pie-color: #6366F1; } /* Indigo */
+.payment-methods-chart .default-color2.chart-pie { -fx-pie-color: #F59E0B; } /* Amber */
+.payment-methods-chart .default-color3.chart-pie { -fx-pie-color: #EC4899; } /* Pink */
+.payment-methods-chart .default-color4.chart-pie { -fx-pie-color: #3B82F6; } /* Blue */
+.payment-methods-chart .default-color5.chart-pie { -fx-pie-color: #8B5CF6; } /* Violet */
+.payment-methods-chart .default-color6.chart-pie { -fx-pie-color: #14B8A6; } /* Teal */
+.payment-methods-chart .default-color7.chart-pie { -fx-pie-color: #EF4444; } /* Red */
+
+.chart-legend {
+   -fx-background-color: transparent;
+   -fx-padding: 20 0 0 0;
+}
+
+.chart-legend-item {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+/* Floating Tooltip Card Styling */
+.chart-tooltip-card {
+    -fx-background-color: -color-surface;
+    -fx-padding: 10 14;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 15, 0, 0, 8);
+}
+
+.chart-tooltip-title {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-transform: uppercase;
+}
+
+.chart-tooltip-value {
+    -fx-text-fill: -color-chart-1;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+}
