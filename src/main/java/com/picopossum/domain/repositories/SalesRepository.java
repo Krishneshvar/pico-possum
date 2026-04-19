@@ -4,7 +4,6 @@ import com.picopossum.domain.model.PaymentMethod;
 import com.picopossum.domain.model.LegacySale;
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;
-import com.picopossum.domain.model.Transaction;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.SaleFilter;
 
@@ -23,8 +22,6 @@ public interface SalesRepository {
 
     List<SaleItem> findSaleItems(long saleId);
 
-    List<Transaction> findTransactionsBySaleId(long saleId);
-
     PagedResult<Sale> findSales(SaleFilter filter);
 
     com.picopossum.application.sales.dto.SaleStats getSaleStats(SaleFilter filter);
@@ -34,8 +31,6 @@ public interface SalesRepository {
     int updateFulfillmentStatus(long id, String status);
 
     int updateSalePaidAmount(long id, BigDecimal paidAmount);
-
-    long insertTransaction(Transaction transaction, Long saleId);
 
     Optional<String> getLastSaleInvoiceNumber();
 
@@ -49,8 +44,6 @@ public interface SalesRepository {
 
     long getNextSequenceForPaymentType(String paymentTypeCode);
 
-    int updateTransactionPaymentMethod(long saleId, long newPaymentMethodId);
-
     int updateSaleCustomer(long saleId, Long customerId);
     
     int deleteSaleItem(long itemId);
@@ -59,7 +52,7 @@ public interface SalesRepository {
 
     int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal discount);
     
-    int updateTransactionAmount(long transactionId, BigDecimal amount);
+    int updateSalePaymentMethod(long saleId, long paymentMethodId);
 
     boolean upsertLegacySale(LegacySale legacySale);
 }

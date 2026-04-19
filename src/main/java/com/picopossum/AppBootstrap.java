@@ -3,7 +3,7 @@ package com.picopossum;
 import com.picopossum.application.ApplicationModule;
 import com.picopossum.application.sales.SalesService;
 import com.picopossum.ui.sales.ProductSearchIndex;
-import com.picopossum.application.transactions.TransactionService;
+
 import com.picopossum.application.returns.ReturnsService;
 import com.picopossum.application.reports.ReportsService;
 import com.picopossum.persistence.repositories.sqlite.*;
@@ -41,7 +41,7 @@ public final class AppBootstrap {
     private DependencyInjector dependencyInjector;
     private SalesService salesService;
     private ProductSearchIndex productSearchIndex;
-    private TransactionService transactionService;
+
     private ReturnsService returnsService;
     private ReportsService reportsService;
     private SqliteSalesRepository salesRepository;
@@ -138,8 +138,7 @@ public final class AppBootstrap {
         authService = new com.picopossum.application.auth.AuthService(userRepository, passwordHasher);
 
         salesRepository = new SqliteSalesRepository(databaseManager);
-        com.picopossum.persistence.repositories.sqlite.SqliteTransactionRepository transactionRepo =
-                new com.picopossum.persistence.repositories.sqlite.SqliteTransactionRepository(databaseManager);
+
         com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository returnRepository =
                 new com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository(databaseManager);
 
@@ -150,12 +149,12 @@ public final class AppBootstrap {
         saleCalculator = new com.picopossum.domain.services.SaleCalculator();
         salesService = new SalesService(salesRepository, productRepository,
                 customerRepository, auditRepository, applicationModule.getInventoryService(),
-                saleCalculator, paymentService, transactionManager, jsonService, serviceLocator.getSettingsStore(),
-                invoiceNumberService);
+                saleCalculator, paymentService, transactionManager, jsonService,
+                serviceLocator.getSettingsStore(), invoiceNumberService, returnRepository);
 
         productSearchIndex = new ProductSearchIndex(productRepository);
 
-        transactionService = new com.picopossum.application.transactions.TransactionServiceImpl(transactionRepo, salesRepository);
+
 
         com.picopossum.shared.util.TimeUtil.initialize(serviceLocator.getSettingsStore());
         com.picopossum.shared.util.CurrencyUtil.initialize(serviceLocator.getSettingsStore());
@@ -168,7 +167,7 @@ public final class AppBootstrap {
 
     private void initializeUI() {
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
-                saleCalculator, productSearchIndex, transactionService, returnsService,
+                saleCalculator, productSearchIndex, returnsService,
                 reportsService, salesRepository, appPaths, authService);
 
         dependencyInjector.getToastService().setMainStage(null);

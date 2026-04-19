@@ -135,10 +135,10 @@ class ReturnsFlowIntegrationTest {
         // Stock should be restored by 1
         assertEquals(stockAfterSale + 1, inventoryService.getProductStock(testProductId));
 
-        // A refund transaction should exist
-        List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
-        boolean hasRefund = transactions.stream().anyMatch(t -> "refund".equals(t.type()));
-        assertTrue(hasRefund, "Expected a refund transaction");
+        // A refund record should exist within the return
+        Return returnRecord = returnsService.getReturn(returnResp.id());
+        assertNotNull(returnRecord);
+        assertTrue(returnRecord.totalRefund().compareTo(BigDecimal.ZERO) > 0);
     }
 
     @Test
@@ -163,8 +163,8 @@ class ReturnsFlowIntegrationTest {
 
     @Test
     @Order(4)
-    @DisplayName("Return more than purchased — throws ValidationException")
-    void returnMoreThanPurchased_throwsValidationException() {
+    @DisplayName("Return more than sold — throws ValidationException")
+    void returnMoreThanSold_throwsValidationException() {
         SaleResponse saleResp = createSale(testProductId, 2, new BigDecimal("50.00"), new BigDecimal("100.00"));
         long saleId = saleResp.sale().id();
         long saleItemId = saleResp.items().get(0).id();

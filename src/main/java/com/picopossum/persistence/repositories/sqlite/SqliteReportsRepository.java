@@ -20,16 +20,16 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     public Map<String, Object> getSalesReportSummary(String startDate, String endDate, List<Long> paymentMethodIds) {
         String sFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty())
             ? ""
-            : "AND s.id IN (SELECT sale_id FROM transactions WHERE payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + "))";
+            : "AND s.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
         String s2Filter = (paymentMethodIds == null || paymentMethodIds.isEmpty())
             ? ""
-            : "AND s2.id IN (SELECT sale_id FROM transactions WHERE payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + "))";
+            : "AND s2.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
         String lsFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty())
             ? ""
             : "AND ls.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
-        String tFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty())
+        String rFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty())
             ? ""
-            : "AND t.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
+            : "AND r.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
         
         List<Object> params = new ArrayList<>();
         
@@ -84,8 +84,8 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                   (SELECT COALESCE(SUM(s.discount), 0) + COALESCE((SELECT SUM(si.discount_amount) FROM sale_items si JOIN sales s2 ON si.sale_id = s2.id WHERE date(s2.sale_date) >= ? AND date(s2.sale_date) <= ? AND s2.status NOT IN ('cancelled', 'draft') %s), 0) FROM sales s WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ? AND s.status NOT IN ('cancelled', 'draft') %s) AS total_discount,
                   (SELECT COALESCE(SUM(paid_amount), 0) FROM sales s WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ? AND s.status NOT IN ('cancelled', 'draft') %s) AS total_collected,
                   (SELECT COALESCE(SUM(si.quantity * si.cost_per_unit), 0) FROM sale_items si JOIN sales s2 ON si.sale_id = s2.id WHERE date(s2.sale_date) >= ? AND date(s2.sale_date) <= ? AND s2.status NOT IN ('cancelled', 'draft') %s) AS total_cost,
-                  (SELECT COALESCE(SUM(ABS(t.amount)), 0) FROM transactions t WHERE t.type = 'refund' AND t.status = 'completed' AND date(t.transaction_date) >= ? AND date(t.transaction_date) <= ? %s) AS total_refunds
-                """.formatted(sFilter, lsFilter, sFilter, lsFilter, s2Filter, sFilter, sFilter, s2Filter, tFilter),
+                  (SELECT COALESCE(SUM(refund_amount), 0) FROM returns r WHERE date(r.created_at) >= ? AND date(r.created_at) <= ? %s) AS total_refunds
+                """.formatted(sFilter, lsFilter, sFilter, lsFilter, s2Filter, sFilter, sFilter, s2Filter, rFilter),
                 rs -> {
                     Map<String, Object> map = new HashMap<>();
                     BigDecimal totalSales = rs.getBigDecimal("total_sales");
@@ -139,7 +139,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     public List<Map<String, Object>> getTopSellingProducts(String startDate, String endDate, int limit, List<Long> paymentMethodIds) {
         String paymentFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty()) 
             ? "" 
-            : "AND s.id IN (SELECT sale_id FROM transactions WHERE payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + "))";
+            : "AND s.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
         
         List<Object> params = new ArrayList<>();
         params.add(startDate);
@@ -186,13 +186,12 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                 """
                 SELECT
                   pm.name AS payment_method,
-                  COUNT(t.id) AS total_transactions,
-                  COALESCE(SUM(t.amount), 0) AS total_amount
-                FROM transactions t
-                JOIN payment_methods pm ON t.payment_method_id = pm.id
-                WHERE date(t.transaction_date) >= ? AND date(t.transaction_date) <= ?
-                  AND t.status = 'completed'
-                  AND t.type = 'payment'
+                  COUNT(s.id) AS total_transactions,
+                  COALESCE(SUM(s.paid_amount), 0) AS total_amount
+                FROM sales s
+                JOIN payment_methods pm ON s.payment_method_id = pm.id
+                WHERE date(s.sale_date) >= ? AND date(s.sale_date) <= ?
+                  AND s.status NOT IN ('cancelled', 'draft')
                 GROUP BY pm.name
                 """,
                 rs -> {
@@ -303,10 +302,10 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                 SELECT 
                     p.name AS product_name,
                     p.sku,
-                    SUM(CASE WHEN pf.event_type = 'PURCHASE' OR pf.event_type = 'RECEIVE' THEN pf.quantity ELSE 0 END) AS incoming,
-                    SUM(CASE WHEN pf.event_type = 'SALE' THEN ABS(pf.quantity) ELSE 0 END) AS outgoing,
-                    SUM(CASE WHEN pf.event_type = 'RETURN' THEN pf.quantity ELSE 0 END) AS returns,
-                    SUM(CASE WHEN pf.event_type = 'ADJUSTMENT' THEN pf.quantity ELSE 0 END) AS adjustments,
+                    SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity > 0 THEN pf.quantity ELSE 0 END) AS incoming,
+                    SUM(CASE WHEN pf.event_type = 'sale' THEN ABS(pf.quantity) ELSE 0 END) AS outgoing,
+                    SUM(CASE WHEN pf.event_type = 'return' THEN pf.quantity ELSE 0 END) AS returns,
+                    SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity < 0 THEN ABS(pf.quantity) ELSE 0 END) AS adjustments,
                     (COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0) +
                      COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id), 0)) AS current_stock
                 FROM product_flow pf
@@ -336,7 +335,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         boolean hasPaymentFilter = paymentMethodIds != null && !paymentMethodIds.isEmpty();
         String paymentFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty()) 
             ? "" 
-            : "AND s.id IN (SELECT sale_id FROM transactions WHERE payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + "))";
+            : "AND s.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
         String legacyPaymentFilter = hasPaymentFilter
                 ? "AND ls.payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")"
                 : "";
@@ -355,13 +354,14 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                   COUNT(DISTINCT s.id) AS total_transactions,
                   COALESCE(SUM(s.total_amount), 0) AS total_sales,
                   COALESCE(SUM(s.discount), 0) + COALESCE(SUM((SELECT SUM(si.discount_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_discount,
-                  COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'Cash' AND t.status = 'completed' AND t.type = 'payment')), 0) AS cash,
-                  COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'UPI' AND t.status = 'completed' AND t.type = 'payment')), 0) AS upi,
-                  COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'Debit Card' AND t.status = 'completed' AND t.type = 'payment')), 0) AS debit_card,
-                  COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'Credit Card' AND t.status = 'completed' AND t.type = 'payment')), 0) AS credit_card,
-                  COALESCE(SUM((SELECT SUM(t.amount) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND pm.name = 'Gift Card' AND t.status = 'completed' AND t.type = 'payment')), 0) AS gift_card,
-                  COALESCE(SUM((SELECT SUM(ABS(t.amount)) FROM transactions t WHERE t.sale_id = s.id AND t.type = 'refund' AND t.status = 'completed')), 0) AS refunds
+                  COALESCE(SUM(CASE WHEN pm.name = 'Cash' THEN s.paid_amount ELSE 0 END), 0) AS cash,
+                  COALESCE(SUM(CASE WHEN pm.name = 'UPI' THEN s.paid_amount ELSE 0 END), 0) AS upi,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Debit Card' THEN s.paid_amount ELSE 0 END), 0) AS debit_card,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Credit Card' THEN s.paid_amount ELSE 0 END), 0) AS credit_card,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Gift Card' THEN s.paid_amount ELSE 0 END), 0) AS gift_card,
+                  COALESCE((SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id), 0) AS refunds
                 FROM sales s
+                LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE date(sale_date) >= ? AND date(sale_date) <= ?
                   AND status NOT IN ('cancelled', 'draft')
                   %s

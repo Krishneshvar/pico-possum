@@ -63,6 +63,11 @@ public class ReturnsService {
             List<RefundCalculation> refundCalculations = returnCalculator.calculateRefunds(
                     validatedItems, saleItems, sale.discount());
             BigDecimal totalRefund = returnCalculator.calculateTotalRefund(refundCalculations);
+            Long paymentMethodId = sale.paymentMethodId();
+            if (paymentMethodId == null || paymentMethodId <= 0) {
+                List<PaymentMethod> activeMethods = salesRepository.findPaymentMethods();
+                paymentMethodId = activeMethods.isEmpty() ? 1L : activeMethods.get(0).id();
+            }
 
             // Step 6: Validate refund amount
             validateRefundAmount(totalRefund, sale.paidAmount());
@@ -74,7 +79,7 @@ public class ReturnsService {
                     request.userId(),
                     request.reason().trim(),
                     TimeUtil.nowUTC(),
-                    null, null, null, null, null
+                    null, null, totalRefund, paymentMethodId, null
             );
             long returnId = returnsRepository.insertReturn(returnRecord);
 
@@ -109,7 +114,7 @@ public class ReturnsService {
             }
 
             // Step 9: Process sale refund
-            processSaleRefund(request.saleId(), totalRefund, request.userId(), sale);
+            processSaleRefund(request.saleId(), totalRefund, sale);
 
             // Step 10: Audit logging
             Map<String, Object> auditData = Map.of(
@@ -197,7 +202,7 @@ public class ReturnsService {
         }
     }
 
-    private void processSaleRefund(Long saleId, BigDecimal refundAmount, Long userId, Sale sale) {
+    private void processSaleRefund(Long saleId, BigDecimal refundAmount, Sale sale) {
         if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ValidationException("Refund amount must be positive");
         }
@@ -208,34 +213,6 @@ public class ReturnsService {
                             refundAmount, sale.paidAmount())
             );
         }
-
-        // Determine payment method
-        List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
-        Transaction paymentTx = transactions.stream()
-                .filter(t -> "payment".equals(t.type()) && "completed".equals(t.status()))
-                .findFirst()
-                .orElse(null);
-
-        List<PaymentMethod> activeMethods = salesRepository.findPaymentMethods();
-        Long fallbackPaymentMethodId = activeMethods.isEmpty() ? 1L : activeMethods.get(0).id();
-        Long paymentMethodId = (paymentTx != null && paymentTx.paymentMethodId() != null
-                && salesRepository.paymentMethodExists(paymentTx.paymentMethodId()))
-                ? paymentTx.paymentMethodId()
-                : fallbackPaymentMethodId;
-
-        // Create refund transaction
-        Transaction refundTransaction = new Transaction(
-                null,
-                refundAmount.negate(),
-                "refund",
-                paymentMethodId,
-                null,
-                "completed",
-                TimeUtil.nowUTC(),
-                sale.invoiceNumber(),
-                null
-        );
-        salesRepository.insertTransaction(refundTransaction, saleId);
 
         // Update sale paid amount
         BigDecimal newPaidAmount = sale.paidAmount().subtract(refundAmount);

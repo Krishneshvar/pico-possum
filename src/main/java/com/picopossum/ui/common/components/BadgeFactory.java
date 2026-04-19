@@ -128,22 +128,7 @@ public final class BadgeFactory {
         return badge;
     }
 
-    /**
-     * Create a purchase order status badge.
-     */
-    public static Label createPurchaseStatusBadge(String status) {
-        Label badge = new Label(status.toUpperCase());
-        badge.getStyleClass().addAll("badge", "badge-status");
-        
-        switch (status.toLowerCase()) {
-            case "pending" -> badge.getStyleClass().add("badge-warning");
-            case "received" -> badge.getStyleClass().add("badge-success");
-            case "cancelled" -> badge.getStyleClass().add("badge-error");
-            default -> badge.getStyleClass().add("badge-neutral");
-        }
-        
-        return badge;
-    }
+
 
     /**
      * Create a sale status badge.
@@ -182,7 +167,7 @@ public final class BadgeFactory {
         
         switch (type.toLowerCase()) {
             case "sale", "out" -> badge.getStyleClass().add("badge-error");
-            case "purchase", "in" -> badge.getStyleClass().add("badge-success");
+            case "in" -> badge.getStyleClass().add("badge-success");
             case "return" -> badge.getStyleClass().add("badge-warning");
             default -> badge.getStyleClass().add("badge-neutral");
         }

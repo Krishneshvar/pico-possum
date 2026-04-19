@@ -5,7 +5,7 @@ import com.picopossum.application.sales.dto.SaleResponse;
 import com.picopossum.domain.model.Product;
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;
-import com.picopossum.domain.model.Transaction;
+import com.picopossum.domain.model.Return;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.infrastructure.printing.BillRenderer;
@@ -179,6 +179,7 @@ public class SaleDetailController implements Parameterizable {
     private void loadSaleDetails() {
         try {
             this.saleDetails = salesService.getSaleDetails(currentSale.id());
+            this.currentSale = saleDetails.sale(); // Update with latest info from service
             
             invoiceLabel.setText("#" + currentSale.shortInvoiceNumber());
             statusBadge.setText(currentSale.status().replace("_", " ").toUpperCase());
@@ -190,12 +191,7 @@ public class SaleDetailController implements Parameterizable {
             
             billerLabel.setText("Biller: " + (currentSale.billerName() != null ? currentSale.billerName() : "System"));
             
-            if (!saleDetails.transactions().isEmpty()) {
-                Transaction tx = saleDetails.transactions().get(0);
-                paymentMethodLabel.setText(tx.paymentMethodName() != null ? tx.paymentMethodName() : "External Payment");
-            } else {
-                paymentMethodLabel.setText("N/A");
-            }
+            paymentMethodLabel.setText(currentSale.paymentMethodName() != null ? currentSale.paymentMethodName() : "N/A");
 
             java.util.List<SaleItem> activeItems = saleDetails.items().stream()
                 .filter(i -> (i.quantity() - (i.returnedQuantity() != null ? i.returnedQuantity() : 0)) > 0)
@@ -211,6 +207,7 @@ public class SaleDetailController implements Parameterizable {
             
             updateSummary();
         } catch (Exception e) {
+            e.printStackTrace();
             NotificationService.error("Failed to load sale details: " + e.getMessage());
         }
     }
@@ -249,9 +246,9 @@ public class SaleDetailController implements Parameterizable {
         BigDecimal paidAmount = currentSale.paidAmount() != null ? currentSale.paidAmount() : BigDecimal.ZERO;
         
         discountTotalLabel.setText("-" + CurrencyUtil.format(totalDiscount));
-        BigDecimal totalRefunded = saleDetails.transactions().stream()
-                .filter(t -> "refund".equals(t.type()) && "completed".equals(t.status()))
-                .map(t -> t.amount().abs())
+        
+        BigDecimal totalRefunded = saleDetails.returns().stream()
+                .map(Return::totalRefund)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         boolean hasRefund = totalRefunded.compareTo(BigDecimal.ZERO) > 0;
@@ -330,11 +327,7 @@ public class SaleDetailController implements Parameterizable {
                 .findFirst()
                 .ifPresent(customerCombo::setValue);
             
-            long currentMethodId = saleDetails.transactions().stream()
-                    .filter(t -> "payment".equals(t.type()))
-                    .map(com.picopossum.domain.model.Transaction::paymentMethodId)
-                    .findFirst()
-                    .orElse(-1L);
+            long currentMethodId = currentSale.paymentMethodId() != null ? currentSale.paymentMethodId() : -1L;
                     
             paymentMethodCombo.getItems().stream()
                 .filter(m -> m.id() == currentMethodId)
@@ -386,11 +379,7 @@ public class SaleDetailController implements Parameterizable {
                 changed = true;
             }
 
-            long currentMethodId = saleDetails.transactions().stream()
-                    .filter(t -> "payment".equals(t.type()))
-                    .map(com.picopossum.domain.model.Transaction::paymentMethodId)
-                    .findFirst()
-                    .orElse(-1L);
+            long currentMethodId = currentSale.paymentMethodId() != null ? currentSale.paymentMethodId() : -1L;
             
             if (newMethodId != -1 && newMethodId != currentMethodId) {
                 salesService.changeSalePaymentMethod(currentSale.id(), newMethodId, currentUser.id());

@@ -5,7 +5,7 @@ import com.picopossum.infrastructure.lazy.ServiceLocator;
 import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.application.sales.SalesService;
 import com.picopossum.ui.sales.ProductSearchIndex;
-import com.picopossum.application.transactions.TransactionService;
+
 import com.picopossum.application.returns.ReturnsService;
 import com.picopossum.application.reports.ReportsService;
 import com.picopossum.application.drafts.DraftService;
@@ -28,7 +28,7 @@ public class DependencyInjector {
     private final com.picopossum.domain.services.SaleCalculator saleCalculator;
     private final ProductSearchIndex productSearchIndex;
 
-    private final TransactionService transactionService;
+
     private final ReturnsService returnsService;
     private final ReportsService reportsService;
 
@@ -46,7 +46,7 @@ public class DependencyInjector {
                                SalesService salesService,
                                com.picopossum.domain.services.SaleCalculator saleCalculator,
                                ProductSearchIndex productSearchIndex,
-                               TransactionService transactionService, ReturnsService returnsService,
+                               ReturnsService returnsService,
                                ReportsService reportsService,
                                SalesRepository salesRepository,
                                com.picopossum.infrastructure.filesystem.AppPaths appPaths,
@@ -58,7 +58,7 @@ public class DependencyInjector {
         this.saleCalculator = saleCalculator;
         this.productSearchIndex = productSearchIndex;
 
-        this.transactionService = transactionService;
+
         this.returnsService = returnsService;
         this.reportsService = reportsService;
         this.salesRepository = salesRepository;
@@ -82,7 +82,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.domain.services.SaleCalculator.class, () -> saleCalculator);
         registry.put(ProductSearchIndex.class, () -> productSearchIndex);
 
-        registry.put(TransactionService.class, () -> transactionService);
+
         registry.put(ReturnsService.class, () -> returnsService);
         registry.put(ReportsService.class, () -> reportsService);
 

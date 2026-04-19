@@ -107,7 +107,7 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                     int gained = rs.getInt("total_gained");
                     int events = rs.getInt("total_events");
                     java.util.Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("totalPurchased", 0);
+                    map.put("totalIncoming", gained);
                     map.put("totalSold", sold);
                     map.put("totalReturned", returned);
                     map.put("totalLost", lost);

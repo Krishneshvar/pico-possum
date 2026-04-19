@@ -2,7 +2,6 @@ package com.picopossum.application.sales;
 
 import com.picopossum.domain.exceptions.NotFoundException;
 import com.picopossum.domain.model.PaymentMethod;
-import com.picopossum.domain.model.Transaction;
 import com.picopossum.domain.repositories.SalesRepository;
 
 import java.util.List;
@@ -22,9 +21,5 @@ public class PaymentService {
 
     public List<PaymentMethod> getActivePaymentMethods() {
         return salesRepository.findPaymentMethods();
-    }
-
-    public long recordTransaction(Transaction transaction, Long saleId) {
-        return salesRepository.insertTransaction(transaction, saleId);
     }
 }

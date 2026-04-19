@@ -125,16 +125,9 @@ public class SalesModificationService {
 
             salesRepository.updateSaleTotals(saleId, grandTotal, totalDiscount);
 
-            // Auto-adjust payment transaction if the bill was settled
+            // Auto-adjust paid amount if the bill was fully settled
             if (sale.totalAmount().compareTo(sale.paidAmount()) == 0) {
-                List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
-                transactions.stream()
-                    .filter(t -> "payment".equalsIgnoreCase(t.type()) && "completed".equalsIgnoreCase(t.status()))
-                    .findFirst()
-                    .ifPresent(tx -> {
-                        salesRepository.updateTransactionAmount(tx.id(), grandTotal);
-                        salesRepository.updateSalePaidAmount(saleId, grandTotal);
-                    });
+                salesRepository.updateSalePaidAmount(saleId, grandTotal);
             }
 
             AuditLog auditLog = new AuditLog(
@@ -233,25 +226,19 @@ public class SalesModificationService {
                 throw new NotFoundException("Payment method not found: " + newPaymentMethodId);
             }
 
-            List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
-            Transaction primaryTx = transactions.stream()
-                    .filter(t -> "payment".equals(t.type()))
-                    .findFirst()
-                    .orElseThrow(() -> new ValidationException("No payment transaction found for this sale"));
-
-            if (primaryTx.paymentMethodId() == newPaymentMethodId) {
+            if (Objects.equals(sale.paymentMethodId(), newPaymentMethodId)) {
                 return null;
             }
 
-            salesRepository.updateTransactionPaymentMethod(saleId, newPaymentMethodId);
+            salesRepository.updateSalePaymentMethod(saleId, newPaymentMethodId);
 
-            Map<String, Object> oldData = Map.of("payment_method_id", primaryTx.paymentMethodId());
+            Map<String, Object> oldData = Map.of("payment_method_id", sale.paymentMethodId() != null ? sale.paymentMethodId() : -1L);
             Map<String, Object> newData = Map.of("payment_method_id", newPaymentMethodId);
             
             AuditLog auditLog = new AuditLog(
-                    null, userId, "UPDATE", "transactions", primaryTx.id(),
+                    null, userId, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
-                    jsonService.toJson(Map.of("reason", "Payment method correction", "sale_id", saleId)),
+                    jsonService.toJson(Map.of("reason", "Payment method correction")),
                     null, TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);

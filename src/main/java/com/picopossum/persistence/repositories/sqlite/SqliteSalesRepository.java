@@ -4,11 +4,10 @@ import com.picopossum.domain.model.LegacySale;
 import com.picopossum.domain.model.PaymentMethod;
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;
-import com.picopossum.domain.model.Transaction;
 import com.picopossum.persistence.db.ConnectionProvider;
 import com.picopossum.persistence.mappers.SaleItemMapper;
 import com.picopossum.persistence.mappers.SaleMapper;
-import com.picopossum.persistence.mappers.TransactionMapper;
+
 import com.picopossum.domain.repositories.SalesRepository;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.SaleFilter;
@@ -46,11 +45,12 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 c.phone AS customer_phone,
                 c.email AS customer_email,
                 u.name AS biller_name,
-                (SELECT t.payment_method_id FROM transactions t WHERE t.sale_id = s.id AND t.status = 'completed' LIMIT 1) AS payment_method_id,
-                (SELECT GROUP_CONCAT(DISTINCT pm.name) FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id WHERE t.sale_id = s.id AND t.status = 'completed') AS payment_method_name
+                s.payment_method_id,
+                pm.name AS payment_method_name
               FROM sales s
               LEFT JOIN customers c ON s.customer_id = c.id
               LEFT JOIN users u ON s.user_id = u.id
+              LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
 
               UNION ALL
 
@@ -77,7 +77,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
 
     private final SaleMapper saleMapper = new SaleMapper();
     private final SaleItemMapper saleItemMapper = new SaleItemMapper();
-    private final TransactionMapper transactionMapper = new TransactionMapper();
+
 
     public SqliteSalesRepository(ConnectionProvider connectionProvider) {
         super(connectionProvider);
@@ -88,9 +88,9 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sales (
-                  invoice_number, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, user_id
+                  invoice_number, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, user_id, payment_method_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sale.invoiceNumber(),
                 sale.totalAmount(),
@@ -99,7 +99,8 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 sale.status(),
                 sale.fulfillmentStatus() == null ? "pending" : sale.fulfillmentStatus(),
                 sale.customerId(),
-                sale.userId()
+                sale.userId(),
+                sale.paymentMethodId()
         );
     }
 
@@ -127,13 +128,11 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 """
                 SELECT
                   s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, u.name AS biller_name,
-                  t.payment_method_id,
                   pm.name AS payment_method_name
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 LEFT JOIN users u ON s.user_id = u.id
-                LEFT JOIN transactions t ON t.sale_id = s.id AND t.type = 'payment'
-                LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
+                LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE s.id = ?
                 GROUP BY s.id
                 """,
@@ -147,13 +146,11 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         String query = """
                 SELECT
                   s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, u.name AS biller_name,
-                  t.payment_method_id,
                   pm.name AS payment_method_name
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 LEFT JOIN users u ON s.user_id = u.id
-                LEFT JOIN transactions t ON t.sale_id = s.id AND t.type = 'payment'
-                LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
+                LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE s.invoice_number = ?
                 GROUP BY s.id
                 """;
@@ -187,20 +184,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         );
     }
 
-    @Override
-    public List<Transaction> findTransactionsBySaleId(long saleId) {
-        return queryList(
-                """
-                SELECT t.*, pm.name AS payment_method_name
-                FROM transactions t
-                JOIN payment_methods pm ON t.payment_method_id = pm.id
-                WHERE t.sale_id = ?
-                ORDER BY t.transaction_date ASC
-                """,
-                transactionMapper,
-                saleId
-        );
-    }
+
 
     @Override
     public PagedResult<Sale> findSales(SaleFilter filter) {
@@ -288,20 +272,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeUpdate("UPDATE sales SET paid_amount = ? WHERE id = ?", paidAmount, id);
     }
 
-    @Override
-    public long insertTransaction(Transaction transaction, Long saleId) {
-        return executeInsert(
-                """
-                INSERT INTO transactions (sale_id, amount, type, payment_method_id, status)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                saleId,
-                transaction.amount(),
-                transaction.type(),
-                transaction.paymentMethodId(),
-                transaction.status() == null ? "completed" : transaction.status()
-        );
-    }
+
 
     @Override
     public Optional<String> getLastSaleInvoiceNumber() {
@@ -426,13 +397,11 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return "WHERE " + joiner;
     }
 
+
+
     @Override
-    public int updateTransactionPaymentMethod(long saleId, long newPaymentMethodId) {
-        return executeUpdate(
-                "UPDATE transactions SET payment_method_id = ? WHERE sale_id = ? AND type = 'payment'",
-                newPaymentMethodId,
-                saleId
-        );
+    public int updateSalePaymentMethod(long saleId, long paymentMethodId) {
+        return executeUpdate("UPDATE sales SET payment_method_id = ? WHERE id = ?", paymentMethodId, saleId);
     }
 
     @Override
@@ -472,10 +441,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         );
     }
 
-    @Override
-    public int updateTransactionAmount(long transactionId, BigDecimal amount) {
-        return executeUpdate("UPDATE transactions SET amount = ? WHERE id = ?", amount, transactionId);
-    }
+
 
     @Override
     public boolean upsertLegacySale(LegacySale legacySale) {

@@ -100,7 +100,7 @@ public class CheckoutService {
                     "pending",
                     draft.getSelectedCustomer() != null ? draft.getSelectedCustomer().id() : null,
                     userId,
-                    null, null, null, null, null, null
+                    null, null, null, null, primaryPaymentMethodId, null
             );
 
             long newSaleId = salesRepository.insertSale(saleEntity);
@@ -141,12 +141,6 @@ public class CheckoutService {
             if (request.payments() != null) {
                 for (PaymentRequest p : request.payments()) {
                     totalPaid = totalPaid.add(p.amount());
-                    Transaction transaction = new Transaction(
-                            null, p.amount(), "payment", p.paymentMethodId(), 
-                            null, "completed", com.picopossum.shared.util.TimeUtil.nowUTC(), 
-                            invoiceNumber, null
-                    );
-                    salesRepository.insertTransaction(transaction, newSaleId);
                 }
             }
 
@@ -165,11 +159,10 @@ public class CheckoutService {
             return newSaleId;
         });
 
-        Sale saleResult = salesRepository.findSaleById(saleId).orElseThrow();
+        Sale saleResult = salesRepository.findSaleById(saleId).orElse(null);
         List<SaleItem> itemsResult = salesRepository.findSaleItems(saleId);
-        List<Transaction> transactionsResult = salesRepository.findTransactionsBySaleId(saleId);
 
-        return new SaleResponse(saleResult, itemsResult, transactionsResult);
+        return new SaleResponse(saleResult, itemsResult, java.util.Collections.emptyList());
     }
 
     private Map<Long, Product> fetchProductsBatch(List<Long> productIds) {

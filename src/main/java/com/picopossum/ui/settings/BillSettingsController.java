@@ -382,7 +382,7 @@ public class BillSettingsController {
         items.add(new SaleItem(2L, 1L, 2L, "SKU002", "Product B", 1, BigDecimal.valueOf(150), BigDecimal.valueOf(100), BigDecimal.ZERO, 0));
         items.add(new SaleItem(3L, 1L, 3L, "SKU003", "Product C - Large", 3, BigDecimal.valueOf(20), BigDecimal.valueOf(10), BigDecimal.ZERO, 0));
 
-        return new SaleResponse(sale, items, new ArrayList<>());
+        return new SaleResponse(sale, items, new java.util.ArrayList<>());
     }
 
     @FXML

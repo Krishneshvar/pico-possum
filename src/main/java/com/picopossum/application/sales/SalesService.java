@@ -21,6 +21,7 @@ public class SalesService {
     private final PaymentService paymentService;
     private final CheckoutService checkoutService;
     private final SalesModificationService modificationService;
+    private final ReturnsRepository returnsRepository;
 
     public SalesService(SalesRepository salesRepository,
                         ProductRepository productRepository,
@@ -32,10 +33,12 @@ public class SalesService {
                         TransactionManager transactionManager,
                         JsonService jsonService,
                         SettingsStore settingsStore,
-                        InvoiceNumberService invoiceNumberService) {
+                        InvoiceNumberService invoiceNumberService,
+                        ReturnsRepository returnsRepository) {
         this.salesRepository = salesRepository;
         this.customerRepository = customerRepository;
         this.paymentService = paymentService;
+        this.returnsRepository = returnsRepository;
 
         this.checkoutService = new CheckoutService(
             salesRepository, productRepository, customerRepository, auditRepository,
@@ -55,8 +58,8 @@ public class SalesService {
         Sale sale = salesRepository.findSaleById(saleId)
                 .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
         List<SaleItem> items = salesRepository.findSaleItems(saleId);
-        List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
-        return new SaleResponse(sale, items, transactions);
+        List<com.picopossum.domain.model.Return> returns = returnsRepository.findReturnsBySaleId(saleId);
+        return new SaleResponse(sale, items, returns);
     }
 
     public Optional<Sale> findSaleByInvoiceNumber(String invoiceNumber) {
