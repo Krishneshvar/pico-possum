@@ -67,6 +67,9 @@
 
             <HBox styleClass="form-actions">
                 <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true" accessibleText="Cancel and close"/>
+                <Button fx:id="editButton" text="Edit" onAction="#handleEdit" styleClass="action-button, primary-button" visible="false" managed="false">
+                    <graphic><FontIcon iconLiteral="bx-edit-alt" iconSize="16"/></graphic>
+                </Button>
                 <Button fx:id="saveButton" text="Save Employee" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true" accessibleText="Save employee details"/>
             </HBox>
         </VBox>

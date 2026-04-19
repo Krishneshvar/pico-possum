@@ -32,7 +32,10 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     private final ImportHandler importHandler;
 
     private List<String> currentStatusFilters = java.util.Collections.emptyList();
+    private List<String> currentStockStatusFilters = java.util.Collections.emptyList();
     private List<Long> currentCategoryFilters = java.util.Collections.emptyList();
+    private BigDecimal currentMinPrice = null;
+    private BigDecimal currentMaxPrice = null;
 
     public ProductsController(ProductService productService,
                               CategoryService categoryService,
@@ -74,14 +77,37 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         dataTable.setEmptyMessage("No products found");
         dataTable.setEmptySubtitle("Try changing filters or create your first product.");
 
-        TableColumn<Product, String> nameCol = new TableColumn<>("Name");
-        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
-
         TableColumn<Product, String> skuCol = new TableColumn<>("SKU");
         skuCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().sku()));
 
+        TableColumn<Product, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
+
         TableColumn<Product, String> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().mrp() != null ? com.picopossum.shared.util.CurrencyUtil.format(cellData.getValue().mrp()) : "-"));
+
+        TableColumn<Product, String> stockCol = new TableColumn<>("Stock");
+        stockCol.setPrefWidth(120);
+        stockCol.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().stock())));
+        stockCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    Product p = getTableRow().getItem();
+                    if (p != null) {
+                        setGraphic(com.picopossum.ui.common.components.BadgeFactory.createStockBadge(p.stock(), p.stockAlertCap()));
+                        setText(null);
+                    } else {
+                        setText(item);
+                        setGraphic(null);
+                    }
+                }
+            }
+        });
 
         TableColumn<Product, String> categoryCol = new TableColumn<>("Category");
         categoryCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().categoryName()));
@@ -103,7 +129,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             }
         });
 
-        dataTable.getTableView().getColumns().addAll(nameCol, skuCol, priceCol, categoryCol, statusCol);
+        dataTable.getTableView().getColumns().addAll(skuCol, nameCol, priceCol, stockCol, categoryCol, statusCol);
         addActionMenuColumn();
     }
 
@@ -113,12 +139,23 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
         filterBar.addMultiSelectFilter("status", "Status", List.of("active", "inactive", "discontinued"), 
             item -> item.substring(0, 1).toUpperCase() + item.substring(1), false);
+        
+        filterBar.addMultiSelectFilter("stockStatus", "Stock Status", List.of("in-stock", "low-stock", "out-of-stock"),
+            item -> com.picopossum.shared.util.TextFormatter.toTitleCase(item.replace("-", " ")), false);
+
         filterBar.addMultiSelectFilter("categories", "Categories", categories, Category::name);
+        
+        filterBar.addTextFilter("minPrice", "Min Price");
+        filterBar.addTextFilter("maxPrice", "Max Price");
 
         setupStandardFilterListener((filters, reload) -> {
             @SuppressWarnings("unchecked")
             List<String> statusFilter = (List<String>) filters.get("status");
             currentStatusFilters = statusFilter != null ? statusFilter : java.util.Collections.emptyList();
+
+            @SuppressWarnings("unchecked")
+            List<String> stockStatusFilter = (List<String>) filters.get("stockStatus");
+            currentStockStatusFilters = stockStatusFilter != null ? stockStatusFilter : java.util.Collections.emptyList();
 
             @SuppressWarnings("unchecked")
             List<Category> cats = (List<Category>) filters.get("categories");
@@ -128,8 +165,22 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
                 currentCategoryFilters = java.util.Collections.emptyList();
             }
 
+            currentMinPrice = parseBigDecimal(filters.get("minPrice"));
+            currentMaxPrice = parseBigDecimal(filters.get("maxPrice"));
+
             reload.run();
         });
+    }
+
+    private BigDecimal parseBigDecimal(Object value) {
+        if (value == null) return null;
+        if (value instanceof BigDecimal) return (BigDecimal) value;
+        try {
+            String s = value.toString().replaceAll("[^0-9.\\-]", "");
+            return s.isEmpty() ? null : new BigDecimal(s);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
 
@@ -139,6 +190,9 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             getSearchOrNull(),
             currentStatusFilters.isEmpty() ? null : currentStatusFilters,
             currentCategoryFilters.isEmpty() ? null : currentCategoryFilters,
+            currentStockStatusFilters.isEmpty() ? null : currentStockStatusFilters,
+            currentMinPrice,
+            currentMaxPrice,
             getCurrentPage(),
             getPageSize(),
             "name",

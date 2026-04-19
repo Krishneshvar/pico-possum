@@ -114,23 +114,10 @@
                                 <Label text="Quick Add Product" styleClass="pos-card-title"/>
 
                                 <VBox spacing="8">
-                                    <VBox spacing="4">
-                                        <Label text="Product Name" styleClass="form-label"/>
-                                        <TextField fx:id="quickProductName" promptText="Search or type product name" styleClass="search-field-pos" accessibleText="Quick Add Product Name Input"/>
-                                    </VBox>
-
                                     <HBox spacing="10">
-
-                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                                            <Label text="Stock" styleClass="form-label"/>
-                                            <TextField fx:id="quickStock" promptText="0" styleClass="search-field-pos" accessibleText="Quick Add Stock Input"/>
-                                        </VBox>
-                                    </HBox>
-
-                                    <HBox spacing="10">
-                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                                            <Label text="Price" styleClass="form-label"/>
-                                            <TextField fx:id="quickPrice" promptText="0.00" styleClass="search-field-pos" accessibleText="Quick Add Price Input"/>
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS" prefWidth="200">
+                                            <Label text="Product Name" styleClass="form-label"/>
+                                            <TextField fx:id="quickProductName" promptText="Name" styleClass="search-field-pos" accessibleText="Quick Add Product Name Input"/>
                                         </VBox>
                                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                                             <Label text="Category" styleClass="form-label"/>
@@ -138,7 +125,29 @@
                                         </VBox>
                                     </HBox>
 
-                                    <Button text="Add and Push to Cart" onAction="#handleQuickAddProduct" styleClass="complete-btn" maxWidth="Infinity" accessibleText="Quick Add Product Button"/>
+                                    <HBox spacing="10">
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="MRP" styleClass="form-label"/>
+                                            <TextField fx:id="quickPrice" promptText="0.00" styleClass="search-field-pos" accessibleText="Quick Add Price Input"/>
+                                        </VBox>
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Cost Price" styleClass="form-label"/>
+                                            <TextField fx:id="quickCostPrice" promptText="0.00" styleClass="search-field-pos" accessibleText="Quick Add Cost Price Input"/>
+                                        </VBox>
+                                    </HBox>
+
+                                    <HBox spacing="10">
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Current Stock" styleClass="form-label"/>
+                                            <TextField fx:id="quickStock" promptText="0" styleClass="search-field-pos" accessibleText="Quick Add Stock Input"/>
+                                        </VBox>
+                                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                            <Label text="Stock Alert" styleClass="form-label"/>
+                                            <TextField fx:id="quickStockAlert" text="10" promptText="10" styleClass="search-field-pos" accessibleText="Quick Add Stock Alert Input"/>
+                                        </VBox>
+                                    </HBox>
+
+                                    <Button text="Add and Push to Cart" onAction="#handleQuickAddProduct" styleClass="complete-btn" maxWidth="Infinity" accessibleText="Quick Add Product Button" style="-fx-margin-top: 10;"/>
                                 </VBox>
                             </VBox>
                         </HBox>

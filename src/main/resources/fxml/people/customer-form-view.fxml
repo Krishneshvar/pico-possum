@@ -58,6 +58,7 @@
 
             <HBox spacing="10" alignment="CENTER_RIGHT" style="-fx-padding: 10 0 0 0;">
                 <Button text="Cancel" onAction="#handleCancel" styleClass="action-button" cancelButton="true" accessibleText="Cancel and close"/>
+                <Button fx:id="editButton" text="Edit" onAction="#handleEdit" styleClass="action-button, primary-button" visible="false" managed="false"/>
                 <Button fx:id="saveButton" text="Save Customer" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true" accessibleText="Save customer details"/>
             </HBox>
         </VBox>

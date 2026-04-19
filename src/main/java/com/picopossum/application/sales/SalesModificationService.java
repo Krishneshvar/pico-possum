@@ -49,7 +49,6 @@ public class SalesModificationService {
     }
 
     public void updateSaleItems(long saleId, List<UpdateSaleItemRequest> itemRequests, long userId) {
-        
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -60,72 +59,87 @@ public class SalesModificationService {
 
             List<SaleItem> oldItems = salesRepository.findSaleItems(saleId);
             
-            for (SaleItem oldItem : oldItems) {
-                inventoryService.restoreStock(
-                        oldItem.productId(),
-                        "sale_item",
-                        oldItem.id(),
-                        oldItem.quantity(),
-                        userId,
-                        InventoryReason.CORRECTION,
-                        "bill_edit_restoration",
-                        saleId
-                );
-                salesRepository.deleteSaleItem(oldItem.id());
-            }
-
-            List<Long> productIds = itemRequests.stream().map(UpdateSaleItemRequest::productId).toList();
-            Map<Long, Product> productMap = fetchProductsBatch(productIds);
+            // ─── 1. Physical Inventory Delta ───────────────────
+            Map<Long, Integer> oldProductTotals = new HashMap<>();
+            oldItems.forEach(i -> oldProductTotals.merge(i.productId(), i.quantity(), Integer::sum));
+            
+            Map<Long, Integer> newProductTotals = new HashMap<>();
+            itemRequests.forEach(r -> newProductTotals.merge(r.productId(), r.quantity(), Integer::sum));
+            
+            java.util.Set<Long> productIds = new java.util.HashSet<>(oldProductTotals.keySet());
+            productIds.addAll(newProductTotals.keySet());
 
             boolean enforceInventoryRestrictions = isInventoryRestrictionsEnabled();
-            for (UpdateSaleItemRequest req : itemRequests) {
-                if (enforceInventoryRestrictions) {
-                    int currentStock = inventoryService.getProductStock(req.productId());
-                    if (currentStock < req.quantity()) {
-                        throw new InsufficientStockException(currentStock, req.quantity());
-                    }
+            
+            // Verify stock for net additions
+            for (Long pid : productIds) {
+                int oldQ = oldProductTotals.getOrDefault(pid, 0);
+                int newQ = newProductTotals.getOrDefault(pid, 0);
+                int diff = newQ - oldQ;
+                
+                if (diff > 0 && enforceInventoryRestrictions) {
+                    int currentStock = inventoryService.getProductStock(pid);
+                    if (currentStock < diff) throw new InsufficientStockException(currentStock, diff);
                 }
             }
 
-            BigDecimal newSubtotal = BigDecimal.ZERO;
-            BigDecimal totalDiscount = sale.discount() != null ? sale.discount() : BigDecimal.ZERO;
+            // Apply stock changes
+            for (Long pid : productIds) {
+                int oldQ = oldProductTotals.getOrDefault(pid, 0);
+                int newQ = newProductTotals.getOrDefault(pid, 0);
+                int diff = newQ - oldQ;
 
-            for (UpdateSaleItemRequest req : itemRequests) {
-                Product p = productMap.get(req.productId());
-                if (p == null) throw new NotFoundException("Product not found: " + req.productId());
-
-                BigDecimal lineGross = req.pricePerUnit().multiply(BigDecimal.valueOf(req.quantity()));
-                BigDecimal lineDiscount = req.discount() != null ? req.discount() : BigDecimal.ZERO;
-                BigDecimal lineNet = lineGross.subtract(lineDiscount).max(BigDecimal.ZERO);
-                newSubtotal = newSubtotal.add(lineNet);
-
-                SaleItem item = new SaleItem(
-                        null, saleId, p.id(), p.sku(), p.name(),
-                        req.quantity(), req.pricePerUnit(), p.costPrice(),
-                        req.discount(), null
-                );
-                long newItemId = salesRepository.insertSaleItem(item);
-                
-                inventoryService.deductStock(
-                        p.id(), req.quantity(), userId, InventoryReason.SALE,
-                        "sale_item", newItemId
-                );
+                if (diff > 0) {
+                    inventoryService.deductStock(pid, diff, userId, InventoryReason.SALE, "sale_edit_add", saleId);
+                } else if (diff < 0) {
+                    // Find an old item to use as a reference for restoration
+                    long refId = oldItems.stream().filter(i -> i.productId() == pid).findFirst().get().id();
+                    inventoryService.restoreStock(pid, "sale_item", refId, Math.abs(diff), userId, InventoryReason.CORRECTION, "sale_edit_reduction", saleId);
+                }
             }
 
+            // ─── 2. Refresh Invoice Items (Database) ───────────
+            for (SaleItem oldItem : oldItems) {
+                salesRepository.deleteSaleItem(oldItem.id());
+            }
+
+            Map<Long, Product> productDetails = fetchProductsBatch(new ArrayList<>(newProductTotals.keySet()));
+            BigDecimal newSubtotal = BigDecimal.ZERO;
+            for (UpdateSaleItemRequest req : itemRequests) {
+                Product p = productDetails.get(req.productId());
+                BigDecimal lineNet = req.pricePerUnit().multiply(BigDecimal.valueOf(req.quantity()))
+                                     .subtract(req.discount() != null ? req.discount() : BigDecimal.ZERO)
+                                     .max(BigDecimal.ZERO);
+                newSubtotal = newSubtotal.add(lineNet);
+
+                salesRepository.insertSaleItem(new SaleItem(
+                    null, saleId, p.id(), p.sku(), p.name(),
+                    req.quantity(), req.pricePerUnit(), p.costPrice(),
+                    req.discount(), null
+                ));
+            }
+
+            // ─── 3. Financial Totals & Payments ─────────────
+            BigDecimal totalDiscount = sale.discount() != null ? sale.discount() : BigDecimal.ZERO;
             BigDecimal grandTotal = newSubtotal.subtract(totalDiscount).max(BigDecimal.ZERO);
 
-            salesRepository.updateSaleTotals(
-                    saleId, 
-                    grandTotal, 
-                    totalDiscount
-            );
+            salesRepository.updateSaleTotals(saleId, grandTotal, totalDiscount);
 
-            Map<String, Object> oldSummary = Map.of("item_count", oldItems.size(), "total", sale.totalAmount());
-            Map<String, Object> newSummary = Map.of("item_count", itemRequests.size(), "total", grandTotal);
-            
+            // Auto-adjust payment transaction if the bill was settled
+            if (sale.totalAmount().compareTo(sale.paidAmount()) == 0) {
+                List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
+                transactions.stream()
+                    .filter(t -> "payment".equalsIgnoreCase(t.type()) && "completed".equalsIgnoreCase(t.status()))
+                    .findFirst()
+                    .ifPresent(tx -> {
+                        salesRepository.updateTransactionAmount(tx.id(), grandTotal);
+                        salesRepository.updateSalePaidAmount(saleId, grandTotal);
+                    });
+            }
+
             AuditLog auditLog = new AuditLog(
                     null, userId, "UPDATE", "sales", saleId,
-                    jsonService.toJson(oldSummary), jsonService.toJson(newSummary),
+                    jsonService.toJson(Map.of("total", sale.totalAmount())), jsonService.toJson(Map.of("total", grandTotal)),
                     jsonService.toJson(Map.of("reason", "Line item correction")),
                     null, TimeUtil.nowUTC()
             );
@@ -155,7 +169,7 @@ public class SalesModificationService {
                         item.id(),
                         item.quantity(),
                         userId,
-                        InventoryReason.CORRECTION,
+                        InventoryReason.RETURN,
                         "sale_cancellation",
                         saleId
                 );

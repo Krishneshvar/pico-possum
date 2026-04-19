@@ -104,12 +104,14 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                     ia.quantity_change,
                     ia.reason,
                     u.name AS adjusted_by_name,
-                    ia.adjusted_at
+                    ia.adjusted_at,
+                    p.stock_alert_cap,
+                    (%s) AS current_stock
                 FROM inventory_adjustments ia
                 JOIN products p ON ia.product_id = p.id
                 LEFT JOIN users u ON ia.adjusted_by = u.id
                 WHERE 1=1
-                """);
+                """.formatted(STOCK_SQL));
 
         java.util.List<Object> params = new java.util.ArrayList<>();
 

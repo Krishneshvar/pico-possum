@@ -29,20 +29,12 @@
     -fx-border-color: transparent -color-brand-dark-hover transparent transparent;
     -fx-border-width: 0 1 0 0;
     -fx-min-height: 56;
-    -fx-cursor: hand;
-}
-
-.navbar-brand:hover {
-    -fx-background-color: -color-brand-dark-hover;
-}
-
-.navbar-brand:hover .brand-title {
-    -fx-text-fill: -color-primary;
+    -fx-cursor: default;
 }
 
 .navbar-brand:focused {
-    -fx-border-color: -color-border-focus;
-    -fx-border-width: 2;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
 }
 
 .brand-title {

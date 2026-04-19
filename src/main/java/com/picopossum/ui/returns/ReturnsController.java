@@ -134,6 +134,8 @@ public class ReturnsController extends AbstractCrudController<Return, ReturnFilt
         filterBar.addDateFilter("toDate", "To Date");
         filterBar.addTextFilter("minAmount", "Min Refund");
         filterBar.addTextFilter("maxAmount", "Max Refund");
+
+        setupStandardFilterListener();
     }
 
     @Override

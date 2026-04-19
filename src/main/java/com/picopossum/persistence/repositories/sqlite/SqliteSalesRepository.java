@@ -473,6 +473,11 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
     }
 
     @Override
+    public int updateTransactionAmount(long transactionId, BigDecimal amount) {
+        return executeUpdate("UPDATE transactions SET amount = ? WHERE id = ?", amount, transactionId);
+    }
+
+    @Override
     public boolean upsertLegacySale(LegacySale legacySale) {
         String saleDate = legacySale.saleDate() != null
                 ? legacySale.saleDate().toString().replace('T', ' ')

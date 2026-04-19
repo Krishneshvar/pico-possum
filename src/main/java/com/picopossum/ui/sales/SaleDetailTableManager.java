@@ -138,14 +138,16 @@ public class SaleDetailTableManager {
         });
 
         TableColumn<SaleItem, Void> actionsCol = new TableColumn<>("");
+        actionsCol.setMinWidth(50);
+        actionsCol.setMaxWidth(50);
         actionsCol.setCellFactory(col -> new TableCell<>() {
             private final javafx.scene.control.Button deleteBtn = new javafx.scene.control.Button();
             {
-                deleteBtn.getStyleClass().add("danger-button");
+                deleteBtn.getStyleClass().add("btn-delete");
                 FontIcon trashIcon = new FontIcon("bx-trash");
-                trashIcon.setIconSize(14);
-                trashIcon.setIconColor(javafx.scene.paint.Color.WHITE);
+                trashIcon.setIconSize(16);
                 deleteBtn.setGraphic(trashIcon);
+                deleteBtn.setTooltip(new javafx.scene.control.Tooltip("Remove this item"));
                 deleteBtn.setOnAction(e -> {
                     int index = getIndex();
                     if (index >= 0 && index < getTableView().getItems().size()) {

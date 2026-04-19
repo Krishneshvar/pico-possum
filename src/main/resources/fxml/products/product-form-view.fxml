@@ -30,6 +30,12 @@
                     <Tooltip text="Return without saving (Esc)"/>
                 </tooltip>
             </Button>
+            <Button fx:id="editButton" text="Edit" onAction="#handleEdit" styleClass="action-button, primary-button" visible="false" managed="false">
+                <graphic><FontIcon iconLiteral="bx-edit-alt" iconSize="16"/></graphic>
+                <tooltip>
+                    <Tooltip text="Edit this product"/>
+                </tooltip>
+            </Button>
             <Button fx:id="saveButton" text="Save Product" onAction="#handleSave" styleClass="action-button, primary-button" defaultButton="true" accessibleText="Save the product" accessibleRole="BUTTON">
                 <tooltip>
                     <Tooltip text="Save product (Enter)"/>

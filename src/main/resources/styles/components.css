@@ -346,6 +346,11 @@
     -fx-effect: -shadow-primary-btn;
 }
 
+.primary-button .ikonli-font-icon,
+.complete-btn .ikonli-font-icon {
+    -fx-icon-color: white;
+}
+
 .primary-button:hover,
 .complete-btn:hover {
     -fx-background-color: -color-primary-gradient-hover;

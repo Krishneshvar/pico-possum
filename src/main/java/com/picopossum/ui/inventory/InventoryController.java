@@ -152,7 +152,7 @@ public class InventoryController extends AbstractCrudController<Product, Product
         stockCol.setId("stock");
         priceCol.setId("price");
 
-        dataTable.getTableView().getColumns().addAll(productCol, skuCol, categoryCol, priceCol, stockCol, statusCol);
+        dataTable.getTableView().getColumns().addAll(skuCol, productCol, priceCol, stockCol, categoryCol, statusCol);
     }
 
     @Override

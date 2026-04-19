@@ -45,7 +45,7 @@ public class PosController implements CartCellHandler {
     @FXML private TextField searchField;
     @FXML private Label totalQtyLabel, bottomTotalLabel, bottomMrpLabel, bottomPriceTotalLabel;
 
-    @FXML private TextField quickProductName, quickStock, quickPrice, quickCategorySearch;
+    @FXML private TextField quickProductName, quickStock, quickPrice, quickCategorySearch, quickCostPrice, quickStockAlert;
     @FXML private Label quickAddTitle;
 
     @FXML private ComboBox<Customer>       customerCombo;
@@ -533,36 +533,58 @@ public class PosController implements CartCellHandler {
     @FXML private void handleQuickAddProduct() {
         String pN = quickProductName.getText().trim();
         String pS = quickPrice.getText().trim(),       sS = quickStock.getText().trim();
+        String cP = quickCostPrice.getText().trim(),    sA = quickStockAlert.getText().trim();
         String cN = quickCategorySearch.getText().trim();
-        if (pN.isEmpty() || pS.isEmpty() || cN.isEmpty()) { NotificationService.error("Please enter product name, price and select a category."); return; }
+        
+        if (pN.isEmpty() || pS.isEmpty() || cN.isEmpty()) { 
+            NotificationService.error("Please enter product name, MRP and select a category."); 
+            return; 
+        }
+        
         Category cat = selectedCategoryForQuickAdd;
         if (cat == null) cat = categoryService.getAllCategories().stream().filter(c -> c.name().equalsIgnoreCase(cN)).findFirst().orElse(null);
         if (cat == null) { NotificationService.error("Please select a valid category."); return; }
+        
         try {
-            BigDecimal price = new BigDecimal(pS); int stock = sS.isEmpty() ? 1 : Math.max(0, Integer.parseInt(sS));
-            AuthUser cur = AuthContext.getCurrentUser(); long uId = cur != null ? cur.id() : 1L;
-            Product pCart = null; Long pId = selectedProductIdForQuickAdd;
+            BigDecimal price = new BigDecimal(pS);
+            BigDecimal costPrice = cP.isEmpty() ? BigDecimal.ZERO : new BigDecimal(cP);
+            int stock = sS.isEmpty() ? 0 : Math.max(0, Integer.parseInt(sS));
+            int alertCap = sA.isEmpty() ? 10 : Integer.parseInt(sA);
+            
+            AuthUser cur = AuthContext.getCurrentUser(); 
+            long uId = cur != null ? cur.id() : 1L;
+            
+            Product pCart = null; 
+            Long pId = selectedProductIdForQuickAdd;
             if (pId == null) {
                 Optional<Product> m = searchIndex.searchByName(pN).stream().filter(p -> p.name().equalsIgnoreCase(pN)).findFirst();
                 if (m.isPresent()) pId = m.get().id();
             }
+            
             final Category finalCat = cat;
             if (pId != null) {
-                final Long fId = pId;
-                productService.updateProduct(fId, new ProductService.UpdateProductCommand(pN, null, finalCat.id(), null, price, BigDecimal.ZERO, 10, "active", null, stock, "Quick add adjustment", uId));
+                productService.updateProduct(pId, new ProductService.UpdateProductCommand(pN, null, finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, "Quick add adjustment", uId));
                 searchIndex.refresh();
-                pCart = searchIndex.findBySku(productService.getProductById(fId).sku()).orElse(null);
+                pCart = searchIndex.findBySku(productService.getProductById(pId).sku()).orElse(null);
             } else {
-                long newId = productService.createProduct(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), null, price, BigDecimal.ZERO, 10, "active", null, stock, uId));
+                long newId = productService.createProduct(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, uId));
                 searchIndex.refresh();
                 pCart = productService.getProductById(newId);
             }
+            
             if (pCart != null) {
-                addToCart(pCart); quickProductName.clear(); quickPrice.clear(); quickStock.clear(); quickCategorySearch.clear();
-                selectedProductIdForQuickAdd = null; selectedCategoryForQuickAdd = null; NotificationService.success("Added to cart.");
+                addToCart(pCart); 
+                quickProductName.clear(); quickPrice.clear(); quickStock.clear(); quickCategorySearch.clear();
+                quickCostPrice.clear(); quickStockAlert.setText("10");
+                selectedProductIdForQuickAdd = null; selectedCategoryForQuickAdd = null; 
+                NotificationService.success("Product added to cart.");
             } else NotificationService.error("Failed to process quick add.");
-        } catch (NumberFormatException e) { NotificationService.error("Please enter a valid numeric price/stock."); }
-        catch (Exception e) { LoggingConfig.getLogger().error("Quick add failed", e); NotificationService.error("Quick add failed: " + ErrorHandler.toUserMessage(e)); }
+        } catch (NumberFormatException e) { 
+            NotificationService.error("Please enter valid numeric values for prices/stock."); 
+        } catch (Exception e) { 
+            LoggingConfig.getLogger().error("Quick add failed", e); 
+            NotificationService.error("Quick add failed: " + ErrorHandler.toUserMessage(e)); 
+        }
     }
 
     // ── Totals / UI ───────────────────────────────────────────────────────────

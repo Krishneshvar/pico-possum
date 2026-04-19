@@ -3,8 +3,6 @@ package com.picopossum.ui.inventory;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.people.UserService;
 import com.picopossum.domain.enums.InventoryReason;
-import com.picopossum.domain.model.User;
-import com.picopossum.shared.dto.UserFilter;
 import com.picopossum.shared.dto.StockHistoryDto;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.ui.common.controllers.AbstractCrudController;
@@ -14,15 +12,15 @@ import com.picopossum.ui.workspace.WorkspaceManager;
 import com.picopossum.ui.common.controls.DateControlUtils;
 import com.picopossum.shared.util.TimeUtil;
 import com.picopossum.shared.util.TextFormatter;
-import javafx.application.Platform;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 public class StockHistoryController extends AbstractCrudController<StockHistoryDto, StockHistoryFilter> {
 
@@ -56,15 +54,15 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         dataTable.setEmptyMessage("No stock history found");
         dataTable.setEmptySubtitle("Try adjusting filters or search terms.");
         
-        TableColumn<StockHistoryDto, String> productCol = new TableColumn<>("Product");
         TableColumn<StockHistoryDto, String> skuCol = new TableColumn<>("SKU");
+        TableColumn<StockHistoryDto, String> productCol = new TableColumn<>("Product");
         TableColumn<StockHistoryDto, String> changeCol = new TableColumn<>("Change");
         TableColumn<StockHistoryDto, String> reasonCol = new TableColumn<>("Reason");
-        TableColumn<StockHistoryDto, String> adjustedByCol = new TableColumn<>("Adjusted By");
+        TableColumn<StockHistoryDto, Integer> currentStockCol = new TableColumn<>("Current Stock");
         TableColumn<StockHistoryDto, String> dateCol = new TableColumn<>("Date & Time");
 
-        productCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().productName()));
         skuCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().sku()));
+        productCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().productName()));
         
         changeCol.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().quantityChange() > 0 
@@ -80,8 +78,8 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
                 } else {
                     setText(item);
                     setStyle(item.startsWith("+") 
-                        ? "-fx-text-fill: green; -fx-font-weight: bold; -fx-alignment: center-right;" 
-                        : "-fx-text-fill: red; -fx-font-weight: bold; -fx-alignment: center-right;");
+                        ? "-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-alignment: center-right;" 
+                        : "-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-alignment: center-right;");
                 }
             }
         });
@@ -99,16 +97,44 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
                     setText(null);
                     setGraphic(null);
                 } else {
-                    Label badge = BadgeFactory.createBadge(item, "badge-info");
+                    String styleClass = switch (item.toLowerCase()) {
+                        case "sale" -> "badge-success";
+                        case "return" -> "badge-info";
+                        case "damage", "theft", "spoilage" -> "badge-danger";
+                        default -> "badge-neutral";
+                    };
+                    Label badge = BadgeFactory.createBadge(item, styleClass);
                     setGraphic(badge);
                     setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
                 }
             }
         });
         reasonCol.setSortable(false);
-        
-        adjustedByCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().adjustedByName()));
-        adjustedByCol.setSortable(false);
+
+        currentStockCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().currentStock()));
+        currentStockCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    StockHistoryDto dto = getTableView().getItems().get(getIndex());
+                    int alertCap = dto.stockAlertCap() != null ? dto.stockAlertCap() : 10;
+                    
+                    Label label = new Label(String.valueOf(item));
+                    if (item <= 0) {
+                        label.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+                    } else if (item <= alertCap) {
+                        label.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+                    } else {
+                        label.setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold;");
+                    }
+                    setGraphic(label);
+                }
+            }
+        });
         
         dateCol.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().adjustedAt() != null 
@@ -116,7 +142,7 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
                     : ""));
 
         dataTable.getTableView().getColumns().addAll(
-            productCol, skuCol, changeCol, reasonCol, adjustedByCol, dateCol
+            skuCol, productCol, changeCol, reasonCol, currentStockCol, dateCol
         );
     }
 
@@ -128,7 +154,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         DatePicker fromDate = filterBar.addDateFilter("fromDate", "From Date");
         DatePicker toDate = filterBar.addDateFilter("toDate", "To Date");
 
-        // Date validation
         toDate.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null && fromDate.getValue() != null && newVal.isBefore(fromDate.getValue())) {
                 toDate.setValue(fromDate.getValue());
@@ -140,8 +165,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
                 toDate.setValue(newVal);
             }
         });
-
-
 
         DateControlUtils.applyStandardFormat(fromDate);
         DateControlUtils.applyStandardFormat(toDate);
@@ -203,7 +226,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
             offset
         );
         
-        // Since the service doesn't return total count, we estimate it
         int totalCount = offset + results.size() + (results.size() == filter.limit() ? 1 : 0);
         int totalPages = (int) Math.ceil((double) totalCount / filter.limit());
         
@@ -222,7 +244,7 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
 
     @Override
     protected List<MenuItem> buildActionMenu(StockHistoryDto entity) {
-        return List.of(); // Stock history is read-only
+        return List.of(); 
     }
 
     @Override
@@ -238,10 +260,9 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
     private String formatReason(String reason) {
         if (reason == null) return "";
         if ("confirm_receive".equalsIgnoreCase(reason)) return "Received";
+        if ("product_deleted".equalsIgnoreCase(reason)) return "Deleted";
         return TextFormatter.camelCaseToWords(reason.replace("_", " "));
     }
-
-
 
     @FXML
     protected void handleRefresh() {
@@ -250,7 +271,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
     }
 }
 
-// Filter record for stock history
 record StockHistoryFilter(
     String searchTerm,
     List<String> reasons,

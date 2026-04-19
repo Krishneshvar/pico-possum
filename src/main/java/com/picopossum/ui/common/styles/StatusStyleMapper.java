@@ -92,4 +92,14 @@ public final class StatusStyleMapper {
             label.getStyleClass().add(styleClass);
         }
     }
+
+    /**
+     * Get CSS style class for stock level.
+     */
+    public static String getStockStatusClass(int stock, Integer alertCap) {
+        int cap = alertCap != null ? alertCap : 10;
+        if (stock <= 0) return "badge-error";
+        if (stock <= cap) return "badge-warning";
+        return "badge-success";
+    }
 }

@@ -7,33 +7,27 @@ import com.picopossum.domain.model.Category;
 import com.picopossum.domain.model.Product;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.logging.LoggingConfig;
-import com.picopossum.ui.common.ErrorHandler;
 import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.common.controls.SingleSelectFilter;
+import com.picopossum.ui.common.controllers.AbstractFormController;
 import com.picopossum.ui.sales.ProductSearchIndex;
 import com.picopossum.ui.workspace.WorkspaceManager;
-import com.picopossum.ui.navigation.Parameterizable;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
-public class ProductFormController implements Parameterizable {
+public class ProductFormController extends AbstractFormController<Product> {
 
     private final ProductService productService;
     private final CategoryService categoryService;
-    private final WorkspaceManager workspaceManager;
     private final SettingsStore settingsStore;
     private final ProductSearchIndex productSearchIndex;
     private final com.picopossum.application.drafts.DraftService draftService;
 
-    @FXML private Label titleLabel;
     @FXML private TextField nameField;
     @FXML private TextArea descriptionField;
     @FXML private TextField skuField;
@@ -46,10 +40,8 @@ public class ProductFormController implements Parameterizable {
     @FXML private ComboBox<String> adjustmentReasonCombo;
     @FXML private SingleSelectFilter<CategoryItem> categoryFilter;
     @FXML private ComboBox<String> statusCombo;
-    @FXML private Button saveButton;
 
-    private Long productId = null;
-    private int initialStock = 0;
+    private int initialStockCount = 0;
 
     public ProductFormController(ProductService productService,
                                  CategoryService categoryService,
@@ -57,32 +49,159 @@ public class ProductFormController implements Parameterizable {
                                  SettingsStore settingsStore,
                                  ProductSearchIndex productSearchIndex,
                                  com.picopossum.application.drafts.DraftService draftService) {
+        super(workspaceManager);
         this.productService = productService;
         this.categoryService = categoryService;
-        this.workspaceManager = workspaceManager;
         this.settingsStore = settingsStore;
         this.productSearchIndex = productSearchIndex;
         this.draftService = draftService;
     }
 
-    @Override
-    public void setParameters(Map<String, Object> params) {
-        if (params != null && params.containsKey("productId")) {
-            this.productId = (Long) params.get("productId");
-            String mode = (String) params.get("mode");
-            boolean isView = "view".equals(mode);
+    @FXML
+    public void initialize() {
+        loadCategories();
 
-            titleLabel.setText(isView ? "View Product" : "Edit Product");
-            loadProductDetails(isView);
-        } else {
-            this.productId = null;
-            titleLabel.setText("Add Product");
+        statusCombo.setItems(FXCollections.observableArrayList("Active", "Inactive", "Discontinued"));
+        adjustmentReasonCombo.setItems(FXCollections.observableArrayList("Correction", "Damage", "Spoilage", "Return", "Theft"));
+        adjustmentReasonCombo.setValue("Correction");
+
+        stockField.textProperty().addListener((obs, oldV, newV) -> {
+            if (entityId != null && !isViewMode()) {
+                try {
+                    int current = Integer.parseInt(newV.trim());
+                    boolean changed = current != initialStockCount;
+                    adjustmentReasonBox.setVisible(changed);
+                    adjustmentReasonBox.setManaged(changed);
+                } catch (Exception e) {
+                    adjustmentReasonBox.setVisible(false);
+                    adjustmentReasonBox.setManaged(false);
+                }
+            }
+        });
+
+        if (isCreateMode()) {
             recoverDraft();
+            setupDrafting();
             skuField.setEditable(false);
             if (skuField.getText() == null || skuField.getText().isEmpty()) {
                 skuField.setText(String.valueOf(productService.getNextGeneratedNumericSku()));
             }
         }
+    }
+
+    @Override
+    protected String getEntityIdParamName() {
+        return "productId";
+    }
+
+    @Override
+    protected String getEntityDisplayName() {
+        return "Product";
+    }
+
+    @Override
+    protected Product loadEntity(Long id) {
+        return productService.getProductById(id);
+    }
+
+    @Override
+    protected void populateFields(Product p) {
+        nameField.setText(p.name());
+        descriptionField.setText(p.description());
+        skuField.setText(p.sku());
+        // Handling barcode specifically if it's stored in a way not reflected in basic p.sku()
+        // For now using sku as primary identifier
+        priceField.setText(p.mrp() != null ? p.mrp().toString() : "");
+        costPriceField.setText(p.costPrice() != null ? p.costPrice().toString() : "");
+        stockAlertField.setText(p.stockAlertCap() != null ? p.stockAlertCap().toString() : "10");
+        
+        initialStockCount = p.stock() != null ? p.stock() : 0;
+        stockField.setText(String.valueOf(initialStockCount));
+
+        if (p.categoryId() != null) {
+            categoryFilter.setSelectedItem(new CategoryItem(p.categoryId(), p.categoryName()));
+        }
+
+        statusCombo.setValue(p.status() != null ? com.picopossum.shared.util.TextFormatter.toTitleCase(p.status()) : "Active");
+    }
+
+    @Override
+    protected void setupValidators() {
+        // Handled by common validation if desired, otherwise AbstractFormController.validateForm() handles it
+    }
+
+    @Override
+    protected void setFormEditable(boolean editable) {
+        if (!editable) {
+            replaceWithLabel(nameField);
+            replaceWithLabel(descriptionField);
+            replaceWithLabel(skuField);
+            replaceWithLabel(barcodeField);
+            replaceWithLabel(priceField);
+            replaceWithLabel(costPriceField);
+            replaceWithLabel(stockAlertField);
+            replaceWithLabel(stockField);
+            replaceWithLabel(categoryFilter);
+            replaceWithLabel(statusCombo);
+            
+            adjustmentReasonBox.setVisible(false);
+            adjustmentReasonBox.setManaged(false);
+        } else {
+            nameField.setEditable(true);
+            descriptionField.setEditable(true);
+            skuField.setEditable(false);
+            barcodeField.setEditable(true);
+            priceField.setEditable(true);
+            costPriceField.setEditable(true);
+            stockAlertField.setEditable(true);
+            stockField.setEditable(true);
+            categoryFilter.setDisable(false);
+            statusCombo.setDisable(false);
+        }
+    }
+
+    @Override
+    protected void createEntity() throws Exception {
+        long userId = AuthContext.getCurrentUser().id();
+        ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
+                nameField.getText(), descriptionField.getText(),
+                categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
+                skuField.getText(),
+                new BigDecimal(priceField.getText().trim()),
+                new BigDecimal(costPriceField.getText().trim()),
+                Integer.parseInt(stockAlertField.getText().trim()),
+                statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
+                null,
+                Integer.parseInt(stockField.getText().trim()),
+                userId
+        );
+        productService.createProduct(cmd);
+        refreshIndex();
+    }
+
+    @Override
+    protected void updateEntity() throws Exception {
+        long userId = AuthContext.getCurrentUser().id();
+        ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
+                nameField.getText(), descriptionField.getText(),
+                categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
+                skuField.getText(),
+                new BigDecimal(priceField.getText().trim()),
+                new BigDecimal(costPriceField.getText().trim()),
+                Integer.parseInt(stockAlertField.getText().trim()),
+                statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
+                null,
+                Integer.parseInt(stockField.getText().trim()),
+                adjustmentReasonCombo.getValue().toLowerCase(),
+                userId
+        );
+        productService.updateProduct(entityId, cmd);
+        refreshIndex();
+    }
+
+    private void refreshIndex() {
+        if (productSearchIndex != null) productSearchIndex.refresh();
+        draftService.deleteDraft("product_new");
     }
 
     private void recoverDraft() {
@@ -106,86 +225,14 @@ public class ProductFormController implements Parameterizable {
         });
     }
 
-    private void loadProductDetails(boolean isView) {
-        try {
-            Product p = productService.getProductById(productId);
-
-            nameField.setText(p.name());
-            descriptionField.setText(p.description());
-            skuField.setText(p.sku());
-            priceField.setText(p.mrp() != null ? p.mrp().toString() : "");
-            costPriceField.setText(p.costPrice() != null ? p.costPrice().toString() : "");
-            stockAlertField.setText(p.stockAlertCap() != null ? p.stockAlertCap().toString() : "10");
-            
-            initialStock = p.stock() != null ? p.stock() : 0;
-            stockField.setText(String.valueOf(initialStock));
-
-            if (p.categoryId() != null) {
-                categoryFilter.setSelectedItem(new CategoryItem(p.categoryId(), p.categoryName()));
-            }
-
-            statusCombo.setValue(p.status() != null ? com.picopossum.shared.util.TextFormatter.toTitleCase(p.status()) : "Active");
-
-            if (isView) {
-                setAllFieldsReadOnly();
-                saveButton.setVisible(false);
-                saveButton.setManaged(false);
-            }
-
-        } catch (Exception e) {
-            LoggingConfig.getLogger().error("Failed to load product details: {}", e.getMessage(), e);
-            NotificationService.error("Failed to load product details: " + ErrorHandler.toUserMessage(e));
-        }
-    }
-
-    private void setAllFieldsReadOnly() {
-        nameField.setEditable(false);
-        descriptionField.setEditable(false);
-        skuField.setEditable(false);
-        priceField.setEditable(false);
-        costPriceField.setEditable(false);
-        stockAlertField.setEditable(false);
-        stockField.setEditable(false);
-        categoryFilter.setDisable(true);
-        statusCombo.setDisable(true);
-    }
-
-    @FXML
-    public void initialize() {
-        skuField.setEditable(false);
-        loadCategories();
-
-        statusCombo.setItems(FXCollections.observableArrayList("Active", "Inactive", "Discontinued"));
-        adjustmentReasonCombo.setItems(FXCollections.observableArrayList("Correction", "Damage", "Return", "Stocktake", "Expiry", "Theft", "Other"));
-        adjustmentReasonCombo.setValue("Correction");
-
-        stockField.textProperty().addListener((obs, oldV, newV) -> {
-            if (productId != null) {
-                try {
-                    int current = Integer.parseInt(newV.trim());
-                    boolean changed = current != initialStock;
-                    adjustmentReasonBox.setVisible(changed);
-                    adjustmentReasonBox.setManaged(changed);
-                } catch (Exception e) {
-                    adjustmentReasonBox.setVisible(false);
-                    adjustmentReasonBox.setManaged(false);
-                }
-            }
-        });
-
-        setupDrafting();
-    }
-
     private void setupDrafting() {
-        if (productId != null) return;
-        
         nameField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
         skuField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
         priceField.textProperty().addListener((o, old, newVal) -> saveCurrentDraft());
     }
 
     private void saveCurrentDraft() {
-        if (productId != null || draftService == null) return;
+        if (entityId != null || draftService == null) return;
         
         long userId = AuthContext.getCurrentUser().id();
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
@@ -206,9 +253,7 @@ public class ProductFormController implements Parameterizable {
 
     private BigDecimal parseSafeBigDecimal(String val) {
         if (val == null || val.isBlank()) return BigDecimal.ZERO;
-        try { 
-            return new BigDecimal(val.trim()); 
-        } catch (Exception e) { return BigDecimal.ZERO; }
+        try { return new BigDecimal(val.trim()); } catch (Exception e) { return BigDecimal.ZERO; }
     }
 
     private Integer parseSafeInt(String val) {
@@ -221,74 +266,7 @@ public class ProductFormController implements Parameterizable {
         categoryFilter.setItems(categories.stream().map(c -> new CategoryItem(c.id(), c.name())).toList());
     }
 
-
-
-    @FXML
-    private void handleSave() {
-        try {
-            validateInputs();
-            long userId = AuthContext.getCurrentUser().id();
-
-            if (productId == null) {
-                ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
-                        nameField.getText(), descriptionField.getText(),
-                        categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
-                        skuField.getText(),
-                        new BigDecimal(priceField.getText().trim()),
-                        new BigDecimal(costPriceField.getText().trim()),
-                        Integer.parseInt(stockAlertField.getText().trim()),
-                        statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
-                        null,
-                        Integer.parseInt(stockField.getText().trim()),
-                        userId
-                );
-                productService.createProduct(cmd);
-                NotificationService.success("Product created successfully");
-            } else {
-                ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
-                        nameField.getText(), descriptionField.getText(),
-                        categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
-                        skuField.getText(),
-                        new BigDecimal(priceField.getText().trim()),
-                        new BigDecimal(costPriceField.getText().trim()),
-                        Integer.parseInt(stockAlertField.getText().trim()),
-                        statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
-                        null,
-                        Integer.parseInt(stockField.getText().trim()),
-                        adjustmentReasonCombo.getValue().toLowerCase(),
-                        userId
-                );
-                productService.updateProduct(productId, cmd);
-                NotificationService.success("Product updated successfully");
-            }
-
-            if (productSearchIndex != null) productSearchIndex.refresh();
-            draftService.deleteDraft("product_new");
-            workspaceManager.closeActiveWindow();
-        } catch (Exception e) {
-            NotificationService.error("Failed to save product: " + e.getMessage());
-        }
-    }
-
-    private void validateInputs() {
-        if (nameField.getText() == null || nameField.getText().trim().isEmpty()) {
-            throw new com.picopossum.domain.exceptions.ValidationException("Product name is required");
-        }
-        if (priceField.getText() == null || priceField.getText().trim().isEmpty()) {
-            throw new com.picopossum.domain.exceptions.ValidationException("Selling price is required");
-        }
-        if (costPriceField.getText() == null || costPriceField.getText().trim().isEmpty()) {
-            throw new com.picopossum.domain.exceptions.ValidationException("Cost price is required");
-        }
-    }
-
-    @FXML
-    private void handleCancel() {
-        workspaceManager.closeActiveWindow();
-    }
-
     private record CategoryItem(Long id, String name) {
         @Override public String toString() { return name; }
     }
-
 }

@@ -10,5 +10,7 @@ public record StockHistoryDto(
         Integer quantityChange,
         String reason,
         String adjustedByName,
-        LocalDateTime adjustedAt
+        LocalDateTime adjustedAt,
+        Integer currentStock,
+        Integer stockAlertCap
 ) {}

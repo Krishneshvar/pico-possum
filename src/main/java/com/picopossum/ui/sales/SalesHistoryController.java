@@ -82,7 +82,36 @@ public class SalesHistoryController {
     private void setupTable() {
         salesTable.getTableView().setItems(salesList);
 
-        salesTable.addColumn("Invoice #", cellData -> new SimpleStringProperty(cellData.getValue().shortInvoiceNumber()));
+        TableColumn<Sale, String> invoiceCol = (TableColumn<Sale, String>) salesTable.addColumn("Invoice #", cellData -> new SimpleStringProperty(cellData.getValue().shortInvoiceNumber()));
+        invoiceCol.setCellFactory(col -> new TableCell<Sale, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    javafx.scene.layout.HBox container = new javafx.scene.layout.HBox(10);
+                    container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                    Label label = new Label(item);
+                    container.getChildren().add(label);
+
+                    Sale sale = getTableRow() != null ? getTableRow().getItem() : null;
+                    if (sale != null && !"legacy".equalsIgnoreCase(sale.status())) {
+                        javafx.scene.control.Button viewBtn = new javafx.scene.control.Button();
+                        org.kordamp.ikonli.javafx.FontIcon viewIcon = new org.kordamp.ikonli.javafx.FontIcon("bx-show-alt");
+                        viewIcon.setIconSize(16);
+                        viewBtn.setGraphic(viewIcon);
+                        viewBtn.getStyleClass().add("btn-edit-stock");
+                        viewBtn.setTooltip(new javafx.scene.control.Tooltip("View Bill Details"));
+                        viewBtn.setOnAction(e -> handleViewBillFromInvoice(sale.invoiceNumber()));
+                        container.getChildren().add(viewBtn);
+                    }
+                    setGraphic(container);
+                    setText(null);
+                }
+            }
+        });
         
         salesTable.addColumn("Customer", cellData -> new SimpleStringProperty(
                 cellData.getValue().customerName() != null ? cellData.getValue().customerName() : "Walk-in Customer"));
@@ -246,6 +275,16 @@ public class SalesHistoryController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private void handleViewBillFromInvoice(String invoiceNumber) {
+        if (invoiceNumber == null || invoiceNumber.isEmpty()) return;
+        
+        salesService.findSaleByInvoiceNumber(invoiceNumber).ifPresentOrElse(sale -> {
+            java.util.Map<String, Object> params = new java.util.HashMap<>();
+            params.put("sale", sale);
+            workspaceManager.openOrFocusWindow("Bill: " + sale.invoiceNumber(), "/fxml/sales/sale-detail-view.fxml", params);
+        }, () -> NotificationService.info("Bill details not found."));
     }
 
     @FXML

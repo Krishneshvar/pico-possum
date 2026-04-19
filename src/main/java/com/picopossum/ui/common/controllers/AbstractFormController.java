@@ -21,6 +21,7 @@ public abstract class AbstractFormController<T> implements Parameterizable {
 
     @FXML protected Label titleLabel;
     @FXML protected Button saveButton;
+    @FXML protected Button editButton;
     @FXML protected Button cancelButton;
 
     protected final WorkspaceManager workspaceManager;
@@ -133,6 +134,15 @@ public abstract class AbstractFormController<T> implements Parameterizable {
         
         setupValidators();
         setFormEditable(true);
+
+        if (editButton != null) {
+            editButton.setVisible(false);
+            editButton.setManaged(false);
+        }
+        if (saveButton != null) {
+            saveButton.setVisible(true);
+            saveButton.setManaged(true);
+        }
     }
 
     /**
@@ -165,6 +175,15 @@ public abstract class AbstractFormController<T> implements Parameterizable {
         
         setupValidators();
         setFormEditable(true);
+
+        if (editButton != null) {
+            editButton.setVisible(false);
+            editButton.setManaged(false);
+        }
+        if (saveButton != null) {
+            saveButton.setVisible(true);
+            saveButton.setManaged(true);
+        }
     }
 
     /**
@@ -201,6 +220,19 @@ public abstract class AbstractFormController<T> implements Parameterizable {
             saveButton.setVisible(false);
             saveButton.setManaged(false);
         }
+
+        if (editButton != null) {
+            editButton.setVisible(true);
+            editButton.setManaged(true);
+        }
+    }
+
+    /**
+     * Handle edit button click
+     */
+    @FXML
+    protected void handleEdit() {
+        setupEditMode();
     }
 
     /**
@@ -310,6 +342,13 @@ public abstract class AbstractFormController<T> implements Parameterizable {
             text = combo.getValue().toString();
         }
         replaceWithLabel(combo, text);
+    }
+
+    /**
+     * Replace a MenuButton with a read-only label
+     */
+    protected void replaceWithLabel(MenuButton menu) {
+        replaceWithLabel(menu, menu != null ? menu.getText() : null);
     }
 
     /**

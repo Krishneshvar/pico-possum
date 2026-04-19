@@ -379,14 +379,13 @@ public class ProductFlowController {
 
         try {
             long billId = flow.billRefId();
-            if ("sale_item".equalsIgnoreCase(flow.referenceType()) || "sale".equalsIgnoreCase(flow.eventType())) {
-                SaleResponse saleResponse = salesService.getSaleDetails(billId);
-                Sale sale = saleResponse.sale();
-                if (sale != null) {
-                    Map<String, Object> params = new HashMap<>();
-                    params.put("sale", sale);
-                    workspaceManager.openOrFocusWindow("Bill: " + sale.invoiceNumber(), "/fxml/sales/sale-detail-view.fxml", params);
-                }
+            // Just try to get the sale details for any movement that has a bill_ref_id
+            SaleResponse saleResponse = salesService.getSaleDetails(billId);
+            Sale sale = saleResponse.sale();
+            if (sale != null) {
+                Map<String, Object> params = new HashMap<>();
+                params.put("sale", sale);
+                workspaceManager.openOrFocusWindow("Bill: " + sale.invoiceNumber(), "/fxml/sales/sale-detail-view.fxml", params);
             }
         } catch (Exception e) {
             com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Could not open document details", e);

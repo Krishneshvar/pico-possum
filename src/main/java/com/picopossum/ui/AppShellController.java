@@ -99,18 +99,7 @@ public class AppShellController {
 
     private void setupBrandBox(String currentUserName) {
         if (brandBox == null) return;
-        Tooltip.install(brandBox, new Tooltip("Go to PicoPossum Dashboard"));
-        brandBox.setAccessibleRole(javafx.scene.AccessibleRole.BUTTON);
-        brandBox.setAccessibleText("PicoPossum Dashboard");
-        brandBox.setFocusTraversable(true);
-        brandBox.setOnKeyPressed(e -> {
-            if (e.getCode() == javafx.scene.input.KeyCode.ENTER || e.getCode() == javafx.scene.input.KeyCode.SPACE) {
-                workspaceManager.openOrFocusWindow("Dashboard", "/fxml/dashboard/dashboard-view.fxml");
-            }
-        });
-        brandBox.setOnMouseClicked(e ->
-            workspaceManager.openOrFocusWindow("Dashboard", "/fxml/dashboard/dashboard-view.fxml")
-        );
+        brandBox.setFocusTraversable(false);
     }
 
     // ── Public API used by external callers ──────────────────────────────────

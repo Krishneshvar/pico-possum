@@ -189,4 +189,20 @@ public final class BadgeFactory {
         
         return badge;
     }
+
+    /**
+     * Create a stock level badge.
+     */
+    public static Label createStockBadge(int stock, Integer alertCap) {
+        String text;
+        int cap = alertCap != null ? alertCap : 10;
+        if (stock <= 0) text = "Out of Stock (" + stock + ")";
+        else if (stock <= cap) text = "Low Stock (" + stock + ")";
+        else text = "In Stock (" + stock + ")";
+        
+        Label badge = new Label(text);
+        badge.getStyleClass().addAll("badge", "badge-status");
+        badge.getStyleClass().add(StatusStyleMapper.getStockStatusClass(stock, alertCap));
+        return badge;
+    }
 }

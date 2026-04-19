@@ -166,7 +166,7 @@ CREATE TABLE return_items (
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     refund_amount NUMERIC(10,2) NOT NULL CHECK (refund_amount >= 0),
     FOREIGN KEY (return_id) REFERENCES returns(id) ON DELETE CASCADE,
-    FOREIGN KEY (sale_item_id) REFERENCES sale_items(id)
+    FOREIGN KEY (sale_item_id) REFERENCES sale_items(id) ON DELETE CASCADE
 );
 
 -- 6. Payments
