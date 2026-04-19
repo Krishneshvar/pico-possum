@@ -10,7 +10,7 @@
 <?import java.net.URL?>
 
 <StackPane fx:id="rootPane" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-           fx:controller="com.possum.ui.sales.PosController">
+           fx:controller="com.picopossum.ui.sales.PosController">
     <BorderPane styleClass="pos-container">
         <stylesheets>
             <URL value="@../../styles/app-shell.css"/>
@@ -46,7 +46,7 @@
                         <VBox fx:id="cartCardVBox" spacing="0" VBox.vgrow="ALWAYS" styleClass="pos-card">
 
 
-                            <com.possum.ui.common.controls.DataTableView fx:id="cartTable" VBox.vgrow="ALWAYS" styleClass="pos-table" />
+                            <com.picopossum.ui.common.controls.DataTableView fx:id="cartTable" VBox.vgrow="ALWAYS" styleClass="pos-table" />
 
                             <HBox alignment="CENTER_RIGHT" spacing="24" styleClass="pos-cart-totals">
                                 <HBox spacing="8" alignment="CENTER_LEFT">

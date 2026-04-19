@@ -5,7 +5,7 @@
 
 <ScrollPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.possum.ui.people.UserFormController"
+            fx:controller="com.picopossum.ui.people.UserFormController"
             fitToWidth="true"
             stylesheets="@../../styles/inventory.css"
             styleClass="workspace-view">

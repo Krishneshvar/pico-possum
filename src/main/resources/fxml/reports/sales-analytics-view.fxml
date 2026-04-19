@@ -9,7 +9,7 @@
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.reports.SalesAnalyticsController"
+      fx:controller="com.picopossum.ui.reports.SalesAnalyticsController"
       styleClass="workspace-view">
     <stylesheets>
         <URL value="@../../styles/tokens.css" />

@@ -1,0 +1,28 @@
+package com.picopossum.domain.model;
+
+import java.time.LocalDateTime;
+
+public record ProductFlow(
+        Long id,
+        Long productId,
+        String eventType,
+        Integer quantity,
+        String referenceType,
+        Long referenceId,
+        String productName,
+        String customerName,
+        Long billRefId,
+        String billRefNumber,
+        String paymentMethodNames,
+        LocalDateTime eventDate
+) {
+    public String shortBillRefNumber() {
+        if (billRefNumber == null) return "";
+        // Extract trailing digits (the sequence part)
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)$").matcher(billRefNumber);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return billRefNumber;
+    }
+}

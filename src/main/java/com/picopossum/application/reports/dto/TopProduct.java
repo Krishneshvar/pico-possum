@@ -1,0 +1,12 @@
+package com.picopossum.application.reports.dto;
+
+import java.math.BigDecimal;
+
+public record TopProduct(
+        long productId,
+        String productName,
+        String sku,
+        int totalQuantitySold,
+        BigDecimal totalRevenue
+) {
+}

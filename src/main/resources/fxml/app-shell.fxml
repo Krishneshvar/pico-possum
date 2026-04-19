@@ -7,7 +7,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.possum.ui.AppShellController"
+            fx:controller="com.picopossum.ui.AppShellController"
             stylesheets="@../styles/app-shell.css,@../styles/workspace.css"
             styleClass="app-shell">
 
@@ -20,8 +20,8 @@
                 <padding>
                     <Insets top="8" right="24" bottom="8" left="20"/>
                 </padding>
-                <ImageView fx:id="brandIcon" fitWidth="28" fitHeight="28" preserveRatio="true" smooth="true" cache="true" accessibleText="POSSUM logo"/>
-                <Label text="POSSUM" styleClass="brand-title"/>
+                <ImageView fx:id="brandIcon" fitWidth="28" fitHeight="28" preserveRatio="true" smooth="true" cache="true" accessibleText="PicoPossum logo"/>
+                <Label text="PicoPossum" styleClass="brand-title"/>
             </HBox>
             
             <!-- Nav Items -->

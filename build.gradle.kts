@@ -8,12 +8,12 @@ plugins {
 }
 
 flyway {
-    url = "jdbc:sqlite:possum.db"
+    url = "jdbc:sqlite:pico-possum.db"
     locations = arrayOf("filesystem:src/main/resources/sql/migrations")
     mixed = true
 }
 
-group = "com.possum"
+group = "com.picopossum"
 version = "1.0.0"
 
 repositories {
@@ -38,7 +38,7 @@ tasks.withType<JavaExec> {
 }
 
 application {
-    mainClass.set("com.possum.AppLauncher")
+    mainClass.set("com.picopossum.AppLauncher")
 }
 
 javafx {
@@ -115,11 +115,11 @@ tasks.check {
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("possum")
+    archiveBaseName.set("pico-possum")
     archiveVersion.set("")
     archiveClassifier.set("all")
     manifest {
-        attributes("Main-Class" to "com.possum.AppLauncher")
+        attributes("Main-Class" to "com.picopossum.AppLauncher")
     }
     mergeServiceFiles()
 }
@@ -139,12 +139,12 @@ tasks.register<Exec>("createInstaller") {
         "jpackage",
         "--type", "msi",
         "--input", "build/libs",
-        "--main-jar", "possum-all.jar",
-        "--main-class", "com.possum.AppLauncher",
-        "--name", "POSSUM",
-        "--vendor", "POSSUM",
+        "--main-jar", "pico-possum-all.jar",
+        "--main-class", "com.picopossum.AppLauncher",
+        "--name", "PicoPossum",
+        "--vendor", "PicoPossum",
         "--app-version", "1.0",
-        "--description", "Point Of Sale Solution for Unified Management",
+        "--description", "Pico Possum - Minimalist Point of Sale Solution",
         "--dest", "build/installer",
         "--java-options", "-Xms128m",
         "--java-options", "-Xmx512m",

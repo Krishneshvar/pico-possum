@@ -9,7 +9,7 @@
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.returns.CreateReturnDialogController"
+      fx:controller="com.picopossum.ui.returns.CreateReturnDialogController"
       spacing="20"
       prefWidth="650"
       styleClass="card"

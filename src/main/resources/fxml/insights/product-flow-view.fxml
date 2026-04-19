@@ -9,12 +9,12 @@
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import java.net.URL?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import com.possum.ui.common.controls.*?>
+<?import com.picopossum.ui.common.controls.*?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:id="root"
-      fx:controller="com.possum.ui.insights.ProductFlowController"
+      fx:controller="com.picopossum.ui.insights.ProductFlowController"
       styleClass="workspace-view">
     
     <stylesheets>

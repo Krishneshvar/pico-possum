@@ -1,0 +1,190 @@
+package com.picopossum.application.sales;
+
+import com.picopossum.application.inventory.InventoryService;
+import com.picopossum.application.sales.dto.*;
+import com.picopossum.domain.enums.InventoryReason;
+import com.picopossum.domain.exceptions.InsufficientStockException;
+import com.picopossum.domain.exceptions.NotFoundException;
+import com.picopossum.domain.model.*;
+import com.picopossum.infrastructure.filesystem.SettingsStore;
+import com.picopossum.infrastructure.serialization.JsonService;
+import com.picopossum.persistence.db.TransactionManager;
+import com.picopossum.domain.repositories.*;
+import com.picopossum.domain.services.SaleCalculator;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class CheckoutService {
+    private final SalesRepository salesRepository;
+    private final ProductRepository productRepository;
+    private final CustomerRepository customerRepository;
+    private final AuditRepository auditRepository;
+    private final InventoryService inventoryService;
+    private final SaleCalculator saleCalculator;
+    private final TransactionManager transactionManager;
+    private final JsonService jsonService;
+    private final SettingsStore settingsStore;
+    private final InvoiceNumberService invoiceNumberService;
+
+    public CheckoutService(SalesRepository salesRepository,
+                           ProductRepository productRepository,
+                           CustomerRepository customerRepository,
+                           AuditRepository auditRepository,
+                           InventoryService inventoryService,
+                           SaleCalculator saleCalculator,
+                           TransactionManager transactionManager,
+                           JsonService jsonService,
+                           SettingsStore settingsStore,
+                           InvoiceNumberService invoiceNumberService) {
+        this.salesRepository = salesRepository;
+        this.productRepository = productRepository;
+        this.customerRepository = customerRepository;
+        this.auditRepository = auditRepository;
+        this.inventoryService = inventoryService;
+        this.saleCalculator = saleCalculator;
+        this.transactionManager = transactionManager;
+        this.jsonService = jsonService;
+        this.settingsStore = settingsStore;
+        this.invoiceNumberService = invoiceNumberService;
+    }
+
+    public SaleResponse createSale(CreateSaleRequest request, long userId) {
+        request.validate();
+
+        List<Long> productIds = request.items().stream().map(CreateSaleItemRequest::productId).toList();
+        Map<Long, Product> productMap = fetchProductsBatch(productIds);
+
+        SaleDraft draft = new SaleDraft();
+        if (request.customerId() != null) {
+            Customer customer = customerRepository.findCustomerById(request.customerId()).orElse(null);
+            draft.setSelectedCustomer(customer);
+        }
+        
+        draft.setOverallDiscountValue(request.discount() != null ? request.discount() : BigDecimal.ZERO);
+        draft.setDiscountFixed(true); 
+
+        for (CreateSaleItemRequest itemReq : request.items()) {
+            Product p = productMap.get(itemReq.productId());
+            if (p == null) {
+                throw new NotFoundException("Product not found: " + itemReq.productId());
+            }
+            CartItem cartItem = new CartItem(p, itemReq.quantity());
+            cartItem.setPricePerUnit(itemReq.pricePerUnit() != null ? itemReq.pricePerUnit() : p.mrp());
+            cartItem.setDiscountType("fixed");
+            cartItem.setDiscountValue(itemReq.discount() != null ? itemReq.discount() : BigDecimal.ZERO);
+            
+            draft.addItem(cartItem);
+        }
+
+        saleCalculator.recalculate(draft);
+
+        long saleId = transactionManager.runInTransaction(() -> {
+            boolean enforceInventoryRestrictions = isInventoryRestrictionsEnabled();
+            
+            long primaryPaymentMethodId = (request.payments() != null && !request.payments().isEmpty())
+                    ? request.payments().get(0).paymentMethodId()
+                    : 0L;
+            String invoiceNumber = invoiceNumberService.generate(primaryPaymentMethodId);
+            
+            Sale saleEntity = new Sale(
+                    null,
+                    invoiceNumber,
+                    com.picopossum.shared.util.TimeUtil.nowUTC(),
+                    draft.getTotal(),
+                    BigDecimal.ZERO,
+                    draft.getDiscountTotal(),
+                    "draft", 
+                    "pending",
+                    draft.getSelectedCustomer() != null ? draft.getSelectedCustomer().id() : null,
+                    userId,
+                    null, null, null, null, null, null
+            );
+
+            long newSaleId = salesRepository.insertSale(saleEntity);
+            
+            for (CartItem cartItem : draft.getItems()) {
+                SaleItem item = new SaleItem(
+                        null,
+                        newSaleId,
+                        cartItem.getProduct().id(),
+                        cartItem.getProduct().sku(),
+                        cartItem.getProduct().name(),
+                        cartItem.getQuantity(),
+                        cartItem.getPricePerUnit(),
+                        cartItem.getProduct().costPrice(),
+                        cartItem.getDiscountAmount(),
+                        null
+                );
+                salesRepository.insertSaleItem(item);
+
+                if (enforceInventoryRestrictions) {
+                    int currentStock = inventoryService.getProductStock(cartItem.getProduct().id());
+                    if (currentStock < cartItem.getQuantity()) {
+                        throw new InsufficientStockException(currentStock, cartItem.getQuantity());
+                    }
+                }
+
+                inventoryService.deductStock(
+                        cartItem.getProduct().id(),
+                        cartItem.getQuantity(),
+                        userId,
+                        InventoryReason.SALE,
+                        null,
+                        newSaleId
+                );
+            }
+
+            BigDecimal totalPaid = BigDecimal.ZERO;
+            if (request.payments() != null) {
+                for (PaymentRequest p : request.payments()) {
+                    totalPaid = totalPaid.add(p.amount());
+                    Transaction transaction = new Transaction(
+                            null, p.amount(), "payment", p.paymentMethodId(), 
+                            null, "completed", com.picopossum.shared.util.TimeUtil.nowUTC(), 
+                            invoiceNumber, null
+                    );
+                    salesRepository.insertTransaction(transaction, newSaleId);
+                }
+            }
+
+            String status = "draft";
+            if (totalPaid.compareTo(draft.getTotal()) >= 0) status = "paid";
+            else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) status = "partially_paid";
+            
+            salesRepository.updateSaleStatus(newSaleId, status);
+            salesRepository.updateSalePaidAmount(newSaleId, totalPaid);
+            if (status.equals("paid") || status.equals("partially_paid")) {
+                salesRepository.updateFulfillmentStatus(newSaleId, "fulfilled");
+            }
+            
+            auditRepository.log("sales", newSaleId, "CREATE", jsonService.toJson(saleEntity), userId);
+            
+            return newSaleId;
+        });
+
+        Sale saleResult = salesRepository.findSaleById(saleId).orElseThrow();
+        List<SaleItem> itemsResult = salesRepository.findSaleItems(saleId);
+        List<Transaction> transactionsResult = salesRepository.findTransactionsBySaleId(saleId);
+
+        return new SaleResponse(saleResult, itemsResult, transactionsResult);
+    }
+
+    private Map<Long, Product> fetchProductsBatch(List<Long> productIds) {
+        Map<Long, Product> map = new HashMap<>();
+        for (Long id : productIds) {
+            productRepository.findProductById(id).ifPresent(p -> map.put(id, p));
+        }
+        return map;
+    }
+
+    private boolean isInventoryRestrictionsEnabled() {
+        try {
+            return settingsStore.loadGeneralSettings().isInventoryAlertsAndRestrictionsEnabled();
+        } catch (Exception ex) {
+            return true;
+        }
+    }
+}

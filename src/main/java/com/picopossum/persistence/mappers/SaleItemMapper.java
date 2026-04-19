@@ -1,0 +1,42 @@
+package com.picopossum.persistence.mappers;
+
+import com.picopossum.domain.model.SaleItem;
+import com.picopossum.shared.util.SqlMapperUtils;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public final class SaleItemMapper implements RowMapper<SaleItem> {
+    @Override
+    public SaleItem map(ResultSet rs) throws SQLException {
+        return new SaleItem(
+                rs.getLong("id"),
+                rs.getLong("sale_id"),
+                rs.getLong("product_id"),
+                getOptionalColumn(rs, "sku"),
+                getOptionalColumn(rs, "product_name"),
+                rs.getInt("quantity"),
+                SqlMapperUtils.getBigDecimal(rs, "price_per_unit"),
+                SqlMapperUtils.getBigDecimal(rs, "cost_per_unit"),
+                SqlMapperUtils.getBigDecimal(rs, "discount_amount"),
+                getOptionalInt(rs, "returned_quantity")
+        );
+    }
+
+    private static Integer getOptionalInt(ResultSet rs, String column) throws SQLException {
+        try {
+            int value = rs.getInt(column);
+            return rs.wasNull() ? null : value;
+        } catch (SQLException ignored) {
+            return null;
+        }
+    }
+
+    private static String getOptionalColumn(ResultSet rs, String column) throws SQLException {
+        try {
+            return rs.getString(column);
+        } catch (SQLException ignored) {
+            return null;
+        }
+    }
+}

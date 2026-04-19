@@ -1,0 +1,16 @@
+package com.picopossum.domain.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public record InventoryLot(
+        Long id,
+        Long productId,
+        String batchNumber,
+        LocalDateTime manufacturedDate,
+        LocalDateTime expiryDate,
+        Integer quantity,
+        BigDecimal unitCost,
+        LocalDateTime createdAt
+) {
+}

@@ -9,7 +9,7 @@
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.categories.AddCategoryDialogController"
+      fx:controller="com.picopossum.ui.categories.AddCategoryDialogController"
       style="-fx-background-color: #ffffff;"
       stylesheets="@../../styles/inventory.css">
 

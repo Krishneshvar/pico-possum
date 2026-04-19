@@ -4,12 +4,12 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
-<?import com.possum.ui.common.controls.*?>
+<?import com.picopossum.ui.common.controls.*?>
 <?import org.kordamp.ikonli.javafx.*?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.sales.SaleDetailController"
+      fx:controller="com.picopossum.ui.sales.SaleDetailController"
       styleClass="workspace-view"
       stylesheets="@../../styles/inventory.css"
       spacing="0">

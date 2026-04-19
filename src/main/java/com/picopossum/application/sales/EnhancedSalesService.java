@@ -1,0 +1,326 @@
+package com.picopossum.application.sales;
+
+import com.picopossum.application.inventory.InventoryService;
+import com.picopossum.application.sales.dto.*;
+import com.picopossum.domain.enums.InventoryReason;
+import com.picopossum.domain.exceptions.InsufficientStockException;
+import com.picopossum.domain.exceptions.NotFoundException;
+import com.picopossum.domain.exceptions.ValidationException;
+import com.picopossum.domain.model.*;
+import com.picopossum.infrastructure.filesystem.SettingsStore;
+import com.picopossum.infrastructure.logging.AuditLogger;
+import com.picopossum.infrastructure.serialization.JsonService;
+import com.picopossum.persistence.db.TransactionManager;
+import com.picopossum.domain.repositories.*;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import com.picopossum.shared.util.TimeUtil;
+import java.util.*;
+
+public class EnhancedSalesService {
+    private final SalesRepository salesRepository;
+    private final ProductRepository productRepository;
+    private final CustomerRepository customerRepository;
+    private final InventoryService inventoryService;
+    private final PaymentService paymentService;
+    private final TransactionManager transactionManager;
+    private final JsonService jsonService;
+    private final SettingsStore settingsStore;
+    private final InvoiceNumberService invoiceNumberService;
+    private final AuditLogger auditLogger;
+
+    public EnhancedSalesService(
+            SalesRepository salesRepository,
+            ProductRepository productRepository,
+            CustomerRepository customerRepository,
+            InventoryService inventoryService,
+            PaymentService paymentService,
+            TransactionManager transactionManager,
+            JsonService jsonService,
+            SettingsStore settingsStore,
+            InvoiceNumberService invoiceNumberService,
+            AuditLogger auditLogger
+    ) {
+        this.salesRepository = salesRepository;
+        this.productRepository = productRepository;
+        this.customerRepository = customerRepository;
+        this.inventoryService = inventoryService;
+        this.paymentService = paymentService;
+        this.transactionManager = transactionManager;
+        this.jsonService = jsonService;
+        this.settingsStore = settingsStore;
+        this.invoiceNumberService = invoiceNumberService;
+        this.auditLogger = auditLogger;
+    }
+
+    public SaleResponse createSale(CreateSaleRequest request, long userId) {
+        request.validate();
+
+        BigDecimal discount = request.discount() != null ? request.discount() : BigDecimal.ZERO;
+        List<PaymentRequest> payments = request.payments() != null ? request.payments() : List.of();
+
+        for (PaymentRequest payment : payments) {
+            paymentService.validatePaymentMethod(payment.paymentMethodId());
+        }
+
+        List<Long> productIds = request.items().stream().map(CreateSaleItemRequest::productId).toList();
+        Map<Long, Product> productMap = fetchProductsBatch(productIds);
+        boolean enforceInventoryRestrictions = isInventoryRestrictionsEnabled();
+
+        return transactionManager.runInTransaction(() -> {
+            for (CreateSaleItemRequest item : request.items()) {
+                Product product = productMap.get(item.productId());
+                if (product == null) {
+                    throw new NotFoundException("Product not found: " + item.productId());
+                }
+
+                if (enforceInventoryRestrictions) {
+                    int currentStock = inventoryService.getProductStock(item.productId());
+                    if (currentStock < item.quantity()) {
+                        throw new InsufficientStockException(currentStock, item.quantity());
+                    }
+                }
+            }
+
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            List<ProcessedItem> processedItems = new ArrayList<>();
+
+            for (CreateSaleItemRequest item : request.items()) {
+                Product product = productMap.get(item.productId());
+                BigDecimal pricePerUnit = item.pricePerUnit() != null ? item.pricePerUnit() : product.mrp();
+                BigDecimal lineTotal = pricePerUnit.multiply(BigDecimal.valueOf(item.quantity()));
+                BigDecimal lineDiscount = item.discount() != null ? item.discount() : BigDecimal.ZERO;
+                BigDecimal netLineTotal = lineTotal.subtract(lineDiscount).max(BigDecimal.ZERO);
+
+                totalAmount = totalAmount.add(netLineTotal);
+                
+                BigDecimal costPerUnit = product.costPrice() != null ? product.costPrice() : BigDecimal.ZERO;
+
+                processedItems.add(new ProcessedItem(
+                        item.productId(),
+                        product.name(),
+                        product.sku(),
+                        product.name(),
+                        item.quantity(),
+                        pricePerUnit,
+                        costPerUnit,
+                        item.discount() != null ? item.discount() : BigDecimal.ZERO
+                ));
+            }
+
+            totalAmount = totalAmount.subtract(discount).max(BigDecimal.ZERO);
+
+            BigDecimal paidAmount = payments.stream()
+                    .map(PaymentRequest::amount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            String status = determineStatus(paidAmount, totalAmount);
+            String fulfillmentStatus = "paid".equals(status) ? "fulfilled" : "pending";
+
+            long primaryPaymentMethodId = payments.isEmpty() ? 0L : payments.get(0).paymentMethodId();
+            String invoiceNumber = invoiceNumberService.generate(primaryPaymentMethodId);
+
+            Sale sale = new Sale(
+                    null,
+                    invoiceNumber,
+                    TimeUtil.nowUTC(),
+                    totalAmount,
+                    paidAmount,
+                    discount,
+                    status,
+                    fulfillmentStatus,
+                    request.customerId(),
+                    userId,
+                    null, null, null, null, null, null
+            );
+
+            long saleId = salesRepository.insertSale(sale);
+
+            List<SaleItem> insertedItems = new ArrayList<>();
+            for (ProcessedItem item : processedItems) {
+                SaleItem saleItem = new SaleItem(
+                        null,
+                        saleId,
+                        item.productId,
+                        item.sku,
+                        item.productName,
+                        item.quantity,
+                        item.pricePerUnit,
+                        item.costPerUnit,
+                        item.discountAmount,
+                        0 // returnedQuantity
+                );
+
+                long saleItemId = salesRepository.insertSaleItem(saleItem);
+
+                inventoryService.deductStock(
+                        item.productId,
+                        item.quantity,
+                        userId,
+                        InventoryReason.SALE,
+                        "sale_item",
+                        saleItemId
+                );
+
+                insertedItems.add(new SaleItem(
+                        saleItemId,
+                        saleId,
+                        item.productId,
+                        item.sku,
+                        item.productName,
+                        item.quantity,
+                        item.pricePerUnit,
+                        item.costPerUnit,
+                        item.discountAmount,
+                        0
+                ));
+            }
+
+            List<Transaction> insertedTransactions = new ArrayList<>();
+            for (PaymentRequest payment : payments) {
+                Transaction transaction = new Transaction(
+                        null,
+                        payment.amount(),
+                        "payment",
+                        payment.paymentMethodId(),
+                        null,
+                        "completed",
+                        TimeUtil.nowUTC(),
+                        invoiceNumber,
+                        null
+                );
+                long txId = salesRepository.insertTransaction(transaction, saleId);
+                insertedTransactions.add(new Transaction(
+                        txId,
+                        payment.amount(),
+                        "payment",
+                        payment.paymentMethodId(),
+                        null,
+                        "completed",
+                        TimeUtil.nowUTC(),
+                        invoiceNumber,
+                        null
+                ));
+            }
+
+            auditLogger.logDataModification(
+                    userId,
+                    "CREATE",
+                    "sales",
+                    saleId,
+                    null,
+                    String.format("Invoice: %s, Total: %s, Items: %d", 
+                            invoiceNumber, totalAmount, processedItems.size())
+            );
+
+            Sale createdSale = salesRepository.findSaleById(saleId)
+                    .orElseThrow(() -> new RuntimeException("Failed to retrieve created sale"));
+
+            return new SaleResponse(createdSale, insertedItems, insertedTransactions);
+        });
+    }
+
+    private Map<Long, Product> fetchProductsBatch(List<Long> productIds) {
+        Map<Long, Product> map = new HashMap<>();
+        for (Long id : productIds) {
+            productRepository.findProductById(id).ifPresent(p -> map.put(id, p));
+        }
+        return map;
+    }
+
+    private String determineStatus(BigDecimal paidAmount, BigDecimal totalAmount) {
+        if (paidAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return "draft";
+        } else if (paidAmount.compareTo(totalAmount) >= 0) {
+            return "paid";
+        } else {
+            return "partially_paid";
+        }
+    }
+
+    private boolean isInventoryRestrictionsEnabled() {
+        try {
+            return settingsStore.loadGeneralSettings().isInventoryAlertsAndRestrictionsEnabled();
+        } catch (Exception ex) {
+            return true;
+        }
+    }
+
+    private record ProcessedItem(long productId, String productName, String sku, String productFullName,
+                                  int quantity, BigDecimal pricePerUnit, BigDecimal costPerUnit,
+                                  BigDecimal discountAmount) {}
+
+    public SaleResponse getSaleDetails(long saleId) {
+        Sale sale = salesRepository.findSaleById(saleId)
+                .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
+        List<SaleItem> items = salesRepository.findSaleItems(saleId);
+        List<Transaction> transactions = salesRepository.findTransactionsBySaleId(saleId);
+        return new SaleResponse(sale, items, transactions);
+    }
+
+    public Optional<Sale> findSaleByInvoiceNumber(String invoiceNumber) {
+        return salesRepository.findSaleByInvoiceNumber(invoiceNumber);
+    }
+
+    public void cancelSale(long saleId, long userId) {
+        
+        transactionManager.runInTransaction(() -> {
+            Sale sale = salesRepository.findSaleById(saleId)
+                    .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
+
+            if ("cancelled".equals(sale.status())) {
+                throw new ValidationException("Sale is already cancelled");
+            }
+            if ("refunded".equals(sale.status())) {
+                throw new ValidationException("Cannot cancel a refunded sale");
+            }
+
+            List<SaleItem> items = salesRepository.findSaleItems(saleId);
+            for (SaleItem item : items) {
+                inventoryService.restoreStock(
+                        item.productId(),
+                        "sale_item",
+                        item.id(),
+                        item.quantity(),
+                        userId,
+                        InventoryReason.CORRECTION,
+                        "sale_cancellation",
+                        saleId
+                );
+            }
+
+            salesRepository.updateSaleStatus(saleId, "cancelled");
+            salesRepository.updateFulfillmentStatus(saleId, "cancelled");
+
+            auditLogger.logDataModification(
+                    userId,
+                    "UPDATE",
+                    "sales",
+                    saleId,
+                    "status: " + sale.status(),
+                    "status: cancelled"
+            );
+
+            return null;
+        });
+    }
+
+    public List<PaymentMethod> getPaymentMethods() {
+        return paymentService.getActivePaymentMethods();
+    }
+
+    public List<Customer> getAllCustomers() {
+        return customerRepository.findCustomers(
+                new com.picopossum.shared.dto.CustomerFilter(null, null, null, 1, 1000, "name", "asc")
+        ).items();
+    }
+
+    public com.picopossum.shared.dto.PagedResult<Sale> findSales(com.picopossum.shared.dto.SaleFilter filter) {
+        return salesRepository.findSales(filter);
+    }
+
+    public com.picopossum.application.sales.dto.SaleStats getSaleStats(com.picopossum.shared.dto.SaleFilter filter) {
+        return salesRepository.getSaleStats(filter);
+    }
+}

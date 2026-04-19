@@ -7,15 +7,15 @@
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import com.possum.ui.common.controls.PaginationBar?>
+<?import com.picopossum.ui.common.controls.PaginationBar?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import com.possum.ui.common.controls.FilterBar?>
+<?import com.picopossum.ui.common.controls.FilterBar?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import com.possum.ui.common.controls.DataTableView?>
+<?import com.picopossum.ui.common.controls.DataTableView?>
 
 <VBox fx:id="container" xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.inventory.StockHistoryController"
+      fx:controller="com.picopossum.ui.inventory.StockHistoryController"
       styleClass="workspace-view"
       stylesheets="@../../styles/inventory.css">
 

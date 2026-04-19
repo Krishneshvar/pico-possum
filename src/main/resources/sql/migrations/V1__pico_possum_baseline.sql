@@ -1,4 +1,4 @@
--- pico-possum baseline schema consolidation (V1__pico_possum_baseline.sql)
+-- Pico Possum baseline schema consolidation (V1__pico_possum_baseline.sql)
 
 -- 1. Metadata & Settings
 CREATE TABLE app_metadata (

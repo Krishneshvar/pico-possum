@@ -1,0 +1,12 @@
+package com.picopossum.application.reports.dto;
+
+public record StockMovementStat(
+        String productName,
+        String sku,
+        int incoming,
+        int outgoing,
+        int returns,
+        int adjustments,
+        int currentStock
+) {
+}

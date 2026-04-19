@@ -1,0 +1,15 @@
+package com.picopossum.domain.repositories;
+
+import com.picopossum.domain.model.ProductFlow;
+
+import java.util.List;
+import java.util.Map;
+
+public interface ProductFlowRepository {
+    long insertProductFlow(ProductFlow flow);
+
+    List<ProductFlow> findFlowByProductId(long productId, int limit, int offset, String startDate, String endDate, List<String> eventTypes);
+    Map<String, Object> getProductFlowSummary(long productId);
+
+    List<ProductFlow> findFlowByReference(String referenceType, long referenceId);
+}

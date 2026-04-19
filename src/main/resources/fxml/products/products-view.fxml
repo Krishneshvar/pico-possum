@@ -3,12 +3,12 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.possum.ui.common.controls.*?>
+<?import com.picopossum.ui.common.controls.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.products.ProductsController"
+      fx:controller="com.picopossum.ui.products.ProductsController"
       styleClass="workspace-view"
       stylesheets="@../../styles/inventory.css">
 

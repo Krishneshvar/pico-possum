@@ -5,11 +5,11 @@
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import com.possum.ui.common.controls.*?>
+<?import com.picopossum.ui.common.controls.*?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.possum.ui.people.CustomersController"
+      fx:controller="com.picopossum.ui.people.CustomersController"
       styleClass="workspace-view"
       stylesheets="@../../styles/inventory.css">
 

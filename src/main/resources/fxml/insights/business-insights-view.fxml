@@ -8,7 +8,7 @@
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import java.net.URL?>
 
-<ScrollPane fx:controller="com.possum.ui.insights.BusinessInsightsController" fitToWidth="true" styleClass="workspace-scroll-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane fx:controller="com.picopossum.ui.insights.BusinessInsightsController" fitToWidth="true" styleClass="workspace-scroll-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
     <stylesheets>
         <URL value="@../../styles/tokens.css" />
         <URL value="@../../styles/views/insights.css" />
