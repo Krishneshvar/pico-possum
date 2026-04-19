@@ -1,13 +1,9 @@
 package com.picopossum.domain.repositories;
 
-import com.picopossum.domain.model.Permission;
-import com.picopossum.domain.model.Role;
 import com.picopossum.domain.model.User;
-import com.picopossum.domain.model.UserPermissionOverride;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.UserFilter;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository {
@@ -17,27 +13,11 @@ public interface UserRepository {
 
     Optional<User> findUserByUsername(String username);
 
-    User insertUserWithRoles(User user, List<Long> roleIds);
+    User insertUser(User user);
 
-    User updateUserWithRolesById(long id, User userData, List<Long> roleIds);
+    User updateUserById(long id, User userData);
 
     boolean softDeleteUser(long id);
-
-    List<Role> getAllRoles();
-
-    List<Permission> getAllPermissions();
-
-    List<Role> getUserRoles(long userId);
-
-    List<String> getUserPermissions(long userId);
-
-    void assignUserRoles(long userId, List<Long> roleIds);
-
-    List<UserPermissionOverride> getUserPermissionOverrides(long userId);
-
-    void setUserPermission(long userId, long permissionId, boolean granted);
-
-    List<Long> getRolePermissions(List<Long> roleIds);
 
     void revokeUserSessions(long userId);
 }

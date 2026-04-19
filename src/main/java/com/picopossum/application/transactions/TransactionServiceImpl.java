@@ -8,7 +8,6 @@ import com.picopossum.shared.dto.TransactionFilter;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 public final class TransactionServiceImpl implements TransactionService {
 
@@ -24,7 +23,7 @@ public final class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public PagedResult<Transaction> getTransactions(TransactionFilter filter, Set<String> userPermissions) {
+    public PagedResult<Transaction> getTransactions(TransactionFilter filter) {
         int page = Math.max(1, filter.currentPage());
         int limit = Math.min(100, Math.max(1, filter.itemsPerPage()));
 
@@ -47,12 +46,12 @@ public final class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public Optional<Transaction> getTransactionById(long id, Set<String> userPermissions) {
+    public Optional<Transaction> getTransactionById(long id) {
         return transactionRepository.findTransactionById(id);
     }
 
     @Override
-    public List<Transaction> listTransactionsBySale(long saleId, Set<String> userPermissions) {
+    public List<Transaction> listTransactionsBySale(long saleId) {
         return salesRepository.findTransactionsBySaleId(saleId);
     }
 }

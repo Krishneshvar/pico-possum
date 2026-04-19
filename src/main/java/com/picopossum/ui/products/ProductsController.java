@@ -205,6 +205,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     @FXML
     protected void handleRefresh() {
         loadData();
+        com.picopossum.ui.common.controls.NotificationService.success("Products refreshed");
     }
 
     /**

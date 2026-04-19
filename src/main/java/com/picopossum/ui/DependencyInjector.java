@@ -37,6 +37,7 @@ public class DependencyInjector {
 
     private NavigationManager navigationManager;
     private com.picopossum.ui.workspace.WorkspaceManager workspaceManager;
+    private final com.picopossum.application.auth.AuthService authService;
     private final ToastService toastService = new ToastService();
 
     private final Map<Class<?>, Supplier<Object>> registry = new HashMap<>();
@@ -48,7 +49,8 @@ public class DependencyInjector {
                                TransactionService transactionService, ReturnsService returnsService,
                                ReportsService reportsService,
                                SalesRepository salesRepository,
-                               com.picopossum.infrastructure.filesystem.AppPaths appPaths) {
+                               com.picopossum.infrastructure.filesystem.AppPaths appPaths,
+                               com.picopossum.application.auth.AuthService authService) {
 
         this.applicationModule = applicationModule;
         this.serviceLocator = serviceLocator;
@@ -61,6 +63,7 @@ public class DependencyInjector {
         this.reportsService = reportsService;
         this.salesRepository = salesRepository;
         this.appPaths = appPaths;
+        this.authService = authService;
         buildRegistry();
     }
 
@@ -73,6 +76,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.application.audit.AuditService.class, applicationModule::getAuditService);
         registry.put(com.picopossum.application.people.UserService.class, applicationModule::getUserService);
         registry.put(com.picopossum.application.people.CustomerService.class, applicationModule::getCustomerService);
+        registry.put(com.picopossum.application.auth.AuthService.class, () -> authService);
         registry.put(DraftService.class, applicationModule::getDraftService);
         registry.put(SalesService.class, () -> salesService);
         registry.put(com.picopossum.domain.services.SaleCalculator.class, () -> saleCalculator);

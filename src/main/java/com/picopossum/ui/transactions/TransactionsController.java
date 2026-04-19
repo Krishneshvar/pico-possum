@@ -238,8 +238,7 @@ public class TransactionsController extends AbstractCrudController<Transaction, 
 
     @Override
     protected PagedResult<Transaction> fetchData(TransactionFilter filter) {
-        Set<String> permissions = new HashSet<>(AuthContext.getCurrentUser().permissions());
-        return transactionService.getTransactions(filter, permissions);
+        return transactionService.getTransactions(filter);
     }
 
     @Override

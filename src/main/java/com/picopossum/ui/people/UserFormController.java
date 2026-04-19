@@ -8,8 +8,6 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
-import java.util.Collections;
-
 public class UserFormController extends AbstractFormController<User> {
 
     @FXML private TextField nameField;
@@ -143,8 +141,7 @@ public class UserFormController extends AbstractFormController<User> {
             nameField.getText().trim(),
             usernameField.getText().trim(),
             passwordField.getText(),
-            isActive,
-            Collections.emptyList() // Roles are managed separately
+            isActive
         );
     }
 
@@ -157,8 +154,7 @@ public class UserFormController extends AbstractFormController<User> {
             nameField.getText().trim(),
             usernameField.getText().trim(),
             passwordField.getText(), // Allows blank if not updating
-            isActive,
-            null // Prevent roles from being overwritten
+            isActive
         );
     }
 }

@@ -261,6 +261,11 @@ CREATE TABLE pos_open_bills (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE invoice_sequences (
+    payment_type_code TEXT PRIMARY KEY,
+    last_sequence INTEGER NOT NULL
+);
+
 CREATE TABLE pos_open_bill_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bill_index INTEGER,

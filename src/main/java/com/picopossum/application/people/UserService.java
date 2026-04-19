@@ -1,9 +1,6 @@
 package com.picopossum.application.people;
 
-import com.picopossum.domain.model.Permission;
-import com.picopossum.domain.model.Role;
 import com.picopossum.domain.model.User;
-import com.picopossum.domain.model.UserPermissionOverride;
 import com.picopossum.infrastructure.security.PasswordHasher;
 import com.picopossum.domain.repositories.UserRepository;
 import com.picopossum.shared.dto.PagedResult;
@@ -31,7 +28,7 @@ public class UserService {
         return userRepository.findUserById(id);
     }
 
-    public User createUser(String name, String username, String password, boolean active, List<Long> roleIds) {
+    public User createUser(String name, String username, String password, boolean active) {
         if (name == null || name.isBlank()) throw new com.picopossum.domain.exceptions.ValidationException("User name is required");
         if (username == null || username.isBlank()) throw new com.picopossum.domain.exceptions.ValidationException("Username is required");
         if (username.contains(" ")) throw new com.picopossum.domain.exceptions.ValidationException("Username cannot contain spaces");
@@ -43,10 +40,10 @@ public class UserService {
         
         String hashedPassword = passwordHasher.hashPassword(password);
         User newUser = new User(null, name, username, hashedPassword, active, TimeUtil.nowUTC(), TimeUtil.nowUTC(), null);
-        return userRepository.insertUserWithRoles(newUser, roleIds);
+        return userRepository.insertUser(newUser);
     }
 
-    public User updateUser(long id, String name, String username, String password, boolean active, List<Long> roleIds) {
+    public User updateUser(long id, String name, String username, String password, boolean active) {
         if (name == null || name.isBlank()) throw new com.picopossum.domain.exceptions.ValidationException("User name is required");
         if (username == null || username.isBlank()) throw new com.picopossum.domain.exceptions.ValidationException("Username is required");
         User existingUser = userRepository.findUserById(id)
@@ -58,7 +55,7 @@ public class UserService {
         }
 
         User updatedUser = new User(existingUser.id(), name, username, hashedPassword, active, existingUser.createdAt(), TimeUtil.nowUTC(), existingUser.deletedAt());
-        User result = userRepository.updateUserWithRolesById(id, updatedUser, roleIds);
+        User result = userRepository.updateUserById(id, updatedUser);
         
         if (!active) {
             userRepository.revokeUserSessions(id);
@@ -70,37 +67,5 @@ public class UserService {
         if (!userRepository.softDeleteUser(id)) {
             throw new com.picopossum.domain.exceptions.NotFoundException("User not found: " + id);
         }
-    }
-
-    public List<Role> getAllRoles() {
-        return userRepository.getAllRoles();
-    }
-
-    public List<Permission> getAllPermissions() {
-        return userRepository.getAllPermissions();
-    }
-
-    public List<Role> getUserRoles(long userId) {
-        return userRepository.getUserRoles(userId);
-    }
-
-    public List<String> getUserPermissions(long userId) {
-        return userRepository.getUserPermissions(userId);
-    }
-
-    public void assignUserRoles(long userId, List<Long> roleIds) {
-        userRepository.assignUserRoles(userId, roleIds);
-    }
-
-    public List<UserPermissionOverride> getUserPermissionOverrides(long userId) {
-        return userRepository.getUserPermissionOverrides(userId);
-    }
-
-    public void setUserPermission(long userId, long permissionId, boolean granted) {
-        userRepository.setUserPermission(userId, permissionId, granted);
-    }
-
-    public List<Long> getRolePermissions(List<Long> roleIds) {
-        return userRepository.getRolePermissions(roleIds);
     }
 }

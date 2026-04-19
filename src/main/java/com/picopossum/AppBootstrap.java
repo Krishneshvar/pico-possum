@@ -47,6 +47,7 @@ public final class AppBootstrap {
     private SqliteSalesRepository salesRepository;
     private com.picopossum.domain.services.SaleCalculator saleCalculator;
     private com.picopossum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
+    private com.picopossum.application.auth.AuthService authService;
     private TransactionManager transactionManager;
     private com.picopossum.infrastructure.security.PasswordHasher passwordHasher;
 
@@ -57,12 +58,7 @@ public final class AppBootstrap {
             initializeCore();
             runStartupHealthChecks(stage);
 
-            // Auto-login for single-user application
-            AuthUser adminUser = new AuthUser(1L, "System Administrator", "admin", java.util.List.of("admin"), java.util.List.of());
-            AuthContext.setCurrentUser(adminUser);
-            loadMainShell(stage);
-            
-            LOGGER.info("Application bootstrap completed with single-user mode");
+            showLogin(stage);
         } catch (RuntimeException ex) {
             shutdown();
             throw ex;
@@ -139,6 +135,8 @@ public final class AppBootstrap {
                 serviceLocator.getSettingsStore(), databaseManager
         );
 
+        authService = new com.picopossum.application.auth.AuthService(userRepository, passwordHasher);
+
         salesRepository = new SqliteSalesRepository(databaseManager);
         com.picopossum.persistence.repositories.sqlite.SqliteTransactionRepository transactionRepo =
                 new com.picopossum.persistence.repositories.sqlite.SqliteTransactionRepository(databaseManager);
@@ -171,7 +169,7 @@ public final class AppBootstrap {
     private void initializeUI() {
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
                 saleCalculator, productSearchIndex, transactionService, returnsService,
-                reportsService, salesRepository, appPaths);
+                reportsService, salesRepository, appPaths, authService);
 
         dependencyInjector.getToastService().setMainStage(null);
     }
@@ -258,12 +256,40 @@ public final class AppBootstrap {
             stage.setMinWidth(1024);
             stage.setMinHeight(768);
             stage.setScene(scene);
+            stage.setResizable(true);
             dependencyInjector.getToastService().setMainStage(stage);
             stage.show();
+            stage.centerOnScreen();
 
             LOGGER.info("Main application shell loaded");
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to load main application shell", ex);
+        }
+    }
+
+    private void showLogin(Stage stage) {
+        try {
+            FXMLLoader loader = new FXMLLoader(AppBootstrap.class.getResource("/fxml/auth/login.fxml"));
+            
+            loader.setControllerFactory(type -> {
+                if (type == com.picopossum.ui.auth.LoginController.class) {
+                    return new com.picopossum.ui.auth.LoginController(authService, applicationModule.getUserService(), () -> {
+                        loadMainShell(stage);
+                    });
+                }
+                return dependencyInjector.getControllerFactory().call(type);
+            });
+            
+            Parent root = loader.load();
+            Scene scene = new Scene(root, 1000, 800);
+            stage.setTitle("Pico Possum - Login");
+            stage.setScene(scene);
+            stage.setResizable(false);
+            stage.centerOnScreen();
+            stage.show();
+        } catch (IOException e) {
+            LOGGER.error("Failed to load login screen", e);
+            throw new RuntimeException("Failed to load login screen", e);
         }
     }
 }
