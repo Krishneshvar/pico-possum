@@ -177,13 +177,12 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
             params.add(fuzzy);
         }
 
-        String refundSub = "(SELECT COALESCE(SUM(ri.refund_amount), 0) FROM return_items ri WHERE ri.return_id = r.id)";
         if (filter.minAmount() != null) {
-            joiner.add(refundSub + " >= ?");
+            joiner.add("r.refund_amount >= ?");
             params.add(filter.minAmount().doubleValue());
         }
         if (filter.maxAmount() != null) {
-            joiner.add(refundSub + " <= ?");
+            joiner.add("r.refund_amount <= ?");
             params.add(filter.maxAmount().doubleValue());
         }
 

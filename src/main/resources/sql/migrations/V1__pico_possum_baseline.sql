@@ -309,10 +309,10 @@ CREATE INDEX idx_drafts_type_user ON drafts(type, user_id);
 
 -- Initial Seed Data
 INSERT INTO payment_methods (id, name, code, is_active) VALUES 
-(1, 'Cash', 'CASH', 1),
-(2, 'Card', 'CARD', 1),
-(3, 'UPI', 'UPI', 1),
-(4, 'Store Credit', 'CREDIT', 1);
+(1, 'Cash', 'CH', 1),
+(2, 'Card', 'CP', 1),
+(3, 'UPI', 'UP', 1),
+(4, 'Gift Card', 'GC', 1);
 
 -- Triggers
 CREATE TRIGGER customers_updated_at_trig AFTER UPDATE ON customers BEGIN
