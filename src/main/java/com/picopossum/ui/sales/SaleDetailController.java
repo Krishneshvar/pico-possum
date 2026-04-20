@@ -181,7 +181,8 @@ public class SaleDetailController implements Parameterizable {
             this.saleDetails = salesService.getSaleDetails(currentSale.id());
             this.currentSale = saleDetails.sale(); // Update with latest info from service
             
-            invoiceLabel.setText("#" + currentSale.invoiceNumber());
+            String displayId = (currentSale.invoiceId() != null && !currentSale.invoiceId().isBlank()) ? currentSale.invoiceId() : currentSale.invoiceNumber();
+            invoiceLabel.setText("#" + displayId);
             statusBadge.setText(currentSale.status().replace("_", " ").toUpperCase());
             applyStatusStyle(currentSale.status());
             

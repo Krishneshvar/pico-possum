@@ -87,7 +87,7 @@ public class CheckoutService {
             long primaryPaymentMethodId = (request.payments() != null && !request.payments().isEmpty())
                     ? request.payments().get(0).paymentMethodId()
                     : 0L;
-            String invoiceNumber = invoiceNumberService.generate(primaryPaymentMethodId);
+            String invoiceNumber = invoiceNumberService.generate("S", primaryPaymentMethodId);
             
             Sale saleEntity = new Sale(
                     null,
@@ -100,7 +100,8 @@ public class CheckoutService {
                     "pending",
                     draft.getSelectedCustomer() != null ? draft.getSelectedCustomer().id() : null,
                     userId,
-                    null, null, null, null, primaryPaymentMethodId, null
+                    null, null, null, null, primaryPaymentMethodId, null,
+                    invoiceNumber
             );
 
             long newSaleId = salesRepository.insertSale(saleEntity);

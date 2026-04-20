@@ -22,15 +22,18 @@ public class SalesReportExporter {
     private final Window ownerWindow;
     private final Function<BreakdownItem, BigDecimal> grossSalesCalculator;
     private final Function<BreakdownItem, BigDecimal> netSalesCalculator;
+    private final Function<BreakdownItem, Integer> transactionCalculator;
     private final Function<String, Boolean> columnVisibilityChecker;
 
     public SalesReportExporter(Window ownerWindow,
                                Function<BreakdownItem, BigDecimal> grossSalesCalculator,
                                Function<BreakdownItem, BigDecimal> netSalesCalculator,
+                               Function<BreakdownItem, Integer> transactionCalculator,
                                Function<String, Boolean> columnVisibilityChecker) {
         this.ownerWindow = ownerWindow;
         this.grossSalesCalculator = grossSalesCalculator;
         this.netSalesCalculator = netSalesCalculator;
+        this.transactionCalculator = transactionCalculator;
         this.columnVisibilityChecker = columnVisibilityChecker;
     }
 
@@ -67,50 +70,69 @@ public class SalesReportExporter {
     }
 
     private void writeCsv(File file, List<BreakdownItem> items) throws IOException {
+        List<String> visibleCols = getVisibleColumns();
         try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
-            writer.println("Period,Transactions,Cash,UPI,Debit Card,Credit Card,Gift Card,Gross Sales,Refunds,Net Sales");
+            writer.println(String.join(",", visibleCols));
             for (BreakdownItem item : items) {
                 if (item == null) continue;
-                writer.printf("%s,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f%n",
-                    item.name(), item.totalTransactions(), 
-                    columnVisibilityChecker.apply("Cash") ? item.cash() : BigDecimal.ZERO,
-                    columnVisibilityChecker.apply("UPI") ? item.upi() : BigDecimal.ZERO,
-                    columnVisibilityChecker.apply("Debit Card") ? item.debitCard() : BigDecimal.ZERO,
-                    columnVisibilityChecker.apply("Credit Card") ? item.creditCard() : BigDecimal.ZERO,
-                    columnVisibilityChecker.apply("Gift Card") ? item.giftCard() : BigDecimal.ZERO,
-                    grossSalesCalculator.apply(item),
-                    item.refunds(),
-                    netSalesCalculator.apply(item));
+                List<String> values = visibleCols.stream()
+                    .map(col -> getColumnValueAsString(item, col))
+                    .toList();
+                writer.println(String.join(",", values));
             }
         }
     }
 
     private void writeExcel(File file, List<BreakdownItem> items) throws IOException {
+        List<String> visibleCols = getVisibleColumns();
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
             org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Sales Report");
             org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
-            String[] headers = {"Period", "Transactions", "Cash", "UPI", "Debit Card", "Credit Card", "Gift Card", "Gross Sales", "Refunds", "Net Sales"};
-            for (int i = 0; i < headers.length; i++) {
-                headerRow.createCell(i).setCellValue(headers[i]);
+            for (int i = 0; i < visibleCols.size(); i++) {
+                headerRow.createCell(i).setCellValue(visibleCols.get(i));
             }
             int rowIdx = 1;
             for (BreakdownItem item : items) {
                 if (item == null) continue;
                 org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(item.name());
-                row.createCell(1).setCellValue(item.totalTransactions());
-                row.createCell(2).setCellValue((columnVisibilityChecker.apply("Cash") ? item.cash() : BigDecimal.ZERO).doubleValue());
-                row.createCell(3).setCellValue((columnVisibilityChecker.apply("UPI") ? item.upi() : BigDecimal.ZERO).doubleValue());
-                row.createCell(4).setCellValue((columnVisibilityChecker.apply("Debit Card") ? item.debitCard() : BigDecimal.ZERO).doubleValue());
-                row.createCell(5).setCellValue((columnVisibilityChecker.apply("Credit Card") ? item.creditCard() : BigDecimal.ZERO).doubleValue());
-                row.createCell(6).setCellValue((columnVisibilityChecker.apply("Gift Card") ? item.giftCard() : BigDecimal.ZERO).doubleValue());
-                row.createCell(7).setCellValue(grossSalesCalculator.apply(item).doubleValue());
-                row.createCell(8).setCellValue((columnVisibilityChecker.apply("Refunds") ? item.refunds() : BigDecimal.ZERO).doubleValue());
-                row.createCell(9).setCellValue(netSalesCalculator.apply(item).doubleValue());
+                for (int i = 0; i < visibleCols.size(); i++) {
+                    Object val = getColumnValue(item, visibleCols.get(i));
+                    if (val instanceof Number n) {
+                        row.createCell(i).setCellValue(n.doubleValue());
+                    } else {
+                        row.createCell(i).setCellValue(String.valueOf(val));
+                    }
+                }
             }
             try (FileOutputStream fileOut = new FileOutputStream(file)) {
                 workbook.write(fileOut);
             }
         }
+    }
+
+    private List<String> getVisibleColumns() {
+        List<String> all = List.of("Period", "Transactions", "Cash", "UPI", "Card", "Gift Card", "Gross Sales", "Refunds", "Net Sales");
+        return all.stream().filter(columnVisibilityChecker::apply).toList();
+    }
+
+    private String getColumnValueAsString(BreakdownItem item, String column) {
+        Object val = getColumnValue(item, column);
+        if (val instanceof BigDecimal bd) return String.format("%.2f", bd);
+        return String.valueOf(val);
+    }
+
+    private Object getColumnValue(BreakdownItem item, String column) {
+        return switch (column) {
+            case "Period", "Date" -> item.name();
+            case "Transactions" -> transactionCalculator.apply(item);
+            case "Cash" -> item.cash();
+            case "UPI" -> item.upi();
+            case "Card" -> item.card();
+            case "Gift Card" -> item.giftCard();
+            case "Gross Sales" -> grossSalesCalculator.apply(item);
+            case "Refunds" -> item.refunds();
+            case "Net Sales" -> netSalesCalculator.apply(item);
+            default -> "";
+        };
     }
 }

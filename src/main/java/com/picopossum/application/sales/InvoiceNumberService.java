@@ -10,23 +10,21 @@ public class InvoiceNumberService {
         this.salesRepository = salesRepository;
     }
 
-    public String generate(long primaryPaymentMethodId) {
-        String code = "XX";
+    public String generate(String typePrefix, long primaryPaymentMethodId) {
+        String code = "CH"; // Default to Cash if not provided
         if (primaryPaymentMethodId > 0) {
             code = salesRepository.getPaymentMethodCode(primaryPaymentMethodId)
                     .filter(c -> c != null && !c.isBlank())
-                    .orElse("XX");
+                    .orElse("CH");
         }
 
         LocalDate today = LocalDate.now();
-        int year = today.getYear();
-        String yy = String.format("%02d", year % 100);
+        String yy = String.format("%02d", today.getYear() % 100);
 
-        // Sequence resets every year and is shared across payment methods.
-        // We use a fixed prefix "S_GLOBAL_" + year to ensure year-based reset and shared sequence.
-        long seq = salesRepository.getNextSequenceForPaymentType("S_GLOBAL_" + year);
+        // Sequence is shared across payment methods per year.
+        long seq = salesRepository.getNextSequenceForPaymentType(typePrefix + "_GLOBAL_" + today.getYear());
 
-        return String.format("S%s%s%07d", yy, code, seq);
+        return String.format("%s%s%s%07d", typePrefix, yy, code, seq);
     }
 }
 

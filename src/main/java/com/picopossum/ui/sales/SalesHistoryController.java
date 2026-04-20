@@ -82,7 +82,11 @@ public class SalesHistoryController {
     private void setupTable() {
         salesTable.getTableView().setItems(salesList);
 
-        TableColumn<Sale, String> invoiceCol = (TableColumn<Sale, String>) salesTable.addColumn("Invoice #", cellData -> new SimpleStringProperty(cellData.getValue().invoiceNumber()));
+        TableColumn<Sale, String> invoiceCol = (TableColumn<Sale, String>) salesTable.addColumn("Invoice #", cellData -> {
+            Sale s = cellData.getValue();
+            String id = (s.invoiceId() != null && !s.invoiceId().isBlank()) ? s.invoiceId() : s.invoiceNumber();
+            return new SimpleStringProperty(id);
+        });
         invoiceCol.setCellFactory(col -> new TableCell<Sale, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {

@@ -26,12 +26,13 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
     @Override
     public long insertReturn(Return returnRecord) {
         return executeInsert(
-                "INSERT INTO returns (sale_id, user_id, reason, refund_amount, payment_method_id) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO returns (sale_id, user_id, reason, refund_amount, payment_method_id, invoice_id) VALUES (?, ?, ?, ?, ?, ?)",
                 returnRecord.saleId(),
                 returnRecord.userId(),
                 returnRecord.reason(),
                 returnRecord.totalRefund(),
-                returnRecord.paymentMethodId()
+                returnRecord.paymentMethodId(),
+                returnRecord.invoiceId()
         );
     }
 
@@ -56,7 +57,8 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                   u.name AS processed_by_name,
                   r.refund_amount AS total_refund,
                   r.payment_method_id,
-                  pm.name AS payment_method_name
+                  pm.name AS payment_method_name,
+                  r.invoice_id
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
                 JOIN users u ON r.user_id = u.id
@@ -122,7 +124,8 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                   u.name AS processed_by_name,
                   r.refund_amount AS total_refund,
                   r.payment_method_id,
-                  pm.name AS payment_method_name
+                  pm.name AS payment_method_name,
+                  r.invoice_id
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
                 JOIN users u ON r.user_id = u.id
@@ -171,7 +174,8 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
         }
         if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
             String fuzzy = "%" + filter.searchTerm() + "%";
-            joiner.add("(CAST(r.id AS TEXT) LIKE ? OR s.invoice_number LIKE ? OR COALESCE(r.reason, '') LIKE ?)");
+            joiner.add("(CAST(r.id AS TEXT) LIKE ? OR s.invoice_number LIKE ? OR r.invoice_id LIKE ? OR COALESCE(r.reason, '') LIKE ?)");
+            params.add(fuzzy);
             params.add(fuzzy);
             params.add(fuzzy);
             params.add(fuzzy);
@@ -179,11 +183,11 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
 
         if (filter.minAmount() != null) {
             joiner.add("r.refund_amount >= ?");
-            params.add(filter.minAmount().doubleValue());
+            params.add(filter.minAmount());
         }
         if (filter.maxAmount() != null) {
             joiner.add("r.refund_amount <= ?");
-            params.add(filter.maxAmount().doubleValue());
+            params.add(filter.maxAmount());
         }
 
         if (filter.paymentMethodIds() != null && !filter.paymentMethodIds().isEmpty()) {
@@ -208,7 +212,8 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                   u.name AS processed_by_name,
                   r.refund_amount AS total_refund,
                   r.payment_method_id,
-                  pm.name AS payment_method_name
+                  pm.name AS payment_method_name,
+                  r.invoice_id
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
                 JOIN users u ON r.user_id = u.id

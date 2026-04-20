@@ -374,7 +374,8 @@ public class BillSettingsController {
             "john@example.com",
             "Jane Smith",
             1L,
-            "Cash"
+            "Cash",
+            "S26CH0000001"
         );
 
         List<SaleItem> items = new ArrayList<>();

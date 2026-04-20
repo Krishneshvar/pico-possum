@@ -46,7 +46,8 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 c.email AS customer_email,
                 u.name AS biller_name,
                 s.payment_method_id,
-                pm.name AS payment_method_name
+                pm.name AS payment_method_name,
+                s.invoice_id
               FROM sales s
               LEFT JOIN customers c ON s.customer_id = c.id
               LEFT JOIN users u ON s.user_id = u.id
@@ -70,7 +71,8 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 NULL AS customer_email,
                 'Legacy Import' AS biller_name,
                 ls.payment_method_id AS payment_method_id,
-                COALESCE(NULLIF(trim(ls.payment_method_name), ''), 'Legacy Import') AS payment_method_name
+                COALESCE(NULLIF(trim(ls.payment_method_name), ''), 'Legacy Import') AS payment_method_name,
+                ls.invoice_number AS invoice_id
               FROM legacy_sales ls
             )
             """;
@@ -88,11 +90,12 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sales (
-                  invoice_number, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, user_id, payment_method_id
+                  invoice_number, invoice_id, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, user_id, payment_method_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sale.invoiceNumber(),
+                sale.invoiceId(),
                 sale.totalAmount(),
                 sale.paidAmount(),
                 sale.discount(),

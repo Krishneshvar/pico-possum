@@ -19,15 +19,17 @@ public record Sale(
         String customerEmail,
         String billerName,
         Long paymentMethodId,
-        String paymentMethodName
+        String paymentMethodName,
+        String invoiceId
 ) {
     public String shortInvoiceNumber() {
-        if (invoiceNumber == null) return "";
+        String base = invoiceId != null ? invoiceId : invoiceNumber;
+        if (base == null) return "";
         // Extract trailing digits (the sequence part)
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)$").matcher(invoiceNumber);
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)$").matcher(base);
         if (matcher.find()) {
             return matcher.group(1);
         }
-        return invoiceNumber;
+        return base;
     }
 }

@@ -32,8 +32,7 @@ public class SalesReportsController {
     @FXML private Label totalTransactionsLabel;
     @FXML private Label totalCashLabel;
     @FXML private Label totalUpiLabel;
-    @FXML private Label totalDebitLabel;
-    @FXML private Label totalCreditLabel;
+    @FXML private Label totalCardLabel;
     @FXML private Label totalGiftLabel;
     @FXML private Label totalSalesLabel;
     @FXML private Label totalRefundsLabel;
@@ -61,8 +60,8 @@ public class SalesReportsController {
     @FXML
     public void initialize() {
         List<Label> totalLabels = List.of(
-            totalLabel, totalTransactionsLabel, totalCashLabel, totalUpiLabel, totalDebitLabel,
-            totalCreditLabel, totalGiftLabel, totalSalesLabel, totalRefundsLabel, totalNetSalesLabel
+            totalLabel, totalTransactionsLabel, totalCashLabel, totalUpiLabel, totalCardLabel,
+            totalGiftLabel, totalSalesLabel, totalRefundsLabel, totalNetSalesLabel
         );
 
         tableManager = new SalesReportTableManager(breakdownTable, totalLabels);
@@ -76,6 +75,7 @@ public class SalesReportsController {
             breakdownTable.getScene() != null ? breakdownTable.getScene().getWindow() : null,
             tableManager::calculateDynamicGrossSales,
             tableManager::calculateDynamicNetSales,
+            tableManager::calculateDynamicTransactions,
             tableManager::isColumnVisible
         );
 
@@ -83,11 +83,11 @@ public class SalesReportsController {
     }
 
     private void bindTotalsAlignment() {
+        totalLabel.setAlignment(Pos.CENTER_LEFT);
         totalTransactionsLabel.setAlignment(Pos.CENTER);
         totalCashLabel.setAlignment(Pos.CENTER_RIGHT);
         totalUpiLabel.setAlignment(Pos.CENTER_RIGHT);
-        totalDebitLabel.setAlignment(Pos.CENTER_RIGHT);
-        totalCreditLabel.setAlignment(Pos.CENTER_RIGHT);
+        totalCardLabel.setAlignment(Pos.CENTER_RIGHT);
         totalGiftLabel.setAlignment(Pos.CENTER_RIGHT);
         totalSalesLabel.setAlignment(Pos.CENTER_RIGHT);
         totalRefundsLabel.setAlignment(Pos.CENTER_RIGHT);
@@ -170,7 +170,7 @@ public class SalesReportsController {
         endDatePicker.setValue(LocalDate.now());
 
         amountFilterColCombo.setItems(FXCollections.observableArrayList(
-            "None", "Transactions", "Cash", "UPI", "Debit Card", "Credit Card", "Gift Card", "Gross Sales", "Refunds", "Net Sales"
+            "None", "Transactions", "Cash", "UPI", "Card", "Gift Card", "Gross Sales", "Refunds", "Net Sales"
         ));
         amountFilterColCombo.setValue("None");
 
@@ -193,8 +193,7 @@ public class SalesReportsController {
             case "Transactions" -> BigDecimal.valueOf(item.totalTransactions());
             case "Cash" -> item.cash();
             case "UPI" -> item.upi();
-            case "Debit Card" -> item.debitCard();
-            case "Credit Card" -> item.creditCard();
+            case "Card" -> item.card();
             case "Gift Card" -> item.giftCard();
             case "Gross Sales" -> item.totalSales();
             case "Refunds" -> item.refunds();

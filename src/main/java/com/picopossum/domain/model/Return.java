@@ -13,6 +13,7 @@ public record Return(
         String processedByName,
         BigDecimal totalRefund,
         Long paymentMethodId,
-        String paymentMethodName
+        String paymentMethodName,
+        String invoiceId
 ) {
 }

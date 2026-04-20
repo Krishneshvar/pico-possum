@@ -12,11 +12,11 @@ import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.domain.repositories.*;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ReturnFilter;
+import com.picopossum.application.sales.InvoiceNumberService;
 
 import java.math.BigDecimal;
 import com.picopossum.shared.util.TimeUtil;
 import java.util.*;
-
 public class ReturnsService {
     private final ReturnsRepository returnsRepository;
     private final SalesRepository salesRepository;
@@ -25,6 +25,7 @@ public class ReturnsService {
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
     private final ReturnCalculator returnCalculator;
+    private final InvoiceNumberService invoiceNumberService;
 
     public ReturnsService(ReturnsRepository returnsRepository,
                           SalesRepository salesRepository,
@@ -32,7 +33,8 @@ public class ReturnsService {
                           AuditRepository auditRepository,
                           TransactionManager transactionManager,
                           JsonService jsonService,
-                          ReturnCalculator returnCalculator) {
+                          ReturnCalculator returnCalculator,
+                          InvoiceNumberService invoiceNumberService) {
         this.returnsRepository = returnsRepository;
         this.salesRepository = salesRepository;
         this.inventoryService = inventoryService;
@@ -40,6 +42,7 @@ public class ReturnsService {
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
         this.returnCalculator = returnCalculator;
+        this.invoiceNumberService = invoiceNumberService;
     }
 
     public ReturnResponse createReturn(CreateReturnRequest request) {
@@ -72,6 +75,8 @@ public class ReturnsService {
             // Step 6: Validate refund amount
             validateRefundAmount(totalRefund, sale.paidAmount());
 
+            String returnInvoiceId = invoiceNumberService.generate("R", paymentMethodId);
+
             // Step 7: Create return record
             Return returnRecord = new Return(
                     null,
@@ -79,7 +84,8 @@ public class ReturnsService {
                     request.userId(),
                     request.reason().trim(),
                     TimeUtil.nowUTC(),
-                    null, null, totalRefund, paymentMethodId, null
+                    null, null, totalRefund, paymentMethodId, null,
+                    returnInvoiceId
             );
             long returnId = returnsRepository.insertReturn(returnRecord);
 

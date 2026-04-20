@@ -8,12 +8,15 @@ public record BreakdownItem(
         int totalTransactions,
         BigDecimal cash,
         BigDecimal upi,
-        BigDecimal debitCard,
-        BigDecimal creditCard,
+        BigDecimal card,
         BigDecimal giftCard,
         BigDecimal totalSales,
         BigDecimal totalDiscount,
-        BigDecimal refunds
+        BigDecimal refunds,
+        int cashCount,
+        int upiCount,
+        int cardCount,
+        int giftCardCount
 ) {
     public BigDecimal getNetSales() {
         BigDecimal gross = totalSales != null ? totalSales : BigDecimal.ZERO;

@@ -63,7 +63,11 @@ public class ReturnsController extends AbstractCrudController<Return, ReturnFilt
         dataTable.setEmptySubtitle("Returns will appear here when processed.");
         
         TableColumn<Return, String> invoiceCol = new TableColumn<>("Invoice #");
-        invoiceCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().invoiceNumber()));
+        invoiceCol.setCellValueFactory(cellData -> {
+            Return r = cellData.getValue();
+            String id = (r.invoiceId() != null && !r.invoiceId().isBlank()) ? r.invoiceId() : r.invoiceNumber();
+            return new SimpleStringProperty(id);
+        });
         invoiceCol.setSortable(false);
         invoiceCol.setCellFactory(col -> new TableCell<Return, String>() {
             @Override

@@ -159,7 +159,7 @@ public final class AppBootstrap {
         com.picopossum.shared.util.TimeUtil.initialize(serviceLocator.getSettingsStore());
         com.picopossum.shared.util.CurrencyUtil.initialize(serviceLocator.getSettingsStore());
         returnsService = new ReturnsService(returnRepository, salesRepository,
-                applicationModule.getInventoryService(), auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator());
+                applicationModule.getInventoryService(), auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
         com.picopossum.persistence.repositories.sqlite.SqliteReportsRepository reportsRepository =
                 new com.picopossum.persistence.repositories.sqlite.SqliteReportsRepository(databaseManager);
         reportsService = new ReportsService(reportsRepository, productFlowRepository);

@@ -26,7 +26,6 @@ public class RouteRegistry {
         // Sales & Commercial
         register("sales", "/fxml/sales/pos-view.fxml", "sales.create");
         register("sales-history", "/fxml/sales/sales-history-view.fxml", "sales.view");
-        register("transactions", "/fxml/transactions/transactions-view.fxml", "transactions.view");
         register("returns", "/fxml/returns/returns-view.fxml", "returns.view");
 
         // People

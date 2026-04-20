@@ -55,6 +55,7 @@ public class ProductFlowController {
     private final SalesService salesService;
     private final WorkspaceManager workspaceManager;
     private Product selectedProduct;
+    private boolean isProgrammaticSearchUpdate = false;
 
     public ProductFlowController(ProductFlowService productFlowService,
                                  ProductService productService,
@@ -137,8 +138,15 @@ public class ProductFlowController {
                     viewBtn.getStyleClass().add("btn-edit-stock");
                     viewBtn.setTooltip(new Tooltip("View Details"));
                     
-                    ProductFlow flow = getTableView().getItems().get(getIndex());
-                    viewBtn.setOnAction(e -> handleViewBill(flow));
+                    ProductFlow flow = null;
+                    if (getTableRow() != null && getTableRow().getItem() instanceof ProductFlow pf) {
+                        flow = pf;
+                    }
+                    
+                    if (flow != null) {
+                        final ProductFlow f = flow;
+                        viewBtn.setOnAction(e -> handleViewBill(f));
+                    }
                     
                     container.getChildren().addAll(label, viewBtn);
                     setGraphic(container);
@@ -280,6 +288,7 @@ public class ProductFlowController {
         });
 
         searchField.textProperty().addListener((obs, old, val) -> {
+            if (isProgrammaticSearchUpdate) return;
             if (val == null || val.trim().isEmpty()) {
                 searchPopup.hide();
                 return;
@@ -336,7 +345,9 @@ public class ProductFlowController {
 
     private void selectProduct(Product product) {
         this.selectedProduct = product;
+        isProgrammaticSearchUpdate = true;
         searchField.setText(product.name());
+        isProgrammaticSearchUpdate = false;
         searchPopup.hide();
         loadData();
     }

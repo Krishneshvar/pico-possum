@@ -36,7 +36,7 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                 SELECT
                   pf.*, p.name AS product_name, 
                   COALESCE(s.id, s_direct.id) AS bill_ref_id,
-                  COALESCE(s.invoice_number, s_direct.invoice_number) AS bill_ref_number,
+                  COALESCE(r_ref.invoice_id, s.invoice_id, s_direct.invoice_id, s.invoice_number, s_direct.invoice_number) AS bill_ref_number,
                   c.name AS customer_name,
                   GROUP_CONCAT(DISTINCT pm.name) AS payment_method_names
                 FROM product_flow pf
@@ -45,10 +45,10 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                 LEFT JOIN return_items ri ON (pf.reference_type = 'return_item' AND pf.reference_id = ri.id)
                 LEFT JOIN sale_items si_ret ON (ri.sale_item_id = si_ret.id)
                 LEFT JOIN sales s ON (s.id = si.sale_id OR s.id = si_ret.sale_id)
+                LEFT JOIN returns r_ref ON (pf.reference_type = 'return_item' AND pf.reference_id = ri.id)
                 LEFT JOIN sales s_direct ON ( (pf.reference_type IN ('sale_cancellation', 'sale_edit_add', 'sale_edit_reduction') AND pf.reference_id = s_direct.id) )
                 LEFT JOIN customers c ON COALESCE(s.customer_id, s_direct.customer_id) = c.id
-                LEFT JOIN transactions t ON (COALESCE(s.id, s_direct.id) = t.sale_id AND t.type = 'payment' AND t.status = 'completed')
-                LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
+                LEFT JOIN payment_methods pm ON pm.id = COALESCE(r_ref.payment_method_id, s.payment_method_id, s_direct.payment_method_id)
                 WHERE pf.product_id = ?
                 """);
 

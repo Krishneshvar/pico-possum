@@ -356,10 +356,13 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                   COALESCE(SUM(s.discount), 0) + COALESCE(SUM((SELECT SUM(si.discount_amount) FROM sale_items si WHERE si.sale_id = s.id)), 0) AS total_discount,
                   COALESCE(SUM(CASE WHEN pm.name = 'Cash' THEN s.paid_amount ELSE 0 END), 0) AS cash,
                   COALESCE(SUM(CASE WHEN pm.name = 'UPI' THEN s.paid_amount ELSE 0 END), 0) AS upi,
-                  COALESCE(SUM(CASE WHEN pm.name = 'Debit Card' THEN s.paid_amount ELSE 0 END), 0) AS debit_card,
-                  COALESCE(SUM(CASE WHEN pm.name = 'Credit Card' THEN s.paid_amount ELSE 0 END), 0) AS credit_card,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Card' THEN s.paid_amount ELSE 0 END), 0) AS card,
                   COALESCE(SUM(CASE WHEN pm.name = 'Gift Card' THEN s.paid_amount ELSE 0 END), 0) AS gift_card,
-                  COALESCE((SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id), 0) AS refunds
+                  COALESCE((SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id), 0) AS refunds,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Cash' THEN 1 ELSE 0 END), 0) AS cash_count,
+                  COALESCE(SUM(CASE WHEN pm.name = 'UPI' THEN 1 ELSE 0 END), 0) AS upi_count,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Card' THEN 1 ELSE 0 END), 0) AS card_count,
+                  COALESCE(SUM(CASE WHEN pm.name = 'Gift Card' THEN 1 ELSE 0 END), 0) AS gift_card_count
                 FROM sales s
                 LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE date(sale_date) >= ? AND date(sale_date) <= ?
@@ -376,10 +379,13 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     map.put("total_discount", rs.getBigDecimal("total_discount"));
                     map.put("cash", rs.getBigDecimal("cash"));
                     map.put("upi", rs.getBigDecimal("upi"));
-                    map.put("debit_card", rs.getBigDecimal("debit_card"));
-                    map.put("credit_card", rs.getBigDecimal("credit_card"));
+                    map.put("card", rs.getBigDecimal("card"));
                     map.put("gift_card", rs.getBigDecimal("gift_card"));
                     map.put("refunds", rs.getBigDecimal("refunds"));
+                    map.put("cash_count", rs.getInt("cash_count"));
+                    map.put("upi_count", rs.getInt("upi_count"));
+                    map.put("card_count", rs.getInt("card_count"));
+                    map.put("gift_card_count", rs.getInt("gift_card_count"));
                     return map;
                 },
                 params.toArray()
@@ -449,11 +455,22 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     private static void addLegacyAmountToPaymentBucket(Map<String, Object> row, BigDecimal amount, String paymentMethodName) {
         String normalized = canonicalPaymentName(paymentMethodName);
         switch (normalized) {
-            case "cash" -> row.put("cash", asBigDecimal(row.get("cash")).add(amount));
-            case "upi" -> row.put("upi", asBigDecimal(row.get("upi")).add(amount));
-            case "debit card" -> row.put("debit_card", asBigDecimal(row.get("debit_card")).add(amount));
-            case "credit card" -> row.put("credit_card", asBigDecimal(row.get("credit_card")).add(amount));
-            case "gift card" -> row.put("gift_card", asBigDecimal(row.get("gift_card")).add(amount));
+            case "cash" -> {
+                row.put("cash", asBigDecimal(row.get("cash")).add(amount));
+                row.put("cash_count", ((Number) row.getOrDefault("cash_count", 0)).intValue() + 1);
+            }
+            case "upi" -> {
+                row.put("upi", asBigDecimal(row.get("upi")).add(amount));
+                row.put("upi_count", ((Number) row.getOrDefault("upi_count", 0)).intValue() + 1);
+            }
+            case "card", "debit card", "credit card" -> {
+                row.put("card", asBigDecimal(row.get("card")).add(amount));
+                row.put("card_count", ((Number) row.getOrDefault("card_count", 0)).intValue() + 1);
+            }
+            case "gift card" -> {
+                row.put("gift_card", asBigDecimal(row.get("gift_card")).add(amount));
+                row.put("gift_card_count", ((Number) row.getOrDefault("gift_card_count", 0)).intValue() + 1);
+            }
         }
     }
 
@@ -495,10 +512,13 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         map.put("total_discount", BigDecimal.ZERO);
         map.put("cash", BigDecimal.ZERO);
         map.put("upi", BigDecimal.ZERO);
-        map.put("debit_card", BigDecimal.ZERO);
-        map.put("credit_card", BigDecimal.ZERO);
+        map.put("card", BigDecimal.ZERO);
         map.put("gift_card", BigDecimal.ZERO);
         map.put("refunds", BigDecimal.ZERO);
+        map.put("cash_count", 0);
+        map.put("upi_count", 0);
+        map.put("card_count", 0);
+        map.put("gift_card_count", 0);
         return map;
     }
 }

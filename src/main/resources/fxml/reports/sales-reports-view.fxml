@@ -95,8 +95,7 @@
             <Label fx:id="totalTransactionsLabel" text="0" styleClass="reports-totals-value"/>
             <Label fx:id="totalCashLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
             <Label fx:id="totalUpiLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
-            <Label fx:id="totalDebitLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
-            <Label fx:id="totalCreditLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
+            <Label fx:id="totalCardLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
             <Label fx:id="totalGiftLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>
             <Label fx:id="totalSalesLabel" text="₹0.00" styleClass="reports-totals-value-primary" style="-fx-padding: 0 5 0 0;"/>
             <Label fx:id="totalRefundsLabel" text="₹0.00" styleClass="reports-totals-value" style="-fx-padding: 0 5 0 0;"/>

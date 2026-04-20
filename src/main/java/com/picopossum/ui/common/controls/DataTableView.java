@@ -48,7 +48,7 @@ public class DataTableView<T> extends StackPane {
 
     @FXML
     public void initialize() {
-        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         tableView.setAccessibleText("Data table");
         
         // Remove from StackPane children list so it doesn't cause JavaFX layout index crashes when TableViewSkin claims it

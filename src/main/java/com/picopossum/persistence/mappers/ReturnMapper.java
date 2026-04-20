@@ -22,7 +22,8 @@ public final class ReturnMapper implements RowMapper<Return> {
                 getOptionalColumn(rs, "processed_by_name"),
                 SqlMapperUtils.getBigDecimal(rs, "total_refund"),
                 paymentMethodId,
-                getOptionalColumn(rs, "payment_method_name")
+                getOptionalColumn(rs, "payment_method_name"),
+                getOptionalColumn(rs, "invoice_id")
         );
     }
 

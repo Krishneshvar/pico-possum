@@ -8,6 +8,7 @@ import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.domain.repositories.AuditRepository;
 import com.picopossum.domain.repositories.ReturnsRepository;
 import com.picopossum.domain.repositories.SalesRepository;
+import com.picopossum.application.sales.InvoiceNumberService;
 
 public class ReturnsModule {
     private final ReturnsService returnsService;
@@ -17,7 +18,8 @@ public class ReturnsModule {
                          InventoryService inventoryService,
                          AuditRepository auditRepository,
                          TransactionManager transactionManager,
-                         JsonService jsonService) {
+                         JsonService jsonService,
+                         InvoiceNumberService invoiceNumberService) {
         this.returnsService = new ReturnsService(
                 returnsRepository,
                 salesRepository,
@@ -25,7 +27,8 @@ public class ReturnsModule {
                 auditRepository,
                 transactionManager,
                 jsonService,
-                new ReturnCalculator()
+                new ReturnCalculator(),
+                invoiceNumberService
         );
     }
 
