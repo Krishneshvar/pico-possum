@@ -23,5 +23,9 @@ public interface ProductRepository {
 
     Map<String, Object> getProductStats();
 
+    boolean existsBySku(String sku);
+
+    boolean existsBySkuExcludeId(String sku, long id);
+
     int getNextGeneratedNumericSku();
 }

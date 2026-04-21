@@ -97,25 +97,42 @@ public abstract class AbstractCrudController<T, F> {
     protected abstract String getEntityIdentifier(T entity);
 
     /**
-     * Load data with current filters and pagination
+     * Load data with current filters and pagination.
+     * Uses a background thread for fetching to prevent UI freezing.
      */
     protected void loadData() {
-        dataTable.setLoading(true);
+        if (dataTable != null) dataTable.setLoading(true);
         
-        Platform.runLater(() -> {
+        // Build filter on UI thread since it accesses UI properties
+        final F filter = buildFilter();
+        
+        // Execute fetch in a background thread
+        Thread fetchThread = new Thread(() -> {
             try {
-                F filter = buildFilter();
-                PagedResult<T> result = fetchData(filter);
+                final PagedResult<T> result = fetchData(filter);
                 
-                dataTable.setItems(FXCollections.observableArrayList(result.items()));
-                paginationBar.setTotalItems(result.totalCount());
-                dataTable.setLoading(false);
+                // Update UI on FX Application Thread
+                Platform.runLater(() -> {
+                    if (dataTable != null) {
+                        dataTable.setItems(FXCollections.observableArrayList(result.items()));
+                        dataTable.setLoading(false);
+                    }
+                    if (paginationBar != null) {
+                        paginationBar.setTotalItems(result.totalCount());
+                    }
+                });
             } catch (Exception e) {
-                dataTable.setLoading(false);
-                com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load " + getEntityName(), e);
-                NotificationService.error("Failed to load " + getEntityName() + ": " + com.picopossum.ui.common.ErrorHandler.toUserMessage(e));
+                Platform.runLater(() -> {
+                    if (dataTable != null) dataTable.setLoading(false);
+                    com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load " + getEntityName(), e);
+                    NotificationService.error("Failed to load " + getEntityName() + ": " + 
+                        com.picopossum.ui.common.ErrorHandler.toUserMessage(e));
+                });
             }
         });
+        
+        fetchThread.setDaemon(true); // Ensure thread doesn't prevent app shutdown
+        fetchThread.start();
     }
 
     /**

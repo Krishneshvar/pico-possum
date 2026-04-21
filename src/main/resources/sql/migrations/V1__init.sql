@@ -317,7 +317,9 @@ create trigger trg_update_stock_cache_lot_insert after insert on inventory_lots 
     last_updated = current_timestamp;
 end;
 
-create trigger trg_update_stock_cache_adjustment after insert on inventory_adjustments begin
+create trigger trg_update_stock_cache_adjustment after insert on inventory_adjustments 
+when new.reason != 'confirm_receive'
+begin
   insert into product_stock_cache (product_id, current_stock, last_updated)
   values (new.product_id, new.quantity_change, current_timestamp)
   on conflict(product_id) do update set

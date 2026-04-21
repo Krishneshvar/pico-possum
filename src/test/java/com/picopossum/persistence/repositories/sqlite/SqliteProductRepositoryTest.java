@@ -63,6 +63,13 @@ class SqliteProductRepositoryTest {
             )
         """);
         connection.createStatement().execute("""
+            CREATE TABLE product_stock_cache (
+                product_id INTEGER PRIMARY KEY,
+                current_stock INTEGER DEFAULT 0,
+                last_updated TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """);
+        connection.createStatement().execute("""
             CREATE TABLE inventory_lots (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_id INTEGER,
@@ -77,6 +84,16 @@ class SqliteProductRepositoryTest {
                 reason TEXT
             )
         """);
+    }
+
+    @Test
+    void existsBySku_returnsCorrectResult() {
+        repository.insertProduct(new Product(null, "P1", null, null, null, "DUPE", new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
+        
+        assertTrue(repository.existsBySku("DUPE"));
+        assertTrue(repository.existsBySkuExcludeId("DUPE", 999L));
+        assertFalse(repository.existsBySkuExcludeId("DUPE", 1L)); // Assuming 1L is the ID of the inserted product
+        assertFalse(repository.existsBySku("NONEXISTENT"));
     }
 
     @Test

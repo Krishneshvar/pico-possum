@@ -49,13 +49,11 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                   p.id, p.name, p.description, p.category_id, c.name AS category_name,
                   p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
                   p.status, p.image_path,
-                  (
-                    COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
-                    + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id AND ia.reason != 'confirm_receive'), 0)
-                  ) AS stock,
+                  COALESCE(sc.current_stock, 0) AS stock,
                   p.created_at, p.updated_at, p.deleted_at
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
                 WHERE p.id = ? AND p.deleted_at IS NULL
                 """,
                 productMapper,
@@ -134,12 +132,10 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 p.id, p.name, p.description, p.category_id, c.name AS category_name, 
                 p.sku, p.mrp, p.cost_price, 
                 p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
-                (
-                    COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
-                    + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id AND ia.reason != 'confirm_receive'), 0)
-                ) AS stock
+                COALESCE(sc.current_stock, 0) AS stock
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
             WHERE p.deleted_at IS NULL
         """;
 
@@ -227,21 +223,13 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public Map<String, Object> getProductStats() {
         return queryOne(
                 """
-                WITH ProductStats AS (
-                  SELECT
-                    p.id, p.status, p.stock_alert_cap,
-                    (
-                      COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0)
-                      + COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id AND ia.reason != 'confirm_receive'), 0)
-                    ) AS current_stock
-                  FROM products p
-                  WHERE p.deleted_at IS NULL
-                )
                 SELECT
                   COUNT(*) AS totalProducts,
-                  COUNT(CASE WHEN status = 'active' THEN 1 END) AS activeProducts,
-                  COUNT(CASE WHEN current_stock <= COALESCE(stock_alert_cap, 10) THEN 1 END) AS lowStockProducts
-                FROM ProductStats
+                  COUNT(CASE WHEN p.status = 'active' THEN 1 END) AS activeProducts,
+                  COUNT(CASE WHEN COALESCE(sc.current_stock, 0) <= COALESCE(p.stock_alert_cap, 10) THEN 1 END) AS lowStockProducts
+                FROM products p
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+                WHERE p.deleted_at IS NULL
                 """,
                 rs -> {
                     java.util.Map<String, Object> map = new java.util.HashMap<>();
@@ -251,6 +239,18 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                     return map;
                 }
         ).orElse(Map.of("totalProducts", 0, "activeProducts", 0, "lowStockProducts", 0));
+    }
+
+    @Override
+    public boolean existsBySku(String sku) {
+        if (sku == null || sku.isBlank()) return false;
+        return queryOne("SELECT 1 FROM products WHERE sku = ? AND deleted_at IS NULL", rs -> true, sku).orElse(false);
+    }
+
+    @Override
+    public boolean existsBySkuExcludeId(String sku, long id) {
+        if (sku == null || sku.isBlank()) return false;
+        return queryOne("SELECT 1 FROM products WHERE sku = ? AND id != ? AND deleted_at IS NULL", rs -> true, sku, id).orElse(false);
     }
 
     @Override
