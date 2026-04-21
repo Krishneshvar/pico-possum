@@ -49,6 +49,30 @@
         </HBox>
     </HBox>
     
+    <!-- Summary Stats Bar -->
+    <HBox fx:id="summaryBar" spacing="16" style="-fx-padding: 0 0 16 0;">
+        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
+            <Label text="Net Movement" styleClass="kpi-label-mini"/>
+            <Label fx:id="netMovementLabel" text="0" styleClass="kpi-value-mini"/>
+        </VBox>
+        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
+            <Label text="Total Sold" styleClass="kpi-label-mini"/>
+            <Label fx:id="totalSoldLabel" text="0" styleClass="kpi-value-mini"/>
+        </VBox>
+        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
+            <Label text="Total Returned" styleClass="kpi-label-mini"/>
+            <Label fx:id="totalReturnedLabel" text="0" styleClass="kpi-value-mini"/>
+        </VBox>
+        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
+            <Label text="Total Gained" styleClass="kpi-label-mini"/>
+            <Label fx:id="totalGainedLabel" text="0" styleClass="kpi-value-mini"/>
+        </VBox>
+        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
+            <Label text="Total Lost" styleClass="kpi-label-mini"/>
+            <Label fx:id="totalLostLabel" text="0" styleClass="kpi-value-mini"/>
+        </VBox>
+    </HBox>
+
     <VBox VBox.vgrow="ALWAYS" styleClass="card">
         <FilterBar fx:id="filterBar"/>
         

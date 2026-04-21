@@ -220,6 +220,12 @@ public class ProductFlowController {
         ));
     }
 
+    @FXML private Label netMovementLabel;
+    @FXML private Label totalSoldLabel;
+    @FXML private Label totalReturnedLabel;
+    @FXML private Label totalGainedLabel;
+    @FXML private Label totalLostLabel;
+
     private void loadData() {
         if (selectedProduct == null) {
             clearData();
@@ -227,35 +233,67 @@ public class ProductFlowController {
         }
 
         flowTable.setLoading(true);
-        Platform.runLater(() -> {
-            try {
-                LocalDate start = startDatePicker.getValue();
-                LocalDate end = endDatePicker.getValue();
-                
-                String startStr = start != null ? start.atStartOfDay().toString() : null;
-                String endStr = end != null ? end.atTime(23, 59, 59).toString() : null;
+        
+        LocalDate start = startDatePicker.getValue();
+        LocalDate end = endDatePicker.getValue();
+        
+        String startStr = start != null ? start.atStartOfDay().toString() : null;
+        String endStr = end != null ? end.atTime(23, 59, 59).toString() : null;
+        List<String> eventTypes = eventTypeFilter.getSelectedItems();
+        
+        int pageSize = paginationBar.getPageSize();
+        int offset = paginationBar.getCurrentPage() * pageSize;
 
-                List<String> eventTypes = eventTypeFilter.getSelectedItems();
-                
-                List<ProductFlow> flow = productFlowService.getProductTimeline(
-                    selectedProduct.id(), 
-                    paginationBar.getPageSize(), 
-                    paginationBar.getCurrentPage() * paginationBar.getPageSize(), 
-                    startStr, 
-                    endStr, 
-                    eventTypes
+        javafx.concurrent.Task<com.picopossum.application.reports.dto.ProductFlowReport> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected com.picopossum.application.reports.dto.ProductFlowReport call() throws Exception {
+                return productFlowService.getProductFlowReport(
+                    selectedProduct.id(), pageSize, offset, startStr, endStr, eventTypes
                 );
-                
-                flowTable.setItems(FXCollections.observableArrayList(flow));
-                paginationBar.setTotalItems(flow.size() < paginationBar.getPageSize() ? (paginationBar.getCurrentPage() * paginationBar.getPageSize() + flow.size()) : 1000); 
-                
-                flowTable.setLoading(false);
-            } catch (Exception e) {
-                flowTable.setLoading(false);
-                com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load flow data", e);
-                NotificationService.error("Failed to load flow data: " + com.picopossum.ui.common.ErrorHandler.toUserMessage(e));
             }
+        };
+
+        task.setOnSucceeded(e -> {
+            com.picopossum.application.reports.dto.ProductFlowReport report = task.getValue();
+            flowTable.setItems(FXCollections.observableArrayList(report.flows()));
+            updateSummaryLabels(report.summary());
+            
+            int flowCount = report.flows().size();
+            paginationBar.setTotalItems(flowCount < pageSize 
+                ? (offset + flowCount) 
+                : 1000); 
+                
+            flowTable.setLoading(false);
         });
+
+        task.setOnFailed(e -> {
+            flowTable.setLoading(false);
+            Throwable ex = task.getException();
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load flow data", ex);
+            NotificationService.error("Failed to load flow data: " + com.picopossum.ui.common.ErrorHandler.toUserMessage(ex));
+        });
+
+        new Thread(task).start();
+    }
+
+    private void updateSummaryLabels(Map<String, Object> summary) {
+        if (summary == null || summary.isEmpty()) {
+            netMovementLabel.setText("0");
+            totalSoldLabel.setText("0");
+            totalReturnedLabel.setText("0");
+            totalGainedLabel.setText("0");
+            totalLostLabel.setText("0");
+            return;
+        }
+
+        int net = (int) summary.getOrDefault("netMovement", 0);
+        netMovementLabel.setText(String.valueOf(net));
+        netMovementLabel.setStyle("-fx-text-fill: " + (net >= 0 ? "#10b981" : "#ef4444") + ";");
+
+        totalSoldLabel.setText(String.valueOf(summary.getOrDefault("totalSold", 0)));
+        totalReturnedLabel.setText(String.valueOf(summary.getOrDefault("totalReturned", 0)));
+        totalGainedLabel.setText(String.valueOf(summary.getOrDefault("totalGained", 0)));
+        totalLostLabel.setText(String.valueOf(summary.getOrDefault("totalLost", 0)));
     }
 
     private void setupSearchAutocomplete() {

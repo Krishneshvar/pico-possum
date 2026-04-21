@@ -15,13 +15,12 @@ public class ProductFlowService {
         this.productFlowRepository = productFlowRepository;
     }
 
-    public List<ProductFlow> getProductTimeline(long productId, int limit, int offset, String startDate, String endDate, List<String> eventTypes) {
-        return productFlowRepository.findFlowByProductId(productId, limit, offset, startDate, endDate, eventTypes);
+    public com.picopossum.application.reports.dto.ProductFlowReport getProductFlowReport(long productId, int limit, int offset, String startDate, String endDate, List<String> eventTypes) {
+        Map<String, Object> summary = productFlowRepository.getProductFlowSummary(productId);
+        List<ProductFlow> flows = productFlowRepository.findFlowByProductId(productId, limit, offset, startDate, endDate, eventTypes);
+        return new com.picopossum.application.reports.dto.ProductFlowReport(productId, summary, flows);
     }
 
-    public Map<String, Object> getProductFlowSummary(long productId) {
-        return productFlowRepository.getProductFlowSummary(productId);
-    }
 
     public List<ProductFlow> getFlowByReference(String referenceType, long referenceId) {
         return productFlowRepository.findFlowByReference(referenceType, referenceId);

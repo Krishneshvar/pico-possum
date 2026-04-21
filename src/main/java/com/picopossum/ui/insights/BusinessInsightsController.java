@@ -99,45 +99,55 @@ public class BusinessInsightsController {
     }
 
     private void loadInsights() {
-        try {
-            LocalDate start = currentStartDate.getValue();
-            LocalDate end = currentEndDate.getValue();
-            
-            if (start == null || end == null) return;
-            
-            LocalDate prevStart;
-            LocalDate prevEnd;
-            
-            String compType = comparisonTypeCombo.getValue();
-            if (compType == null) compType = "Previous Period";
-            
-            long days = ChronoUnit.DAYS.between(start, end) + 1;
-            
-            switch (compType) {
-                case "Last Week" -> {
-                    prevStart = start.minusWeeks(1);
-                    prevEnd = end.minusWeeks(1);
-                }
-                case "Last Month" -> {
-                    prevStart = start.minusMonths(1);
-                    prevEnd = end.minusMonths(1);
-                }
-                case "Last Year" -> {
-                    prevStart = start.minusYears(1);
-                    prevEnd = end.minusYears(1);
-                }
-                default -> { // Previous Period
-                    prevStart = start.minusDays(days);
-                    prevEnd = end.minusDays(days);
-                }
+        LocalDate start = currentStartDate.getValue();
+        LocalDate end = currentEndDate.getValue();
+        
+        if (start == null || end == null) return;
+        
+        String compType = comparisonTypeCombo.getValue();
+        if (compType == null) compType = "Previous Period";
+        
+        long days = ChronoUnit.DAYS.between(start, end) + 1;
+        
+        final LocalDate prevStart;
+        final LocalDate prevEnd;
+        
+        switch (compType) {
+            case "Last Week" -> {
+                prevStart = start.minusWeeks(1);
+                prevEnd = end.minusWeeks(1);
             }
-            
-            ComparisonReport report = reportsService.getSalesComparison(start, end, prevStart, prevEnd);
-            updateUI(report);
-            
-        } catch (Exception e) {
-            NotificationService.error("Failed to load insights: " + e.getMessage());
+            case "Last Month" -> {
+                prevStart = start.minusMonths(1);
+                prevEnd = end.minusMonths(1);
+            }
+            case "Last Year" -> {
+                prevStart = start.minusYears(1);
+                prevEnd = end.minusYears(1);
+            }
+            default -> { // Previous Period
+                prevStart = start.minusDays(days);
+                prevEnd = end.minusDays(days);
+            }
         }
+
+        javafx.concurrent.Task<ComparisonReport> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected ComparisonReport call() throws Exception {
+                return reportsService.getSalesComparison(start, end, prevStart, prevEnd);
+            }
+        };
+
+        task.setOnSucceeded(e -> updateUI(task.getValue()));
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load insights", ex);
+            NotificationService.error("Failed to load insights: " + (ex != null ? ex.getMessage() : "Unknown error"));
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private void updateUI(ComparisonReport report) {

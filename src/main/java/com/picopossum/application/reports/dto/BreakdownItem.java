@@ -18,6 +18,16 @@ public record BreakdownItem(
         int cardCount,
         int giftCardCount
 ) {
+    public BreakdownItem {
+        totalSales = totalSales == null ? BigDecimal.ZERO : totalSales;
+        cash = cash == null ? BigDecimal.ZERO : cash;
+        upi = upi == null ? BigDecimal.ZERO : upi;
+        card = card == null ? BigDecimal.ZERO : card;
+        giftCard = giftCard == null ? BigDecimal.ZERO : giftCard;
+        totalDiscount = totalDiscount == null ? BigDecimal.ZERO : totalDiscount;
+        refunds = refunds == null ? BigDecimal.ZERO : refunds;
+    }
+
     public BigDecimal getNetSales() {
         BigDecimal gross = totalSales != null ? totalSales : BigDecimal.ZERO;
         BigDecimal desc = totalDiscount != null ? totalDiscount : BigDecimal.ZERO;

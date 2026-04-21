@@ -128,35 +128,55 @@ public class SalesReportsController {
 
         if (startDate == null || endDate == null) return;
 
-        List<BreakdownItem> breakdown;
-        if ("daily".equals(reportType)) {
-            breakdown = reportsService.getSalesAnalytics(startDate, endDate, null).breakdown();
-        } else if ("monthly".equals(reportType)) {
-            breakdown = reportsService.getMonthlyReport(startDate, endDate, null).breakdown();
-        } else {
-            breakdown = reportsService.getYearlyReport(startDate, endDate, null).breakdown();
-        }
+        breakdownTable.setLoading(true);
 
         String filteredCol = amountFilterColCombo.getValue();
-        if (filteredCol != null && !"None".equals(filteredCol)) {
-            final BigDecimal min = parseAmount(minAmountField.getText(), null);
-            final BigDecimal max = parseAmount(maxAmountField.getText(), null);
+        final BigDecimal min = parseAmount(minAmountField.getText(), null);
+        final BigDecimal max = parseAmount(maxAmountField.getText(), null);
 
-            breakdown = breakdown.stream()
-                .filter(item -> {
-                    BigDecimal val = getFieldValue(item, filteredCol);
-                    if (val == null) val = BigDecimal.ZERO;
-                    
-                    boolean matchesMin = (min == null || val.compareTo(min) >= 0);
-                    boolean matchesMax = (max == null || val.compareTo(max) <= 0);
-                    
-                    return matchesMin && matchesMax;
-                })
-                .collect(Collectors.toList());
-        }
+        javafx.concurrent.Task<List<BreakdownItem>> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<BreakdownItem> call() throws Exception {
+                List<BreakdownItem> breakdown;
+                if ("daily".equals(reportType)) {
+                    breakdown = reportsService.getSalesAnalytics(startDate, endDate, null).breakdown();
+                } else if ("monthly".equals(reportType)) {
+                    breakdown = reportsService.getMonthlyReport(startDate, endDate, null).breakdown();
+                } else {
+                    breakdown = reportsService.getYearlyReport(startDate, endDate, null).breakdown();
+                }
 
-        breakdownTable.getTableView().setItems(FXCollections.observableArrayList(breakdown));
-        tableManager.updateTotals();
+                if (filteredCol != null && !"None".equals(filteredCol)) {
+                    breakdown = breakdown.stream()
+                        .filter(item -> {
+                            BigDecimal val = getFieldValue(item, filteredCol);
+                            if (val == null) val = BigDecimal.ZERO;
+                            
+                            boolean matchesMin = (min == null || val.compareTo(min) >= 0);
+                            boolean matchesMax = (max == null || val.compareTo(max) <= 0);
+                            
+                            return matchesMin && matchesMax;
+                        })
+                        .collect(Collectors.toList());
+                }
+                return breakdown;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            breakdownTable.getTableView().setItems(FXCollections.observableArrayList(task.getValue()));
+            tableManager.updateTotals();
+            breakdownTable.setLoading(false);
+        });
+
+        task.setOnFailed(e -> {
+            breakdownTable.setLoading(false);
+            Throwable ex = task.getException();
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load sales report", ex);
+            com.picopossum.ui.common.controls.NotificationService.error("Failed to load sales report: " + (ex != null ? ex.getMessage() : "Unknown error"));
+        });
+
+        new Thread(task).start();
     }
 
     private void setupFilters() {

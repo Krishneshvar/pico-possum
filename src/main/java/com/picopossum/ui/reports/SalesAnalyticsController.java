@@ -154,20 +154,57 @@ public class SalesAnalyticsController {
 
 
     private void loadReports() {
-        try {
-            loadSalesSummary();
-            loadTopProducts();
-            loadSalesTrend();
-            loadSalesByPaymentMethod();
-        } catch (Exception e) {
-            NotificationService.error("Failed to load reports");
-        }
+        List<Long> paymentMethodIds = getSelectedPaymentMethodIds();
+        String type = reportTypeCombo.getValue();
+        if (type == null) type = "Daily";
+        final String reportType = type;
+
+        javafx.concurrent.Task<AnalyticsBundle> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected AnalyticsBundle call() throws Exception {
+                SalesReportSummary summary = reportsService.getSalesSummary(startDate, endDate, paymentMethodIds);
+                List<TopProduct> topProducts = reportsService.getTopProducts(startDate, endDate, 10, paymentMethodIds);
+                
+                List<? extends BreakdownItem> breakdown;
+                if ("Monthly".equals(reportType)) {
+                    breakdown = reportsService.getMonthlyReport(startDate, endDate, paymentMethodIds).breakdown();
+                } else if ("Yearly".equals(reportType)) {
+                    breakdown = reportsService.getYearlyReport(startDate, endDate, paymentMethodIds).breakdown();
+                } else {
+                    breakdown = reportsService.getSalesAnalytics(startDate, endDate, paymentMethodIds).breakdown();
+                }
+
+                List<PaymentMethodStat> paymentStats = reportsService.getSalesByPaymentMethod(startDate, endDate);
+                
+                return new AnalyticsBundle(summary, topProducts, breakdown, paymentStats);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            AnalyticsBundle bundle = task.getValue();
+            updateSummaryUI(bundle.summary());
+            updateTopProductsChart(bundle.topProducts());
+            updateSalesTrendChart(bundle.breakdown(), reportType);
+            updatePaymentMethodChart(bundle.paymentStats());
+        });
+
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load analytics", ex);
+            NotificationService.error("Failed to load analytics: " + (ex != null ? ex.getMessage() : "Unknown error"));
+        });
+
+        new Thread(task).start();
     }
 
-    private void loadSalesSummary() {
-        List<Long> paymentMethodIds = getSelectedPaymentMethodIds();
-        SalesReportSummary summary = reportsService.getSalesSummary(startDate, endDate, paymentMethodIds);
-        
+    private record AnalyticsBundle(
+        SalesReportSummary summary,
+        List<TopProduct> topProducts,
+        List<? extends BreakdownItem> breakdown,
+        List<PaymentMethodStat> paymentStats
+    ) {}
+
+    private void updateSummaryUI(SalesReportSummary summary) {
         totalSalesLabel.setText(CurrencyUtil.format(summary.totalSales()));
         transactionsLabel.setText(String.valueOf(summary.totalTransactions()));
         avgSaleLabel.setText(CurrencyUtil.format(summary.averageSale()));
@@ -182,79 +219,50 @@ public class SalesAnalyticsController {
         }
         return selected.stream().map(PaymentMethod::id).toList();
     }
-
-    private void loadTopProducts() {
-        List<Long> paymentMethodIds = getSelectedPaymentMethodIds();
-        List<TopProduct> topProducts = reportsService.getTopProducts(startDate, endDate, 10, paymentMethodIds);
-        
+    private void updateTopProductsChart(List<TopProduct> topProducts) {
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Quantity Sold");
-        
         for (TopProduct product : topProducts) {
             String label = product.productName();
             if (label.length() > 20) label = label.substring(0, 20) + "...";
             series.getData().add(new XYChart.Data<>(label, product.totalQuantitySold()));
         }
-        
         topProductsChart.getData().clear();
         topProductsChart.getData().add(series);
     }
 
-    private void loadSalesTrend() {
-        List<Long> paymentMethodIds = getSelectedPaymentMethodIds();
-        String type = reportTypeCombo.getValue();
-        if (type == null) type = "Daily";
-        List<? extends BreakdownItem> breakdown;
-        
-        if ("Monthly".equals(type)) {
-            breakdown = reportsService.getMonthlyReport(startDate, endDate, paymentMethodIds).breakdown();
-        } else if ("Yearly".equals(type)) {
-            breakdown = reportsService.getYearlyReport(startDate, endDate, paymentMethodIds).breakdown();
-        } else {
-            breakdown = reportsService.getSalesAnalytics(startDate, endDate, paymentMethodIds).breakdown();
-        }
-        
+    private void updateSalesTrendChart(List<? extends BreakdownItem> breakdown, String type) {
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Sales");
-        
         for (BreakdownItem item : breakdown) {
             series.getData().add(new XYChart.Data<>(item.name(), item.totalSales()));
         }
-        
         salesTrendChart.getData().clear();
         salesTrendChart.getData().add(series);
         salesTrendChart.setTitle(type + " Sales Trend");
 
-        // Apply interactivity
         for (XYChart.Data<String, Number> data : series.getData()) {
             Node node = data.getNode();
             if (node != null) {
                 node.setOnMouseEntered(e -> {
                     tooltipTitle.setText(data.getXValue());
                     tooltipValue.setText(CurrencyUtil.format(new java.math.BigDecimal(data.getYValue().toString())));
-                    
                     tooltip.show(node, e.getScreenX() + 15, e.getScreenY() - 40);
-                    node.setScaleX(1.5);
-                    node.setScaleY(1.5);
+                    node.setScaleX(1.5); node.setScaleY(1.5);
                 });
-                
                 node.setOnMouseExited(e -> {
                     tooltip.hide();
-                    node.setScaleX(1.0);
-                    node.setScaleY(1.0);
+                    node.setScaleX(1.0); node.setScaleY(1.0);
                 });
             }
         }
     }
 
-    private void loadSalesByPaymentMethod() {
-        List<PaymentMethodStat> stats = reportsService.getSalesByPaymentMethod(startDate, endDate);
-        
+    private void updatePaymentMethodChart(List<PaymentMethodStat> stats) {
         ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
         for (PaymentMethodStat stat : stats) {
             pieData.add(new PieChart.Data(stat.paymentMethod(), stat.totalAmount().doubleValue()));
         }
-        
         paymentMethodsChart.setData(pieData);
     }
 
