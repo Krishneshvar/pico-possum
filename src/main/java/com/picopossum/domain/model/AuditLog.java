@@ -14,6 +14,7 @@ public record AuditLog(
         String oldData,
         String newData,
         String eventDetails,
+        String severity,
         LocalDateTime createdAt
 ) {
 }

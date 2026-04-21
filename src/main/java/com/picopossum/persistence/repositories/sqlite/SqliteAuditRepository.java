@@ -27,30 +27,30 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
 
     @Override
     public long insertAuditLog(AuditLog auditLog) {
-        long id = executeInsert(
+        return executeInsert(
                 """
-                INSERT INTO audit_log (action, table_name, row_id, old_data, new_data, event_details)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO audit_log (action, table_name, row_id, old_data, new_data, event_details, severity)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 auditLog.action(),
                 auditLog.tableName(),
                 auditLog.rowId(),
                 auditLog.oldData(),
                 auditLog.newData(),
-                auditLog.eventDetails()
+                auditLog.eventDetails(),
+                auditLog.severity()
         );
-        cleanupOldLogs();
-        return id;
     }
 
-    private void cleanupOldLogs() {
+    @Override
+    public void cleanupOldLogs() {
         executeUpdate(
                 """
                 DELETE FROM audit_log 
-                WHERE id <= (
+                WHERE id IN (
                     SELECT id FROM audit_log 
                     ORDER BY id DESC 
-                    LIMIT 1 OFFSET ?
+                    LIMIT -1 OFFSET ?
                 )
                 """,
                 MAX_AUDIT_LOGS
@@ -122,15 +122,16 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
         }
         if (filter.startDate() != null && !filter.startDate().isBlank()) {
             joiner.add("created_at >= ?");
-            params.add(filter.startDate());
+            params.add(filter.startDate() + " 00:00:00");
         }
         if (filter.endDate() != null && !filter.endDate().isBlank()) {
             joiner.add("created_at <= ?");
-            params.add(filter.endDate());
+            params.add(filter.endDate() + " 23:59:59");
         }
         if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
-            joiner.add("(action LIKE ? OR table_name LIKE ?)");
+            joiner.add("(action LIKE ? OR table_name LIKE ? OR event_details LIKE ?)");
             String fuzzy = "%" + filter.searchTerm() + "%";
+            params.add(fuzzy);
             params.add(fuzzy);
             params.add(fuzzy);
         }

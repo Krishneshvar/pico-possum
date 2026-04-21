@@ -70,6 +70,7 @@ public final class AuditLogger {
                 oldData,
                 newData,
                 eventDetails,
+                severity,
                 timestamp
             );
             

@@ -15,13 +15,15 @@ public interface AuditRepository {
     PagedResult<AuditLog> findAuditLogs(AuditLogFilter filter);
     
     AuditLog findAuditLogById(Long id);
+
+    void cleanupOldLogs();
     
     /**
      * Simplified logging helper for single-user context.
      */
     default void log(String tableName, long rowId, String action, String data) {
         insertAuditLog(new AuditLog(
-            null, action, tableName, rowId, null, data, null, TimeUtil.nowUTC()
+            null, action, tableName, rowId, null, data, null, "info", TimeUtil.nowUTC()
         ));
     }
 }

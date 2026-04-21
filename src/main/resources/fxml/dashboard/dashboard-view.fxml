@@ -41,9 +41,10 @@
         <!-- Stats Row -->
         <GridPane hgap="25" vgap="25">
             <columnConstraints>
-                <ColumnConstraints percentWidth="33.3"/>
-                <ColumnConstraints percentWidth="33.3"/>
-                <ColumnConstraints percentWidth="33.3"/>
+                <ColumnConstraints percentWidth="25.0"/>
+                <ColumnConstraints percentWidth="25.0"/>
+                <ColumnConstraints percentWidth="25.0"/>
+                <ColumnConstraints percentWidth="25.0"/>
             </columnConstraints>
             
             <!-- Daily Sales -->
@@ -73,9 +74,23 @@
                 </HBox>
                 <Label fx:id="transactionsLabel" text="0" styleClass="stat-value"/>
             </VBox>
+
+            <!-- Average Sale -->
+            <VBox GridPane.columnIndex="2" fx:id="atvStatCard" styleClass="stat-card, card-atv">
+                <HBox alignment="CENTER_LEFT" spacing="15">
+                    <StackPane styleClass="stat-icon-container">
+                        <FontIcon iconLiteral="bx-trending-up" iconSize="28"/>
+                    </StackPane>
+                    <VBox spacing="2">
+                        <Label text="AVG SALE" styleClass="stat-label"/>
+                        <Label text="Per bill today" styleClass="stat-subtext"/>
+                    </VBox>
+                </HBox>
+                <Label fx:id="atvLabel" text="0.00" styleClass="stat-value"/>
+            </VBox>
             
             <!-- Low Stock -->
-            <VBox GridPane.columnIndex="2" fx:id="stockStatCard" styleClass="stat-card, card-alerts">
+            <VBox GridPane.columnIndex="3" fx:id="stockStatCard" styleClass="stat-card, card-alerts">
                 <HBox alignment="CENTER_LEFT" spacing="15">
                     <StackPane styleClass="stat-icon-container">
                         <FontIcon iconLiteral="bx-error" iconSize="28"/>
@@ -88,6 +103,7 @@
                 <Label fx:id="lowStockLabel" text="0" styleClass="stat-value"/>
             </VBox>
         </GridPane>
+
         
         <!-- Detailed Sections -->
         <!-- Trend & Performance -->

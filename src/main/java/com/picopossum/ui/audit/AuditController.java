@@ -15,6 +15,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
 import com.picopossum.ui.common.controls.NotificationService;
+import javafx.scene.layout.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -165,31 +166,61 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
     }
 
     private void showDetails(AuditLog log) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        DialogStyler.apply(alert);
-        alert.setTitle("Audit Event Details");
-        alert.setHeaderText("Log Entry #" + log.id());
+        Dialog<Void> dialog = new Dialog<>();
+        DialogStyler.apply(dialog);
+        dialog.setTitle("Audit Event Details");
+        dialog.setHeaderText("Log Entry #" + log.id() + " - " + log.action());
         
-        StringBuilder content = new StringBuilder();
-        content.append("Action: ").append(log.action()).append("\n");
-        content.append("Target Module: ").append(log.tableName() != null ? log.tableName() : "System").append("\n");
-        content.append("Entity ID: ").append(log.rowId()).append("\n");
-        content.append("Timestamp: ").append(log.createdAt()).append("\n\n");
+        VBox content = new VBox(15);
+        content.setMinWidth(600);
+        content.setPrefWidth(650);
         
-        if (log.oldData() != null) {
-            content.append("🔹 Previous State:\n").append(log.oldData()).append("\n\n");
-        }
-        if (log.newData() != null) {
-            content.append("🔸 New State:\n").append(log.newData()).append("\n\n");
-        }
-        if (log.eventDetails() != null) {
-            content.append("📝 Event Details:\n").append(log.eventDetails()).append("\n");
+        GridPane grid = new GridPane();
+        grid.setHgap(20);
+        grid.setVgap(8);
+        grid.add(new Label("Timestamp:"), 0, 0);
+        grid.add(new Label(TimeUtil.formatStandard(TimeUtil.toLocal(log.createdAt()))), 1, 0);
+        grid.add(new Label("Module:"), 0, 1);
+        grid.add(new Label(log.tableName() != null ? log.tableName() : "System"), 1, 1);
+        grid.add(new Label("Entity ID:"), 0, 2);
+        grid.add(new Label(String.valueOf(log.rowId())), 1, 2);
+        
+        content.getChildren().add(grid);
+        
+        if (log.oldData() != null || log.newData() != null) {
+            HBox diffBox = new HBox(15);
+            diffBox.setPrefHeight(300);
+            
+            if (log.oldData() != null) {
+                VBox oldVBox = new VBox(5, new Label("PREVIOUS STATE"), createJsonArea(log.oldData()));
+                HBox.setHgrow(oldVBox, Priority.ALWAYS);
+                diffBox.getChildren().add(oldVBox);
+            }
+            if (log.newData() != null) {
+                VBox newVBox = new VBox(5, new Label("NEW STATE"), createJsonArea(log.newData()));
+                HBox.setHgrow(newVBox, Priority.ALWAYS);
+                diffBox.getChildren().add(newVBox);
+            }
+            content.getChildren().add(diffBox);
         }
         
-        alert.getDialogPane().setMinWidth(500);
-        alert.setContentText(content.toString());
-        alert.showAndWait();
+        if (log.eventDetails() != null && !log.eventDetails().isBlank()) {
+            content.getChildren().addAll(new Label("EVENT DETAILS"), new Label(log.eventDetails()));
+        }
+        
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
     }
+
+    private TextArea createJsonArea(String json) {
+        TextArea area = new TextArea(json);
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setStyle("-fx-font-family: 'Consolas', 'Monospaced'; -fx-font-size: 12px; -fx-opacity: 0.8;");
+        return area;
+    }
+
 
     @Override
     @FXML

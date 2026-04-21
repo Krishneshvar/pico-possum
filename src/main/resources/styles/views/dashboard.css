@@ -84,6 +84,13 @@
     -fx-icon-color: #2563EB;
 }
 
+.card-atv .stat-icon-container {
+    -fx-background-color: linear-gradient(to bottom right, #f5f3ff, #ede9fe);
+}
+.card-atv .font-icon {
+    -fx-icon-color: #7C3AED;
+}
+
 .card-alerts .stat-icon-container {
     -fx-background-color: linear-gradient(to bottom right, #fff4ed, #ffedd5);
 }

@@ -135,6 +135,7 @@ public class SalesModificationService {
                     jsonService.toJson(Map.of("total", sale.totalAmount())), 
                     jsonService.toJson(Map.of("total", grandTotal)),
                     "Line item correction",
+                    "info",
                     TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
@@ -176,6 +177,7 @@ public class SalesModificationService {
                     null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
                     "Cancellation",
+                    "warning",
                     TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
@@ -204,6 +206,7 @@ public class SalesModificationService {
                     null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
                     "Fulfillment",
+                    "info",
                     TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
@@ -238,6 +241,7 @@ public class SalesModificationService {
                     null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
                     "Payment method correction",
+                    "info",
                     TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
@@ -268,6 +272,7 @@ public class SalesModificationService {
                     null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
                     "Customer correction",
+                    "info",
                     TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);

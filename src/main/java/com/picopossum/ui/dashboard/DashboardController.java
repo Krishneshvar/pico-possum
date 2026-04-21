@@ -28,6 +28,8 @@ public class DashboardController {
     @FXML private javafx.scene.layout.HBox backupBadge;
     @FXML private javafx.scene.layout.VBox salesStatCard;
     @FXML private javafx.scene.layout.VBox transStatCard;
+    @FXML private Label atvLabel;
+    @FXML private javafx.scene.layout.VBox atvStatCard;
     @FXML private javafx.scene.layout.VBox stockStatCard;
     
     @FXML private DataTableView<TopProduct> topProductsTable;
@@ -91,34 +93,78 @@ public class DashboardController {
         lowStockTable.setEmptySubtitle("No products are currently low on stock.");
     }
 
-    private void loadDashboardData() {
-        LocalDate today = LocalDate.now();
-        
-        SalesReportSummary summary = reportsService.getSalesSummary(today, today, null);
-        dailySalesLabel.setText(CurrencyUtil.format(summary.totalSales()));
-        transactionsLabel.setText(String.valueOf(summary.totalTransactions()));
-        
-        List<TopProduct> topProducts = reportsService.getTopProducts(today, today, 10, null);
-        topProductsTable.setItems(FXCollections.observableArrayList(topProducts));
-        
-        List<Product> lowStockProducts = inventoryService.getLowStockAlerts();
-        lowStockLabel.setText(String.valueOf(lowStockProducts.size()));
-        lowStockTable.setItems(FXCollections.observableArrayList(lowStockProducts));
+    private record DashboardBundle(
+            SalesReportSummary summary,
+            List<TopProduct> topProducts,
+            List<Product> lowStockProducts,
+            List<com.picopossum.application.reports.dto.BreakdownItem> hourlyData,
+            String backupStatus
+    ) {}
 
-        updateBackupStatus();
-        updateTrendChart();
-        updateStatCardStates(lowStockProducts.size());
+    private void loadDashboardData() {
+        setLoading(true);
+        LocalDate today = LocalDate.now();
+
+        javafx.concurrent.Task<DashboardBundle> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected DashboardBundle call() throws Exception {
+                SalesReportSummary summary = reportsService.getSalesSummary(today, today, null);
+                List<TopProduct> topProducts = reportsService.getTopProducts(today, today, 8, null);
+                List<Product> lowStockProducts = inventoryService.getLowStockAlerts();
+                List<com.picopossum.application.reports.dto.BreakdownItem> hourlyData = reportsService.getHourlyAnalytics(today, null);
+                
+                String backupStatus = "Backup Pending";
+                if (backupService != null) {
+                    java.util.Optional<java.nio.file.Path> latest = backupService.findLatestBackup();
+                    if (latest.isPresent()) {
+                         java.nio.file.attribute.FileTime modified = java.nio.file.Files.getLastModifiedTime(latest.get());
+                         java.time.LocalDateTime ldt = java.time.LocalDateTime.ofInstant(modified.toInstant(), java.time.ZoneId.systemDefault());
+                         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMM dd, hh:mm a");
+                         backupStatus = "Last backup: " + ldt.format(formatter);
+                    }
+                }
+                
+                return new DashboardBundle(summary, topProducts, lowStockProducts, hourlyData, backupStatus);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            DashboardBundle bundle = task.getValue();
+            updateUI(bundle);
+            setLoading(false);
+        });
+
+        task.setOnFailed(e -> {
+            setLoading(false);
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Dashboard load failed", task.getException());
+            com.picopossum.ui.common.controls.NotificationService.error("Failed to refresh dashboard");
+        });
+
+        new Thread(task).start();
     }
 
-    private void updateTrendChart() {
+    private void updateUI(DashboardBundle bundle) {
+        dailySalesLabel.setText(CurrencyUtil.format(bundle.summary().totalSales()));
+        transactionsLabel.setText(String.valueOf(bundle.summary().totalTransactions()));
+        atvLabel.setText(CurrencyUtil.format(bundle.summary().averageSale()));
+        
+        topProductsTable.setItems(FXCollections.observableArrayList(bundle.topProducts()));
+        
+        lowStockLabel.setText(String.valueOf(bundle.lowStockProducts().size()));
+        lowStockTable.setItems(FXCollections.observableArrayList(bundle.lowStockProducts()));
+
+        backupStatusLabel.setText(bundle.backupStatus());
+        updateTrendChart(bundle.hourlyData());
+        updateStatCardStates(bundle.lowStockProducts().size());
+    }
+
+    private void updateTrendChart(List<com.picopossum.application.reports.dto.BreakdownItem> hourlyData) {
         salesTrendChart.getData().clear();
         javafx.scene.chart.XYChart.Series<String, Number> series = new javafx.scene.chart.XYChart.Series<>();
         series.setName("Revenue");
 
-        List<com.picopossum.application.reports.dto.BreakdownItem> hourlyData = reportsService.getHourlyAnalytics(LocalDate.now(), null);
-        
-        // Ensure all hours are represented for a nice chart
-        for (int h = 9; h <= 21; h++) { // Typical business hours 9 AM - 9 PM
+        // Ensure all hours are represented for a nice chart (Typical business hours 9 AM - 9 PM)
+        for (int h = 9; h <= 21; h++) {
             String hourStr = String.format("%02d:00", h);
             BigDecimal revenue = hourlyData.stream()
                 .filter(item -> item.name().equals(hourStr))
@@ -138,21 +184,14 @@ public class DashboardController {
         }
     }
 
-    private void updateBackupStatus() {
-        if (backupService == null) return;
-        
-        java.util.Optional<java.nio.file.Path> latest = backupService.findLatestBackup();
-        if (latest.isPresent()) {
-            try {
-                java.nio.file.attribute.FileTime modified = java.nio.file.Files.getLastModifiedTime(latest.get());
-                java.time.LocalDateTime ldt = java.time.LocalDateTime.ofInstant(modified.toInstant(), java.time.ZoneId.systemDefault());
-                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMM dd, hh:mm a");
-                backupStatusLabel.setText("Last backup: " + ldt.format(formatter));
-            } catch (java.io.IOException e) {
-                backupStatusLabel.setText("System Protected");
-            }
+    private void setLoading(boolean loading) {
+        // Can add more UI feedback here if needed
+        if (loading) {
+            topProductsTable.setLoading(true);
+            lowStockTable.setLoading(true);
         } else {
-            backupStatusLabel.setText("Backup Pending");
+            topProductsTable.setLoading(false);
+            lowStockTable.setLoading(false);
         }
     }
 
