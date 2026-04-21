@@ -156,9 +156,13 @@ public class DashboardController {
         }
     }
 
+    public void refresh() {
+        loadDashboardData();
+    }
+
     @FXML
     public void handleRefresh() {
-        loadDashboardData();
+        refresh();
         com.picopossum.ui.common.controls.NotificationService.success("Dashboard data refreshed");
     }
 }

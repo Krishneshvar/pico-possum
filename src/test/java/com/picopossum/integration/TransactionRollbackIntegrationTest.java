@@ -68,6 +68,7 @@ class TransactionRollbackIntegrationTest {
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
         inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
+        SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
@@ -80,11 +81,10 @@ class TransactionRollbackIntegrationTest {
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository,
                 auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager,
-                jsonService, settingsStore, invoiceNumberService);
+                jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
-        User u = userRepository.insertUserWithRoles(
-                new User(null, "Rollback Tester", "rbtester-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of()
+        User u = userRepository.insertUser(
+                new User(null, "Rollback Tester", "rbtester-" + UUID.randomUUID(), "hash", true, null, null, null)
         );
         testUserId = u.id();
         cashPaymentMethodId = getOrSeedPaymentMethod();
@@ -100,8 +100,7 @@ class TransactionRollbackIntegrationTest {
 
     @BeforeEach
     void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Rollback Tester", "rbtester",
-                List.of("admin"), List.of("sales:create", "sales:manage")));
+        AuthContext.setCurrentUser(new AuthUser(testUserId, "Rollback Tester", "rbtester"));
     }
 
     @AfterEach
@@ -218,7 +217,7 @@ class TransactionRollbackIntegrationTest {
                 new BigDecimal("100.00"), new BigDecimal("100.00"),
                 BigDecimal.ZERO,
                 "paid", "fulfilled", null, testUserId,
-                null, null, null, null, null, null
+                null, null, null, null, null, null, invoice
         ));
 
         // Trying to insert another sale with the same invoice should fail
@@ -228,7 +227,7 @@ class TransactionRollbackIntegrationTest {
                         new BigDecimal("50.00"), new BigDecimal("50.00"),
                         BigDecimal.ZERO,
                         "paid", "fulfilled", null, testUserId,
-                        null, null, null, null, null, null
+                        null, null, null, null, null, null, invoice
                 ))
         );
     }
@@ -237,8 +236,7 @@ class TransactionRollbackIntegrationTest {
     @Order(6)
     @DisplayName("Cancel already-cancelled sale — throws ValidationException, no audit duplication")
     void cancelAlreadyCancelledSale_throwsValidation() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Rollback Tester", "rbtester",
-                List.of("admin"), List.of("sales:create", "sales:manage")));
+        AuthContext.setCurrentUser(new AuthUser(testUserId, "Rollback Tester", "rbtester"));
 
         SaleResponse saleResp = salesService.createSale(new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("50.00"))),
@@ -260,7 +258,7 @@ class TransactionRollbackIntegrationTest {
         long catId = categoryRepository.insertCategory("RBCat-" + UUID.randomUUID(), null).id();
         long productId = productRepository.insertProduct(new Product(
             null, "RBProd-" + UUID.randomUUID(), "desc", catId, null,
-            "RBSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 5, "active", null, 0, null, null, null
+            "RBSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 0, "active", null, 5, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;
@@ -281,7 +279,7 @@ class TransactionRollbackIntegrationTest {
             stmt.setLong(1, productId);
             stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
             stmt.setInt(3, quantity);
-            stmt.setLong(4, 1);
+            stmt.setLong(4, testUserId);
             stmt.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException("Seed adjustment failed", e); }
     }
@@ -329,3 +327,4 @@ class TransactionRollbackIntegrationTest {
         }
     }
 }
+

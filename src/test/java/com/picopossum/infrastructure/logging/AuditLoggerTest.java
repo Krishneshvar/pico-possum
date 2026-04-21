@@ -35,20 +35,6 @@ class AuditLoggerTest {
     }
 
     @Test
-    void logAuthorization_shouldInsertAuditLogForGranted() {
-        auditLogger.logAuthorization(1L, "sales.create", true, "127.0.0.1", "Access granted");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
-    void logAuthorization_shouldInsertAuditLogForDenied() {
-        auditLogger.logAuthorization(1L, "admin.delete", false, "127.0.0.1", "Access denied");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
     void logDataModification_shouldInsertAuditLog() {
         auditLogger.logDataModification(1L, "UPDATE", "products", 123L, "{\"name\":\"Old\"}", "{\"name\":\"New\"}");
         
@@ -109,14 +95,6 @@ class AuditLoggerTest {
     }
 
     @Test
-    void logAuthorization_shouldHandleNullDetails() {
-        assertDoesNotThrow(() -> 
-            auditLogger.logAuthorization(1L, "sales.create", true, "127.0.0.1", null)
-        );
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
     void logDataModification_shouldHandleNullOldData() {
         assertDoesNotThrow(() -> 
             auditLogger.logDataModification(1L, "CREATE", "products", 123L, null, "{\"name\":\"New\"}")
@@ -132,3 +110,4 @@ class AuditLoggerTest {
         verify(auditRepository).insertAuditLog(any(AuditLog.class));
     }
 }
+

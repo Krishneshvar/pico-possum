@@ -213,9 +213,6 @@ class CacheManagerTest {
     @Test
     void defaultCaches_shouldBeInitialized() {
         assertNotNull(cacheManager.getStats("tax_rules"));
-        assertNotNull(cacheManager.getStats("roles"));
-        assertNotNull(cacheManager.getStats("permissions"));
-        assertNotNull(cacheManager.getStats("user_permissions"));
         assertNotNull(cacheManager.getStats("products"));
         assertNotNull(cacheManager.getStats("categories"));
         assertNotNull(cacheManager.getStats("payment_methods"));

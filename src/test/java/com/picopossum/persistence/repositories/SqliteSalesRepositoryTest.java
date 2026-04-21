@@ -4,7 +4,6 @@ import com.picopossum.domain.model.LegacySale;
 import com.picopossum.domain.model.PaymentMethod;
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;
-import com.picopossum.domain.model.Transaction;
 import com.picopossum.persistence.db.ConnectionProvider;
 import com.picopossum.persistence.repositories.sqlite.SqliteSalesRepository;
 import com.picopossum.shared.dto.PagedResult;
@@ -47,7 +46,7 @@ class SqliteSalesRepositoryTest {
 
         Sale sale = new Sale(null, "INV-001", null, new BigDecimal("100.00"),
                 new BigDecimal("100.00"), BigDecimal.ZERO,
-                "paid", "fulfilled", 1L, 1L, null, null, null, null, null, null);
+                "paid", "fulfilled", 1L, 1L, null, null, null, null, null, null, "INV-001");
 
         long id = repository.insertSale(sale);
 

@@ -34,7 +34,7 @@ class SalesReportsControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("reports:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new SalesReportsController(reportsService, salesService);
     }
 
@@ -59,7 +59,7 @@ class SalesReportsControllerTest {
             "2023-01-01", "Summary", 10, new BigDecimal("1000.00"), 
             new BigDecimal("500.00"), new BigDecimal("200.00"), new BigDecimal("100.00"), 
             new BigDecimal("100.00"), new BigDecimal("100.00"), new BigDecimal("50.00"), 
-            new BigDecimal("100.00")
+            4, 3, 2, 1
         );
         DailyReport report = new DailyReport(startDate, endDate, "daily", summary, List.of(item));
         
@@ -81,3 +81,4 @@ class SalesReportsControllerTest {
         assertNotNull(controller);
     }
 }
+

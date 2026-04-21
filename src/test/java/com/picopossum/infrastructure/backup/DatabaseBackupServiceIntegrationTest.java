@@ -71,7 +71,7 @@ class DatabaseBackupServiceIntegrationTest {
 
         assertTrue(Files.exists(firstBackup));
         assertEquals(firstBackup, secondBackup);
-        assertTrue(firstBackup.getFileName().toString().startsWith("possum-auto-backup-"));
+        assertTrue(firstBackup.getFileName().toString().startsWith("pico-possum-auto-backup-"));
     }
 
     private void initializeFreshDatabase() {

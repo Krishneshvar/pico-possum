@@ -236,12 +236,6 @@
     -fx-padding: 8 16 2 16;
 }
 
-.user-menu-header-role {
-    -fx-text-fill: -color-text-muted;
-    -fx-font-size: 14;
-    -fx-padding: 0 16 8 16;
-}
-
 /* ========== Toasts ========== */
 
 .toast-container {

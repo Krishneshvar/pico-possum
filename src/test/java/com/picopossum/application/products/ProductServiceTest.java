@@ -43,7 +43,7 @@ class ProductServiceTest {
     @BeforeEach
     void setUp() {
         productService = new ProductService(productRepository, inventoryRepository, auditRepository, transactionManager, appPaths, settingsStore);
-        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin", List.of(), List.of("products.manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin"));
         
         // Mock transaction manager to run the supplier immediately
         lenient().when(transactionManager.runInTransaction(any(Supplier.class))).thenAnswer(invocation -> {
@@ -96,7 +96,7 @@ class ProductServiceTest {
     @Test
     @DisplayName("Should fetch product successfully")
     void getProductById_success() {
-        Product p = new Product(1L, "Widget", "Desc", 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(1L, "Widget", "Desc", 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 0, "active", null, 10, null, null, null);
         
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
 
@@ -109,8 +109,8 @@ class ProductServiceTest {
     @Test
     @DisplayName("Should update product successfully")
     void updateProduct_success() {
-        Product oldP = new Product(1L, "Old", "Desc", 1L, null, "SKU1", new BigDecimal("10"), new BigDecimal("5"), 10, "active", null, 0, null, null, null);
-        when(productRepository.findProductById(1L)).thenReturn(Optional.of(oldP));
+        Product product = new Product(1L, "Test Prod", "desc", 1L, "Cat Name", "SKU123", new BigDecimal("60.00"), new BigDecimal("40.00"), 0, "active", null, 10, null, null, null);
+        when(productRepository.findProductById(1L)).thenReturn(Optional.of(product));
         
         ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
                 "New", "Desc", 1L, "SKU2",
@@ -125,3 +125,4 @@ class ProductServiceTest {
         verify(auditRepository).insertAuditLog(any());
     }
 }
+

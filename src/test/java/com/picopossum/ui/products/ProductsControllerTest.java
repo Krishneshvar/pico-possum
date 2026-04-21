@@ -44,7 +44,7 @@ class ProductsControllerTest {
  
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("products:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
         lenient().when(paginationBar.getCurrentPage()).thenReturn(0);
@@ -127,3 +127,4 @@ class ProductsControllerTest {
         );
     }
 }
+

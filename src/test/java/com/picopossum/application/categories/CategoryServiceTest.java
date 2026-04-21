@@ -31,7 +31,7 @@ class CategoryServiceTest {
     @BeforeEach
     void setUp() {
         categoryService = new CategoryService(categoryRepository);
-        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin", List.of("admin"), List.of("categories.manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin"));
     }
 
     @AfterEach
@@ -119,3 +119,4 @@ class CategoryServiceTest {
         assertEquals("Books", result.name());
     }
 }
+

@@ -44,7 +44,7 @@ class InventoryControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("inventory:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
         lenient().when(paginationBar.getCurrentPage()).thenReturn(0);
@@ -105,3 +105,4 @@ class InventoryControllerTest {
         );
     }
 }
+

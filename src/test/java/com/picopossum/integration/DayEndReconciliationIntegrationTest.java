@@ -80,14 +80,13 @@ class DayEndReconciliationIntegrationTest {
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
                 auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
-                jsonService, settingsStore, invoiceNumberService);
+                jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
-                auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator());
+                auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
 
-        User u = userRepository.insertUserWithRoles(
-                new User(null, "Day Closer", "dayclose-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of()
+        User u = userRepository.insertUser(
+                new User(null, "Day Closer", "dayclose-" + UUID.randomUUID(), "hash", true, null, null, null)
         );
         testUserId = u.id();
 
@@ -104,8 +103,7 @@ class DayEndReconciliationIntegrationTest {
 
     @BeforeEach
     void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Day Closer", "dayclose",
-                List.of("admin"), List.of("sales:create", "sales:manage", "returns:manage")));
+        AuthContext.setCurrentUser(new AuthUser(testUserId, "Day Closer", "dayclose"));
     }
 
     @AfterEach
@@ -242,7 +240,7 @@ class DayEndReconciliationIntegrationTest {
         long catId = catRepo.insertCategory("DayCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
             null, "DayProd-" + UUID.randomUUID(), "desc", catId, null, "DSKU-" + UUID.randomUUID(),
-            new BigDecimal("100.00"), new BigDecimal("60.00"), 5, "active", null, 0, null, null, null
+            new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 5, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;
@@ -263,7 +261,7 @@ class DayEndReconciliationIntegrationTest {
             stmt.setLong(1, productId);
             stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
             stmt.setInt(3, quantity);
-            stmt.setLong(4, 1);
+            stmt.setLong(4, testUserId);
             stmt.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException("Seed adjustment failed", e); }
     }

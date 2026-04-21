@@ -42,6 +42,8 @@ class InventoryPerformanceIntegrationTest {
     private static SalesService salesService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
+    private static SqliteProductRepository productRepository;
+    private static SqliteCategoryRepository categoryRepository;
 
     private static long testProductId;
     private static long testUserId;
@@ -58,14 +60,15 @@ class InventoryPerformanceIntegrationTest {
         JsonService jsonService = new JsonService();
         SettingsStore settingsStore = new SettingsStore(appPaths, jsonService);
 
-        SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager);
-        SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager);
+        categoryRepository = new SqliteCategoryRepository(databaseManager);
+        productRepository = new SqliteProductRepository(databaseManager);
         salesRepository = new SqliteSalesRepository(databaseManager);
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
         SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
+        SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
@@ -76,11 +79,10 @@ class InventoryPerformanceIntegrationTest {
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
                 auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
-                jsonService, settingsStore, invoiceNumberService);
+                jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
-        User u = userRepository.insertUserWithRoles(
-                new User(null, "Perf Tester", "perf-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of()
+        User u = userRepository.insertUser(
+                new User(null, "Perf Tester", "perf-" + UUID.randomUUID(), "hash", true, null, null, null)
         );
         testUserId = u.id();
         cashPaymentMethodId = getOrSeedPaymentMethod();
@@ -95,8 +97,7 @@ class InventoryPerformanceIntegrationTest {
 
     @BeforeEach
     void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Perf Tester", "perf",
-                List.of("admin"), List.of("sales:create", "sales:manage")));
+        AuthContext.setCurrentUser(new AuthUser(testUserId, "Perf Tester", "perf"));
     }
 
     @Test
@@ -133,7 +134,7 @@ class InventoryPerformanceIntegrationTest {
         long catId = catRepo.insertCategory("PerfCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
             null, "PerfProd-" + UUID.randomUUID(), "desc", catId, null, "PSKU-" + UUID.randomUUID(),
-            new BigDecimal("100.00"), new BigDecimal("60.00"), 5, "active", null, 0, null, null, null
+            new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 5, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

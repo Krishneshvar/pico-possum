@@ -41,6 +41,7 @@ class SalesServiceTest {
     @Mock private JsonService jsonService;
     @Mock private SettingsStore settingsStore;
     @Mock private InvoiceNumberService invoiceNumberService;
+    @Mock private ReturnsRepository returnsRepository;
 
     private SalesService salesService;
 
@@ -49,9 +50,9 @@ class SalesServiceTest {
         salesService = new SalesService(
             salesRepository, productRepository, customerRepository, auditRepository,
             inventoryService, saleCalculator, paymentService,
-            transactionManager, jsonService, settingsStore, invoiceNumberService
+            transactionManager, jsonService, settingsStore, invoiceNumberService, returnsRepository
         );
-        AuthContext.setCurrentUser(new AuthUser(1L, "Cashier", "cashier", List.of(), List.of("sales.create", "sales.manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Cashier", "cashier"));
 
         lenient().when(transactionManager.runInTransaction(any())).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(0);
@@ -67,10 +68,10 @@ class SalesServiceTest {
     @Test
     @DisplayName("Should fetch sale details correctly")
     void getSaleDetails_success() {
-        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", null, 1L, null, null, null, null, null, null);
+        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", null, 1L, null, null, null, null, null, null, "INV-001");
         when(salesRepository.findSaleById(1L)).thenReturn(Optional.of(sale));
         when(salesRepository.findSaleItems(1L)).thenReturn(List.of());
-        when(salesRepository.findTransactionsBySaleId(1L)).thenReturn(List.of());
+        when(returnsRepository.findReturnsBySaleId(1L)).thenReturn(List.of());
 
         SaleResponse response = salesService.getSaleDetails(1L);
 
@@ -106,3 +107,5 @@ class SalesServiceTest {
         assertEquals(1, methods.size());
     }
 }
+
+

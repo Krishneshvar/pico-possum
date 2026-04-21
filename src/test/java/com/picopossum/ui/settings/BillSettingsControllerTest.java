@@ -38,7 +38,7 @@ class BillSettingsControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("settings:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         when(settingsStore.loadBillSettings()).thenReturn(new BillSettings());
         when(settingsStore.loadGeneralSettings()).thenReturn(new GeneralSettings());
         lenient().when(paperWidthCombo.getItems()).thenReturn(javafx.collections.FXCollections.observableArrayList());
@@ -82,3 +82,4 @@ class BillSettingsControllerTest {
         assertNotNull(controller);
     }
 }
+

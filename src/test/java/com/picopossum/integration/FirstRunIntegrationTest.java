@@ -26,8 +26,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * First-run / empty database integration tests.
  * Verifies that a freshly initialised POSSUM database comes with correct
- * seed data (roles, payment methods) and that all "empty" queries return
- * graceful zero/empty results — no null-pointer or SQL errors.
+ * seed data (payment methods) and that all "empty" queries return
+ * graceful zero/empty results - no null-pointer or SQL errors.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class FirstRunIntegrationTest {

@@ -40,29 +40,19 @@ public final class Fixtures {
     // -------------------------------------------------------------------------
 
     public static Sale paidSale(long id, BigDecimal total, BigDecimal paid) {
-        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid,
-                BigDecimal.ZERO, "paid", "fulfilled",
-                null, 1L, null, null, null, null, null, null);
+        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid, BigDecimal.ZERO, "paid", "fulfilled", null, 1L, null, null, null, null, null, null, null);
     }
 
     public static Sale paidSaleWithDiscount(long id, BigDecimal total, BigDecimal paid, BigDecimal discount) {
-        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid,
-                discount, "paid", "fulfilled",
-                null, 1L, null, null, null, null, null, null);
+        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid, discount, "paid", "fulfilled", null, 1L, null, null, null, null, null, null, null);
     }
 
     public static Sale cancelledSale(long id) {
-        return new Sale(id, "INV-00" + id, LocalDateTime.now(),
-                new BigDecimal("100.00"), new BigDecimal("100.00"),
-                BigDecimal.ZERO, "cancelled", "cancelled",
-                null, 1L, null, null, null, null, null, null);
+        return new Sale(id, "INV-00" + id, LocalDateTime.now(), new BigDecimal("100.00"), new BigDecimal("100.00"), BigDecimal.ZERO, "cancelled", "cancelled", null, 1L, null, null, null, null, null, null, null);
     }
 
     public static Sale refundedSale(long id) {
-        return new Sale(id, "INV-00" + id, LocalDateTime.now(),
-                new BigDecimal("100.00"), BigDecimal.ZERO,
-                BigDecimal.ZERO, "refunded", "fulfilled",
-                null, 1L, null, null, null, null, null, null);
+        return new Sale(id, "INV-00" + id, LocalDateTime.now(), new BigDecimal("100.00"), BigDecimal.ZERO, BigDecimal.ZERO, "refunded", "fulfilled", null, 1L, null, null, null, null, null, null, null);
     }
 
     // -------------------------------------------------------------------------
@@ -129,16 +119,7 @@ public final class Fixtures {
     // -------------------------------------------------------------------------
 
     public static AuthUser authUser(long id, String username) {
-        return new AuthUser(id, "Test User", username,
-                List.of("admin"), List.of("sales.create", "returns.manage"));
-    }
-
-    // -------------------------------------------------------------------------
-    // Role
-    // -------------------------------------------------------------------------
-
-    public static Role adminRole() {
-        return new Role(1L, "admin", "Administrator");
+        return new AuthUser(id, "Test User", username);
     }
 
     // -------------------------------------------------------------------------
@@ -154,3 +135,4 @@ public final class Fixtures {
         return product(id, "Product", "SKU-" + id, "100.00");
     }
 }
+

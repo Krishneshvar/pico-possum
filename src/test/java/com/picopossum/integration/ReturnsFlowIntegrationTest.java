@@ -81,10 +81,10 @@ class ReturnsFlowIntegrationTest {
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
                 auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
-                jsonService, settingsStore, invoiceNumberService);
+                jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
-                auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator());
+                auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
 
         // Seed
         testUserId = seedUser(userRepository);
@@ -101,8 +101,7 @@ class ReturnsFlowIntegrationTest {
 
     @BeforeEach
     void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Cashier", "cashier",
-                List.of("admin"), List.of("sales.create", "sales.manage", "returns.manage")));
+        AuthContext.setCurrentUser(new AuthUser(testUserId, "Cashier", "cashier"));
     }
 
     @AfterEach
@@ -190,16 +189,15 @@ class ReturnsFlowIntegrationTest {
     }
 
     private static long seedUser(SqliteUserRepository userRepository) {
-        User user = userRepository.insertUserWithRoles(
-                new User(null, "Returns Tester", "rtester-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of()
+        User user = userRepository.insertUser(
+                new User(null, "Returns Tester", "rtester-" + UUID.randomUUID(), "hash", true, null, null, null)
         );
         return user.id();
     }
 
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("ReturnsCat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 0, "active", null, 10, null, null, null);
         long productId = prodRepo.insertProduct(p);
         seedInventory(productId, qty);
         return productId;
@@ -222,7 +220,7 @@ class ReturnsFlowIntegrationTest {
             stmt.setLong(1, productId);
             stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
             stmt.setInt(3, quantity);
-            stmt.setLong(4, 1);
+            stmt.setLong(4, testUserId);
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new IllegalStateException("Seed inventory adjustment failed", e);

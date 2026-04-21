@@ -96,6 +96,7 @@ create table customers (
     phone text,
     email text,
     address text,
+    customer_type text,
     loyalty_points integer default 0,
     created_at datetime default current_timestamp,
     updated_at datetime default current_timestamp,

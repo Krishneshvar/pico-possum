@@ -40,7 +40,7 @@ class SalesHistoryControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("sales:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new SalesHistoryController(salesService, settingsStore, printerService, workspaceManager);
     }
 
@@ -73,7 +73,8 @@ class SalesHistoryControllerTest {
         return new Sale(
             id, invoiceNumber, LocalDateTime.now(), total, total, BigDecimal.ZERO,
             "paid", "delivered", 1L, 1L, "Test Customer",
-            null, null, "Test User", 1L, "Cash"
+            null, null, "Test User", 1L, "Cash", invoiceNumber
         );
     }
 }
+

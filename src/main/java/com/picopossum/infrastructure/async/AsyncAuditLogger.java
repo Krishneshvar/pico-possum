@@ -72,11 +72,6 @@ public final class AsyncAuditLogger {
         enqueue(new AuthenticationTask(userId, action, success, ipAddress, userAgent, details));
     }
     
-    public void logAuthorization(Long userId, String permission, boolean granted, 
-                                String ipAddress, String details) {
-        enqueue(new AuthorizationTask(userId, permission, granted, ipAddress, details));
-    }
-    
     public void logDataModification(Long userId, String action, String tableName, Long rowId,
                                    String oldData, String newData) {
         enqueue(new DataModificationTask(userId, action, tableName, rowId, oldData, newData));
@@ -146,14 +141,6 @@ public final class AsyncAuditLogger {
         @Override
         public void execute(AuditLogger logger) {
             logger.logAuthentication(userId, action, success, ipAddress, userAgent, details);
-        }
-    }
-    
-    private record AuthorizationTask(Long userId, String permission, boolean granted,
-                                    String ipAddress, String details) implements AuditTask {
-        @Override
-        public void execute(AuditLogger logger) {
-            logger.logAuthorization(userId, permission, granted, ipAddress, details);
         }
     }
     

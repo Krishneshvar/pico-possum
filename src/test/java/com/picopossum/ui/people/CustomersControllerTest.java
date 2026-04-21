@@ -39,7 +39,7 @@ class CustomersControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("customers:view", "customers:manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
         lenient().when(paginationBar.getCurrentPage()).thenReturn(0);
@@ -113,3 +113,4 @@ class CustomersControllerTest {
         return new Customer(id, name, phone, email, "123 Main St", "retail", null, null, null);
     }
 }
+

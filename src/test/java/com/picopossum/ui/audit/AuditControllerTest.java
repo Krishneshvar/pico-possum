@@ -39,7 +39,7 @@ class AuditControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("audit:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new AuditController(auditService, workspaceManager);
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
@@ -103,3 +103,4 @@ class AuditControllerTest {
         );
     }
 }
+

@@ -44,7 +44,7 @@ class CategoriesControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("categories:view", "categories:manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new CategoriesController(categoryService, workspaceManager);
         
         lenient().when(dataTable.getTableView()).thenReturn(tableView);
@@ -101,3 +101,4 @@ class CategoriesControllerTest {
         assertEquals("Category", controller.getEntityNameSingular());
     }
 }
+

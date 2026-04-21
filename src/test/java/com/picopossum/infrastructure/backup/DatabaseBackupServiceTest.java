@@ -60,7 +60,7 @@ class DatabaseBackupServiceTest {
         
         assertNotNull(backup);
         assertTrue(Files.exists(backup));
-        assertTrue(backup.getFileName().toString().startsWith("possum-manual-backup-"));
+        assertTrue(backup.getFileName().toString().startsWith("pico-possum-manual-backup-"));
         assertTrue(backup.getFileName().toString().endsWith(".db"));
     }
 
@@ -70,7 +70,7 @@ class DatabaseBackupServiceTest {
         
         assertNotNull(backup);
         assertTrue(Files.exists(backup));
-        assertTrue(backup.getFileName().toString().startsWith("possum-auto-backup-"));
+        assertTrue(backup.getFileName().toString().startsWith("pico-possum-auto-backup-"));
     }
 
     @Test

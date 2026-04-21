@@ -106,9 +106,6 @@ public final class AppBootstrap {
         transactionManager = new TransactionManager(databaseManager);
         passwordHasher = new com.picopossum.infrastructure.security.PasswordHasher();
 
-        com.picopossum.application.auth.ServiceSecurity.setAuditRepository(
-                new com.picopossum.persistence.repositories.sqlite.SqliteAuditRepository(databaseManager));
-
         serviceLocator = new ServiceLocator(databaseManager, transactionManager, appPaths);
         backupService = serviceLocator.getDatabaseBackupService();
         backupService.startDailyBackups();

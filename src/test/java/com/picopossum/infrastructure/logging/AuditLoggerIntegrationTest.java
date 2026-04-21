@@ -77,7 +77,6 @@ class AuditLoggerIntegrationTest {
     @Test
     void multipleAuditEvents_shouldBeStoredCorrectly() {
         auditLogger.logAuthentication(1L, "LOGIN", true, "127.0.0.1", "Mozilla", "Login");
-        auditLogger.logAuthorization(1L, "sales.create", true, "127.0.0.1", "Granted");
         auditLogger.logSecurityEvent(1L, "PASSWORD_CHANGE", "Password changed", "127.0.0.1", "info");
         auditLogger.logCriticalEvent(1L, "ADMIN_ACCESS", "Admin panel accessed", "127.0.0.1");
         
@@ -129,3 +128,4 @@ class AuditLoggerIntegrationTest {
         }
     }
 }
+

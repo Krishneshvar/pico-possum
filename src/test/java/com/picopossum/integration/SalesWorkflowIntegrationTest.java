@@ -67,6 +67,7 @@ class SalesWorkflowIntegrationTest {
         auditRepository = new SqliteAuditRepository(databaseManager);
         inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
+        SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
@@ -79,7 +80,7 @@ class SalesWorkflowIntegrationTest {
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository,
                 auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager,
-                jsonService, settingsStore, invoiceNumberService);
+                jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
         // Seed test data
         testUserId = seedUser(userRepository);
@@ -96,8 +97,7 @@ class SalesWorkflowIntegrationTest {
 
     @BeforeEach
     void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Test Cashier", "cashier",
-                List.of("admin"), List.of("sales.create", "sales.manage")));
+        AuthContext.setCurrentUser(new AuthUser(testUserId, "Test Cashier", "cashier"));
     }
 
     @AfterEach
@@ -161,16 +161,15 @@ class SalesWorkflowIntegrationTest {
     // ─── helpers ──────────────────────────────────────────────────────────────
 
     private static long seedUser(SqliteUserRepository userRepository) {
-        User user = userRepository.insertUserWithRoles(
-                new User(null, "Test Cashier", "cashier-" + UUID.randomUUID(), "hash", true, null, null, null),
-                List.of()
+        User user = userRepository.insertUser(
+                new User(null, "Test Cashier", "cashier-" + UUID.randomUUID(), "hash", true, null, null, null)
         );
         return user.id();
     }
 
     private static long seedProductWithStock() {
         long catId = categoryRepository.insertCategory("Cat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, "SKU-" + UUID.randomUUID(), new BigDecimal("100.00"), new BigDecimal("60.00"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, "SKU-" + UUID.randomUUID(), new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 10, null, null, null);
         long productId = productRepository.insertProduct(p);
         seedInventory(productId, 50);
         return productId;

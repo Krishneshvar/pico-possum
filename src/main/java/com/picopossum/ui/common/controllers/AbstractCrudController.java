@@ -47,7 +47,7 @@ public abstract class AbstractCrudController<T, F> {
     }
 
     /**
-     * Setup permission-based UI visibility (buttons, etc.)
+     * Setup UI components (buttons, headers, etc.)
      */
     protected abstract void initUIComponents();
 

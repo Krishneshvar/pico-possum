@@ -41,7 +41,7 @@ class SaleDetailControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("sales:manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new SaleDetailController(salesService, workspaceManager, settingsStore, printerService, searchIndex);
     }
 
@@ -74,7 +74,8 @@ class SaleDetailControllerTest {
             id, invoiceNumber, LocalDateTime.now(), new BigDecimal("100.00"),
             new BigDecimal("100.00"), BigDecimal.ZERO,
             "paid", "fulfilled", 1L, 1L, "Test Customer", "1234567890",
-            "test@customer.com", "Test Biller", 1L, "Cash"
+            "test@customer.com", "Test Biller", 1L, "Cash", invoiceNumber
         );
     }
 }
+

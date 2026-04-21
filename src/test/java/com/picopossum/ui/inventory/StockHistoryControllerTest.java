@@ -37,7 +37,7 @@ class StockHistoryControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("inventory:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new StockHistoryController(inventoryService, userService, workspaceManager);
     }
 
@@ -54,8 +54,8 @@ class StockHistoryControllerTest {
         );
         
         List<StockHistoryDto> history = List.of(
-            new StockHistoryDto(1L, 1L, "Product A", "SKU001", 10, "receive", "Admin", LocalDateTime.now()),
-            new StockHistoryDto(2L, 2L, "Product B", "SKU002", -2, "sale", "Admin", LocalDateTime.now())
+            new StockHistoryDto(1L, 1L, "Product A", "SKU001", 10, "receive", "Admin", LocalDateTime.now(), 50, 10),
+            new StockHistoryDto(2L, 2L, "Product B", "SKU002", -2, "sale", "Admin", LocalDateTime.now(), 48, 10)
         );
 
         when(inventoryService.getStockHistory(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(history);
@@ -77,3 +77,4 @@ class StockHistoryControllerTest {
         assertNotNull(controller);
     }
 }
+

@@ -47,7 +47,7 @@ class PosControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("sales:create")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new PosController(salesService, customerService, searchIndex,
                 printerService, settingsStore, productService, categoryService, saleCalculator, posDraftRepository);
         
@@ -134,3 +134,4 @@ class PosControllerTest {
         return new Customer(id, name, phone, null, null, "retail", null, null, null);
     }
 }
+

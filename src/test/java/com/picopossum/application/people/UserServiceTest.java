@@ -37,7 +37,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, passwordHasher);
-        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin", List.of(), List.of("users.manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin"));
     }
 
     @AfterEach
@@ -75,9 +75,9 @@ class UserServiceTest {
         when(passwordHasher.hashPassword("secretpass")).thenReturn("hashed");
         when(userRepository.findUserByUsername("john_doe")).thenReturn(Optional.empty());
         User u = new User(1L, "John", "john_doe", "hashed", true, LocalDateTime.now(), LocalDateTime.now(), null);
-        when(userRepository.insertUserWithRoles(any(User.class), eq(List.of(1L)))).thenReturn(u);
+        when(userRepository.insertUser(any(User.class))).thenReturn(u);
 
-        User result = userService.createUser("John", "john_doe", "secretpass", true, List.of(1L));
+        User result = userService.createUser("John", "john_doe", "secretpass", true);
         assertEquals(1L, result.id());
         assertEquals("hashed", result.passwordHash());
     }
@@ -88,19 +88,19 @@ class UserServiceTest {
         User existing = new User(2L, "Jane", "jane", "hash", true, LocalDateTime.now(), LocalDateTime.now(), null);
         when(userRepository.findUserByUsername("jane")).thenReturn(Optional.of(existing));
 
-        assertThrows(ValidationException.class, () -> userService.createUser("Jane Doe", "jane", "secretpass", true, List.of()));
+        assertThrows(ValidationException.class, () -> userService.createUser("Jane Doe", "jane", "secretpass", true));
     }
 
     @Test
     @DisplayName("Should throw validation error if username contains spaces")
     void createUser_invalidUsername_fail() {
-        assertThrows(ValidationException.class, () -> userService.createUser("Jane", "ja ne", "secretpass", true, List.of()));
+        assertThrows(ValidationException.class, () -> userService.createUser("Jane", "ja ne", "secretpass", true));
     }
 
     @Test
     @DisplayName("Should throw validation error if password too short")
     void createUser_shortPassword_fail() {
-        assertThrows(ValidationException.class, () -> userService.createUser("Jane", "jane123", "sec", true, List.of()));
+        assertThrows(ValidationException.class, () -> userService.createUser("Jane", "jane123", "sec", true));
     }
 
 
@@ -109,9 +109,9 @@ class UserServiceTest {
     void updateUser_success() {
         User u = new User(1L, "Jane", "jane123", "hash", true, LocalDateTime.now(), LocalDateTime.now(), null);
         when(userRepository.findUserById(1L)).thenReturn(Optional.of(u));
-        when(userRepository.updateUserWithRolesById(eq(1L), any(User.class), eq(List.of(2L)))).thenReturn(u);
+        when(userRepository.updateUserById(eq(1L), any(User.class))).thenReturn(u);
 
-        User result = userService.updateUser(1L, "Jane New", "jane123", "", true, List.of(2L));
+        User result = userService.updateUser(1L, "Jane New", "jane123", "", true);
         assertEquals("Jane", result.name()); // Returns the mock
     }
 
@@ -121,9 +121,9 @@ class UserServiceTest {
         User u = new User(1L, "Jane", "jane123", "hash", true, LocalDateTime.now(), LocalDateTime.now(), null);
         when(userRepository.findUserById(1L)).thenReturn(Optional.of(u));
         User deactivated = new User(1L, "Jane", "jane123", "hash", false, LocalDateTime.now(), LocalDateTime.now(), null);
-        when(userRepository.updateUserWithRolesById(eq(1L), any(User.class), eq(List.of()))).thenReturn(deactivated);
+        when(userRepository.updateUserById(eq(1L), any(User.class))).thenReturn(deactivated);
 
-        userService.updateUser(1L, "Jane", "jane123", "", false, List.of());
+        userService.updateUser(1L, "Jane", "jane123", "", false);
         verify(userRepository).revokeUserSessions(1L);
     }
 

@@ -35,16 +35,6 @@ class AsyncAuditLoggerTest {
     }
     
     @Test
-    void testLogAuthorization() throws InterruptedException {
-        asyncLogger.logAuthorization(1L, "sales.create", true, "127.0.0.1", "Granted");
-        
-        Thread.sleep(100);
-        
-        verify(mockAuditLogger, timeout(1000)).logAuthorization(
-                eq(1L), eq("sales.create"), eq(true), eq("127.0.0.1"), eq("Granted"));
-    }
-    
-    @Test
     void testLogDataModification() throws InterruptedException {
         asyncLogger.logDataModification(1L, "CREATE", "sales", 123L, null, "new data");
         
@@ -96,3 +86,4 @@ class AsyncAuditLoggerTest {
         assertTrue(stats.queued() > 0 || stats.processed() > 0);
     }
 }
+

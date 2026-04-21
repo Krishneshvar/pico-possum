@@ -44,8 +44,9 @@ class DashboardControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("dashboard:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         
+        lenient().when(reportsService.getHourlyAnalytics(any(), any())).thenReturn(List.of());
         lenient().when(reportsService.getSalesSummary(any(), any(), any())).thenReturn(
             new SalesReportSummary(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)
         );
@@ -66,6 +67,8 @@ class DashboardControllerTest {
         setField(controller, "backupStatusLabel", backupStatusLabel);
         setField(controller, "topProductsTable", topProductsTable);
         setField(controller, "lowStockTable", lowStockTable);
+        setField(controller, "salesTrendChart", new javafx.scene.chart.LineChart<>(new javafx.scene.chart.CategoryAxis(), new javafx.scene.chart.NumberAxis()));
+        setField(controller, "stockStatCard", new javafx.scene.layout.VBox());
         
         controller.initialize();
     }
@@ -119,3 +122,4 @@ class DashboardControllerTest {
         );
     }
 }
+

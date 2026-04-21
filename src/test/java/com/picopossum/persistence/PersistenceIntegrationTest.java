@@ -5,7 +5,6 @@ import com.picopossum.domain.model.Customer;
 import com.picopossum.domain.model.Product;
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;
-import com.picopossum.domain.model.Transaction;
 import com.picopossum.domain.model.User;
 import com.picopossum.infrastructure.filesystem.AppPaths;
 import com.picopossum.persistence.db.DatabaseManager;
@@ -74,9 +73,8 @@ class PersistenceIntegrationTest {
     void shouldInsertAndQueryUser() {
         String username = "test-user-" + UUID.randomUUID();
 
-        User inserted = userRepository.insertUserWithRoles(
-                new User(null, "Test User", username, "hash-123", true, null, null, null),
-                List.of()
+        User inserted = userRepository.insertUser(
+                new User(null, "Test User", username, "hash-123", true, null, null, null)
         );
 
         assertNotNull(inserted.id());
@@ -107,7 +105,8 @@ class PersistenceIntegrationTest {
                         null,
                         null,
                         null,
-                        null
+                        null,
+                        invoice
                 )
         );
 
@@ -136,9 +135,8 @@ class PersistenceIntegrationTest {
             return userId;
         } catch (Exception ignored) {}
 
-        User user = userRepository.insertUserWithRoles(
-                new User(null, "Seed User", "seed-" + UUID.randomUUID(), "seed-hash", true, null, null, null),
-                List.of()
+        User user = userRepository.insertUser(
+                new User(null, "Seed User", "seed-" + UUID.randomUUID(), "seed-hash", true, null, null, null)
         );
         return user.id();
     }
@@ -150,7 +148,7 @@ class PersistenceIntegrationTest {
         } catch (Exception ignored) {}
 
         long categoryId = categoryRepository.insertCategory("Test Cat", null).id();
-        Product product = new Product(null, "Test Prod", "desc", categoryId, "Cat Name", "SKU123", new BigDecimal("60.00"), new BigDecimal("40.00"), 10, "active", null, 0, null, null, null);
+        Product product = new Product(null, "Test Prod", "desc", categoryId, "Cat Name", "SKU123", new BigDecimal("60.00"), new BigDecimal("40.00"), 0, "active", null, 10, null, null, null);
         return productRepository.insertProduct(product);
     }
 
@@ -186,3 +184,4 @@ class PersistenceIntegrationTest {
         }
     }
 }
+

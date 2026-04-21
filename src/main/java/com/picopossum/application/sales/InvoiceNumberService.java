@@ -10,9 +10,9 @@ public class InvoiceNumberService {
         this.salesRepository = salesRepository;
     }
 
-    public String generate(String typePrefix, long primaryPaymentMethodId) {
+    public String generate(String typePrefix, Long primaryPaymentMethodId) {
         String code = "CH"; // Default to Cash if not provided
-        if (primaryPaymentMethodId > 0) {
+        if (primaryPaymentMethodId != null && primaryPaymentMethodId > 0) {
             code = salesRepository.getPaymentMethodCode(primaryPaymentMethodId)
                     .filter(c -> c != null && !c.isBlank())
                     .orElse("CH");

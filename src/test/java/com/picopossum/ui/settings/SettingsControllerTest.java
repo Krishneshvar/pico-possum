@@ -35,7 +35,7 @@ class SettingsControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser", List.of("admin"), List.of("settings:view")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new SettingsController(settingsStore, printerService, backupService);
     }
 
@@ -58,3 +58,4 @@ class SettingsControllerTest {
         assertNotNull(controller);
     }
 }
+

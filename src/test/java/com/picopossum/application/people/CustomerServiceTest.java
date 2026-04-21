@@ -33,7 +33,7 @@ class CustomerServiceTest {
     @BeforeEach
     void setUp() {
         customerService = new CustomerService(customerRepository);
-        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin", List.of(), List.of("customers.manage")));
+        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin"));
     }
 
     @AfterEach
@@ -120,3 +120,4 @@ class CustomerServiceTest {
         assertThrows(NotFoundException.class, () -> customerService.deleteCustomer(1L));
     }
 }
+

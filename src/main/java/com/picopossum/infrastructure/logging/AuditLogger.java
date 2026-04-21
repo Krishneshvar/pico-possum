@@ -40,12 +40,6 @@ public final class AuditLogger {
         log(userId, action, "auth", null, null, null, details, ipAddress, userAgent, severity);
     }
     
-    public void logAuthorization(Long userId, String permission, boolean granted, String ipAddress, String details) {
-        String action = granted ? "ACCESS_GRANTED" : "ACCESS_DENIED";
-        String severity = granted ? "info" : "warning";
-        log(userId, action, "auth", null, null, null, details, ipAddress, null, severity);
-    }
-    
     public void logDataModification(Long userId, String action, String tableName, Long rowId, 
                                    String oldData, String newData) {
         log(userId, action, tableName, rowId, oldData, newData, null, null, null, "info");
