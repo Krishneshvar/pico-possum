@@ -49,7 +49,7 @@ public class InventoryController extends AbstractCrudController<Product, Product
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
         if (refreshButton != null) {
             ButtonFactory.applyRefreshButtonStyle(refreshButton);
         }

@@ -20,9 +20,6 @@ public final class CacheManager {
     
     private void initializeDefaultCaches() {
         createCache("tax_rules", 1000, Duration.ofHours(1));
-        createCache("roles", 100, Duration.ofHours(2));
-        createCache("permissions", 500, Duration.ofHours(2));
-        createCache("user_permissions", 1000, Duration.ofMinutes(30));
         createCache("products", 5000, Duration.ofMinutes(15));
         createCache("categories", 200, Duration.ofHours(1));
         createCache("payment_methods", 50, Duration.ofHours(4));

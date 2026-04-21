@@ -17,39 +17,35 @@ public class RouteRegistry {
         register("dashboard", "/fxml/dashboard/dashboard-view.fxml");
 
         // Products & Inventory
-        register("products", "/fxml/products/products-view.fxml", "products.view");
-        register("product-form", "/fxml/products/product-form-view.fxml", "products.manage");
-        register("inventory", "/fxml/inventory/inventory-view.fxml", "inventory.view");
-        register("categories", "/fxml/categories/categories-view.fxml", "categories.view");
-        register("stock-history", "/fxml/inventory/stock-history-view.fxml", "inventory.view");
+        register("products", "/fxml/products/products-view.fxml");
+        register("product-form", "/fxml/products/product-form-view.fxml");
+        register("inventory", "/fxml/inventory/inventory-view.fxml");
+        register("categories", "/fxml/categories/categories-view.fxml");
+        register("stock-history", "/fxml/inventory/stock-history-view.fxml");
 
         // Sales & Commercial
-        register("sales", "/fxml/sales/pos-view.fxml", "sales.create");
-        register("sales-history", "/fxml/sales/sales-history-view.fxml", "sales.view");
-        register("returns", "/fxml/returns/returns-view.fxml", "returns.view");
+        register("sales", "/fxml/sales/pos-view.fxml");
+        register("sales-history", "/fxml/sales/sales-history-view.fxml");
+        register("returns", "/fxml/returns/returns-view.fxml");
 
         // People
-        register("users", "/fxml/people/users-view.fxml", "users.view");
-        register("customers", "/fxml/people/customers-view.fxml", "customers.view");
+        register("users", "/fxml/people/users-view.fxml");
+        register("customers", "/fxml/people/customers-view.fxml");
 
         // Reports & Insights
-        register("reports-sales", "/fxml/reports/sales-reports-view.fxml", "reports.view");
-        register("reports-analytics", "/fxml/reports/sales-analytics-view.fxml", "reports.view");
-        register("business-insights", "/fxml/insights/business-insights-view.fxml", "reports.view");
-        register("product-flow", "/fxml/insights/product-flow-view.fxml", "reports.view");
-        register("audit-log", "/fxml/audit/audit-view.fxml", "audit.view");
+        register("reports-sales", "/fxml/reports/sales-reports-view.fxml");
+        register("reports-analytics", "/fxml/reports/sales-analytics-view.fxml");
+        register("business-insights", "/fxml/insights/business-insights-view.fxml");
+        register("product-flow", "/fxml/insights/product-flow-view.fxml");
+        register("audit-log", "/fxml/audit/audit-view.fxml");
 
         // System
-        register("settings", "/fxml/settings/settings-view.fxml", "settings.view");
-        register("component-demo", "/fxml/design/component-demo-view.fxml", "settings.view");
+        register("settings", "/fxml/settings/settings-view.fxml");
+        register("component-demo", "/fxml/design/component-demo-view.fxml");
     }
 
     private void register(String routeId, String fxmlPath) {
         routes.put(routeId, new RouteDefinition(routeId, fxmlPath));
-    }
-
-    private void register(String routeId, String fxmlPath, String... permissions) {
-        routes.put(routeId, new RouteDefinition(routeId, fxmlPath, List.of(permissions)));
     }
 
     public RouteDefinition getRoute(String routeId) {

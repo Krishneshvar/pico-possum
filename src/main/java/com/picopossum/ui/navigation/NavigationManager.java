@@ -49,8 +49,9 @@ public class NavigationManager {
             return;
         }
 
-        if (!routeGuard.canAccess(route)) {
-            handleAccessDenied(routeId);
+        if (route.requiresAuth() && !routeGuard.isAuthenticated()) {
+            LOGGER.warn("Unauthenticated access attempt to route: {}", routeId);
+            navigateTo("dashboard"); // Or login, but keep it consistent for now
             return;
         }
 
@@ -97,22 +98,6 @@ public class NavigationManager {
         
         viewCache.put(routeId, view);
         return view;
-    }
-
-    private void handleAccessDenied(String routeId) {
-        LOGGER.warn("Access denied to route: {}", routeId);
-        
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        
-        DialogStyler.apply(alert);
-        alert.setTitle("Access Denied");
-        alert.setHeaderText("Insufficient Permissions");
-        alert.setContentText("You do not have permission to access this page.");
-        alert.showAndWait();
-        
-        if (currentRoute == null || currentRoute.equals(routeId)) {
-            navigateTo("dashboard");
-        }
     }
 
     private void loadErrorView(String routeId) {

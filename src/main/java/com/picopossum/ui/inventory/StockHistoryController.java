@@ -43,7 +43,7 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
         if (refreshButton != null) {
             ButtonFactory.applyRefreshButtonStyle(refreshButton);
         }

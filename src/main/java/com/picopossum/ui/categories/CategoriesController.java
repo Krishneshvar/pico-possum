@@ -52,7 +52,7 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
 
     @Override
     public void initialize() {
-        setupPermissions();
+        initUIComponents();
         setupTable();
         setupTreeView();
         setupLocalSearch();
@@ -60,7 +60,7 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
         if (addButton != null) {
             ButtonFactory.applyAddButtonStyle(addButton);
         }

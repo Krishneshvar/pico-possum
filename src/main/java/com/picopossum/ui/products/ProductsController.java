@@ -48,14 +48,14 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     @Override
     public void initialize() {
-        setupPermissions();
+        initUIComponents();
         setupTable();
         setupFilters();
         loadData();
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
         if (addButton != null) {
             FontIcon addIcon = new FontIcon("bx-plus");
             addIcon.setIconSize(16);

@@ -38,10 +38,7 @@ public class UserMenuManager {
         Label nameLabel = new Label(currentUserName);
         nameLabel.getStyleClass().add("user-menu-header-name");
 
-        Label roleLabel = new Label("Administrator");
-        roleLabel.getStyleClass().add("user-menu-header-role");
-
-        VBox headerBox = new VBox(nameLabel, roleLabel);
+        VBox headerBox = new VBox(nameLabel);
         headerBox.setStyle("-fx-background-color: transparent;");
 
         CustomMenuItem headerItem = new CustomMenuItem(headerBox);

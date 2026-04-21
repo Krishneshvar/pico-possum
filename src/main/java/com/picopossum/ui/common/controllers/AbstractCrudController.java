@@ -40,7 +40,7 @@ public abstract class AbstractCrudController<T, F> {
 
     @FXML
     public void initialize() {
-        setupPermissions();
+        initUIComponents();
         setupTable();
         setupFilters();
         loadData();
@@ -49,7 +49,7 @@ public abstract class AbstractCrudController<T, F> {
     /**
      * Setup permission-based UI visibility (buttons, etc.)
      */
-    protected abstract void setupPermissions();
+    protected abstract void initUIComponents();
 
     /**
      * Configure table columns

@@ -33,7 +33,7 @@ public class CustomersController extends AbstractCrudController<Customer, Custom
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
     }
 
     @Override

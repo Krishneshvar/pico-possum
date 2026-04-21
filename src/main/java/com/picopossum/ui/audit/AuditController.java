@@ -32,7 +32,7 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
         // Audit logs are read-only, no special permissions needed
     }
 

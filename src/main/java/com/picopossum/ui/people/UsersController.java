@@ -28,7 +28,7 @@ public class UsersController extends AbstractCrudController<User, UserFilter> {
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
     }
 
     @Override

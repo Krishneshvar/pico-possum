@@ -48,7 +48,7 @@ public class ReturnsController extends AbstractCrudController<Return, ReturnFilt
     }
 
     @Override
-    protected void setupPermissions() {
+    protected void initUIComponents() {
         if (createReturnButton != null) {
             FontIcon returnIcon = new FontIcon("bx-undo");
             returnIcon.setIconSize(16);
