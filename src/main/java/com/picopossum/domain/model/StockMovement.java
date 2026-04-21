@@ -16,4 +16,15 @@ public record StockMovement(
         String notes,
         LocalDateTime createdAt
 ) {
+    public StockMovement {
+        if (productId == null) {
+            throw new IllegalArgumentException("Product ID is required for stock movement");
+        }
+        if (quantityChange == null || quantityChange == 0) {
+            throw new IllegalArgumentException("Stock movement quantity must be non-zero");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Stock movement reason must be provided");
+        }
+    }
 }

@@ -29,10 +29,20 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
 
     @Override
     public List<ProductFlow> findFlowByProductId(long productId, int limit, int offset, String startDate, String endDate, List<String> eventTypes) {
-        List<Object> params = new ArrayList<>();
-        params.add(productId);
+        WhereBuilder where = new WhereBuilder();
+        where.addCondition("pf.product_id = ?", productId);
 
-        StringBuilder sql = new StringBuilder("""
+        if (startDate != null && !startDate.isBlank()) {
+            where.addCondition("pf.event_date >= ?", startDate);
+        }
+        if (endDate != null && !endDate.isBlank()) {
+            where.addCondition("pf.event_date <= ?", endDate);
+        }
+        if (eventTypes != null && !eventTypes.isEmpty()) {
+            where.addIn("pf.event_type", eventTypes.stream().map(String::toLowerCase).toList());
+        }
+
+        String baseSql = """
                 SELECT
                   pf.*, p.name AS product_name, 
                   COALESCE(s.id, s_direct.id) AS bill_ref_id,
@@ -49,29 +59,16 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                 LEFT JOIN sales s_direct ON ( (pf.reference_type IN ('sale_cancellation', 'sale_edit_add', 'sale_edit_reduction') AND pf.reference_id = s_direct.id) )
                 LEFT JOIN customers c ON COALESCE(s.customer_id, s_direct.customer_id) = c.id
                 LEFT JOIN payment_methods pm ON pm.id = COALESCE(r_ref.payment_method_id, s.payment_method_id, s_direct.payment_method_id)
-                WHERE pf.product_id = ?
-                """);
+                """;
 
-        if (startDate != null && !startDate.isBlank()) {
-            sql.append(" AND pf.event_date >= ?");
-            params.add(startDate);
-        }
-        if (endDate != null && !endDate.isBlank()) {
-            sql.append(" AND pf.event_date <= ?");
-            params.add(endDate);
-        }
-        if (eventTypes != null && !eventTypes.isEmpty()) {
-            String placeholders = "?,".repeat(eventTypes.size()).replaceAll(",$", "");
-            sql.append(" AND pf.event_type IN (").append(placeholders).append(")");
-            params.addAll(eventTypes.stream().map(String::toLowerCase).toList());
-        }
-
-        sql.append(" GROUP BY pf.id ORDER BY pf.event_date DESC LIMIT ? OFFSET ?");
-        params.add(limit);
-        params.add(offset);
+        String finalSql = baseSql + " " + where.build() + " GROUP BY pf.id ORDER BY pf.event_date DESC LIMIT ? OFFSET ?";
+        
+        List<Object> allParams = new ArrayList<>(where.getParams());
+        allParams.add(limit);
+        allParams.add(offset);
 
         return queryList(
-                sql.toString(),
+                finalSql,
                 rs -> new ProductFlow(
                         rs.getLong("id"),
                         rs.getLong("product_id"),
@@ -83,7 +80,7 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                         rs.getString("payment_method_names"),
                         SqlMapperUtils.getLocalDateTime(rs, "event_date")
                 ),
-                params.toArray()
+                allParams.toArray()
         );
     }
 

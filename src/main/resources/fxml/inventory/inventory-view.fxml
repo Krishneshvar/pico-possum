@@ -1,13 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.geometry.Insets?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.control.*?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.layout.*?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import com.picopossum.ui.common.controls.DataTableView?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import com.picopossum.ui.common.controls.*?>
 

@@ -270,15 +270,18 @@ end;
 
 -- Automated Insight generation (populates product_flow from stock_movements)
 create trigger if not exists trg_insights_sync after insert on stock_movements begin
-  insert into product_flow (product_id, event_type, quantity, reference_type, reference_id, event_date)
-  values (
+  insert into product_flow (product_id, category_id, price_per_unit, cost_per_unit, event_type, quantity, reference_type, reference_id, event_date)
+  select 
     new.product_id, 
+    p.category_id,
+    p.mrp,
+    p.cost_price,
     case when new.reason = 'sale' then 'sale' when new.reason = 'return' then 'return' else 'adjustment' end,
     new.quantity_change,
     new.reference_type,
     new.reference_id,
     new.created_at
-  );
+  from products p where p.id = new.product_id;
 end;
 
 create trigger if not exists trg_products_updated_at after update on products begin

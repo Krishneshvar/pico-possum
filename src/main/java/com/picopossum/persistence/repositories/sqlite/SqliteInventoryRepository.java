@@ -55,7 +55,26 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
 
     @Override
     public List<StockHistoryDto> findStockHistory(String search, List<String> reasons, String fromDate, String toDate, int limit, int offset) {
-        StringBuilder sql = new StringBuilder("""
+        WhereBuilder where = new WhereBuilder();
+        where.addCondition("1=1");
+
+        if (search != null && !search.trim().isEmpty()) {
+            where.addCondition("(p.name LIKE ? OR p.sku LIKE ?)", "%" + search.trim() + "%", "%" + search.trim() + "%");
+        }
+
+        if (reasons != null && !reasons.isEmpty()) {
+            where.addIn("sm.reason", reasons);
+        }
+
+        if (fromDate != null && !fromDate.trim().isEmpty()) {
+            where.addCondition("sm.created_at >= ?", fromDate);
+        }
+
+        if (toDate != null && !toDate.trim().isEmpty()) {
+            where.addCondition("sm.created_at <= ?", toDate);
+        }
+
+        String baseSql = """
                 SELECT
                     sm.id,
                     sm.product_id,
@@ -69,38 +88,15 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                 FROM stock_movements sm
                 JOIN products p ON sm.product_id = p.id
                 LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
-                WHERE 1=1
-                """);
+                """;
 
-        List<Object> params = new ArrayList<>();
+        String finalSql = baseSql + " " + where.build() + " ORDER BY sm.created_at DESC LIMIT ? OFFSET ?";
+        
+        List<Object> allParams = new ArrayList<>(where.getParams());
+        allParams.add(limit);
+        allParams.add(offset);
 
-        if (search != null && !search.trim().isEmpty()) {
-            sql.append(" AND (p.name LIKE ? OR p.sku LIKE ?) ");
-            String searchPattern = "%" + search.trim() + "%";
-            params.add(searchPattern);
-            params.add(searchPattern);
-        }
-
-        if (reasons != null && !reasons.isEmpty()) {
-            sql.append(" AND sm.reason IN (").append(placeholders(reasons.size())).append(") ");
-            params.addAll(reasons);
-        }
-
-        if (fromDate != null && !fromDate.trim().isEmpty()) {
-            sql.append(" AND sm.created_at >= ? ");
-            params.add(fromDate);
-        }
-
-        if (toDate != null && !toDate.trim().isEmpty()) {
-            sql.append(" AND sm.created_at <= ? ");
-            params.add(toDate);
-        }
-
-        sql.append(" ORDER BY sm.created_at DESC LIMIT ? OFFSET ? ");
-        params.add(limit);
-        params.add(offset);
-
-        return queryList(sql.toString(), historyMapper, params.toArray());
+        return queryList(finalSql, historyMapper, allParams.toArray());
     }
 
     @Override
@@ -164,7 +160,4 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         ).orElse(Map.of("totalItemsInStock", 0, "productsWithNoStock", 0, "productsWithLowStock", 0));
     }
 
-    private String placeholders(int count) {
-        return "?,".repeat(count).replaceAll(",$", "");
-    }
 }
