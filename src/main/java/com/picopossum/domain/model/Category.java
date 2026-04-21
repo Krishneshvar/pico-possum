@@ -10,4 +10,9 @@ public record Category(
         LocalDateTime updatedAt,
         LocalDateTime deletedAt
 ) {
+    public Category {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Category name cannot be empty");
+        }
+    }
 }

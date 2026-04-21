@@ -15,4 +15,8 @@ public interface CategoryRepository {
     int updateCategoryById(long id, String name, boolean parentIdProvided, Long parentId);
 
     int softDeleteCategory(long id);
+
+    boolean hasLinkedProducts(long categoryId);
+
+    boolean hasSubcategories(long categoryId);
 }

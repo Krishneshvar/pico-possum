@@ -44,6 +44,14 @@ class SqliteCategoryRepositoryTest {
                 FOREIGN KEY (parent_id) REFERENCES categories (id)
             )
         """);
+        connection.createStatement().execute("""
+            CREATE TABLE products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category_id INTEGER,
+                name TEXT NOT NULL,
+                deleted_at TEXT
+            )
+        """);
     }
 
     @Test
@@ -132,5 +140,23 @@ class SqliteCategoryRepositoryTest {
         
         List<Category> all = repository.findAllCategories();
         assertTrue(all.isEmpty()); // findAllCategories filters out deleted_at IS NOT NULL
+    }
+
+    @Test
+    void hasSubcategories_returnsCorrectBoolean() {
+        Category parent = repository.insertCategory("Parent", null);
+        assertFalse(repository.hasSubcategories(parent.id()));
+
+        repository.insertCategory("Child", parent.id());
+        assertTrue(repository.hasSubcategories(parent.id()));
+    }
+
+    @Test
+    void hasLinkedProducts_returnsCorrectBoolean() throws SQLException {
+        Category cat = repository.insertCategory("Linked", null);
+        assertFalse(repository.hasLinkedProducts(cat.id()));
+
+        connection.createStatement().execute("INSERT INTO products (category_id, name) VALUES (" + cat.id() + ", 'Test Product')");
+        assertTrue(repository.hasLinkedProducts(cat.id()));
     }
 }

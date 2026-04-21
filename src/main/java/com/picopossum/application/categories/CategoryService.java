@@ -52,6 +52,12 @@ public class CategoryService {
     }
 
     public void deleteCategory(long id) {
+        if (categoryRepository.hasSubcategories(id)) {
+            throw new ValidationException("Cannot delete category with dependent subcategories");
+        }
+        if (categoryRepository.hasLinkedProducts(id)) {
+            throw new ValidationException("Cannot delete category linked to active products");
+        }
         int changes = categoryRepository.softDeleteCategory(id);
         if (changes == 0) {
             throw new NotFoundException("Category not found");

@@ -103,8 +103,27 @@ class CategoryServiceTest {
     }
 
     @Test
+    @DisplayName("Should prevent delete if subcategories exist")
+    void deleteCategory_hasSubcategories_fail() {
+        when(categoryRepository.hasSubcategories(1L)).thenReturn(true);
+        assertThrows(ValidationException.class, () -> categoryService.deleteCategory(1L));
+        verify(categoryRepository, never()).softDeleteCategory(anyLong());
+    }
+
+    @Test
+    @DisplayName("Should prevent delete if linked products exist")
+    void deleteCategory_hasLinkedProducts_fail() {
+        when(categoryRepository.hasSubcategories(1L)).thenReturn(false);
+        when(categoryRepository.hasLinkedProducts(1L)).thenReturn(true);
+        assertThrows(ValidationException.class, () -> categoryService.deleteCategory(1L));
+        verify(categoryRepository, never()).softDeleteCategory(anyLong());
+    }
+
+    @Test
     @DisplayName("Should hard-fail on delete if category not found")
     void deleteCategory_notFound_fail() {
+        when(categoryRepository.hasSubcategories(99L)).thenReturn(false);
+        when(categoryRepository.hasLinkedProducts(99L)).thenReturn(false);
         when(categoryRepository.softDeleteCategory(99L)).thenReturn(0);
         assertThrows(NotFoundException.class, () -> categoryService.deleteCategory(99L));
     }

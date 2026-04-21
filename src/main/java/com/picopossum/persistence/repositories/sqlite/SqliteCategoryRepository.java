@@ -34,26 +34,36 @@ public final class SqliteCategoryRepository extends BaseSqliteRepository impleme
 
     @Override
     public int updateCategoryById(long id, String name, boolean parentIdProvided, Long parentId) {
-        StringBuilder sql = new StringBuilder("UPDATE categories SET updated_at = CURRENT_TIMESTAMP");
-        List<Object> params = new java.util.ArrayList<>();
+        UpdateBuilder builder = new UpdateBuilder("categories");
         if (name != null) {
-            sql.append(", name = ?");
-            params.add(name);
+            builder.set("name", name);
         }
         if (parentIdProvided) {
-            sql.append(", parent_id = ?");
-            params.add(parentId);
+            builder.set("parent_id", parentId);
         }
-        if (params.isEmpty()) {
+        
+        if (!builder.hasFields()) {
             return 0;
         }
-        params.add(id);
-        sql.append(" WHERE id = ? AND deleted_at IS NULL");
-        return executeUpdate(sql.toString(), params.toArray());
+        
+        builder.where("id = ? AND deleted_at IS NULL", id);
+        return executeUpdate(builder.getSql(), builder.getParams());
     }
 
     @Override
     public int softDeleteCategory(long id) {
         return executeUpdate("UPDATE categories SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", id);
+    }
+
+    @Override
+    public boolean hasLinkedProducts(long categoryId) {
+        return queryOne("SELECT 1 FROM products WHERE category_id = ? AND deleted_at IS NULL LIMIT 1", 
+                        rs -> true, categoryId).orElse(false);
+    }
+
+    @Override
+    public boolean hasSubcategories(long categoryId) {
+        return queryOne("SELECT 1 FROM categories WHERE parent_id = ? AND deleted_at IS NULL LIMIT 1", 
+                        rs -> true, categoryId).orElse(false);
     }
 }
