@@ -335,51 +335,39 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
     }
 
     private static String buildUnifiedWhere(SaleFilter filter, List<Object> params) {
-        StringJoiner joiner = new StringJoiner(" AND ");
+        WhereBuilder where = new WhereBuilder();
         if (filter.status() != null && !filter.status().isEmpty()) {
-            joiner.add("us.status IN (" + "?,".repeat(filter.status().size()).replaceAll(",$", "") + ")");
-            params.addAll(filter.status());
+            where.addIn("us.status", filter.status());
         }
         if (filter.fulfillmentStatus() != null && !filter.fulfillmentStatus().isEmpty()) {
-            joiner.add("us.fulfillment_status IN (" + "?,".repeat(filter.fulfillmentStatus().size()).replaceAll(",$", "") + ")");
-            params.addAll(filter.fulfillmentStatus());
+            where.addIn("us.fulfillment_status", filter.fulfillmentStatus());
         }
         if (filter.customerId() != null) {
-            joiner.add("us.customer_id = ?");
-            params.add(filter.customerId());
+            where.addCondition("us.customer_id = ?", filter.customerId());
         }
         if (filter.startDate() != null && !filter.startDate().isBlank()) {
             String date = filter.startDate().substring(0, Math.min(10, filter.startDate().length()));
-            joiner.add("us.sale_date >= ?");
-            params.add(date + " 00:00:00");
+            where.addCondition("us.sale_date >= ?", date + " 00:00:00");
         }
         if (filter.endDate() != null && !filter.endDate().isBlank()) {
             String date = filter.endDate().substring(0, Math.min(10, filter.endDate().length()));
-            joiner.add("us.sale_date <= ?");
-            params.add(date + " 23:59:59");
+            where.addCondition("us.sale_date <= ?", date + " 23:59:59");
         }
         if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
             String fuzzy = "%" + filter.searchTerm() + "%";
-            joiner.add("(us.invoice_number LIKE ? OR COALESCE(us.customer_name, '') LIKE ?)");
-            params.add(fuzzy);
-            params.add(fuzzy);
+            where.addCondition("(us.invoice_number LIKE ? OR COALESCE(us.customer_name, '') LIKE ?)", fuzzy, fuzzy);
         }
         if (filter.minAmount() != null) {
-            joiner.add("us.total_amount >= ?");
-            params.add(filter.minAmount());
+            where.addCondition("us.total_amount >= ?", filter.minAmount());
         }
         if (filter.maxAmount() != null) {
-            joiner.add("us.total_amount <= ?");
-            params.add(filter.maxAmount());
+            where.addCondition("us.total_amount <= ?", filter.maxAmount());
         }
         if (filter.paymentMethodIds() != null && !filter.paymentMethodIds().isEmpty()) {
-            joiner.add("us.payment_method_id IN (" + "?,".repeat(filter.paymentMethodIds().size()).replaceAll(",$", "") + ")");
-            params.addAll(filter.paymentMethodIds());
+            where.addIn("us.payment_method_id", filter.paymentMethodIds());
         }
-        if (joiner.length() == 0) {
-            return "";
-        }
-        return "WHERE " + joiner;
+        params.addAll(where.getParams());
+        return where.build();
     }
 
     @Override

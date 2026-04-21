@@ -69,11 +69,21 @@ public class SaleDraft {
     public boolean isFullPayment() { return fullPayment; }
     public void setFullPayment(boolean fullPayment) { this.fullPayment = fullPayment; }
     public BigDecimal getOverallDiscountValue() { return overallDiscountValue; }
-    public void setOverallDiscountValue(BigDecimal val) { this.overallDiscountValue = val; }
+    public void setOverallDiscountValue(BigDecimal val) { 
+        if (val == null || val.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Overall discount cannot be null or negative");
+        }
+        this.overallDiscountValue = val; 
+    }
     public boolean isDiscountFixed() { return isDiscountFixed; }
     public void setDiscountFixed(boolean discountFixed) { isDiscountFixed = discountFixed; }
     public BigDecimal getAmountTendered() { return amountTendered; }
-    public void setAmountTendered(BigDecimal amountTendered) { this.amountTendered = amountTendered; }
+    public void setAmountTendered(BigDecimal amountTendered) { 
+        if (amountTendered == null || amountTendered.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount tendered cannot be null or negative");
+        }
+        this.amountTendered = amountTendered; 
+    }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getDiscountTotal() { return discountTotal; }

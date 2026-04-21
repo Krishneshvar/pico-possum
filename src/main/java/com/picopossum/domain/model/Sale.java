@@ -21,6 +21,20 @@ public record Sale(
         String paymentMethodName,
         String invoiceId
 ) {
+    public Sale {
+        if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Sale total amount cannot be null or negative");
+        }
+        if (paidAmount == null || paidAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Sale paid amount cannot be null or negative");
+        }
+        if (discount == null || discount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Sale discount cannot be null or negative");
+        }
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Sale status must be explicitly provided");
+        }
+    }
     public String shortInvoiceNumber() {
         String base = invoiceId != null ? invoiceId : invoiceNumber;
         if (base == null) return "";

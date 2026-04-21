@@ -51,14 +51,14 @@ class SqliteReturnsRepositoryTest {
 
     @Test
     void insertReturn_insertsSuccessfully() {
-        Return ret = new Return(null, 1L, "Defective", null, null, null, null, null, null, "RET-001");
+        Return ret = new Return(null, 1L, "Defective", null, null, null, BigDecimal.ZERO, null, null, "RET-001");
         long id = repository.insertReturn(ret);
         assertTrue(id > 0);
     }
 
     @Test
     void insertReturnItem_insertsSuccessfully() {
-        Return ret = new Return(null, 1L, "Defective", null, null, null, null, null, null, "RET-001");
+        Return ret = new Return(null, 1L, "Defective", null, null, null, BigDecimal.ZERO, null, null, "RET-001");
         long returnId = repository.insertReturn(ret);
 
         ReturnItem item = new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product");
@@ -101,7 +101,7 @@ class SqliteReturnsRepositoryTest {
 
     @Test
     void getTotalReturnedQuantity_returnsSum() {
-        long returnId = repository.insertReturn(new Return(null, 1L, "Defective", null, null, null, null, null, null, "RET-001"));
+        long returnId = repository.insertReturn(new Return(null, 1L, "Defective", null, null, null, BigDecimal.ZERO, null, null, "RET-001"));
         repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 2, new BigDecimal("100.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
         repository.insertReturnItem(new ReturnItem(null, returnId, 1L, 3, new BigDecimal("150.00"), 1L, new BigDecimal("50.00"), "SKU", "Product"));
 

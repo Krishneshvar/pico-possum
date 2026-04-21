@@ -85,9 +85,9 @@ class SqliteSalesRepositoryTest {
         when(rs.getString("sku")).thenReturn("SKU");
         when(rs.getString("product_name")).thenReturn("Product");
         when(rs.getInt("quantity")).thenReturn(2);
-        when(rs.getBigDecimal("price_per_unit")).thenReturn(new BigDecimal("50.00"));
-        when(rs.getBigDecimal("cost_per_unit")).thenReturn(new BigDecimal("30.00"));
-        when(rs.getBigDecimal("discount_amount")).thenReturn(BigDecimal.ZERO);
+        when(rs.getObject("price_per_unit")).thenReturn(new BigDecimal("50.00"));
+        when(rs.getObject("cost_per_unit")).thenReturn(new BigDecimal("30.00"));
+        when(rs.getObject("discount_amount")).thenReturn(BigDecimal.ZERO);
         when(rs.getInt("returned_quantity")).thenReturn(0);
 
         List<SaleItem> result = repository.findSaleItems(1L);

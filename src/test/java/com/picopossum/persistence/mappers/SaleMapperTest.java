@@ -84,8 +84,11 @@ class SaleMapperTest {
     void mapSale_nulls_success() throws SQLException {
         lenient().when(resultSet.getLong("id")).thenReturn(1L);
         lenient().when(resultSet.wasNull()).thenReturn(true);
-        lenient().when(resultSet.getString(anyString())).thenReturn(null);
-        lenient().when(resultSet.getObject(anyString())).thenReturn(null);
+        lenient().when(resultSet.getString(anyString())).thenAnswer(invocation -> {
+            String col = invocation.getArgument(0);
+            return "status".equals(col) ? "draft" : null;
+        });
+        lenient().when(resultSet.getObject(anyString())).thenReturn(BigDecimal.ZERO);
 
         Sale sale = mapper.map(resultSet);
 
