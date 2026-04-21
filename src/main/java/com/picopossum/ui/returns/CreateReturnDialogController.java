@@ -49,6 +49,7 @@ public class CreateReturnDialogController implements Parameterizable {
     private final SalesService salesService;
     private final SalesRepository salesRepository;
     private final ReturnsService returnsService;
+    private final com.picopossum.domain.services.ReturnCalculator returnCalculator;
 
     private Sale currentSale;
     private SaleResponse saleDetails;
@@ -60,10 +61,11 @@ public class CreateReturnDialogController implements Parameterizable {
     
     private OnSuccessCallback onSuccess;
 
-    public CreateReturnDialogController(SalesService salesService, SalesRepository salesRepository, ReturnsService returnsService) {
+    public CreateReturnDialogController(SalesService salesService, SalesRepository salesRepository, ReturnsService returnsService, com.picopossum.domain.services.ReturnCalculator returnCalculator) {
         this.salesService = salesService;
         this.salesRepository = salesRepository;
         this.returnsService = returnsService;
+        this.returnCalculator = returnCalculator;
     }
 
     @FXML
@@ -154,19 +156,47 @@ public class CreateReturnDialogController implements Parameterizable {
     }
 
     private void updateSummary() {
-        BigDecimal totalRefund = BigDecimal.ZERO;
-        int selectedCount = 0;
-
+        List<CreateReturnItemRequest> selectedItems = new ArrayList<>();
         for (ReturnItemRow row : itemRows) {
             if (row.isSelected()) {
-                selectedCount++;
-                totalRefund = totalRefund.add(row.getRefundAmount());
+                selectedItems.add(new CreateReturnItemRequest(row.item.id(), row.getQuantity()));
             }
         }
 
-        totalRefundLabel.setText(CurrencyUtil.format(totalRefund));
-        itemsSelectedLabel.setText(selectedCount + " items selected");
-        submitButton.setDisable(selectedCount == 0);
+        if (selectedItems.isEmpty() || saleDetails == null) {
+            totalRefundLabel.setText(CurrencyUtil.format(BigDecimal.ZERO));
+            itemsSelectedLabel.setText("0 items selected");
+            submitButton.setDisable(true);
+            for (ReturnItemRow row : itemRows) row.clearRefundDisplay();
+            return;
+        }
+
+        try {
+            List<com.picopossum.application.returns.dto.RefundCalculation> calcs = 
+                returnCalculator.calculateRefunds(selectedItems, saleDetails.items(), currentSale.discount());
+            
+            BigDecimal totalRefund = returnCalculator.calculateTotalRefund(calcs);
+            totalRefundLabel.setText(CurrencyUtil.format(totalRefund));
+            itemsSelectedLabel.setText(selectedItems.size() + " items selected");
+            submitButton.setDisable(false);
+
+            // Update individual line item refund displays
+            for (ReturnItemRow row : itemRows) {
+                Optional<com.picopossum.application.returns.dto.RefundCalculation> calc = calcs.stream()
+                    .filter(c -> c.saleItemId().equals(row.item.id()))
+                    .findFirst();
+                
+                if (calc.isPresent()) {
+                    row.setRefundDisplay(calc.get().refundAmount());
+                } else {
+                    row.clearRefundDisplay();
+                }
+            }
+        } catch (Exception e) {
+            // Log if needed, but don't crash the UI. Fallback to 0 or estimates.
+            totalRefundLabel.setText("Error");
+            submitButton.setDisable(true);
+        }
     }
 
     @FXML
@@ -246,7 +276,6 @@ public class CreateReturnDialogController implements Parameterizable {
                 if (currentQty > 1) {
                     currentQty--;
                     qtyField.setText(String.valueOf(currentQty));
-                    updateLineTotal();
                     updateSummary();
                 }
             });
@@ -255,7 +284,6 @@ public class CreateReturnDialogController implements Parameterizable {
                 if (currentQty < maxQty) {
                     currentQty++;
                     qtyField.setText(String.valueOf(currentQty));
-                    updateLineTotal();
                     updateSummary();
                 }
             });
@@ -285,17 +313,18 @@ public class CreateReturnDialogController implements Parameterizable {
                 mainRow.setStyle(selected 
                     ? "-fx-background-color: #fff1f2; -fx-border-color: #fecaca; -fx-border-width: 2; -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 16;" 
                     : "-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-width: 1; -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 16;");
-                updateLineTotal();
                 updateSummary();
             });
 
             this.node = new VBox(mainRow);
-            updateLineTotal();
         }
 
-        void updateLineTotal() {
-            BigDecimal amount = item.pricePerUnit().multiply(BigDecimal.valueOf(currentQty));
-            lineTotalLabel.setText(isSelected() ? CurrencyUtil.format(amount) : "");
+        void setRefundDisplay(BigDecimal amount) {
+            lineTotalLabel.setText(CurrencyUtil.format(amount));
+        }
+
+        void clearRefundDisplay() {
+            lineTotalLabel.setText("");
         }
 
         boolean isSelected() {
@@ -304,10 +333,6 @@ public class CreateReturnDialogController implements Parameterizable {
 
         int getQuantity() {
             return currentQty;
-        }
-
-        BigDecimal getRefundAmount() {
-            return item.pricePerUnit().multiply(BigDecimal.valueOf(currentQty));
         }
     }
 }

@@ -92,8 +92,35 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
 
     @Override
     public PagedResult<Return> findReturns(ReturnFilter filter) {
-        List<Object> params = new ArrayList<>();
-        String where = buildWhere(filter, params);
+        WhereBuilder whereBuilder = new WhereBuilder();
+        
+        if (filter.saleId() != null) {
+            whereBuilder.addCondition("r.sale_id = ?", filter.saleId());
+        }
+        if (filter.startDate() != null && !filter.startDate().isBlank()) {
+            String date = filter.startDate().substring(0, Math.min(10, filter.startDate().length()));
+            whereBuilder.addCondition("r.created_at >= ?", date + " 00:00:00");
+        }
+        if (filter.endDate() != null && !filter.endDate().isBlank()) {
+            String date = filter.endDate().substring(0, Math.min(10, filter.endDate().length()));
+            whereBuilder.addCondition("r.created_at <= ?", date + " 23:59:59");
+        }
+        if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
+            whereBuilder.addSearch(filter.searchTerm(), "r.id", "s.invoice_number", "r.invoice_id", "r.reason");
+        }
+        if (filter.minAmount() != null) {
+            whereBuilder.addCondition("r.refund_amount >= ?", filter.minAmount());
+        }
+        if (filter.maxAmount() != null) {
+            whereBuilder.addCondition("r.refund_amount <= ?", filter.maxAmount());
+        }
+        if (filter.paymentMethodIds() != null && !filter.paymentMethodIds().isEmpty()) {
+            whereBuilder.addIn("r.payment_method_id", filter.paymentMethodIds());
+        }
+
+        String whereClause = whereBuilder.build();
+        List<Object> params = new ArrayList<>(whereBuilder.getParams());
+
         int page = Math.max(1, filter.currentPage());
         int limit = Math.max(1, filter.itemsPerPage());
         int offset = (page - 1) * limit;
@@ -104,13 +131,14 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
                 %s
-                """.formatted(where),
+                """.formatted(whereClause),
                 rs -> rs.getInt("count"),
                 params.toArray()
         ).orElse(0);
 
         String sortBy = "total_refund".equalsIgnoreCase(filter.sortBy()) ? "total_refund" : "r.created_at";
         String sortOrder = "ASC".equalsIgnoreCase(filter.sortOrder()) ? "ASC" : "DESC";
+        
         params.add(limit);
         params.add(offset);
 
@@ -131,12 +159,12 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                 GROUP BY r.id
                 ORDER BY %s %s
                 LIMIT ? OFFSET ?
-                """.formatted(where, sortBy, sortOrder),
+                """.formatted(whereClause, sortBy, sortOrder),
                 returnMapper,
                 params.toArray()
         );
 
-        int totalPages = (int) Math.ceil((double) total / limit);
+        int totalPages = total > 0 ? (int) Math.ceil((double) total / limit) : 1;
         return new PagedResult<>(rows, total, totalPages, page, limit);
     }
 
@@ -149,51 +177,7 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
         ).orElse(0);
     }
 
-    private static String buildWhere(ReturnFilter filter, List<Object> params) {
-        StringJoiner joiner = new StringJoiner(" AND ");
-        if (filter.saleId() != null) {
-            joiner.add("r.sale_id = ?");
-            params.add(filter.saleId());
-        }
-        if (filter.startDate() != null && !filter.startDate().isBlank()) {
-            String date = filter.startDate().substring(0, Math.min(10, filter.startDate().length()));
-            joiner.add("r.created_at >= ?");
-            params.add(date + " 00:00:00");
-        }
-        if (filter.endDate() != null && !filter.endDate().isBlank()) {
-            String date = filter.endDate().substring(0, Math.min(10, filter.endDate().length()));
-            joiner.add("r.created_at <= ?");
-            params.add(date + " 23:59:59");
-        }
-        if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
-            String fuzzy = "%" + filter.searchTerm() + "%";
-            joiner.add("(CAST(r.id AS TEXT) LIKE ? OR s.invoice_number LIKE ? OR r.invoice_id LIKE ? OR COALESCE(r.reason, '') LIKE ?)");
-            params.add(fuzzy);
-            params.add(fuzzy);
-            params.add(fuzzy);
-            params.add(fuzzy);
-        }
 
-        if (filter.minAmount() != null) {
-            joiner.add("r.refund_amount >= ?");
-            params.add(filter.minAmount());
-        }
-        if (filter.maxAmount() != null) {
-            joiner.add("r.refund_amount <= ?");
-            params.add(filter.maxAmount());
-        }
-
-        if (filter.paymentMethodIds() != null && !filter.paymentMethodIds().isEmpty()) {
-            joiner.add("r.payment_method_id IN (" 
-                    + "?,".repeat(filter.paymentMethodIds().size()).replaceAll(",$", "") + ")");
-            params.addAll(filter.paymentMethodIds());
-        }
-
-        if (joiner.length() == 0) {
-            return "";
-        }
-        return "WHERE " + joiner;
-    }
 
     @Override
     public List<Return> findReturnsBySaleId(long saleId) {

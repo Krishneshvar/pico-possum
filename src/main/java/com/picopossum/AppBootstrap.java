@@ -46,6 +46,7 @@ public final class AppBootstrap {
     private ReportsService reportsService;
     private SqliteSalesRepository salesRepository;
     private com.picopossum.domain.services.SaleCalculator saleCalculator;
+    private com.picopossum.domain.services.ReturnCalculator returnCalculator;
     private com.picopossum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
     private com.picopossum.application.auth.AuthService authService;
     private TransactionManager transactionManager;
@@ -155,8 +156,14 @@ public final class AppBootstrap {
 
         com.picopossum.shared.util.TimeUtil.initialize(serviceLocator.getSettingsStore());
         com.picopossum.shared.util.CurrencyUtil.initialize(serviceLocator.getSettingsStore());
-        returnsService = new ReturnsService(returnRepository, salesRepository,
-                applicationModule.getInventoryService(), auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
+
+        com.picopossum.application.returns.ReturnsModule returnsModule = new com.picopossum.application.returns.ReturnsModule(
+                returnRepository, salesRepository, applicationModule.getInventoryService(),
+                auditRepository, transactionManager, jsonService, invoiceNumberService
+        );
+        returnsService = returnsModule.getReturnsService();
+        returnCalculator = returnsModule.getReturnCalculator();
+
         com.picopossum.persistence.repositories.sqlite.SqliteReportsRepository reportsRepository =
                 new com.picopossum.persistence.repositories.sqlite.SqliteReportsRepository(databaseManager);
         reportsService = new ReportsService(reportsRepository, productFlowRepository);
@@ -164,7 +171,7 @@ public final class AppBootstrap {
 
     private void initializeUI() {
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
-                saleCalculator, productSearchIndex, returnsService,
+                saleCalculator, productSearchIndex, returnsService, returnCalculator,
                 reportsService, salesRepository, appPaths, authService);
 
         dependencyInjector.getToastService().setMainStage(null);

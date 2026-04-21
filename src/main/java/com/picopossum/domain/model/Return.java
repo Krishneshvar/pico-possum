@@ -15,4 +15,10 @@ public record Return(
         String paymentMethodName,
         String invoiceId
 ) {
+    public Return {
+        if (saleId == null) throw new IllegalArgumentException("Sale ID is required for a return");
+        if (totalRefund == null || totalRefund.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Total refund cannot be negative");
+        }
+    }
 }

@@ -30,6 +30,7 @@ public class DependencyInjector {
 
 
     private final ReturnsService returnsService;
+    private final com.picopossum.domain.services.ReturnCalculator returnCalculator;
     private final ReportsService reportsService;
 
     private final SalesRepository salesRepository;
@@ -47,6 +48,7 @@ public class DependencyInjector {
                                com.picopossum.domain.services.SaleCalculator saleCalculator,
                                ProductSearchIndex productSearchIndex,
                                ReturnsService returnsService,
+                               com.picopossum.domain.services.ReturnCalculator returnCalculator,
                                ReportsService reportsService,
                                SalesRepository salesRepository,
                                com.picopossum.infrastructure.filesystem.AppPaths appPaths,
@@ -60,6 +62,7 @@ public class DependencyInjector {
 
 
         this.returnsService = returnsService;
+        this.returnCalculator = returnCalculator;
         this.reportsService = reportsService;
         this.salesRepository = salesRepository;
         this.appPaths = appPaths;
@@ -84,6 +87,7 @@ public class DependencyInjector {
 
 
         registry.put(ReturnsService.class, () -> returnsService);
+        registry.put(com.picopossum.domain.services.ReturnCalculator.class, () -> returnCalculator);
         registry.put(ReportsService.class, () -> reportsService);
 
         // Repositories
@@ -120,7 +124,7 @@ public class DependencyInjector {
                         serviceLocator.getDraftService()));
         registry.put(com.picopossum.ui.returns.CreateReturnDialogController.class,
                 () -> new com.picopossum.ui.returns.CreateReturnDialogController(
-                        salesService, salesRepository, returnsService));
+                        salesService, salesRepository, returnsService, returnCalculator));
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
                         applicationModule.getInventoryService(), serviceLocator.getDatabaseManager().getProductRepository(),

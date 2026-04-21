@@ -11,6 +11,7 @@ import com.picopossum.domain.repositories.SalesRepository;
 import com.picopossum.application.sales.InvoiceNumberService;
 
 public class ReturnsModule {
+    private final ReturnCalculator returnCalculator;
     private final ReturnsService returnsService;
 
     public ReturnsModule(ReturnsRepository returnsRepository,
@@ -20,6 +21,7 @@ public class ReturnsModule {
                          TransactionManager transactionManager,
                          JsonService jsonService,
                          InvoiceNumberService invoiceNumberService) {
+        this.returnCalculator = new ReturnCalculator();
         this.returnsService = new ReturnsService(
                 returnsRepository,
                 salesRepository,
@@ -27,12 +29,16 @@ public class ReturnsModule {
                 auditRepository,
                 transactionManager,
                 jsonService,
-                new ReturnCalculator(),
+                returnCalculator,
                 invoiceNumberService
         );
     }
 
     public ReturnsService getReturnsService() {
         return returnsService;
+    }
+
+    public ReturnCalculator getReturnCalculator() {
+        return returnCalculator;
     }
 }

@@ -13,4 +13,9 @@ public record Customer(
         LocalDateTime updatedAt,
         LocalDateTime deletedAt
 ) {
+    public Customer {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Customer name cannot be null or blank");
+        }
+    }
 }

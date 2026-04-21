@@ -71,14 +71,18 @@ class ReturnMapperTest {
         // Use lenient or just provide all stubs
         when(resultSet.getLong(anyString())).thenReturn(0L);
         when(resultSet.getLong("id")).thenReturn(1L);
+        when(resultSet.getLong("sale_id")).thenReturn(100L); // Valid sale_id
         
         when(resultSet.getString(anyString())).thenReturn(null);
-        when(resultSet.wasNull()).thenReturn(true);
+        when(resultSet.getObject("total_refund")).thenReturn(BigDecimal.ZERO); // Valid totalRefund
+        when(resultSet.wasNull()).thenReturn(true); // Still simulate wasNull for optional fields
 
         Return ret = mapper.map(resultSet);
 
         assertNotNull(ret);
         assertEquals(1L, ret.id());
+        assertEquals(100L, ret.saleId());
+        assertEquals(BigDecimal.ZERO, ret.totalRefund());
         assertNull(ret.paymentMethodId());
         assertNull(ret.paymentMethodName());
     }
