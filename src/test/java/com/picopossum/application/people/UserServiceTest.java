@@ -116,18 +116,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("Should revoke sessions if deactivated during update")
-    void updateUser_deactivate_success() {
-        User u = new User(1L, "Jane", "jane123", "hash", true, LocalDateTime.now(), LocalDateTime.now(), null);
-        when(userRepository.findUserById(1L)).thenReturn(Optional.of(u));
-        User deactivated = new User(1L, "Jane", "jane123", "hash", false, LocalDateTime.now(), LocalDateTime.now(), null);
-        when(userRepository.updateUserById(eq(1L), any(User.class))).thenReturn(deactivated);
-
-        userService.updateUser(1L, "Jane", "jane123", "", false);
-        verify(userRepository).revokeUserSessions(1L);
-    }
-
-    @Test
     @DisplayName("Should delete user successfully")
     void deleteUser_success() {
         when(userRepository.softDeleteUser(1L)).thenReturn(true);

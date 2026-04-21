@@ -551,9 +551,6 @@ public class PosController implements CartCellHandler {
             int stock = sS.isEmpty() ? 0 : Math.max(0, Integer.parseInt(sS));
             int alertCap = sA.isEmpty() ? 10 : Integer.parseInt(sA);
             
-            AuthUser cur = AuthContext.getCurrentUser(); 
-            long uId = cur != null ? cur.id() : 1L;
-            
             Product pCart = null; 
             Long pId = selectedProductIdForQuickAdd;
             if (pId == null) {
@@ -563,11 +560,15 @@ public class PosController implements CartCellHandler {
             
             final Category finalCat = cat;
             if (pId != null) {
-                productService.updateProduct(pId, new ProductService.UpdateProductCommand(pN, null, finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, "Quick add adjustment", uId));
+                productService.updateProduct(pId, new ProductService.UpdateProductCommand(
+                    pN, null, finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, "Quick add adjustment"
+                ));
                 searchIndex.refresh();
                 pCart = searchIndex.findBySku(productService.getProductById(pId).sku()).orElse(null);
             } else {
-                long newId = productService.createProduct(new ProductService.CreateProductCommand(pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, uId));
+                long newId = productService.createProduct(new ProductService.CreateProductCommand(
+                    pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, "active", null, stock
+                ));
                 searchIndex.refresh();
                 pCart = productService.getProductById(newId);
             }

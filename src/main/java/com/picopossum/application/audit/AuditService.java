@@ -6,10 +6,14 @@ import com.picopossum.domain.model.AuditLog;
 import com.picopossum.domain.repositories.AuditRepository;
 import com.picopossum.shared.dto.AuditLogFilter;
 import com.picopossum.shared.dto.PagedResult;
+import com.picopossum.shared.util.TimeUtil;
 
-import java.util.List;
 import java.util.Objects;
 
+/**
+ * Modernized Audit Service for Single-User SMB.
+ * Removed identity tracking and simplified the record structure.
+ */
 public final class AuditService {
 
     private final AuditRepository auditRepository;
@@ -23,101 +27,60 @@ public final class AuditService {
     /**
      * Record a generic audit event
      */
-    public long recordEvent(Long userId, String action, String tableName, Long rowId,
+    public long recordEvent(String action, String tableName, Long rowId,
                             Object oldData, Object newData, Object eventDetails) {
-        Objects.requireNonNull(userId, "userId must not be null");
         Objects.requireNonNull(action, "action must not be null");
 
         try {
             AuditLog auditLog = new AuditLog(
                     null,
-                    userId,
                     action,
                     tableName,
                     rowId,
                     toJson(oldData),
                     toJson(newData),
                     toJson(eventDetails),
-                    null,
-                    null
+                    TimeUtil.nowUTC()
             );
             return auditRepository.insertAuditLog(auditLog);
         } catch (Exception e) {
-            // Audit failures should not break business operations
             System.err.println("Failed to record audit event: " + e.getMessage());
             return -1;
         }
     }
 
-    /**
-     * Record a login event
-     */
-    public long logLogin(Long userId, Object eventDetails) {
-        return recordEvent(userId, "login", null, null, null, null, eventDetails);
+    public long logLogin(Object eventDetails) {
+        return recordEvent("login", null, null, null, null, eventDetails);
     }
 
-    /**
-     * Record a logout event
-     */
-    public long logLogout(Long userId, Object eventDetails) {
-        return recordEvent(userId, "logout", null, null, null, null, eventDetails);
+    public long logLogout(Object eventDetails) {
+        return recordEvent("logout", null, null, null, null, eventDetails);
     }
 
-    /**
-     * Record a create operation
-     */
-    public long logCreate(Long userId, String tableName, Long rowId, Object newData) {
-        return recordEvent(userId, "create", tableName, rowId, null, newData, null);
+    public long logCreate(String tableName, Long rowId, Object newData) {
+        return recordEvent("create", tableName, rowId, null, newData, null);
     }
 
-    /**
-     * Record an update operation
-     */
-    public long logUpdate(Long userId, String tableName, Long rowId, Object oldData, Object newData) {
-        return recordEvent(userId, "update", tableName, rowId, oldData, newData, null);
+    public long logUpdate(String tableName, Long rowId, Object oldData, Object newData) {
+        return recordEvent("update", tableName, rowId, oldData, newData, null);
     }
 
-    /**
-     * Record an update operation with event details
-     */
-    public long logUpdate(Long userId, String tableName, Long rowId, Object oldData, Object newData, Object eventDetails) {
-        return recordEvent(userId, "update", tableName, rowId, oldData, newData, eventDetails);
+    public long logUpdate(String tableName, Long rowId, Object oldData, Object newData, Object eventDetails) {
+        return recordEvent("update", tableName, rowId, oldData, newData, eventDetails);
     }
 
-    /**
-     * Record a delete operation
-     */
-    public long logDelete(Long userId, String tableName, Long rowId, Object oldData) {
-        return recordEvent(userId, "delete", tableName, rowId, oldData, null, null);
+    public long logDelete(String tableName, Long rowId, Object oldData) {
+        return recordEvent("delete", tableName, rowId, oldData, null, null);
     }
 
-    /**
-     * Get a single audit event by ID
-     */
     public AuditLog getAuditEvent(Long auditLogId) {
         Objects.requireNonNull(auditLogId, "auditLogId must not be null");
         return auditRepository.findAuditLogById(auditLogId);
     }
 
-    /**
-     * List audit events with filtering and pagination
-     */
     public PagedResult<AuditLog> listAuditEvents(AuditLogFilter filter) {
         Objects.requireNonNull(filter, "filter must not be null");
         return auditRepository.findAuditLogs(filter);
-    }
-
-    /**
-     * List audit events by user
-     */
-    public List<AuditLog> listAuditEventsByUser(Long userId, int limit) {
-        Objects.requireNonNull(userId, "userId must not be null");
-        
-        AuditLogFilter filter = new AuditLogFilter(
-                null, null, userId, null, null, null, null,
-                "created_at", "DESC", 1, limit
-        );
-        return auditRepository.findAuditLogs(filter).items();
     }
 
     private String toJson(Object obj) {

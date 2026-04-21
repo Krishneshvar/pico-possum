@@ -2,16 +2,18 @@ package com.picopossum.domain.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * Minimalist Audit log for Single-User SMB.
+ * Removed userId/userName as they are redundant in a one-person system.
+ */
 public record AuditLog(
         Long id,
-        Long userId,
         String action,
         String tableName,
         Long rowId,
         String oldData,
         String newData,
         String eventDetails,
-        String userName,
         LocalDateTime createdAt
 ) {
 }

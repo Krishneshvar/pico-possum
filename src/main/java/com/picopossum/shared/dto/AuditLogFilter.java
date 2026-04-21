@@ -3,7 +3,6 @@ package com.picopossum.shared.dto;
 public record AuditLogFilter(
         String tableName,
         Long rowId,
-        Long userId,
         java.util.List<String> actions,
         String startDate,
         String endDate,

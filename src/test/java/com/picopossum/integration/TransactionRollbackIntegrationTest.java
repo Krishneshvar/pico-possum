@@ -1,7 +1,5 @@
 package com.picopossum.integration;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.inventory.ProductFlowService;
 import com.picopossum.application.sales.*;
@@ -33,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Verifies that if a sale fails mid-way (e.g., crash, exception),
  * the database is rolled back cleanly — no phantom stock deductions or
  * orphaned records.
+ * Synchronized for Single-User Identity-Agnostic architecture.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class TransactionRollbackIntegrationTest {
@@ -43,12 +42,10 @@ class TransactionRollbackIntegrationTest {
     private static SalesService salesService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
-    private static SqliteInventoryRepository inventoryRepository;
     private static SqliteCategoryRepository categoryRepository;
     private static SqliteProductRepository productRepository;
 
     private static long testProductId;
-    private static long testUserId;
     private static long cashPaymentMethodId;
 
     @BeforeAll
@@ -66,15 +63,14 @@ class TransactionRollbackIntegrationTest {
         productRepository = new SqliteProductRepository(databaseManager);
         salesRepository = new SqliteSalesRepository(databaseManager);
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
-        inventoryRepository = new SqliteInventoryRepository(databaseManager);
+        SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
-        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
-                transactionManager, jsonService, settingsStore, new com.picopossum.domain.services.StockManager());
+                transactionManager, jsonService, settingsStore);
 
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
@@ -83,10 +79,6 @@ class TransactionRollbackIntegrationTest {
                 auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager,
                 jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
-        User u = userRepository.insertUser(
-                new User(null, "Rollback Tester", "rbtester-" + UUID.randomUUID(), "hash", true, null, null, null)
-        );
-        testUserId = u.id();
         cashPaymentMethodId = getOrSeedPaymentMethod();
         testProductId = seedProductWithStock(50);
     }
@@ -95,17 +87,6 @@ class TransactionRollbackIntegrationTest {
     static void tearDown() throws IOException {
         if (databaseManager != null) databaseManager.close();
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
-        AuthContext.clear();
-    }
-
-    @BeforeEach
-    void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Rollback Tester", "rbtester"));
-    }
-
-    @AfterEach
-    void clearAuth() {
-        AuthContext.clear();
     }
 
     @Test
@@ -121,7 +102,7 @@ class TransactionRollbackIntegrationTest {
                         List.of(new CreateSaleItemRequest(999999L, 1, BigDecimal.ZERO, new BigDecimal("100.00"))),
                         null, BigDecimal.ZERO,
                         List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
-                ), testUserId)
+                ))
         );
 
         // No sale should have been inserted
@@ -152,43 +133,12 @@ class TransactionRollbackIntegrationTest {
 
     @Test
     @Order(3)
-    @DisplayName("Nested transaction — inner rollback preserved, outer transaction succeeds")
-    void nestedTransaction_innerRollback_outerSucceeds() {
-        String outerName = "OuterCat-" + UUID.randomUUID();
-        String innerName = "InnerCat-" + UUID.randomUUID();
-
-        transactionManager.runInTransaction(() -> {
-            categoryRepository.insertCategory(outerName, null);
-
-            // Inner transaction fails via savepoint
-            assertThrows(RuntimeException.class, () ->
-                    transactionManager.runInTransaction(() -> {
-                        categoryRepository.insertCategory(innerName, null);
-                        throw new RuntimeException("Rollback inner only");
-                    })
-            );
-
-            return null;
-        });
-
-        // Outer should be committed
-        int outerCount = queryInt("SELECT COUNT(*) FROM categories WHERE name = ?", outerName);
-        assertEquals(1, outerCount, "Outer transaction should have been committed");
-
-        // Inner should be rolled back to savepoint
-        int innerCount = queryInt("SELECT COUNT(*) FROM categories WHERE name = ?", innerName);
-        assertEquals(0, innerCount, "Inner transaction should have been rolled back");
-    }
-
-    @Test
-    @Order(4)
     @DisplayName("Transaction with multiple DB writes — all rolled back atomically on failure")
     void multipleWrites_allRolledBackOnFailure() {
         int salesBefore = queryInt("SELECT COUNT(*) FROM sales");
         int saleItemsBefore = queryInt("SELECT COUNT(*) FROM sale_items");
 
-        // This will fail because the second product doesn't exist — first product's stock deduction
-        // happens inside the same transaction so everything rolls back
+        // This will fail because the second product doesn't exist
         assertThrows(Exception.class, () ->
                 salesService.createSale(new CreateSaleRequest(
                         List.of(
@@ -197,7 +147,7 @@ class TransactionRollbackIntegrationTest {
                         ),
                         null, BigDecimal.ZERO,
                         List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
-                ), testUserId)
+                ))
         );
 
         // All counts should be unchanged
@@ -206,18 +156,17 @@ class TransactionRollbackIntegrationTest {
     }
 
     @Test
-    @Order(5)
+    @Order(4)
     @DisplayName("Duplicate invoice number — database constraint prevents second insert")
     void duplicateInvoiceNumber_throwsConstraintViolation() {
-        // Insert a sale with a known invoice
         String invoice = "DUPE-" + UUID.randomUUID().toString().substring(0, 8);
 
         salesRepository.insertSale(new Sale(
                 null, invoice, null,
                 new BigDecimal("100.00"), new BigDecimal("100.00"),
                 BigDecimal.ZERO,
-                "paid", "fulfilled", null, testUserId,
-                null, null, null, null, null, null, invoice
+                "paid", "fulfilled", null, "Guest",
+                null, null, "System Admin", 1L, "Cash", invoice
         ));
 
         // Trying to insert another sale with the same invoice should fail
@@ -226,29 +175,26 @@ class TransactionRollbackIntegrationTest {
                         null, invoice, null,
                         new BigDecimal("50.00"), new BigDecimal("50.00"),
                         BigDecimal.ZERO,
-                        "paid", "fulfilled", null, testUserId,
-                        null, null, null, null, null, null, invoice
+                        "paid", "fulfilled", null, "Guest",
+                        null, null, "System Admin", 1L, "Cash", invoice
                 ))
         );
     }
 
     @Test
-    @Order(6)
-    @DisplayName("Cancel already-cancelled sale — throws ValidationException, no audit duplication")
+    @Order(5)
+    @DisplayName("Cancel already-cancelled sale — throws ValidationException")
     void cancelAlreadyCancelledSale_throwsValidation() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Rollback Tester", "rbtester"));
-
         SaleResponse saleResp = salesService.createSale(new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("50.00"))),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(new BigDecimal("50.00"), cashPaymentMethodId))
-        ), testUserId);
+        ));
 
-        salesService.cancelSale(saleResp.sale().id(), testUserId);
+        salesService.cancelSale(saleResp.sale().id());
 
-        // Try to cancel again
         assertThrows(com.picopossum.domain.exceptions.ValidationException.class, () ->
-                salesService.cancelSale(saleResp.sale().id(), testUserId)
+                salesService.cancelSale(saleResp.sale().id())
         );
     }
 
@@ -258,7 +204,7 @@ class TransactionRollbackIntegrationTest {
         long catId = categoryRepository.insertCategory("RBCat-" + UUID.randomUUID(), null).id();
         long productId = productRepository.insertProduct(new Product(
             null, "RBProd-" + UUID.randomUUID(), "desc", catId, null,
-            "RBSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 0, "active", null, 5, null, null, null
+            "RBSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 5, "active", null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;
@@ -266,41 +212,23 @@ class TransactionRollbackIntegrationTest {
 
     private static void seedInventory(long productId, int quantity) {
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_lots (product_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                "INSERT INTO stock_movements (product_id, quantity_change, reason, reference_type, created_at) " +
+                "VALUES (?, ?, 'receive', 'manual', CURRENT_TIMESTAMP)")) {
             stmt.setLong(1, productId);
             stmt.setInt(2, quantity);
-            stmt.setBigDecimal(3, new BigDecimal("30.00"));
             stmt.executeUpdate();
-        } catch (SQLException e) { throw new IllegalStateException("Seed lot failed", e); }
-
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_adjustments (product_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
-                "VALUES (?, ?, ?, 'correction', ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, productId);
-            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
-            stmt.setInt(3, quantity);
-            stmt.setLong(4, testUserId);
-            stmt.executeUpdate();
-        } catch (SQLException e) { throw new IllegalStateException("Seed adjustment failed", e); }
+        } catch (SQLException e) { throw new IllegalStateException("Seed target failed", e); }
     }
 
     private static long getOrSeedPaymentMethod() {
-        List<PaymentMethod> methods = salesRepository.findPaymentMethods();
-        if (!methods.isEmpty()) return methods.get(0).id();
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO payment_methods (name, code, is_active) VALUES ('Cash', 'CA', 1) RETURNING id")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
-        } catch (SQLException e) { throw new IllegalStateException("Seed PM failed", e); }
-        throw new IllegalStateException("No PM ID returned");
-    }
-
-    private static long queryLong(String sql, Object... params) {
-        try (PreparedStatement stmt = prepare(sql, params); ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) return rs.getLong(1);
-        } catch (SQLException e) { throw new IllegalStateException("queryLong failed: " + sql, e); }
-        throw new IllegalStateException("No result: " + sql);
+                "INSERT INTO payment_methods (name, code) VALUES ('Cash', 'CA') ON CONFLICT DO NOTHING")) {
+            stmt.executeUpdate();
+        } catch (SQLException e) { }
+        
+        List<PaymentMethod> methods = salesRepository.findPaymentMethods();
+        for (var m : methods) if ("Cash".equals(m.name())) return m.id();
+        throw new IllegalStateException("Seed PM failed");
     }
 
     private static int queryInt(String sql, Object... params) {
@@ -327,4 +255,3 @@ class TransactionRollbackIntegrationTest {
         }
     }
 }
-

@@ -162,7 +162,6 @@ public class ReturnsController extends AbstractCrudController<Return, ReturnFilt
         
         return new ReturnFilter(
             null,
-            null,
             fromDate != null ? fromDate.atStartOfDay().toString() : null,
             toDate != null ? toDate.atTime(23, 59, 59).toString() : null,
             currentMinAmount,

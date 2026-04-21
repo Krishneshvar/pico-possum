@@ -48,7 +48,7 @@ public class SalesModificationService {
         this.settingsStore = settingsStore;
     }
 
-    public void updateSaleItems(long saleId, List<UpdateSaleItemRequest> itemRequests, long userId) {
+    public void updateSaleItems(long saleId, List<UpdateSaleItemRequest> itemRequests) {
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -59,7 +59,6 @@ public class SalesModificationService {
 
             List<SaleItem> oldItems = salesRepository.findSaleItems(saleId);
             
-            // ─── 1. Physical Inventory Delta ───────────────────
             Map<Long, Integer> oldProductTotals = new HashMap<>();
             oldItems.forEach(i -> oldProductTotals.merge(i.productId(), i.quantity(), Integer::sum));
             
@@ -71,7 +70,6 @@ public class SalesModificationService {
 
             boolean enforceInventoryRestrictions = isInventoryRestrictionsEnabled();
             
-            // Verify stock for net additions
             for (Long pid : productIds) {
                 int oldQ = oldProductTotals.getOrDefault(pid, 0);
                 int newQ = newProductTotals.getOrDefault(pid, 0);
@@ -83,22 +81,26 @@ public class SalesModificationService {
                 }
             }
 
-            // Apply stock changes
             for (Long pid : productIds) {
                 int oldQ = oldProductTotals.getOrDefault(pid, 0);
                 int newQ = newProductTotals.getOrDefault(pid, 0);
                 int diff = newQ - oldQ;
 
                 if (diff > 0) {
-                    inventoryService.deductStock(pid, diff, userId, InventoryReason.SALE, "sale_edit_add", saleId);
+                    inventoryService.deductStock(pid, diff, InventoryReason.SALE, "sale_edit_add", saleId);
                 } else if (diff < 0) {
-                    // Find an old item to use as a reference for restoration
-                    long refId = oldItems.stream().filter(i -> i.productId() == pid).findFirst().get().id();
-                    inventoryService.restoreStock(pid, "sale_item", refId, Math.abs(diff), userId, InventoryReason.CORRECTION, "sale_edit_reduction", saleId);
+                    // Restore stock via direct adjustment
+                    inventoryService.adjustInventory(
+                            pid, 
+                            Math.abs(diff), 
+                            InventoryReason.CORRECTION, 
+                            "sale_edit_reduction", 
+                            saleId, 
+                            "Stock restored after sale item reduction"
+                    );
                 }
             }
 
-            // ─── 2. Refresh Invoice Items (Database) ───────────
             for (SaleItem oldItem : oldItems) {
                 salesRepository.deleteSaleItem(oldItem.id());
             }
@@ -119,22 +121,21 @@ public class SalesModificationService {
                 ));
             }
 
-            // ─── 3. Financial Totals & Payments ─────────────
             BigDecimal totalDiscount = sale.discount() != null ? sale.discount() : BigDecimal.ZERO;
             BigDecimal grandTotal = newSubtotal.subtract(totalDiscount).max(BigDecimal.ZERO);
 
             salesRepository.updateSaleTotals(saleId, grandTotal, totalDiscount);
 
-            // Auto-adjust paid amount if the bill was fully settled
             if (sale.totalAmount().compareTo(sale.paidAmount()) == 0) {
                 salesRepository.updateSalePaidAmount(saleId, grandTotal);
             }
 
             AuditLog auditLog = new AuditLog(
-                    null, userId, "UPDATE", "sales", saleId,
-                    jsonService.toJson(Map.of("total", sale.totalAmount())), jsonService.toJson(Map.of("total", grandTotal)),
-                    jsonService.toJson(Map.of("reason", "Line item correction")),
-                    null, TimeUtil.nowUTC()
+                    null, "UPDATE", "sales", saleId,
+                    jsonService.toJson(Map.of("total", sale.totalAmount())), 
+                    jsonService.toJson(Map.of("total", grandTotal)),
+                    "Line item correction",
+                    TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
 
@@ -142,7 +143,7 @@ public class SalesModificationService {
         });
     }
 
-    public void cancelSale(long saleId, long userId) {
+    public void cancelSale(long saleId) {
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -156,15 +157,13 @@ public class SalesModificationService {
 
             List<SaleItem> items = salesRepository.findSaleItems(saleId);
             for (SaleItem item : items) {
-                inventoryService.restoreStock(
+                inventoryService.adjustInventory(
                         item.productId(),
-                        "sale_item",
-                        item.id(),
                         item.quantity(),
-                        userId,
                         InventoryReason.RETURN,
                         "sale_cancellation",
-                        saleId
+                        saleId,
+                        "Stock restored from cancelled sale"
                 );
             }
 
@@ -174,10 +173,10 @@ public class SalesModificationService {
             Map<String, Object> oldData = Map.of("status", sale.status());
             Map<String, Object> newData = Map.of("status", "cancelled");
             AuditLog auditLog = new AuditLog(
-                    null, userId, "UPDATE", "sales", saleId,
+                    null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
-                    jsonService.toJson(Map.of("reason", "Cancellation")),
-                    null, TimeUtil.nowUTC()
+                    "Cancellation",
+                    TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
 
@@ -185,7 +184,7 @@ public class SalesModificationService {
         });
     }
 
-    public void completeSale(long saleId, long userId) {
+    public void completeSale(long saleId) {
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -202,9 +201,10 @@ public class SalesModificationService {
             Map<String, Object> oldData = Map.of("fulfillment_status", sale.fulfillmentStatus());
             Map<String, Object> newData = Map.of("fulfillment_status", "fulfilled");
             AuditLog auditLog = new AuditLog(
-                    null, userId, "UPDATE", "sales", saleId,
+                    null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
-                    null, null, TimeUtil.nowUTC()
+                    "Fulfillment",
+                    TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
 
@@ -212,8 +212,7 @@ public class SalesModificationService {
         });
     }
 
-    public void changeSalePaymentMethod(long saleId, long newPaymentMethodId, long userId) {
-        
+    public void changeSalePaymentMethod(long saleId, long newPaymentMethodId) {
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -236,10 +235,10 @@ public class SalesModificationService {
             Map<String, Object> newData = Map.of("payment_method_id", newPaymentMethodId);
             
             AuditLog auditLog = new AuditLog(
-                    null, userId, "UPDATE", "sales", saleId,
+                    null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
-                    jsonService.toJson(Map.of("reason", "Payment method correction")),
-                    null, TimeUtil.nowUTC()
+                    "Payment method correction",
+                    TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
 
@@ -247,8 +246,7 @@ public class SalesModificationService {
         });
     }
 
-    public void changeSaleCustomer(long saleId, Long newCustomerId, long userId) {
-        
+    public void changeSaleCustomer(long saleId, Long newCustomerId) {
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)
                     .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
@@ -267,10 +265,10 @@ public class SalesModificationService {
             Map<String, Object> newData = Map.of("customer_id", newCustomerId != null ? newCustomerId : -1L);
             
             AuditLog auditLog = new AuditLog(
-                    null, userId, "UPDATE", "sales", saleId,
+                    null, "UPDATE", "sales", saleId,
                     jsonService.toJson(oldData), jsonService.toJson(newData),
-                    jsonService.toJson(Map.of("reason", "Customer correction")),
-                    null, TimeUtil.nowUTC()
+                    "Customer correction",
+                    TimeUtil.nowUTC()
             );
             auditRepository.insertAuditLog(auditLog);
 

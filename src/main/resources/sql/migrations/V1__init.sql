@@ -10,7 +10,8 @@ create table users (
     name text,
     is_active integer default 1 check(is_active in (0,1)),
     created_at datetime default current_timestamp,
-    updated_at datetime default current_timestamp
+    updated_at datetime default current_timestamp,
+    deleted_at datetime
 );
 
 -- 2. Catalog & Products
@@ -20,6 +21,7 @@ create table categories (
     parent_id integer,
     created_at datetime default current_timestamp,
     updated_at datetime default current_timestamp,
+    deleted_at datetime,
     foreign key (parent_id) references categories(id) on delete set null
 );
 
@@ -67,7 +69,7 @@ create table customers (
     phone text,
     email text,
     address text,
-    loyalty_points integer default 0,
+    customer_type text,
     created_at datetime default current_timestamp,
     updated_at datetime default current_timestamp,
     deleted_at datetime
@@ -77,17 +79,20 @@ create table customers (
 create table payment_methods (
     id integer primary key autoincrement,
     name text not null unique,
-    code text unique
+    code text unique,
+    is_active integer default 1 check(is_active in (0,1))
 );
 
 create table sales (
     id integer primary key autoincrement,
     invoice_number text not null unique,
+    invoice_id text,
     sale_date datetime default current_timestamp,
     total_amount numeric(10,2) not null,
     paid_amount numeric(10,2) not null,
     discount numeric(10,2) default 0,
     status text check(status in ('draft','paid','partially_paid','cancelled','refunded','partially_refunded')) not null,
+    fulfillment_status text default 'fulfilled',
     customer_id integer,
     payment_method_id integer,
     foreign key (customer_id) references customers(id) on delete set null,

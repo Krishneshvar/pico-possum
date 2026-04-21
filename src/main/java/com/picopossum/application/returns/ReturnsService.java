@@ -17,6 +17,7 @@ import com.picopossum.application.sales.InvoiceNumberService;
 import java.math.BigDecimal;
 import com.picopossum.shared.util.TimeUtil;
 import java.util.*;
+
 public class ReturnsService {
     private final ReturnsRepository returnsRepository;
     private final SalesRepository salesRepository;
@@ -46,42 +47,35 @@ public class ReturnsService {
     }
 
     public ReturnResponse createReturn(CreateReturnRequest request) {
-        // Step 1: Input validation
         validateInputs(request);
 
         return transactionManager.runInTransaction(() -> {
-            // Step 2: Sale validation
             Sale sale = salesRepository.findSaleById(request.saleId())
                     .orElseThrow(() -> new NotFoundException("Sale not found"));
             List<SaleItem> saleItems = salesRepository.findSaleItems(request.saleId());
 
-            // Step 3: Aggregate duplicate items
             Map<Long, Integer> aggregatedItems = aggregateDuplicateItems(request.items());
 
-            // Step 4: Validate return quantities
             List<CreateReturnItemRequest> validatedItems = validateReturnQuantities(
                     aggregatedItems, saleItems);
 
-            // Step 5: Calculate refund amounts
             List<RefundCalculation> refundCalculations = returnCalculator.calculateRefunds(
                     validatedItems, saleItems, sale.discount());
             BigDecimal totalRefund = returnCalculator.calculateTotalRefund(refundCalculations);
+            
             Long paymentMethodId = sale.paymentMethodId();
             if (paymentMethodId == null || paymentMethodId <= 0) {
                 List<PaymentMethod> activeMethods = salesRepository.findPaymentMethods();
                 paymentMethodId = activeMethods.isEmpty() ? 1L : activeMethods.get(0).id();
             }
 
-            // Step 6: Validate refund amount
             validateRefundAmount(totalRefund, sale.paidAmount());
 
             String returnInvoiceId = invoiceNumberService.generate("R", paymentMethodId);
 
-            // Step 7: Create return record
             Return returnRecord = new Return(
                     null,
                     request.saleId(),
-                    request.userId(),
                     request.reason().trim(),
                     TimeUtil.nowUTC(),
                     null, null, totalRefund, paymentMethodId, null,
@@ -89,7 +83,6 @@ public class ReturnsService {
             );
             long returnId = returnsRepository.insertReturn(returnRecord);
 
-            // Step 8: Create return items and restore inventory
             for (RefundCalculation refundCalc : refundCalculations) {
                 ReturnItem returnItem = new ReturnItem(
                         null,
@@ -104,34 +97,27 @@ public class ReturnsService {
                 );
                 long returnItemId = returnsRepository.insertReturnItem(returnItem);
 
-
-                // Restore inventory
-                inventoryService.restoreStock(
-
+                // Restore inventory via direct movement
+                inventoryService.adjustInventory(
                         refundCalc.productId(),
-                        "sale_item",
-                        refundCalc.saleItemId(),
                         refundCalc.quantity(),
-                        request.userId(),
                         InventoryReason.RETURN,
                         "return_item",
-                        returnItemId
+                        returnItemId,
+                        "Stock restored from return " + returnInvoiceId
                 );
             }
 
-            // Step 9: Process sale refund
             processSaleRefund(request.saleId(), totalRefund, sale);
 
-            // Step 10: Audit logging
             Map<String, Object> auditData = Map.of(
                     "sale_id", request.saleId(),
                     "total_refund", totalRefund,
                     "item_count", refundCalculations.size(),
                     "reason", request.reason()
             );
-            auditRepository.log("returns", returnId, "CREATE", jsonService.toJson(auditData), request.userId());
+            auditRepository.log("returns", returnId, "CREATE", jsonService.toJson(auditData));
 
-            // Step 11: Return result
             return new ReturnResponse(returnId, request.saleId(), totalRefund, refundCalculations.size());
         });
     }
@@ -139,9 +125,6 @@ public class ReturnsService {
     private void validateInputs(CreateReturnRequest request) {
         if (request.saleId() == null || request.saleId() <= 0) {
             throw new ValidationException("Invalid sale ID");
-        }
-        if (request.userId() == null || request.userId() <= 0) {
-            throw new ValidationException("Invalid user ID");
         }
         if (request.reason() == null || request.reason().trim().isEmpty()) {
             throw new ValidationException("Return reason is required");
@@ -220,11 +203,9 @@ public class ReturnsService {
             );
         }
 
-        // Update sale paid amount
         BigDecimal newPaidAmount = sale.paidAmount().subtract(refundAmount);
         salesRepository.updateSalePaidAmount(saleId, newPaidAmount);
 
-        // Update sale status based on refund
         if (newPaidAmount.compareTo(BigDecimal.ZERO) <= 0 && sale.totalAmount().compareTo(BigDecimal.ZERO) > 0) {
             salesRepository.updateSaleStatus(saleId, "refunded");
         } else if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
@@ -233,9 +214,8 @@ public class ReturnsService {
     }
 
     public Return getReturn(long id) {
-        Return returnRecord = returnsRepository.findReturnById(id)
+        return returnsRepository.findReturnById(id)
                 .orElseThrow(() -> new NotFoundException("Return not found: " + id));
-        return returnRecord;
     }
 
     public List<Return> getSaleReturns(long saleId) {

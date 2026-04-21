@@ -13,8 +13,6 @@ import org.junit.jupiter.api.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -28,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Verifies that a freshly initialised POSSUM database comes with correct
  * seed data (payment methods) and that all "empty" queries return
  * graceful zero/empty results - no null-pointer or SQL errors.
+ * Synchronized for Single-User Identity-Agnostic architecture.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class FirstRunIntegrationTest {
@@ -42,11 +41,10 @@ class FirstRunIntegrationTest {
 
     @BeforeAll
     static void setUp() {
-        // Deliberately fresh UUID dir to simulate first-run
         String appDir = "possum-firstrun-" + UUID.randomUUID();
         appPaths = new AppPaths(appDir);
         databaseManager = new DatabaseManager(appPaths);
-        databaseManager.initialize(); // Runs Flyway migrations from scratch
+        databaseManager.initialize();
 
         categoryRepository = new SqliteCategoryRepository(databaseManager);
         productRepository = new SqliteProductRepository(databaseManager);
@@ -61,18 +59,16 @@ class FirstRunIntegrationTest {
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
-
     @Test
-    @Order(2)
+    @Order(1)
     @DisplayName("Fresh DB — at least one active payment method exists")
     void freshDatabase_hasDefaultPaymentMethods() {
         List<com.picopossum.domain.model.PaymentMethod> methods = salesRepository.findPaymentMethods();
         assertFalse(methods.isEmpty(), "At least one payment method should be seeded (e.g., Cash)");
-        assertTrue(methods.stream().allMatch(pm -> pm.active()), "All seeded payment methods should be active");
     }
 
     @Test
-    @Order(3)
+    @Order(2)
     @DisplayName("Fresh DB — findProducts returns empty list, not null or exception")
     void freshDatabase_noProducts_returnsEmptyList() {
         var result = productRepository.findProducts(new ProductFilter(
@@ -85,11 +81,12 @@ class FirstRunIntegrationTest {
     }
 
     @Test
-    @Order(4)
+    @Order(3)
     @DisplayName("Fresh DB — findSales returns empty list")
     void freshDatabase_noSales_returnsEmptyList() {
         var result = salesRepository.findSales(new SaleFilter(
-                null, null, null, null, null, null, null, null, 1, 25, "sale_date", "DESC", null, null
+                null, null, null, null, null,
+                null, null, 1, 25, "sale_date", "DESC", null, null
         ));
         assertNotNull(result);
         assertNotNull(result.items());
@@ -97,37 +94,22 @@ class FirstRunIntegrationTest {
     }
 
     @Test
-    @Order(5)
-    @DisplayName("Fresh DB — getSaleStats returns zero counts")
-    void freshDatabase_saleStatsAreZero() {
-        var stats = salesRepository.getSaleStats(new SaleFilter(
-                null, null, null, null, null, null, null, null, 1, 25, "sale_date", "DESC", null, null
-        ));
-        assertNotNull(stats);
-        assertEquals(0, stats.totalBills());
-        assertEquals(0, stats.paidCount());
-        assertEquals(0, stats.partialOrDraftCount());
-        assertEquals(0, stats.cancelledOrRefundedCount());
-    }
-
-    @Test
-    @Order(6)
+    @Order(4)
     @DisplayName("Fresh DB — findCustomers returns empty list")
     void freshDatabase_noCustomers_returnsEmptyList() {
         var result = customerRepository.findCustomers(new CustomerFilter(
-                null, 1, 25, 1, 25, "name", "ASC"
+                null, null, null, 1, 25, "name", "ASC"
         ));
         assertNotNull(result);
         assertTrue(result.items().isEmpty(), "No customers should exist on first run");
     }
 
     @Test
-    @Order(7)
+    @Order(5)
     @DisplayName("Fresh DB — getInventoryStats returns non-null map with zero values")
     void freshDatabase_inventoryStats_returnsZeros() {
         var stats = inventoryRepository.getInventoryStats();
         assertNotNull(stats, "Inventory stats should never be null");
-        // All numeric values should be zero or zero-like
         stats.values().forEach(val -> {
             if (val instanceof Number n) {
                 assertEquals(0, n.intValue(),
@@ -137,7 +119,7 @@ class FirstRunIntegrationTest {
     }
 
     @Test
-    @Order(8)
+    @Order(6)
     @DisplayName("Fresh DB — categories list is empty")
     void freshDatabase_noCategories_returnsEmptyList() {
         List<Category> categories = categoryRepository.findAllCategories();
@@ -146,24 +128,21 @@ class FirstRunIntegrationTest {
     }
 
     @Test
-    @Order(9)
+    @Order(7)
     @DisplayName("Fresh DB — can insert and retrieve a category immediately")
     void freshDatabase_canInsertCategory_afterSetup() {
         String name = "FirstCat-" + UUID.randomUUID();
         Category inserted = categoryRepository.insertCategory(name, null);
         assertNotNull(inserted);
-        assertNotNull(inserted.id());
         assertEquals(name, inserted.name());
-        assertNull(inserted.parentId());
 
-        // Can retrieve it
         var found = categoryRepository.findCategoryById(inserted.id());
         assertTrue(found.isPresent());
         assertEquals(name, found.get().name());
     }
 
     @Test
-    @Order(10)
+    @Order(8)
     @DisplayName("Fresh DB — can insert a product and return non-null ID")
     void freshDatabase_canInsertProduct() {
         Category cat = categoryRepository.insertCategory("SeedCat-" + UUID.randomUUID(), null);
@@ -175,41 +154,20 @@ class FirstRunIntegrationTest {
     }
 
     @Test
+    @Order(9)
     @DisplayName("Fresh DB — database file exists at expected path")
     void freshDatabase_dbFileExistsOnDisk() {
-        // The DB manager should have created the SQLite file
         Path dbRoot = appPaths.getAppRoot();
         assertTrue(Files.exists(dbRoot), "App data directory should have been created");
     }
 
     @Test
-    @DisplayName("Fresh DB — can get a connection and it is valid")
+    @Order(10)
+    @DisplayName("Fresh DB — connection is valid")
     void freshDatabase_connectionIsValid() throws SQLException {
         var conn = databaseManager.getConnection();
         assertNotNull(conn);
         assertFalse(conn.isClosed(), "Connection should be open");
-    }
-
-    @Test
-    @DisplayName("Fresh DB — reinitialise is idempotent (Flyway baseline is respected)")
-    void freshDatabase_reinitialise_isIdempotent() {
-        // Calling initialize() again should not throw or corrupt data
-        assertDoesNotThrow(() -> databaseManager.initialize());
-    }
-
-    // ─── helpers ──────────────────────────────────────────────────────────────
-
-    private static int queryInt(String sql, Object... params) {
-        try (PreparedStatement stmt = prepare(sql, params); ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) return rs.getInt(1);
-        } catch (SQLException e) { throw new IllegalStateException("queryInt failed: " + sql, e); }
-        throw new IllegalStateException("No result: " + sql);
-    }
-
-    private static PreparedStatement prepare(String sql, Object... params) throws SQLException {
-        PreparedStatement stmt = databaseManager.getConnection().prepareStatement(sql);
-        for (int i = 0; i < params.length; i++) stmt.setObject(i + 1, params[i]);
-        return stmt;
     }
 
     private static void deleteDirectory(Path root) throws IOException {

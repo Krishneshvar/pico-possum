@@ -171,14 +171,8 @@ public class SalesHistoryActionsHandler {
         alert.setContentText("Are you sure you want to cancel this sale? This will restore inventory stock.");
 
         if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            AuthUser currentUser = AuthContext.getCurrentUser();
             CompletableFuture.runAsync(() -> {
-                AuthContext.setCurrentUser(currentUser);
-                try {
-                    salesService.cancelSale(sale.id(), currentUser.id());
-                } finally {
-                    AuthContext.clear();
-                }
+                salesService.cancelSale(sale.id());
             })
             .thenRun(() -> Platform.runLater(onDataChanged))
             .exceptionally(ex -> {

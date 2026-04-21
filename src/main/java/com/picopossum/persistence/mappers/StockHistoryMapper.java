@@ -6,6 +6,9 @@ import com.picopossum.shared.util.SqlMapperUtils;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * Minimalist mapper for stock history lookups.
+ */
 public final class StockHistoryMapper implements RowMapper<StockHistoryDto> {
     @Override
     public StockHistoryDto map(ResultSet rs) throws SQLException {
@@ -16,8 +19,7 @@ public final class StockHistoryMapper implements RowMapper<StockHistoryDto> {
                 rs.getString("sku"),
                 rs.getInt("quantity_change"),
                 rs.getString("reason"),
-                rs.getString("adjusted_by_name"),
-                SqlMapperUtils.getLocalDateTime(rs, "adjusted_at"),
+                SqlMapperUtils.getLocalDateTime(rs, "created_at"),
                 rs.getInt("current_stock"),
                 rs.getInt("stock_alert_cap")
         );

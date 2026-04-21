@@ -1,7 +1,5 @@
 package com.picopossum.ui.sales;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.sales.SalesService;
 import com.picopossum.application.sales.dto.SaleResponse;
 import com.picopossum.domain.model.Sale;
@@ -19,8 +17,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,30 +37,21 @@ class SaleDetailControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new SaleDetailController(salesService, workspaceManager, settingsStore, printerService, searchIndex);
     }
 
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
-    }
-
     @Test
-    @DisplayName("Should load sale details via parameters")
+    @DisplayName("Should load sale details via parameters correctly for single-user core")
     void setParameters_loadsSale() {
         Sale sale = createTestSale(1L, "INV-001");
         SaleResponse response = new SaleResponse(sale, List.of(), List.of());
         
         when(salesService.getSaleDetails(1L)).thenReturn(response);
 
-        // This would fail in full UI mode due to FXML labels being null,
-        // but we can test the service interaction if we wrap it in try-catch or mock labels.
+        // GUI components are null in test, so we catch potential NPEs while verifying service call
         try {
             controller.setParameters(Map.of("sale", sale));
-        } catch (Exception e) {
-            // Label updates will fail
-        }
+        } catch (Exception ignored) {}
 
         verify(salesService).getSaleDetails(1L);
     }
@@ -73,9 +60,8 @@ class SaleDetailControllerTest {
         return new Sale(
             id, invoiceNumber, LocalDateTime.now(), new BigDecimal("100.00"),
             new BigDecimal("100.00"), BigDecimal.ZERO,
-            "paid", "fulfilled", 1L, 1L, "Test Customer", "1234567890",
+            "paid", "fulfilled", 1L, "Test Customer", "1234567890",
             "test@customer.com", "Test Biller", 1L, "Cash", invoiceNumber
         );
     }
 }
-

@@ -26,9 +26,8 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
     @Override
     public long insertReturn(Return returnRecord) {
         return executeInsert(
-                "INSERT INTO returns (sale_id, user_id, reason, refund_amount, payment_method_id, invoice_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO returns (sale_id, reason, refund_amount, payment_method_id, invoice_id) VALUES (?, ?, ?, ?, ?)",
                 returnRecord.saleId(),
-                returnRecord.userId(),
                 returnRecord.reason(),
                 returnRecord.totalRefund(),
                 returnRecord.paymentMethodId(),
@@ -54,14 +53,13 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                 SELECT
                   r.*,
                   s.invoice_number,
-                  u.name AS processed_by_name,
+                  'System Admin' AS processed_by_name,
                   r.refund_amount AS total_refund,
                   r.payment_method_id,
                   pm.name AS payment_method_name,
                   r.invoice_id
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
-                JOIN users u ON r.user_id = u.id
                 LEFT JOIN payment_methods pm ON r.payment_method_id = pm.id
                 WHERE r.id = ?
                 GROUP BY r.id
@@ -121,14 +119,13 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                 SELECT
                   r.*,
                   s.invoice_number,
-                  u.name AS processed_by_name,
+                  'System Admin' AS processed_by_name,
                   r.refund_amount AS total_refund,
                   r.payment_method_id,
                   pm.name AS payment_method_name,
                   r.invoice_id
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
-                JOIN users u ON r.user_id = u.id
                 LEFT JOIN payment_methods pm ON r.payment_method_id = pm.id
                 %s
                 GROUP BY r.id
@@ -157,10 +154,6 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
         if (filter.saleId() != null) {
             joiner.add("r.sale_id = ?");
             params.add(filter.saleId());
-        }
-        if (filter.userId() != null) {
-            joiner.add("r.user_id = ?");
-            params.add(filter.userId());
         }
         if (filter.startDate() != null && !filter.startDate().isBlank()) {
             String date = filter.startDate().substring(0, Math.min(10, filter.startDate().length()));
@@ -209,14 +202,13 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
                 SELECT
                   r.*,
                   s.invoice_number,
-                  u.name AS processed_by_name,
+                  'System Admin' AS processed_by_name,
                   r.refund_amount AS total_refund,
                   r.payment_method_id,
                   pm.name AS payment_method_name,
                   r.invoice_id
                 FROM returns r
                 JOIN sales s ON r.sale_id = s.id
-                JOIN users u ON r.user_id = u.id
                 LEFT JOIN payment_methods pm ON r.payment_method_id = pm.id
                 WHERE r.sale_id = ?
                 GROUP BY r.id

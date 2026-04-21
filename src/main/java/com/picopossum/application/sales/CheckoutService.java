@@ -51,7 +51,7 @@ public class CheckoutService {
         this.invoiceNumberService = invoiceNumberService;
     }
 
-    public SaleResponse createSale(CreateSaleRequest request, long userId) {
+    public SaleResponse createSale(CreateSaleRequest request) {
         request.validate();
 
         List<Long> productIds = request.items().stream().map(CreateSaleItemRequest::productId).toList();
@@ -99,7 +99,6 @@ public class CheckoutService {
                     "draft", 
                     "pending",
                     draft.getSelectedCustomer() != null ? draft.getSelectedCustomer().id() : null,
-                    userId,
                     null, null, null, null, primaryPaymentMethodId, null,
                     invoiceNumber
             );
@@ -131,9 +130,8 @@ public class CheckoutService {
                 inventoryService.deductStock(
                         cartItem.getProduct().id(),
                         cartItem.getQuantity(),
-                        userId,
                         InventoryReason.SALE,
-                        null,
+                        "sale",
                         newSaleId
                 );
             }
@@ -155,7 +153,7 @@ public class CheckoutService {
                 salesRepository.updateFulfillmentStatus(newSaleId, "fulfilled");
             }
             
-            auditRepository.log("sales", newSaleId, "CREATE", jsonService.toJson(saleEntity), userId);
+            auditRepository.log("sales", newSaleId, "CREATE", jsonService.toJson(saleEntity));
             
             return newSaleId;
         });

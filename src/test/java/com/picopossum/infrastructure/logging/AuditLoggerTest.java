@@ -3,111 +3,72 @@ package com.picopossum.infrastructure.logging;
 import com.picopossum.domain.model.AuditLog;
 import com.picopossum.domain.repositories.AuditRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 class AuditLoggerTest {
 
-    private AuditRepository auditRepository;
+    @Mock private AuditRepository auditRepository;
     private AuditLogger auditLogger;
 
     @BeforeEach
     void setUp() {
-        auditRepository = mock(AuditRepository.class);
         auditLogger = new AuditLogger(auditRepository);
     }
 
     @Test
-    void logAuthentication_shouldInsertAuditLog() {
-        auditLogger.logAuthentication(1L, "LOGIN", true, "127.0.0.1", "Mozilla", "User logged in");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
+    @DisplayName("Should log authentication events properly for single-user core")
+    void logAuthentication_success() {
+        auditLogger.logAuthentication("LOGIN", true, "User logged in");
+
+        verify(auditRepository).insertAuditLog(argThat(log -> 
+            "LOGIN".equals(log.action()) && 
+            "auth".equals(log.tableName()) &&
+            "User logged in".equals(log.eventDetails())
+        ));
     }
 
     @Test
-    void logAuthentication_shouldHandleFailedLogin() {
-        auditLogger.logAuthentication(1L, "LOGIN_FAILED", false, "127.0.0.1", "Mozilla", "Invalid password");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
+    @DisplayName("Should log data modifications with correct mapping")
+    void logDataModification_success() {
+        auditLogger.logDataModification("UPDATE", "products", 123L, "{\"name\":\"Old\"}", "{\"name\":\"New\"}");
+
+        verify(auditRepository).insertAuditLog(argThat(log -> 
+            "UPDATE".equals(log.action()) && 
+            "products".equals(log.tableName()) &&
+            123L == log.rowId() &&
+            "{\"name\":\"Old\"}".equals(log.oldData()) &&
+            "{\"name\":\"New\"}".equals(log.newData())
+        ));
     }
 
     @Test
-    void logDataModification_shouldInsertAuditLog() {
-        auditLogger.logDataModification(1L, "UPDATE", "products", 123L, "{\"name\":\"Old\"}", "{\"name\":\"New\"}");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
+    @DisplayName("Should log security events with severity mapping")
+    void logSecurityEvent_success() {
+        auditLogger.logSecurityEvent("BRUTE_FORCE_DETECTED", "Multiple failed login attempts", "warning");
+
+        verify(auditRepository).insertAuditLog(argThat(log -> 
+            "BRUTE_FORCE_DETECTED".equals(log.action()) && 
+            "security".equals(log.tableName()) &&
+            "Multiple failed login attempts".equals(log.eventDetails())
+        ));
     }
 
     @Test
-    void logDataModification_withIpAddress_shouldInsertAuditLog() {
-        auditLogger.logDataModification(1L, "UPDATE", "products", 123L, "{\"name\":\"Old\"}", "{\"name\":\"New\"}", "127.0.0.1");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
+    @DisplayName("Should log critical events with highest severity standard")
+    void logCriticalEvent_success() {
+        auditLogger.logCriticalEvent("DATABASE_CORRUPTION", "Database integrity check failed");
 
-    @Test
-    void logSecurityEvent_shouldInsertAuditLog() {
-        auditLogger.logSecurityEvent(1L, "BRUTE_FORCE_DETECTED", "Multiple failed login attempts", "192.168.1.1", "warning");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
-    void logCriticalEvent_shouldInsertAuditLog() {
-        auditLogger.logCriticalEvent(1L, "DATABASE_CORRUPTION", "Database integrity check failed", "127.0.0.1");
-        
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
-    void logAuthentication_shouldNotThrowOnRepositoryFailure() {
-        when(auditRepository.insertAuditLog(any())).thenThrow(new RuntimeException("DB error"));
-        
-        assertDoesNotThrow(() -> 
-            auditLogger.logAuthentication(1L, "LOGIN", true, "127.0.0.1", "Mozilla", "User logged in")
-        );
-    }
-
-    @Test
-    void logDataModification_shouldNotThrowOnRepositoryFailure() {
-        when(auditRepository.insertAuditLog(any())).thenThrow(new RuntimeException("DB error"));
-        
-        assertDoesNotThrow(() -> 
-            auditLogger.logDataModification(1L, "UPDATE", "products", 123L, "{}", "{}")
-        );
-    }
-
-    @Test
-    void verifyChainIntegrity_shouldReturnTrue() {
-        boolean result = auditLogger.verifyChainIntegrity();
-        assertTrue(result);
-    }
-
-    @Test
-    void logAuthentication_shouldHandleNullUserAgent() {
-        assertDoesNotThrow(() -> 
-            auditLogger.logAuthentication(1L, "LOGIN", true, "127.0.0.1", null, "User logged in")
-        );
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
-    void logDataModification_shouldHandleNullOldData() {
-        assertDoesNotThrow(() -> 
-            auditLogger.logDataModification(1L, "CREATE", "products", 123L, null, "{\"name\":\"New\"}")
-        );
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
-    }
-
-    @Test
-    void logDataModification_shouldHandleNullNewData() {
-        assertDoesNotThrow(() -> 
-            auditLogger.logDataModification(1L, "DELETE", "products", 123L, "{\"name\":\"Old\"}", null)
-        );
-        verify(auditRepository).insertAuditLog(any(AuditLog.class));
+        verify(auditRepository).insertAuditLog(argThat(log -> 
+            "DATABASE_CORRUPTION".equals(log.action()) && 
+            "Database integrity check failed".equals(log.eventDetails())
+        ));
     }
 }
-

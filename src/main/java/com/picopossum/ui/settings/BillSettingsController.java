@@ -360,22 +360,21 @@ public class BillSettingsController {
     private SaleResponse createMockSale() {
         Sale sale = new Sale(
             1L,
-            "CH2603260001",
+            "INV-0001",
             LocalDateTime.now(),
-            BigDecimal.valueOf(315.50),
-            BigDecimal.valueOf(315.50),
-            BigDecimal.valueOf(10.0),
-            "COMPLETED",
-            "DELIVERED",
-            1L,
+            new BigDecimal("315.50"),
+            new BigDecimal("315.50"),
+            new BigDecimal("10.00"),
+            "paid",
+            "fulfilled",
             1L,
             "John Doe",
             "555-0199",
             "john@example.com",
-            "Jane Smith",
+            "System Admin",
             1L,
             "Cash",
-            "S26CH0000001"
+            "INV-ID-0001"
         );
 
         List<SaleItem> items = new ArrayList<>();

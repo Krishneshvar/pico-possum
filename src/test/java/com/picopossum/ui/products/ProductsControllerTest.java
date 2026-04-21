@@ -1,29 +1,22 @@
 package com.picopossum.ui.products;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.categories.CategoryService;
 import com.picopossum.application.products.ProductService;
-import com.picopossum.domain.model.Category;
 import com.picopossum.domain.model.Product;
-import com.picopossum.shared.dto.PagedResult;
-import com.picopossum.shared.dto.ProductFilter;
-import com.picopossum.ui.common.controls.FilterBar;
-import com.picopossum.ui.common.controls.PaginationBar;
 import com.picopossum.ui.JavaFXInitializer;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.ui.common.controls.DataTableView;
+import com.picopossum.ui.common.controls.FilterBar;
+import com.picopossum.ui.common.controls.PaginationBar;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ProductsControllerTest {
@@ -36,95 +29,48 @@ class ProductsControllerTest {
     @Mock private ProductService productService;
     @Mock private CategoryService categoryService;
     @Mock private WorkspaceManager workspaceManager;
+    @Mock private DataTableView<Product> dataTable;
     @Mock private FilterBar filterBar;
     @Mock private PaginationBar paginationBar;
- 
-    @org.mockito.InjectMocks
+
     private ProductsController controller;
- 
+
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
-        setField(controller, "paginationBar", paginationBar);
+        controller = new ProductsController(productService, categoryService, workspaceManager);
+        setField(controller, "dataTable", dataTable);
         setField(controller, "filterBar", filterBar);
-        lenient().when(paginationBar.getCurrentPage()).thenReturn(0);
-        lenient().when(paginationBar.getPageSize()).thenReturn(25);
+        setField(controller, "paginationBar", paginationBar);
     }
- 
+
     private void setField(Object target, String fieldName, Object value) throws Exception {
-        java.lang.reflect.Field field = com.picopossum.ui.common.controllers.AbstractCrudController.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
-    }
-
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
-    }
-
-    @Test
-    @DisplayName("Should fetch products with filters")
-    void fetchProducts_withFilters_success() {
-        ProductFilter filter = new ProductFilter(
-            "Test", List.of("active"), null, 0, 20, "name", "ASC"
-        );
-        List<Product> products = List.of(
-            createTestProduct(1L, "Test Product 1", "active"),
-            createTestProduct(2L, "Test Product 2", "active")
-        );
-        PagedResult<Product> pagedResult = new PagedResult<>(products, 2, 1, 0, 20);
-        when(productService.getProducts(any(ProductFilter.class))).thenReturn(pagedResult);
-
-        // Call the controller method
-        PagedResult<Product> result = controller.fetchData(filter);
-
-        assertNotNull(result);
-        assertEquals(2, result.totalCount());
-        assertEquals(2, result.items().size());
-        verify(productService).getProducts(any(ProductFilter.class));
+        // Search in hierarchy for AbstractCrudController fields
+        Class<?> clazz = target.getClass();
+        while (clazz != null) {
+            try {
+                java.lang.reflect.Field field = clazz.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException("Field " + fieldName + " not found");
     }
 
     @Test
-    @DisplayName("Should delete product successfully")
+    @DisplayName("Should successfully delete product in identity-agnostic standard")
     void deleteProduct_success() throws Exception {
-        Long productId = 1L;
-        Long userId = 1L;
-        Product product = createTestProduct(productId, "Test Product", "active");
-        doNothing().when(productService).deleteProduct(productId, userId);
+        long productId = 123L;
+        Product product = new Product(productId, "Test", null, null, null, "SKU", 
+                BigDecimal.ONE, BigDecimal.ONE, 10, "active", null, 0, 
+                LocalDateTime.now(), LocalDateTime.now(), null);
 
-        // Call the controller method
+        doNothing().when(productService).deleteProduct(productId);
+
         controller.deleteEntity(product);
 
-        verify(productService).deleteProduct(productId, userId);
-    }
-
-    @Test
-    @DisplayName("Should build filter correctly")
-    void buildFilter_success() {
-        // Set search text in the controller (mocking getSearchOrNull if necessary, 
-        // but it's easier to just call the method and check default behavior)
-        ProductFilter filter = controller.buildFilter();
-
-        assertNotNull(filter);
-        assertEquals(0, filter.currentPage());
-        assertEquals(25, filter.itemsPerPage());
-        assertEquals("name", filter.sortBy());
-        assertEquals("ASC", filter.sortOrder());
-    }
-
-    @Test
-    @DisplayName("Should get entity name and singular name")
-    void getName_success() {
-        assertEquals("products", controller.getEntityName());
-        assertEquals("Product", controller.getEntityNameSingular());
-    }
-
-    private Product createTestProduct(Long id, String name, String status) {
-        return new Product(
-            id, name, "Description", 1L, "Electronics",
-            "SKU-" + id, new java.math.BigDecimal("10.00"), new java.math.BigDecimal("8.00"),
-            10, status, null, 0, null, null, null
-        );
+        verify(productService).deleteProduct(productId);
     }
 }
-

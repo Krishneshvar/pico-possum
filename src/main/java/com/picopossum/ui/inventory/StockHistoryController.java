@@ -137,8 +137,8 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         });
         
         dateCol.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().adjustedAt() != null 
-                    ? TimeUtil.formatStandard(TimeUtil.toLocal(cellData.getValue().adjustedAt())) 
+                cellData.getValue().createdAt() != null 
+                    ? TimeUtil.formatStandard(TimeUtil.toLocal(cellData.getValue().createdAt())) 
                     : ""));
 
         dataTable.getTableView().getColumns().addAll(
@@ -192,14 +192,11 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
         currentFromDate = (LocalDate) filterBar.getFilterValue("fromDate");
         currentToDate = (LocalDate) filterBar.getFilterValue("toDate");
 
-        currentUserIds = null;
-
         return new StockHistoryFilter(
             searchTerm,
             currentReasons != null ? currentReasons : new ArrayList<>(),
             currentFromDate,
             currentToDate,
-            currentUserIds,
             getCurrentPage(),
             getPageSize()
         );
@@ -221,7 +218,6 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
             filter.reasons(), 
             fromDateStr, 
             toDateStr, 
-            filter.userIds(), 
             filter.limit(), 
             offset
         );
@@ -276,7 +272,6 @@ record StockHistoryFilter(
     List<String> reasons,
     LocalDate fromDate,
     LocalDate toDate,
-    List<Long> userIds,
     int page,
     int limit
 ) {}

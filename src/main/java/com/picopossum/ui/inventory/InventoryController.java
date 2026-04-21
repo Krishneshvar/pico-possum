@@ -251,7 +251,6 @@ public class InventoryController extends AbstractCrudController<Product, Product
             reasonCombo.getItems().addAll(
                 InventoryReason.CORRECTION,
                 InventoryReason.DAMAGE,
-                InventoryReason.SPOILAGE,
                 InventoryReason.THEFT
             );
         }, values -> {
@@ -262,16 +261,14 @@ public class InventoryController extends AbstractCrudController<Product, Product
                 int quantity = "Set Exact".equals(type) ? (inputValue - currentStock) : inputValue;
 
                 InventoryReason reason = (InventoryReason) values.get("reason");
-                long userId = AuthContext.getCurrentUser().id();
                 
                 inventoryService.adjustInventory(
                     product.id(),
-                    null,
                     quantity,
                     reason,
                     "manual_adjustment",
                     null,
-                    userId
+                    "Manual stock adjustment from UI"
                 );
                 
                 NotificationService.success("Stock adjusted successfully");

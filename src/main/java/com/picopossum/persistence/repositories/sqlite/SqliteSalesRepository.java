@@ -40,17 +40,15 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 s.status AS status,
                 s.fulfillment_status AS fulfillment_status,
                 s.customer_id AS customer_id,
-                s.user_id AS user_id,
                 c.name AS customer_name,
                 c.phone AS customer_phone,
                 c.email AS customer_email,
-                u.name AS biller_name,
+                'System Admin' AS biller_name,
                 s.payment_method_id,
                 pm.name AS payment_method_name,
                 s.invoice_id
               FROM sales s
               LEFT JOIN customers c ON s.customer_id = c.id
-              LEFT JOIN users u ON s.user_id = u.id
               LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
 
               UNION ALL
@@ -65,7 +63,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 'legacy' AS status,
                 'fulfilled' AS fulfillment_status,
                 NULL AS customer_id,
-                NULL AS user_id,
                 CASE WHEN ls.customer_name IS NULL OR trim(ls.customer_name) = '' THEN 'Walk-in Customer' ELSE ls.customer_name END AS customer_name,
                 NULL AS customer_phone,
                 NULL AS customer_email,
@@ -90,9 +87,9 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sales (
-                  invoice_number, invoice_id, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, user_id, payment_method_id
+                  invoice_number, invoice_id, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, payment_method_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sale.invoiceNumber(),
                 sale.invoiceId(),
@@ -102,7 +99,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 sale.status(),
                 sale.fulfillmentStatus() == null ? "pending" : sale.fulfillmentStatus(),
                 sale.customerId(),
-                sale.userId(),
                 sale.paymentMethodId()
         );
     }
@@ -130,11 +126,10 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return queryOne(
                 """
                 SELECT
-                  s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, u.name AS biller_name,
+                  s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, 'System Admin' AS biller_name,
                   pm.name AS payment_method_name
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
-                LEFT JOIN users u ON s.user_id = u.id
                 LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE s.id = ?
                 GROUP BY s.id
@@ -148,11 +143,10 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
     public Optional<Sale> findSaleByInvoiceNumber(String invoiceNumber) {
         String query = """
                 SELECT
-                  s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, u.name AS biller_name,
+                  s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, 'System Admin' AS biller_name,
                   pm.name AS payment_method_name
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
-                LEFT JOIN users u ON s.user_id = u.id
                 LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE s.invoice_number = ?
                 GROUP BY s.id
@@ -161,7 +155,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         Optional<Sale> result = queryOne(query, saleMapper, invoiceNumber);
         if (result.isPresent()) return result;
 
-        // Stabilization: Also try finding by trailing sequence if the input is numeric
         if (invoiceNumber != null && invoiceNumber.matches("\\d+")) {
             String fallbackQuery = query.replace("s.invoice_number = ?", "s.invoice_number LIKE ?")
                                       .replace("GROUP BY s.id", "GROUP BY s.id ORDER BY s.id DESC LIMIT 1");
@@ -186,8 +179,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 saleId
         );
     }
-
-
 
     @Override
     public PagedResult<Sale> findSales(SaleFilter filter) {
@@ -275,8 +266,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeUpdate("UPDATE sales SET paid_amount = ? WHERE id = ?", paidAmount, id);
     }
 
-
-
     @Override
     public Optional<String> getLastSaleInvoiceNumber() {
         return queryOne(
@@ -319,9 +308,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
 
     @Override
     public long getNextSequenceForPaymentType(String paymentTypeCode) {
-        // Atomic UPSERT: insert or increment the counter, then return the new value.
-        // Uses a direct JDBC call because this must be a two-step operation within
-        // the same connection/transaction context.
         Connection conn = connection();
         try {
             try (PreparedStatement upsert = conn.prepareStatement(
@@ -362,10 +348,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
             joiner.add("us.customer_id = ?");
             params.add(filter.customerId());
         }
-        if (filter.userId() != null) {
-            joiner.add("us.user_id = ?");
-            params.add(filter.userId());
-        }
         if (filter.startDate() != null && !filter.startDate().isBlank()) {
             String date = filter.startDate().substring(0, Math.min(10, filter.startDate().length()));
             joiner.add("us.sale_date >= ?");
@@ -399,8 +381,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         }
         return "WHERE " + joiner;
     }
-
-
 
     @Override
     public int updateSalePaymentMethod(long saleId, long paymentMethodId) {
@@ -443,8 +423,6 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 saleId
         );
     }
-
-
 
     @Override
     public boolean upsertLegacySale(LegacySale legacySale) {

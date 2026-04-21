@@ -1,6 +1,5 @@
 package com.picopossum.infrastructure.async;
 
-import com.picopossum.domain.model.AuditLog;
 import com.picopossum.infrastructure.logging.AuditLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Asynchronous wrapper for AuditLogger that queues audit events for background processing.
- * Improves application performance by not blocking on audit log writes.
+ * Modernized for Single-User SMB - focused on data integrity and state changes.
  */
 public final class AsyncAuditLogger {
     
@@ -24,7 +23,7 @@ public final class AsyncAuditLogger {
     private final AtomicLong failedCount = new AtomicLong(0);
     
     private static final int DEFAULT_QUEUE_SIZE = 10000;
-    private static final int DEFAULT_THREAD_POOL_SIZE = 2;
+    private static final int DEFAULT_THREAD_POOL_SIZE = 1;
     
     public AsyncAuditLogger(AuditLogger auditLogger) {
         this(auditLogger, DEFAULT_QUEUE_SIZE, DEFAULT_THREAD_POOL_SIZE);
@@ -40,7 +39,7 @@ public final class AsyncAuditLogger {
         });
         
         startWorkers(threadPoolSize);
-        LOGGER.info("AsyncAuditLogger initialized with queue size {} and {} workers", queueSize, threadPoolSize);
+        LOGGER.info("AsyncAuditLogger initialized with {} workers", threadPoolSize);
     }
     
     private void startWorkers(int count) {
@@ -67,25 +66,23 @@ public final class AsyncAuditLogger {
         }
     }
     
-    public void logAuthentication(Long userId, String action, boolean success, 
-                                  String ipAddress, String userAgent, String details) {
-        enqueue(new AuthenticationTask(userId, action, success, ipAddress, userAgent, details));
+    public void logAuthentication(String action, boolean success, String details) {
+        enqueue(new AuthenticationTask(action, success, details));
     }
     
-    public void logDataModification(Long userId, String action, String tableName, Long rowId,
+    public void logDataModification(String action, String tableName, Long rowId,
                                    String oldData, String newData) {
-        enqueue(new DataModificationTask(userId, action, tableName, rowId, oldData, newData));
+        enqueue(new DataModificationTask(action, tableName, rowId, oldData, newData));
     }
     
-    public void logSecurityEvent(Long userId, String action, String details, 
-                                String ipAddress, String severity) {
-        enqueue(new SecurityEventTask(userId, action, details, ipAddress, severity));
+    public void logSecurityEvent(String action, String details, String severity) {
+        enqueue(new SecurityEventTask(action, details, severity));
     }
     
-    public void logCriticalEvent(Long userId, String action, String details, String ipAddress) {
-        // Critical events are logged synchronously to ensure they're persisted immediately
+    public void logCriticalEvent(String action, String details) {
+        // Critical events are prioritized
         try {
-            auditLogger.logCriticalEvent(userId, action, details, ipAddress);
+            auditLogger.logCriticalEvent(action, details);
         } catch (Exception e) {
             LOGGER.error("Failed to log critical event synchronously", e);
         }
@@ -112,14 +109,11 @@ public final class AsyncAuditLogger {
         try {
             if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
                 executor.shutdownNow();
-                LOGGER.warn("AsyncAuditLogger forced shutdown after timeout");
             }
         } catch (InterruptedException e) {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        LOGGER.info("AsyncAuditLogger shutdown complete. Processed: {}, Failed: {}, Remaining: {}",
-                processedCount.get(), failedCount.get(), queue.size());
     }
     
     public AsyncAuditStats getStats() {
@@ -131,32 +125,29 @@ public final class AsyncAuditLogger {
         );
     }
     
-    // Task interfaces
     private interface AuditTask {
         void execute(AuditLogger logger);
     }
     
-    private record AuthenticationTask(Long userId, String action, boolean success,
-                                     String ipAddress, String userAgent, String details) implements AuditTask {
+    private record AuthenticationTask(String action, boolean success, String details) implements AuditTask {
         @Override
         public void execute(AuditLogger logger) {
-            logger.logAuthentication(userId, action, success, ipAddress, userAgent, details);
+            logger.logAuthentication(action, success, details);
         }
     }
     
-    private record DataModificationTask(Long userId, String action, String tableName, Long rowId,
+    private record DataModificationTask(String action, String tableName, Long rowId,
                                        String oldData, String newData) implements AuditTask {
         @Override
         public void execute(AuditLogger logger) {
-            logger.logDataModification(userId, action, tableName, rowId, oldData, newData);
+            logger.logDataModification(action, tableName, rowId, oldData, newData);
         }
     }
     
-    private record SecurityEventTask(Long userId, String action, String details,
-                                    String ipAddress, String severity) implements AuditTask {
+    private record SecurityEventTask(String action, String details, String severity) implements AuditTask {
         @Override
         public void execute(AuditLogger logger) {
-            logger.logSecurityEvent(userId, action, details, ipAddress, severity);
+            logger.logSecurityEvent(action, details, severity);
         }
     }
     

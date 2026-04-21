@@ -1,7 +1,5 @@
 package com.picopossum.application.sales;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.sales.dto.*;
 import com.picopossum.domain.model.*;
@@ -10,7 +8,6 @@ import com.picopossum.domain.services.SaleCalculator;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.persistence.db.TransactionManager;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,7 +49,6 @@ class SalesServiceTest {
             inventoryService, saleCalculator, paymentService,
             transactionManager, jsonService, settingsStore, invoiceNumberService, returnsRepository
         );
-        AuthContext.setCurrentUser(new AuthUser(1L, "Cashier", "cashier"));
 
         lenient().when(transactionManager.runInTransaction(any())).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(0);
@@ -60,15 +56,10 @@ class SalesServiceTest {
         });
     }
 
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
-    }
-
     @Test
     @DisplayName("Should fetch sale details correctly")
     void getSaleDetails_success() {
-        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", null, 1L, null, null, null, null, null, null, "INV-001");
+        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", 10L, "John Doe", null, null, "System Admin", 1L, "Cash", "INV-001");
         when(salesRepository.findSaleById(1L)).thenReturn(Optional.of(sale));
         when(salesRepository.findSaleItems(1L)).thenReturn(List.of());
         when(returnsRepository.findReturnsBySaleId(1L)).thenReturn(List.of());
@@ -107,5 +98,3 @@ class SalesServiceTest {
         assertEquals(1, methods.size());
     }
 }
-
-

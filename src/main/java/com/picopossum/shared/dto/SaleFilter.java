@@ -6,7 +6,6 @@ import java.util.List;
 public record SaleFilter(
         List<String> status,
         Long customerId,
-        Long userId,
         String startDate,
         String endDate,
         BigDecimal minAmount,

@@ -3,7 +3,12 @@ package com.picopossum.domain.repositories;
 import com.picopossum.domain.model.AuditLog;
 import com.picopossum.shared.dto.AuditLogFilter;
 import com.picopossum.shared.dto.PagedResult;
+import com.picopossum.shared.util.TimeUtil;
 
+/**
+ * Minimalist repository for system auditing.
+ * Removed userId from the logging contract for a Single-User environment.
+ */
 public interface AuditRepository {
     long insertAuditLog(AuditLog auditLog);
 
@@ -11,10 +16,12 @@ public interface AuditRepository {
     
     AuditLog findAuditLogById(Long id);
     
-    default void log(String tableName, long rowId, String action, String data, long userId) {
-        insertAuditLog(new com.picopossum.domain.model.AuditLog(
-            null, userId, action, tableName, rowId, null, data, null, null, com.picopossum.shared.util.TimeUtil.nowUTC()
+    /**
+     * Simplified logging helper for single-user context.
+     */
+    default void log(String tableName, long rowId, String action, String data) {
+        insertAuditLog(new AuditLog(
+            null, action, tableName, rowId, null, data, null, TimeUtil.nowUTC()
         ));
     }
 }
-

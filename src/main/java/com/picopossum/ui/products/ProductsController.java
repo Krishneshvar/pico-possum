@@ -237,8 +237,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     @Override
     protected void deleteEntity(Product entity) throws Exception {
-        long userId = AuthContext.getCurrentUser().id();
-        productService.deleteProduct(entity.id(), userId);
+        productService.deleteProduct(entity.id());
     }
 
     @Override
@@ -312,13 +311,12 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             }
 
             Long categoryId = resolveOrCreateCategoryId(record.categoryName(), categoryMap);
-            long actorId = AuthContext.getCurrentUser().id();
 
             productService.createProduct(
                 new ProductService.CreateProductCommand(
                     record.name(), "", categoryId, record.sku(),
                     record.price(), record.costPrice(), record.stockAlert(), "active",
-                    null, record.initialStock(), actorId
+                    null, record.initialStock()
                 )
             );
             return null;

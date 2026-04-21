@@ -24,41 +24,62 @@ class ReturnMapperTest {
     @Test
     @DisplayName("Should map ResultSet to Return object properly")
     void mapReturn_success() throws SQLException {
-        when(resultSet.getLong("id")).thenReturn(1L);
-        when(resultSet.getLong("sale_id")).thenReturn(100L);
-        when(resultSet.getLong("user_id")).thenReturn(5L);
-        when(resultSet.getString("reason")).thenReturn("Defective item");
-        when(resultSet.getString("invoice_number")).thenReturn("INV-123");
-        when(resultSet.getString("processed_by_name")).thenReturn("Admin");
+        when(resultSet.getLong(anyString())).thenAnswer(invocation -> {
+            String col = invocation.getArgument(0);
+            return switch (col) {
+                case "id" -> 1L;
+                case "sale_id" -> 100L;
+                case "payment_method_id" -> 2L;
+                default -> 0L;
+            };
+        });
+        
+        when(resultSet.getString(anyString())).thenAnswer(invocation -> {
+            String col = invocation.getArgument(0);
+            return switch (col) {
+                case "reason" -> "Defective item";
+                case "invoice_number" -> "INV-123";
+                case "processed_by_name" -> "System Admin";
+                case "payment_method_name" -> "Cash";
+                case "invoice_id" -> "ID-001";
+                case "created_at" -> "2023-10-15 14:30:00";
+                default -> null;
+            };
+        });
+        
         when(resultSet.getObject("total_refund")).thenReturn(new BigDecimal("99.99"));
-        when(resultSet.getLong("payment_method_id")).thenReturn(2L);
         when(resultSet.wasNull()).thenReturn(false);
-        when(resultSet.getString("created_at")).thenReturn("2023-10-15 14:30:00");
 
         Return ret = mapper.map(resultSet);
 
         assertNotNull(ret);
         assertEquals(1L, ret.id());
         assertEquals(100L, ret.saleId());
-        assertEquals(5L, ret.userId());
         assertEquals("Defective item", ret.reason());
         assertEquals("INV-123", ret.invoiceNumber());
-        assertEquals("Admin", ret.processedByName());
+        assertEquals("System Admin", ret.processedByName());
         assertEquals(new BigDecimal("99.99"), ret.totalRefund());
         assertEquals(2L, ret.paymentMethodId());
+        assertEquals("Cash", ret.paymentMethodName());
+        assertEquals("ID-001", ret.invoiceId());
         assertEquals(LocalDateTime.of(2023, 10, 15, 14, 30), ret.createdAt());
     }
 
     @Test
-    @DisplayName("Should handle null payment method in ReturnMapper")
-    void mapReturn_nullPM_success() throws SQLException {
+    @DisplayName("Should handle null IDs and strings in ReturnMapper")
+    void mapReturn_nulls_success() throws SQLException {
+        // Use lenient or just provide all stubs
+        when(resultSet.getLong(anyString())).thenReturn(0L);
         when(resultSet.getLong("id")).thenReturn(1L);
-        when(resultSet.getLong("payment_method_id")).thenReturn(0L);
+        
+        when(resultSet.getString(anyString())).thenReturn(null);
         when(resultSet.wasNull()).thenReturn(true);
 
         Return ret = mapper.map(resultSet);
 
         assertNotNull(ret);
+        assertEquals(1L, ret.id());
         assertNull(ret.paymentMethodId());
+        assertNull(ret.paymentMethodName());
     }
 }

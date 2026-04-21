@@ -1,7 +1,5 @@
 package com.picopossum.ui.inventory;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.people.UserService;
 import com.picopossum.shared.dto.StockHistoryDto;
@@ -37,44 +35,33 @@ class StockHistoryControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new StockHistoryController(inventoryService, userService, workspaceManager);
     }
 
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
-    }
-
     @Test
-    @DisplayName("Should fetch stock history data")
+    @DisplayName("Should fetch stock history data correctly for single-user core")
     void fetchData_success() {
         StockHistoryFilter filter = new StockHistoryFilter(
-            null, List.of(), LocalDate.now(), LocalDate.now(), null, 1, 25
+            null, List.of(), LocalDate.now(), LocalDate.now(), 1, 25
         );
         
         List<StockHistoryDto> history = List.of(
-            new StockHistoryDto(1L, 1L, "Product A", "SKU001", 10, "receive", "Admin", LocalDateTime.now(), 50, 10),
-            new StockHistoryDto(2L, 2L, "Product B", "SKU002", -2, "sale", "Admin", LocalDateTime.now(), 48, 10)
+            new StockHistoryDto(1L, 1L, "Product A", "SKU001", 10, "receive", LocalDateTime.now(), 50, 10),
+            new StockHistoryDto(2L, 2L, "Product B", "SKU002", -2, "sale", LocalDateTime.now(), 48, 10)
         );
 
-        when(inventoryService.getStockHistory(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(history);
+        when(inventoryService.getStockHistory(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(history);
 
         PagedResult<StockHistoryDto> result = controller.fetchData(filter);
 
         assertNotNull(result);
         assertEquals(2, result.items().size());
-        verify(inventoryService).getStockHistory(any(), any(), any(), any(), any(), eq(25), eq(0));
+        verify(inventoryService).getStockHistory(any(), any(), any(), any(), eq(25), eq(0));
     }
 
     @Test
-    @DisplayName("Should build filter correctly")
+    @DisplayName("Should initialize controller without identity overhead")
     void buildFilter_success() {
-        // Build filter uses filterBar which is FXML, so it might fail if we don't mock it well
-        // But we can check that it returns a non-null filter at least for the base case
-        // In a real scenario we'd need to mock filterBar components or bypass them
-        
         assertNotNull(controller);
     }
 }
-

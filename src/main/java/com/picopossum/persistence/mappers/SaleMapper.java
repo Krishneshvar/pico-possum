@@ -19,7 +19,6 @@ public final class SaleMapper implements RowMapper<Sale> {
                 rs.getString("status"),
                 rs.getString("fulfillment_status"),
                 getNullableLong(rs, "customer_id"),
-                getNullableLong(rs, "user_id"),
                 getOptionalColumn(rs, "customer_name"),
                 getOptionalColumn(rs, "customer_phone"),
                 getOptionalColumn(rs, "customer_email"),

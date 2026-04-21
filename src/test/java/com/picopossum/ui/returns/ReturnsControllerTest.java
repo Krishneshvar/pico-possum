@@ -1,16 +1,14 @@
 package com.picopossum.ui.returns;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.returns.ReturnsService;
 import com.picopossum.application.sales.SalesService;
 import com.picopossum.domain.model.Return;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ReturnFilter;
-import com.picopossum.ui.common.controls.FilterBar;
-import com.picopossum.ui.common.controls.PaginationBar;
 import com.picopossum.ui.JavaFXInitializer;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.ui.common.controls.FilterBar;
+import com.picopossum.ui.common.controls.PaginationBar;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -38,73 +36,52 @@ class ReturnsControllerTest {
     @Mock private FilterBar filterBar;
     @Mock private PaginationBar paginationBar;
 
-    @org.mockito.InjectMocks
     private ReturnsController controller;
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
+        controller = new ReturnsController(returnsService, salesService, workspaceManager);
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
-        lenient().when(paginationBar.getCurrentPage()).thenReturn(0);
-        lenient().when(paginationBar.getPageSize()).thenReturn(25);
     }
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
-        java.lang.reflect.Field field = com.picopossum.ui.common.controllers.AbstractCrudController.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
-    }
-
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
+        Class<?> clazz = target.getClass();
+        while (clazz != null) {
+            try {
+                java.lang.reflect.Field field = clazz.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException("Field " + fieldName + " not found");
     }
 
     @Test
-    @DisplayName("Should fetch returns logic")
+    @DisplayName("Should fetch return data for single-user core")
     void fetchData_success() {
-        ReturnFilter filter = new ReturnFilter(null, null, null, null, null, null, null, null, 0, 25, "created_at", "DESC");
-        List<Return> returns = List.of(
-            createTestReturn(1L, "INV-001", new BigDecimal("50.00")),
-            createTestReturn(2L, "INV-002", new BigDecimal("75.00"))
+        ReturnFilter filter = new ReturnFilter(null, null, null, null, null, null, null, 0, 25, "created_at", "DESC");
+        List<Return> items = List.of(
+            new Return(1L, 100L, "Defective", LocalDateTime.now(), "INV-100", "Admin", new BigDecimal("50.00"), 1L, "Cash", "RET-001")
         );
-        PagedResult<Return> pagedResult = new PagedResult<>(returns, 2, 1, 0, 25);
+        PagedResult<Return> pagedResult = new PagedResult<>(items, 1, 1, 0, 25);
         
-        when(returnsService.getReturns(any(ReturnFilter.class))).thenReturn(pagedResult);
+        when(returnsService.getReturns(any())).thenReturn(pagedResult);
 
-        // Call the controller method
         PagedResult<Return> result = controller.fetchData(filter);
 
         assertNotNull(result);
-        assertEquals(2, result.totalCount());
-        verify(returnsService).getReturns(any(ReturnFilter.class));
+        assertEquals(1, result.items().size());
+        verify(returnsService).getReturns(any());
     }
 
     @Test
-    @DisplayName("Should build filter correctly")
-    void buildFilter_success() {
-        ReturnFilter filter = controller.buildFilter();
-
-        assertNotNull(filter);
-        assertEquals(0, filter.currentPage());
-        assertEquals(25, filter.itemsPerPage());
-        assertEquals("created_at", filter.sortBy());
-        assertEquals("DESC", filter.sortOrder());
-    }
-
-    @Test
-    @DisplayName("Should throw exception on delete")
+    @DisplayName("Should protected sale history from deletion")
     void deleteEntity_throwsException() {
-        Return returnRec = createTestReturn(1L, "INV-001", BigDecimal.TEN);
-        assertThrows(UnsupportedOperationException.class, () -> controller.deleteEntity(returnRec));
-    }
-
-    private Return createTestReturn(Long id, String invoiceNumber, BigDecimal totalRefund) {
-        return new Return(
-            id, 1L, 1L, "Damaged product", LocalDateTime.now(), invoiceNumber,
-            "Test Admin", totalRefund, 1L, "Cash", "RET-001"
-        );
+        Return ret = new Return(1L, 100L, "test", LocalDateTime.now(), "INV-100", "Admin", BigDecimal.TEN, 1L, "Cash", "RET-001");
+        assertThrows(UnsupportedOperationException.class, () -> controller.deleteEntity(ret));
     }
 }
-

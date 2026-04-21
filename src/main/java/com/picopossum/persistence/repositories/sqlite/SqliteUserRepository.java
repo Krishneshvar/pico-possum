@@ -105,9 +105,4 @@ public final class SqliteUserRepository extends BaseSqliteRepository implements 
     public boolean softDeleteUser(long id) {
         return executeUpdate("UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", id) > 0;
     }
-
-    @Override
-    public void revokeUserSessions(long userId) {
-        executeUpdate("DELETE FROM sessions WHERE user_id = ?", userId);
-    }
 }

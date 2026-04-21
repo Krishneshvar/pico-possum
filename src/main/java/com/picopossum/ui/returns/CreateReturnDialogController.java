@@ -188,8 +188,7 @@ public class CreateReturnDialogController implements Parameterizable {
             CreateReturnRequest request = new CreateReturnRequest(
                 currentSale.id(),
                 items,
-                reason,
-                AuthContext.getCurrentUser().id()
+                reason
             );
 
             returnsService.createReturn(request);

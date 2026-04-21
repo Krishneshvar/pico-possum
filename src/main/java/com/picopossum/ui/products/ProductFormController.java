@@ -162,7 +162,6 @@ public class ProductFormController extends AbstractFormController<Product> {
 
     @Override
     protected void createEntity() throws Exception {
-        long userId = AuthContext.getCurrentUser().id();
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 nameField.getText(), descriptionField.getText(),
                 categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
@@ -172,8 +171,7 @@ public class ProductFormController extends AbstractFormController<Product> {
                 Integer.parseInt(stockAlertField.getText().trim()),
                 statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
                 null,
-                Integer.parseInt(stockField.getText().trim()),
-                userId
+                Integer.parseInt(stockField.getText().trim())
         );
         productService.createProduct(cmd);
         refreshIndex();
@@ -181,7 +179,6 @@ public class ProductFormController extends AbstractFormController<Product> {
 
     @Override
     protected void updateEntity() throws Exception {
-        long userId = AuthContext.getCurrentUser().id();
         ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
                 nameField.getText(), descriptionField.getText(),
                 categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
@@ -192,8 +189,7 @@ public class ProductFormController extends AbstractFormController<Product> {
                 statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
                 null,
                 Integer.parseInt(stockField.getText().trim()),
-                adjustmentReasonCombo.getValue().toLowerCase(),
-                userId
+                adjustmentReasonCombo.getValue().toLowerCase()
         );
         productService.updateProduct(entityId, cmd);
         refreshIndex();
@@ -234,7 +230,6 @@ public class ProductFormController extends AbstractFormController<Product> {
     private void saveCurrentDraft() {
         if (entityId != null || draftService == null) return;
         
-        long userId = AuthContext.getCurrentUser().id();
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
             nameField.getText(), descriptionField.getText(), 
             categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
@@ -244,11 +239,10 @@ public class ProductFormController extends AbstractFormController<Product> {
             parseSafeInt(stockAlertField.getText()),
             statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
             null,
-            parseSafeInt(stockField.getText()),
-            userId
+            parseSafeInt(stockField.getText())
         );
 
-        draftService.saveDraft("product_new", "product", cmd, userId);
+        draftService.saveDraft("product_new", "product", cmd, 0L); // 0L as placeholder for single-user
     }
 
     private BigDecimal parseSafeBigDecimal(String val) {

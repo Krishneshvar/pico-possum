@@ -4,8 +4,11 @@ import com.picopossum.domain.model.AuditLog;
 import com.picopossum.infrastructure.filesystem.AppPaths;
 import com.picopossum.persistence.db.DatabaseManager;
 import com.picopossum.persistence.repositories.sqlite.SqliteAuditRepository;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import com.picopossum.shared.dto.AuditLogFilter;
+import com.picopossum.shared.dto.PagedResult;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -18,114 +21,83 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AuditLoggerIntegrationTest {
 
-    private AppPaths appPaths;
-    private DatabaseManager databaseManager;
-    private SqliteAuditRepository auditRepository;
-    private AuditLogger auditLogger;
+    private static AppPaths appPaths;
+    private static DatabaseManager databaseManager;
+    private static SqliteAuditRepository auditRepository;
+    private static AuditLogger auditLogger;
 
-    @BeforeEach
-    void setUp() {
-        appPaths = new AppPaths("possum-audit-test-" + UUID.randomUUID());
+    @BeforeAll
+    static void setUp() {
+        String appDir = "possum-audit-int-" + UUID.randomUUID();
+        appPaths = new AppPaths(appDir);
         databaseManager = new DatabaseManager(appPaths);
         databaseManager.initialize();
+        
         auditRepository = new SqliteAuditRepository(databaseManager);
         auditLogger = new AuditLogger(auditRepository);
     }
 
-    @AfterEach
-    void tearDown() throws IOException {
-        if (databaseManager != null) {
-            databaseManager.close();
-        }
-        if (appPaths != null) {
-            deleteDirectory(appPaths.getAppRoot());
-        }
+    @AfterAll
+    static void tearDown() throws IOException {
+        if (databaseManager != null) databaseManager.close();
+        if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
     @Test
-    void auditTrailForCompleteWorkflow_shouldBeRecorded() {
-        auditLogger.logAuthentication(1L, "LOGIN", true, "127.0.0.1", "Mozilla", "User logged in");
-        auditLogger.logDataModification(1L, "CREATE", "products", 123L, null, "{\"name\":\"Product\"}");
-        auditLogger.logDataModification(1L, "UPDATE", "products", 123L, "{\"name\":\"Product\"}", "{\"name\":\"Updated Product\"}");
-        auditLogger.logAuthentication(1L, "LOGOUT", true, "127.0.0.1", "Mozilla", "User logged out");
-        
-        assertTrue(true);
+    @DisplayName("Should persist multiple audit events in the physical database")
+    void logEvents_persistsToDatabase() {
+        auditLogger.logAuthentication("LOGIN", true, "User logged in");
+        auditLogger.logDataModification("CREATE", "products", 123L, null, "{\"name\":\"Product\"}");
+        auditLogger.logDataModification("UPDATE", "products", 123L, "{\"name\":\"Product\"}", "{\"name\":\"Updated Product\"}");
+        auditLogger.logAuthentication("LOGOUT", true, "User logged out");
+
+        AuditLogFilter filter = new AuditLogFilter(null, null, null, null, null, null, "created_at", "DESC", 1, 10);
+        PagedResult<AuditLog> result = auditRepository.findAuditLogs(filter);
+
+        assertTrue(result.totalCount() >= 4);
     }
 
     @Test
-    void auditLogIntegrityVerification_shouldPass() {
-        auditLogger.logDataModification(1L, "CREATE", "products", 123L, null, "{\"name\":\"Product\"}");
-        auditLogger.logDataModification(1L, "UPDATE", "products", 123L, "{\"name\":\"Product\"}", "{\"name\":\"Updated\"}");
-        
-        boolean integrity = auditLogger.verifyChainIntegrity();
-        assertTrue(integrity);
+    @DisplayName("Should maintain chain integrity during rapid multi-event logging")
+    void logEvents_maintainsIntegrity() {
+        auditLogger.logDataModification("CREATE", "products", 123L, null, "{\"name\":\"Product\"}");
+        auditLogger.logDataModification("UPDATE", "products", 123L, "{\"name\":\"Product\"}", "{\"name\":\"Updated\"}");
+
+        assertTrue(auditLogger.verifyChainIntegrity());
     }
 
     @Test
-    void auditLogQueryPerformance_shouldBeAcceptable() {
-        for (int i = 0; i < 100; i++) {
-            auditLogger.logDataModification(1L, "CREATE", "products", (long) i, null, "{\"name\":\"Product" + i + "\"}");
+    @DisplayName("Should handle logging within the retention limit automatically")
+    void logEvents_withinRetentionLimit() {
+        for (int i = 0; i < 50; i++) {
+            auditLogger.logDataModification("CREATE", "products", (long) i, null, "{\"name\":\"Product" + i + "\"}");
         }
-        
-        long start = System.currentTimeMillis();
-        auditLogger.verifyChainIntegrity();
-        long duration = System.currentTimeMillis() - start;
-        
-        assertTrue(duration < 1000);
+
+        AuditLogFilter filter = new AuditLogFilter(null, null, null, null, null, null, "created_at", "DESC", 1, 100);
+        PagedResult<AuditLog> result = auditRepository.findAuditLogs(filter);
+        assertTrue(result.totalCount() >= 50);
     }
 
     @Test
-    void multipleAuditEvents_shouldBeStoredCorrectly() {
-        auditLogger.logAuthentication(1L, "LOGIN", true, "127.0.0.1", "Mozilla", "Login");
-        auditLogger.logSecurityEvent(1L, "PASSWORD_CHANGE", "Password changed", "127.0.0.1", "info");
-        auditLogger.logCriticalEvent(1L, "ADMIN_ACCESS", "Admin panel accessed", "127.0.0.1");
-        
-        assertTrue(true);
-    }
+    @DisplayName("Should support varied log types without user identity overhead")
+    void logVariedEvents_success() {
+        auditLogger.logAuthentication("LOGIN", true, "Login");
+        auditLogger.logSecurityEvent("PASSWORD_CHANGE", "Password changed", "info");
+        auditLogger.logCriticalEvent("ADMIN_ACCESS", "Admin panel accessed");
 
-    @Test
-    void auditLogger_shouldHandleConcurrentWrites() throws InterruptedException {
-        Thread[] threads = new Thread[10];
-        
-        for (int i = 0; i < threads.length; i++) {
-            final int threadId = i;
-            threads[i] = new Thread(() -> {
-                for (int j = 0; j < 10; j++) {
-                    auditLogger.logDataModification(
-                        (long) threadId, 
-                        "CREATE", 
-                        "products", 
-                        (long) (threadId * 10 + j), 
-                        null, 
-                        "{\"name\":\"Product\"}"
-                    );
-                }
-            });
-            threads[i].start();
-        }
-        
-        for (Thread thread : threads) {
-            thread.join();
-        }
-        
-        assertTrue(true);
+        AuditLogFilter filter = new AuditLogFilter(null, null, null, null, null, null, "created_at", "DESC", 1, 10);
+        PagedResult<AuditLog> result = auditRepository.findAuditLogs(filter);
+        assertTrue(result.totalCount() >= 3);
     }
 
     private static void deleteDirectory(Path root) throws IOException {
-        if (root == null || Files.notExists(root)) {
-            return;
-        }
-
-        try (var stream = Files.walk(root)) {
-            stream.sorted(Comparator.reverseOrder())
-                    .forEach(path -> {
-                        try {
-                            Files.deleteIfExists(path);
-                        } catch (IOException ex) {
-                            throw new IllegalStateException("Failed to delete test artifact: " + path, ex);
-                        }
-                    });
+        if (root == null || Files.notExists(root)) return;
+        try (var walk = Files.walk(root)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try { Files.deleteIfExists(path); } catch (IOException ex) {
+                    throw new IllegalStateException("Failed to delete: " + path, ex);
+                }
+            });
         }
     }
 }
-

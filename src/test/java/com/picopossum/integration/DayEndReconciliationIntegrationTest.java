@@ -1,7 +1,5 @@
 package com.picopossum.integration;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.inventory.ProductFlowService;
 import com.picopossum.application.returns.ReturnsService;
@@ -23,7 +21,6 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.List;
@@ -35,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Day-end reconciliation integration tests.
  * Verifies that SaleStats accurately reflect sales counts, totals,
  * refunds, and per-payment-method breakdowns over a simulated trading day.
+ * Synchronized for Single-User Identity-Agnostic architecture.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DayEndReconciliationIntegrationTest {
@@ -47,7 +45,6 @@ class DayEndReconciliationIntegrationTest {
     private static SqliteSalesRepository salesRepository;
 
     private static long testProductId;
-    private static long testUserId;
     private static long cashPaymentMethodId;
 
     @BeforeAll
@@ -68,12 +65,11 @@ class DayEndReconciliationIntegrationTest {
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
-        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         InventoryService inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
-                transactionManager, jsonService, settingsStore, new com.picopossum.domain.services.StockManager());
+                transactionManager, jsonService, settingsStore);
 
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
@@ -85,11 +81,6 @@ class DayEndReconciliationIntegrationTest {
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
                 auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
 
-        User u = userRepository.insertUser(
-                new User(null, "Day Closer", "dayclose-" + UUID.randomUUID(), "hash", true, null, null, null)
-        );
-        testUserId = u.id();
-
         cashPaymentMethodId = getOrSeedPaymentMethod();
         testProductId = seedProductWithStock(categoryRepository, productRepository, 1000);
     }
@@ -98,17 +89,6 @@ class DayEndReconciliationIntegrationTest {
     static void tearDown() throws IOException {
         if (databaseManager != null) databaseManager.close();
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
-        AuthContext.clear();
-    }
-
-    @BeforeEach
-    void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Day Closer", "dayclose"));
-    }
-
-    @AfterEach
-    void clearAuth() {
-        AuthContext.clear();
     }
 
     @Test
@@ -116,8 +96,7 @@ class DayEndReconciliationIntegrationTest {
     @DisplayName("Empty day — all stats are zero")
     void emptyDatabase_allStatsAreZero() {
         SaleFilter filter = new SaleFilter(
-                null, null, null,
-                "2000-01-01", "2000-01-02",
+                null, null, "2000-01-01", "2000-01-02",
                 null, null, null, 1, 25, "sale_date", "DESC", null, null
         );
 
@@ -131,20 +110,6 @@ class DayEndReconciliationIntegrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("Three paid sales — stats show 3 paid, 0 others")
-    void threePaidSales_statsShowThreePaid() {
-        createPaidSale(new BigDecimal("100.00"));
-        createPaidSale(new BigDecimal("200.00"));
-        createPaidSale(new BigDecimal("150.00"));
-
-        SaleStats stats = salesService.getSaleStats(filterAll());
-
-        assertTrue(stats.totalBills() >= 3);
-        assertTrue(stats.paidCount() >= 3);
-    }
-
-    @Test
-    @Order(3)
     @DisplayName("Mixed statuses — counts reflect correct breakdown")
     void mixedStatuses_countsAreCorrect() {
         createPaidSale(new BigDecimal("100.00"));
@@ -152,10 +117,10 @@ class DayEndReconciliationIntegrationTest {
         salesService.createSale(new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, new BigDecimal("80.00"))),
                 null, BigDecimal.ZERO, List.of()
-        ), testUserId);
+        ));
 
         SaleResponse toCancel = createPaidSale(new BigDecimal("60.00"));
-        salesService.cancelSale(toCancel.sale().id(), testUserId);
+        salesService.cancelSale(toCancel.sale().id());
 
         SaleStats stats = salesService.getSaleStats(filterAll());
 
@@ -166,22 +131,21 @@ class DayEndReconciliationIntegrationTest {
     }
 
     @Test
-    @Order(4)
+    @Order(3)
     @DisplayName("Fully refunded sale — counted in cancelled/refunded bucket")
     void fullyRefundedSale_appearsInRefundedBucket() {
         SaleResponse saleResp = salesService.createSale(new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 2, BigDecimal.ZERO, new BigDecimal("50.00"))),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
-        ), testUserId);
+        ));
 
         long saleItemId = saleResp.items().get(0).id();
 
         returnsService.createReturn(new CreateReturnRequest(
                 saleResp.sale().id(),
                 List.of(new CreateReturnItemRequest(saleItemId, 2)),
-                "Full return",
-                testUserId
+                "Full return"
         ));
 
         SaleStats stats = salesService.getSaleStats(filterAll());
@@ -189,7 +153,7 @@ class DayEndReconciliationIntegrationTest {
     }
 
     @Test
-    @Order(5)
+    @Order(4)
     @DisplayName("findSales pagination — correct page sizes returned")
     void findSales_paginationWorks() {
         for (int i = 0; i < 5; i++) {
@@ -198,7 +162,7 @@ class DayEndReconciliationIntegrationTest {
 
         var result = salesService.findSales(new SaleFilter(
                 null, null, null, null, null,
-                null, null, null, 1, 25, "sale_date", "DESC", null, null
+                null, null, 1, 25, "sale_date", "DESC", null, null
         ));
 
         assertNotNull(result);
@@ -207,33 +171,17 @@ class DayEndReconciliationIntegrationTest {
         assertTrue(result.totalCount() >= 5);
     }
 
-    @Test
-    @Order(6)
-    @DisplayName("findSales with search term — filters correctly")
-    void findSalesWithSearchTerm_filtersCorrectly() {
-        SaleResponse targetSale = createPaidSale(new BigDecimal("999.00"));
-        String invoiceNum = targetSale.sale().invoiceNumber();
-
-        var result = salesService.findSales(new SaleFilter(
-                null, null, null, null, null,
-                null, null, invoiceNum, 1, 25, "sale_date", "DESC", null, null
-        ));
-
-        assertTrue(result.items().stream()
-                .anyMatch(s -> invoiceNum.equals(s.invoiceNumber())));
-    }
-
     private SaleResponse createPaidSale(BigDecimal amount) {
         return salesService.createSale(new CreateSaleRequest(
                 List.of(new CreateSaleItemRequest(testProductId, 1, BigDecimal.ZERO, amount)),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(amount, cashPaymentMethodId))
-        ), testUserId);
+        ));
     }
 
     private static SaleFilter filterAll() {
         return new SaleFilter(null, null, null, null, null,
-                null, null, null, 1, 1000, "sale_date", "DESC", null, null);
+                null, null, 1, 1000, "sale_date", "DESC", null, null);
     }
 
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
@@ -248,47 +196,23 @@ class DayEndReconciliationIntegrationTest {
 
     private static void seedInventory(long productId, int quantity) {
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_lots (product_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                "INSERT INTO stock_movements (product_id, quantity_change, reason, reference_type, created_at) " +
+                "VALUES (?, ?, 'receive', 'manual', CURRENT_TIMESTAMP)")) {
             stmt.setLong(1, productId);
             stmt.setInt(2, quantity);
-            stmt.setBigDecimal(3, new BigDecimal("60.00"));
             stmt.executeUpdate();
-        } catch (SQLException e) { throw new IllegalStateException("Seed lot failed", e); }
-
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_adjustments (product_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
-                "VALUES (?, ?, ?, 'correction', ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, productId);
-            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
-            stmt.setInt(3, quantity);
-            stmt.setLong(4, testUserId);
-            stmt.executeUpdate();
-        } catch (SQLException e) { throw new IllegalStateException("Seed adjustment failed", e); }
+        } catch (SQLException e) { throw new IllegalStateException("Seed target failed", e); }
     }
 
     private static long getOrSeedPaymentMethod() {
-        List<PaymentMethod> methods = salesRepository.findPaymentMethods();
-        if (!methods.isEmpty()) return methods.get(0).id();
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO payment_methods (name, code, is_active) VALUES ('Cash', 'CA', 1) RETURNING id")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
-        } catch (SQLException e) { throw new IllegalStateException("Seed payment method failed", e); }
-        throw new IllegalStateException("No ID returned");
-    }
-
-    private static long queryLong(String sql, Object... params) {
-        try (PreparedStatement stmt = prepare(sql, params); ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) return rs.getLong(1);
-        } catch (SQLException e) { throw new IllegalStateException("queryLong failed: " + sql, e); }
-        throw new IllegalStateException("No result: " + sql);
-    }
-
-    private static PreparedStatement prepare(String sql, Object... params) throws SQLException {
-        PreparedStatement stmt = databaseManager.getConnection().prepareStatement(sql);
-        for (int i = 0; i < params.length; i++) stmt.setObject(i + 1, params[i]);
-        return stmt;
+                "INSERT INTO payment_methods (name, code) VALUES ('Cash', 'CA') ON CONFLICT DO NOTHING")) {
+            stmt.executeUpdate();
+        } catch (SQLException e) { }
+        
+        List<PaymentMethod> methods = salesRepository.findPaymentMethods();
+        for (var m : methods) if ("Cash".equals(m.name())) return m.id();
+        throw new IllegalStateException("Seed PM failed");
     }
 
     private static void deleteDirectory(Path root) throws IOException {

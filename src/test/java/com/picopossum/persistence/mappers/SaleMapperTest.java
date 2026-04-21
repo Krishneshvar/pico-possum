@@ -25,18 +25,44 @@ class SaleMapperTest {
     @Test
     @DisplayName("Should map ResultSet to Sale object properly")
     void mapSale_success() throws SQLException {
-        lenient().when(resultSet.getLong("id")).thenReturn(1L);
-        lenient().when(resultSet.getString("invoice_number")).thenReturn("INV-001");
-        lenient().when(resultSet.getString("sale_date")).thenReturn("2023-10-15 14:30:00");
-        lenient().when(resultSet.getObject("total_amount")).thenReturn(new BigDecimal("1000.00"));
-        lenient().when(resultSet.getObject("paid_amount")).thenReturn(new BigDecimal("1000.00"));
-        lenient().when(resultSet.getObject("discount")).thenReturn(BigDecimal.ZERO);
-        lenient().when(resultSet.getObject("total_tax")).thenReturn(new BigDecimal("50.00"));
-        lenient().when(resultSet.getString("status")).thenReturn("paid");
-        lenient().when(resultSet.getString("fulfillment_status")).thenReturn("delivered");
-        lenient().when(resultSet.getLong("customer_id")).thenReturn(10L);
+        lenient().when(resultSet.getLong(anyString())).thenAnswer(invocation -> {
+            String col = invocation.getArgument(0);
+            return switch (col) {
+                case "id" -> 1L;
+                case "customer_id" -> 10L;
+                case "payment_method_id" -> 2L;
+                default -> 0L;
+            };
+        });
+        
+        lenient().when(resultSet.getString(anyString())).thenAnswer(invocation -> {
+            String col = invocation.getArgument(0);
+            return switch (col) {
+                case "invoice_number" -> "INV-001";
+                case "sale_date" -> "2023-10-15 14:30:00";
+                case "status" -> "paid";
+                case "fulfillment_status" -> "delivered";
+                case "customer_name" -> "John Doe";
+                case "customer_phone" -> "123456";
+                case "customer_email" -> "john@example.com";
+                case "biller_name" -> "System Admin";
+                case "payment_method_name" -> "Cash";
+                case "invoice_id" -> "INV-ID-001";
+                default -> null;
+            };
+        });
+        
+        lenient().when(resultSet.getObject(anyString())).thenAnswer(invocation -> {
+            String col = invocation.getArgument(0);
+            return switch (col) {
+                case "total_amount" -> new BigDecimal("1000.00");
+                case "paid_amount" -> new BigDecimal("1000.00");
+                case "discount" -> BigDecimal.ZERO;
+                default -> null;
+            };
+        });
+        
         lenient().when(resultSet.wasNull()).thenReturn(false);
-        lenient().when(resultSet.getString("customer_name")).thenReturn("John Doe");
 
         Sale sale = mapper.map(resultSet);
 
@@ -48,24 +74,24 @@ class SaleMapperTest {
         assertEquals("paid", sale.status());
         assertEquals(10L, sale.customerId());
         assertEquals("John Doe", sale.customerName());
+        assertEquals("System Admin", sale.billerName());
+        assertEquals(2L, sale.paymentMethodId());
+        assertEquals("Cash", sale.paymentMethodName());
     }
 
     @Test
-    @DisplayName("Should handle nullable and missing columns in SaleMapper")
+    @DisplayName("Should handle nullable columns in SaleMapper")
     void mapSale_nulls_success() throws SQLException {
         lenient().when(resultSet.getLong("id")).thenReturn(1L);
-        lenient().when(resultSet.getString("invoice_number")).thenReturn("INV-001");
-        lenient().when(resultSet.wasNull()).thenReturn(true); // For customer_id etc
-        lenient().when(resultSet.getString(anyString())).thenAnswer(invocation -> {
-            String col = invocation.getArgument(0);
-            if (col.equals("customer_name")) throw new SQLException("Column not found");
-            return null;
-        });
+        lenient().when(resultSet.wasNull()).thenReturn(true);
+        lenient().when(resultSet.getString(anyString())).thenReturn(null);
+        lenient().when(resultSet.getObject(anyString())).thenReturn(null);
 
         Sale sale = mapper.map(resultSet);
 
         assertNotNull(sale);
         assertNull(sale.customerId());
         assertNull(sale.customerName());
+        assertNull(sale.paymentMethodId());
     }
 }

@@ -1,6 +1,5 @@
 package com.picopossum.persistence;
 
-import com.picopossum.domain.model.Category;
 import com.picopossum.domain.model.Customer;
 import com.picopossum.domain.model.Product;
 import com.picopossum.domain.model.Sale;
@@ -14,9 +13,9 @@ import com.picopossum.persistence.repositories.sqlite.SqliteCustomerRepository;
 import com.picopossum.persistence.repositories.sqlite.SqliteProductRepository;
 import com.picopossum.persistence.repositories.sqlite.SqliteSalesRepository;
 import com.picopossum.persistence.repositories.sqlite.SqliteUserRepository;
-import com.picopossum.shared.dto.ProductFilter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -28,7 +27,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Comparator;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,7 +44,7 @@ class PersistenceIntegrationTest {
 
     @BeforeAll
     static void beforeAll() {
-        String appDir = "possum-test-" + UUID.randomUUID();
+        String appDir = "possum-test-persist-" + UUID.randomUUID();
         appPaths = new AppPaths(appDir);
         databaseManager = new DatabaseManager(appPaths);
         databaseManager.initialize();
@@ -61,18 +59,14 @@ class PersistenceIntegrationTest {
 
     @AfterAll
     static void afterAll() throws IOException {
-        if (databaseManager != null) {
-            databaseManager.close();
-        }
-        if (appPaths != null) {
-            deleteDirectory(appPaths.getAppRoot());
-        }
+        if (databaseManager != null) databaseManager.close();
+        if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
     @Test
+    @DisplayName("Should insert and query User record")
     void shouldInsertAndQueryUser() {
         String username = "test-user-" + UUID.randomUUID();
-
         User inserted = userRepository.insertUser(
                 new User(null, "Test User", username, "hash-123", true, null, null, null)
         );
@@ -83,45 +77,25 @@ class PersistenceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Should flow a complete sale through the persistence layer")
     void shouldInsertAndQuerySaleData() {
-        long userId = ensureAnyUser();
         long productId = ensureAnyProduct();
-
         String invoice = "INV-" + UUID.randomUUID().toString().substring(0, 8);
+        
         long saleId = salesRepository.insertSale(
                 new Sale(
-                        null,
-                        invoice,
-                        null,
-                        new BigDecimal("120.00"),
-                        new BigDecimal("120.00"),
-                        BigDecimal.ZERO,
-                        "paid",
-                        "fulfilled",
-                        null,
-                        userId,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        invoice
+                        null, invoice, java.time.LocalDateTime.now(),
+                        new BigDecimal("120.00"), new BigDecimal("120.00"),
+                        BigDecimal.ZERO, "paid", "fulfilled",
+                        null, "Guest", null, null, "System", 1L, "Cash", invoice
                 )
         );
 
         salesRepository.insertSaleItem(
                 new SaleItem(
-                        null,
-                        saleId,
-                        productId,
-                        "SKU123",
-                        "Test Prod",
-                        2,
-                        new BigDecimal("60.00"),
-                        new BigDecimal("40.00"),
-                        BigDecimal.ZERO,
-                        0
+                        null, saleId, productId, "SKU123", "Test Prod",
+                        2, new BigDecimal("60.00"), new BigDecimal("40.00"),
+                        BigDecimal.ZERO, 0
                 )
         );
 
@@ -129,26 +103,15 @@ class PersistenceIntegrationTest {
         assertFalse(salesRepository.findSaleItems(saleId).isEmpty());
     }
 
-    private static long ensureAnyUser() {
-        try {
-            long userId = queryLong("SELECT id FROM users ORDER BY id LIMIT 1");
-            return userId;
-        } catch (Exception ignored) {}
-
-        User user = userRepository.insertUser(
-                new User(null, "Seed User", "seed-" + UUID.randomUUID(), "seed-hash", true, null, null, null)
-        );
-        return user.id();
-    }
-
     private static long ensureAnyProduct() {
         try {
-            long productId = queryLong("SELECT id FROM products ORDER BY id LIMIT 1");
-            return productId;
+            return queryLong("SELECT id FROM products ORDER BY id LIMIT 1");
         } catch (Exception ignored) {}
 
         long categoryId = categoryRepository.insertCategory("Test Cat", null).id();
-        Product product = new Product(null, "Test Prod", "desc", categoryId, "Cat Name", "SKU123", new BigDecimal("60.00"), new BigDecimal("40.00"), 0, "active", null, 10, null, null, null);
+        Product product = new Product(null, "Test Prod", null, categoryId, "Cat Name", "SKU123", 
+                new BigDecimal("60.00"), new BigDecimal("40.00"), 0, "active", 
+                null, 10, null, null, null);
         return productRepository.insertProduct(product);
     }
 
@@ -159,29 +122,22 @@ class PersistenceIntegrationTest {
                 statement.setObject(i + 1, params[i]);
             }
             try (ResultSet rs = statement.executeQuery()) {
-                if (!rs.next()) {
-                    throw new IllegalStateException("No result for query: " + sql);
-                }
+                if (!rs.next()) throw new IllegalStateException("No result");
                 return rs.getLong(1);
             }
         } catch (SQLException ex) {
-            throw new IllegalStateException("Failed queryLong for SQL: " + sql, ex);
+            throw new IllegalStateException("Query failed", ex);
         }
     }
 
     private static void deleteDirectory(Path root) throws IOException {
-        if (root == null || Files.notExists(root)) {
-            return;
-        }
+        if (root == null || Files.notExists(root)) return;
         try (var walk = Files.walk(root)) {
             walk.sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ex) {
-                    throw new IllegalStateException("Failed to delete test path: " + path, ex);
+                try { Files.deleteIfExists(path); } catch (IOException ex) {
+                    throw new IllegalStateException("Delete failed: " + path, ex);
                 }
             });
         }
     }
 }
-

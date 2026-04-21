@@ -12,7 +12,6 @@ import com.picopossum.infrastructure.security.PasswordHasher;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.domain.repositories.*;
-import com.picopossum.domain.services.StockManager;
 import com.picopossum.application.people.UserService;
 import com.picopossum.application.people.CustomerService;
 import com.picopossum.application.drafts.DraftService;
@@ -55,8 +54,7 @@ public final class ApplicationModule {
                 auditRepository,
                 transactionManager,
                 jsonService,
-                settingsStore,
-                new StockManager()
+                settingsStore
         );
         
         this.productModule = new ProductModule(

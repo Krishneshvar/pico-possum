@@ -76,20 +76,12 @@ public class SaleCompletionHandler {
                 : bill.getSubtotal().multiply(bill.getOverallDiscountValue()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         final BigDecimal paidAmount = bill.isFullPayment() ? bill.getTotal() : bill.getAmountTendered();
         final Long paymentMethodId = bill.getSelectedPaymentMethod().id();
-        final long userId = AuthContext.getCurrentUser().id();
-
         final String customerName = bill.getCustomerName().trim();
         final String customerPhone = bill.getCustomerPhone().trim();
         final String customerEmail = bill.getCustomerEmail().trim();
         final String customerAddress = bill.getCustomerAddress().trim();
         final Long existingCustomerId = bill.getSelectedCustomer() != null ? bill.getSelectedCustomer().id() : null;
         final BigDecimal totalToDisplay = bill.getTotal();
-        final AuthUser taskUser = AuthContext.getCurrentUser();
-
-        if (taskUser == null) {
-            NotificationService.error("You are not logged in. Please log in again.");
-            return;
-        }
 
         completeButton.setDisable(true);
         completeButton.setText("Processing...");
@@ -97,37 +89,32 @@ public class SaleCompletionHandler {
         javafx.concurrent.Task<SaleResponse> task = new javafx.concurrent.Task<>() {
             @Override
             protected SaleResponse call() throws Exception {
-                AuthContext.setCurrentUser(taskUser);
-                try {
-                    Long cId = existingCustomerId;
-                    if (cId == null && (!customerName.isEmpty() || !customerPhone.isEmpty())) {
-                        try {
-                            Optional<Customer> existing = customerService.getCustomers(
-                                    new com.picopossum.shared.dto.CustomerFilter(customerPhone, 1, 1, 0, 10, "name", "asc")
-                            ).items().stream().filter(c -> c.phone().equals(customerPhone)).findFirst();
+                Long cId = existingCustomerId;
+                if (cId == null && (!customerName.isEmpty() || !customerPhone.isEmpty())) {
+                    try {
+                        Optional<Customer> existing = customerService.getCustomers(
+                                new com.picopossum.shared.dto.CustomerFilter(customerPhone, 1, 1, 0, 10, "name", "asc")
+                        ).items().stream().filter(c -> c.phone().equals(customerPhone)).findFirst();
 
-                            if (existing.isPresent()) {
-                                cId = existing.get().id();
-                            } else {
-                                Customer created = customerService.createCustomer(customerName, customerPhone, customerEmail, customerAddress);
-                                cId = created.id();
-                                final String name = created.name();
-                                Platform.runLater(() -> NotificationService.success("New customer added: " + name));
-                            }
-                        } catch (Exception e) {
-                            Platform.runLater(() -> NotificationService.warning("Failed to automatically add customer: " + e.getMessage()));
+                        if (existing.isPresent()) {
+                            cId = existing.get().id();
+                        } else {
+                            Customer created = customerService.createCustomer(customerName, customerPhone, customerEmail, customerAddress);
+                            cId = created.id();
+                            final String name = created.name();
+                            Platform.runLater(() -> NotificationService.success("New customer added: " + name));
                         }
+                    } catch (Exception e) {
+                        Platform.runLater(() -> NotificationService.warning("Failed to automatically add customer: " + e.getMessage()));
                     }
-
-                    CreateSaleRequest request = new CreateSaleRequest(
-                            items, cId,
-                            discount.compareTo(BigDecimal.ZERO) > 0 ? discount : null,
-                            List.of(new PaymentRequest(paidAmount, paymentMethodId))
-                    );
-                    return salesService.createSale(request, userId);
-                } finally {
-                    AuthContext.clear();
                 }
+
+                CreateSaleRequest request = new CreateSaleRequest(
+                        items, cId,
+                        discount.compareTo(BigDecimal.ZERO) > 0 ? discount : null,
+                        List.of(new PaymentRequest(paidAmount, paymentMethodId))
+                );
+                return salesService.createSale(request);
             }
         };
 

@@ -33,16 +33,13 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
 
     @Override
     protected void initUIComponents() {
-        // Audit logs are read-only, no special permissions needed
+        // Audit logs are read-only
     }
 
     @Override
     protected void setupTable() {
         dataTable.setEmptyMessage("No audit logs found");
         dataTable.setEmptySubtitle("Audit events will appear here as they occur.");
-        
-        TableColumn<AuditLog, String> userCol = new TableColumn<>("User");
-        userCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().userName()));
         
         TableColumn<AuditLog, String> actionCol = new TableColumn<>("Action");
         actionCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().action()));
@@ -61,13 +58,15 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
             }
         });
         
-        TableColumn<AuditLog, String> tableCol = new TableColumn<>("Table");
-        tableCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().tableName()));
+        TableColumn<AuditLog, String> tableCol = new TableColumn<>("Module");
+        tableCol.setCellValueFactory(cellData -> new SimpleStringProperty(
+            cellData.getValue().tableName() != null ? cellData.getValue().tableName() : "System"
+        ));
         
-        TableColumn<AuditLog, Long> rowCol = new TableColumn<>("Row ID");
+        TableColumn<AuditLog, Long> rowCol = new TableColumn<>("Entity ID");
         rowCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().rowId()));
         
-        TableColumn<AuditLog, LocalDateTime> dateCol = new TableColumn<>("Date");
+        TableColumn<AuditLog, LocalDateTime> dateCol = new TableColumn<>("Timestamp");
         dateCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().createdAt()));
         dateCol.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -82,8 +81,8 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
             }
         });
         
-        dataTable.getTableView().getColumns().addAll(userCol, actionCol, tableCol, rowCol, dateCol);
-        dataTable.addActionColumn("Details", this::showDetails);
+        dataTable.getTableView().getColumns().addAll(actionCol, tableCol, rowCol, dateCol);
+        dataTable.addActionColumn("View Changes", this::showDetails);
     }
 
     @Override
@@ -111,7 +110,6 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
         endDateStr = end != null ? end.toString() : null;
         
         return new AuditLogFilter(
-            null,
             null,
             null,
             currentActions,
@@ -142,17 +140,17 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
 
     @Override
     protected List<MenuItem> buildActionMenu(AuditLog entity) {
-        return List.of(); // Audit logs are read-only
+        return List.of();
     }
 
     @Override
     protected void deleteEntity(AuditLog entity) throws Exception {
-        throw new UnsupportedOperationException("Audit logs cannot be deleted");
+        throw new UnsupportedOperationException("Audit logs are permanent system records");
     }
 
     @Override
     protected String getEntityIdentifier(AuditLog entity) {
-        return "Event #" + entity.id();
+        return "Log #" + entity.id();
     }
 
     private Label createActionBadge(String action) {
@@ -169,26 +167,26 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
     private void showDetails(AuditLog log) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         DialogStyler.apply(alert);
-        alert.setTitle("Audit Log Details");
-        alert.setHeaderText("Event #" + log.id());
+        alert.setTitle("Audit Event Details");
+        alert.setHeaderText("Log Entry #" + log.id());
         
         StringBuilder content = new StringBuilder();
-        content.append("User: ").append(log.userName()).append("\n");
         content.append("Action: ").append(log.action()).append("\n");
-        content.append("Table: ").append(log.tableName()).append("\n");
-        content.append("Row ID: ").append(log.rowId()).append("\n");
-        content.append("Date: ").append(log.createdAt()).append("\n\n");
+        content.append("Target Module: ").append(log.tableName() != null ? log.tableName() : "System").append("\n");
+        content.append("Entity ID: ").append(log.rowId()).append("\n");
+        content.append("Timestamp: ").append(log.createdAt()).append("\n\n");
         
         if (log.oldData() != null) {
-            content.append("Old Data:\n").append(log.oldData()).append("\n\n");
+            content.append("🔹 Previous State:\n").append(log.oldData()).append("\n\n");
         }
         if (log.newData() != null) {
-            content.append("New Data:\n").append(log.newData()).append("\n\n");
+            content.append("🔸 New State:\n").append(log.newData()).append("\n\n");
         }
         if (log.eventDetails() != null) {
-            content.append("Event Details:\n").append(log.eventDetails()).append("\n");
+            content.append("📝 Event Details:\n").append(log.eventDetails()).append("\n");
         }
         
+        alert.getDialogPane().setMinWidth(500);
         alert.setContentText(content.toString());
         alert.showAndWait();
     }

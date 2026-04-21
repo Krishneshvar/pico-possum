@@ -50,8 +50,8 @@ public class SalesService {
         );
     }
 
-    public SaleResponse createSale(CreateSaleRequest request, long userId) {
-        return checkoutService.createSale(request, userId);
+    public SaleResponse createSale(CreateSaleRequest request) {
+        return checkoutService.createSale(request);
     }
 
     public SaleResponse getSaleDetails(long saleId) {
@@ -66,24 +66,16 @@ public class SalesService {
         return salesRepository.findSaleByInvoiceNumber(invoiceNumber);
     }
 
-    public void updateSaleItems(long saleId, List<UpdateSaleItemRequest> itemRequests, long userId) {
-        modificationService.updateSaleItems(saleId, itemRequests, userId);
+    public void updateSaleItems(long saleId, List<UpdateSaleItemRequest> itemRequests) {
+        modificationService.updateSaleItems(saleId, itemRequests);
     }
 
-    public void addItemToSale(long saleId, CreateSaleItemRequest item, long userId) {
-        throw new UnsupportedOperationException("Use updateSaleItems for batch modifications.");
+    public void cancelSale(long saleId) {
+        modificationService.cancelSale(saleId);
     }
 
-    public void removeItemFromSale(long saleId, long saleItemId, long userId) {
-        throw new UnsupportedOperationException("Use updateSaleItems for batch modifications.");
-    }
-
-    public void cancelSale(long saleId, long userId) {
-        modificationService.cancelSale(saleId, userId);
-    }
-
-    public void completeSale(long saleId, long userId) {
-        modificationService.completeSale(saleId, userId);
+    public void completeSale(long saleId) {
+        modificationService.completeSale(saleId);
     }
 
     public List<PaymentMethod> getPaymentMethods() {
@@ -120,11 +112,11 @@ public class SalesService {
         return salesRepository.upsertLegacySale(legacySale);
     }
 
-    public void changeSalePaymentMethod(long saleId, long newPaymentMethodId, long userId) {
-        modificationService.changeSalePaymentMethod(saleId, newPaymentMethodId, userId);
+    public void changeSalePaymentMethod(long saleId, long newPaymentMethodId) {
+        modificationService.changeSalePaymentMethod(saleId, newPaymentMethodId);
     }
 
-    public void changeSaleCustomer(long saleId, Long newCustomerId, long userId) {
-        modificationService.changeSaleCustomer(saleId, newCustomerId, userId);
+    public void changeSaleCustomer(long saleId, Long newCustomerId) {
+        modificationService.changeSaleCustomer(saleId, newCustomerId);
     }
 }

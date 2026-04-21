@@ -13,7 +13,6 @@ public record Sale(
         String status,
         String fulfillmentStatus,
         Long customerId,
-        Long userId,
         String customerName,
         String customerPhone,
         String customerEmail,

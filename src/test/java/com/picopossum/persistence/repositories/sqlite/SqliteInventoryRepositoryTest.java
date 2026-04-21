@@ -1,9 +1,8 @@
 package com.picopossum.persistence.repositories.sqlite;
 
-import com.picopossum.domain.model.InventoryAdjustment;
-import com.picopossum.domain.model.InventoryLot;
+import com.picopossum.domain.model.StockMovement;
 import com.picopossum.domain.model.Product;
-import com.picopossum.shared.dto.AvailableLot;
+import com.picopossum.shared.dto.StockHistoryDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,8 +11,9 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,113 +38,109 @@ class SqliteInventoryRepositoryTest {
 
     private void createSchema() throws SQLException {
         connection.createStatement().execute("""
-            CREATE TABLE products (
+            CREATE TABLE categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                description TEXT,
-                category_id INTEGER,
-                category_name TEXT,
-                sku TEXT,
-                mrp REAL,
-                cost_price REAL,
-                stock_alert_cap INTEGER DEFAULT 10,
-                status TEXT DEFAULT 'active',
-                image_path TEXT,
-                stock INTEGER DEFAULT 0,
+                name TEXT NOT NULL UNIQUE,
+                parent_id INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 deleted_at TEXT
             )
         """);
         connection.createStatement().execute("""
-            CREATE TABLE categories (
+            CREATE TABLE products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
+                name TEXT NOT NULL,
+                description TEXT,
+                category_id INTEGER,
+                sku TEXT,
+                mrp REAL,
+                cost_price REAL,
+                stock_alert_cap INTEGER DEFAULT 10,
+                status TEXT DEFAULT 'active',
+                image_path TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TEXT
             )
         """);
         connection.createStatement().execute("""
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
+            CREATE TABLE product_stock_cache (
+                product_id INTEGER PRIMARY KEY,
+                current_stock INTEGER DEFAULT 0,
+                last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(product_id) REFERENCES products(id)
             )
         """);
         connection.createStatement().execute("""
-            CREATE TABLE inventory_lots (
+            CREATE TABLE stock_movements (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_id INTEGER NOT NULL,
-                batch_number TEXT,
-                manufactured_date TEXT,
-                expiry_date TEXT,
-                quantity INTEGER NOT NULL,
-                unit_cost REAL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """);
-        connection.createStatement().execute("""
-            CREATE TABLE inventory_adjustments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                product_id INTEGER NOT NULL,
-                lot_id INTEGER,
                 quantity_change INTEGER NOT NULL,
                 reason TEXT NOT NULL,
                 reference_type TEXT,
                 reference_id INTEGER,
-                adjusted_by INTEGER,
                 notes TEXT,
-                adjusted_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(product_id) REFERENCES products(id)
             )
         """);
+        
+        // Add a trigger-like manual sync for testing purposes or mock trigger behavior
+        // In the real app, we use DB triggers. In the test, we'll manually insert into cache
+    }
+
+    private void syncCache(long productId, int stock) throws SQLException {
+        connection.createStatement().execute("INSERT OR REPLACE INTO product_stock_cache (product_id, current_stock) VALUES (" + productId + ", " + stock + ")");
     }
 
     @Test
-    void insertLot_validLot_insertsSuccessfully() {
-        InventoryLot lot = new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null);
-        long id = repository.insertInventoryLot(lot);
-        assertTrue(id > 0);
-    }
-
-    @Test
-    void findLotById_found_returnsLot() {
-        InventoryLot lot = new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null);
-        long id = repository.insertInventoryLot(lot);
-        Optional<InventoryLot> result = repository.findLotById(id);
-        assertTrue(result.isPresent());
-        assertEquals(100, result.get().quantity());
-    }
-
-    @Test
-    void getStockByProductId_aggregation_returnsTotal() throws SQLException {
-        connection.createStatement().execute("INSERT INTO products (id, name, sku, mrp, cost_price) VALUES (1, 'Product', 'SKU001', 100, 50)");
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null));
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH002", null, null, 50, new BigDecimal("50.00"), null));
-
+    void getStockByProductId_returnsCacheValue() throws SQLException {
+        syncCache(1L, 50);
         int stock = repository.getStockByProductId(1L);
-        assertEquals(150, stock);
+        assertEquals(50, stock);
     }
 
     @Test
-    void findAvailableLots_FIFO_ordering() {
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH003", null, null, 30, new BigDecimal("50.00"), null));
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 100, new BigDecimal("50.00"), null));
-
-        List<AvailableLot> result = repository.findAvailableLotsByProductId(1L);
-        assertEquals(2, result.size());
-    }
-
-    @Test
-    void findLowStockProducts_threshold_returnsProducts() throws SQLException {
-        connection.createStatement().execute("INSERT INTO products (id, name, sku, mrp, cost_price, stock_alert_cap) VALUES (1, 'Low Stock', 'SKU001', 100, 50, 100)");
-        repository.insertInventoryLot(new InventoryLot(null, 1L, "BATCH001", null, null, 50, new BigDecimal("50.00"), null));
-
-        List<Product> result = repository.findLowStockProducts();
-        assertEquals(1, result.size());
-        assertEquals("Low Stock", result.get(0).name());
-    }
-
-    @Test
-    void insertAdjustment_validAdjustment_insertsSuccessfully() {
-        InventoryAdjustment adjustment = new InventoryAdjustment(null, 1L, null, 10, "correction", null, null, 1L, null, null);
-        long id = repository.insertInventoryAdjustment(adjustment);
+    void insertStockMovement_insertsSuccessfully() {
+        StockMovement movement = new StockMovement(null, 1L, 10, "receive", "manual", null, "Restock", LocalDateTime.now());
+        long id = repository.insertStockMovement(movement);
         assertTrue(id > 0);
+    }
+
+    @Test
+    void findMovementsByProductId_returnsList() {
+        repository.insertStockMovement(new StockMovement(null, 1L, 10, "receive", "manual", null, "R1", LocalDateTime.now()));
+        repository.insertStockMovement(new StockMovement(null, 1L, -5, "sale", "sale", 100L, "S1", LocalDateTime.now()));
+
+        List<StockMovement> movements = repository.findMovementsByProductId(1L, 10, 0);
+        assertEquals(2, movements.size());
+    }
+
+    @Test
+    void findLowStockProducts_returnsFilteredList() throws SQLException {
+        connection.createStatement().execute("INSERT INTO products (id, name, sku, stock_alert_cap) VALUES (1, 'Low', 'SKU1', 10)");
+        connection.createStatement().execute("INSERT INTO products (id, name, sku, stock_alert_cap) VALUES (2, 'High', 'SKU2', 10)");
+        
+        syncCache(1L, 5); // Below alert
+        syncCache(2L, 15); // Above alert
+
+        List<Product> lowStock = repository.findLowStockProducts();
+        assertEquals(1, lowStock.size());
+        assertEquals("Low", lowStock.get(0).name());
+    }
+
+    @Test
+    void getInventoryStats_returnsCorrectSummary() throws SQLException {
+        connection.createStatement().execute("INSERT INTO products (id, name, stock_alert_cap) VALUES (1, 'P1', 10)");
+        connection.createStatement().execute("INSERT INTO products (id, name, stock_alert_cap) VALUES (2, 'P2', 10)");
+        
+        syncCache(1L, 5); // Low
+        syncCache(2L, 0); // No stock + Low
+        
+        Map<String, Object> stats = repository.getInventoryStats();
+        assertEquals(5, stats.get("totalItemsInStock"));
+        assertEquals(1, stats.get("productsWithNoStock"));
+        assertEquals(2, stats.get("productsWithLowStock"));
     }
 }

@@ -1,36 +1,45 @@
 package com.picopossum.domain.repositories;
 
-import com.picopossum.domain.model.InventoryAdjustment;
-import com.picopossum.domain.model.InventoryLot;
+import com.picopossum.domain.model.StockMovement;
 import com.picopossum.domain.model.Product;
-import com.picopossum.shared.dto.AvailableLot;
+import com.picopossum.shared.dto.StockHistoryDto;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+/**
+ * Minimalist repository for inventory tracking.
+ * Standardized for SMB standalone use cases.
+ */
 public interface InventoryRepository {
+    
+    /**
+     * @return Aggregate current stock from cache.
+     */
     int getStockByProductId(long productId);
 
-    List<InventoryLot> findLotsByProductId(long productId);
+    /**
+     * @return Paginated stock movements (Sales, Returns, Corrections).
+     */
+    List<StockMovement> findMovementsByProductId(long productId, int limit, int offset);
 
-    List<AvailableLot> findAvailableLotsByProductId(long productId);
+    /**
+     * Unified stock history search for reporting.
+     */
+    List<StockHistoryDto> findStockHistory(String search, List<String> reasons, String fromDate, String toDate, int limit, int offset);
 
-    List<InventoryAdjustment> findAdjustmentsByProductId(long productId, int limit, int offset);
+    /**
+     * Records a new stock change.
+     */
+    long insertStockMovement(StockMovement movement);
 
-    List<com.picopossum.shared.dto.StockHistoryDto> findStockHistory(String search, java.util.List<String> reasons, String fromDate, String toDate, java.util.List<Long> userIds, int limit, int offset);
-
-    List<InventoryAdjustment> findAdjustmentsByReference(String referenceType, long referenceId);
-
-    long insertInventoryLot(InventoryLot lot);
-
-    long insertInventoryAdjustment(InventoryAdjustment adjustment);
-
-    Optional<InventoryLot> findLotById(long id);
-
+    /**
+     * Finds products where cached stock is below alert threshold.
+     */
     List<Product> findLowStockProducts();
 
-    List<InventoryLot> findExpiringLots(int days);
-
+    /**
+     * Statistics for dashboard widgets.
+     */
     Map<String, Object> getInventoryStats();
 }

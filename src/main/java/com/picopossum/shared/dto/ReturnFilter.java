@@ -4,7 +4,6 @@ import java.util.List;
 
 public record ReturnFilter(
         Long saleId,
-        Long userId,
         String startDate,
         String endDate,
         java.math.BigDecimal minAmount,

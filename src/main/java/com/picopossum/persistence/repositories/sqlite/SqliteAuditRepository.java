@@ -11,6 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 
+/**
+ * Minimalist implementation of AuditRepository.
+ * Simplified for Single-User SMB (Removed User joins).
+ */
 public final class SqliteAuditRepository extends BaseSqliteRepository implements AuditRepository {
 
     private static final int MAX_AUDIT_LOGS = 1000;
@@ -25,10 +29,9 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
     public long insertAuditLog(AuditLog auditLog) {
         long id = executeInsert(
                 """
-                INSERT INTO audit_log (user_id, action, table_name, row_id, old_data, new_data, event_details)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO audit_log (action, table_name, row_id, old_data, new_data, event_details)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                auditLog.userId(),
                 auditLog.action(),
                 auditLog.tableName(),
                 auditLog.rowId(),
@@ -40,10 +43,6 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
         return id;
     }
 
-    /**
-     * Enforces the audit log retention policy by removing entries older than the most recent 1000 logs.
-     * This keeps the database size manageable and ensures fast lookups on history.
-     */
     private void cleanupOldLogs() {
         executeUpdate(
                 """
@@ -61,12 +60,7 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
     @Override
     public AuditLog findAuditLogById(Long id) {
         return queryOne(
-                """
-                SELECT al.*, u.name AS user_name
-                FROM audit_log al
-                LEFT JOIN users u ON al.user_id = u.id
-                WHERE al.id = ?
-                """,
+                "SELECT * FROM audit_log WHERE id = ?",
                 auditLogMapper,
                 id
         ).orElse(null);
@@ -78,14 +72,13 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
         String whereClause = buildWhere(filter, params);
 
         int totalCount = queryOne(
-                "SELECT COUNT(*) AS count FROM audit_log al LEFT JOIN users u ON al.user_id = u.id " + whereClause,
+                "SELECT COUNT(*) AS count FROM audit_log " + whereClause,
                 rs -> rs.getInt("count"),
                 params.toArray()
         ).orElse(0);
 
         String sortBy = filter.sortBy() == null ? "created_at" : filter.sortBy();
         String sortOrder = "ASC".equalsIgnoreCase(filter.sortOrder()) ? "ASC" : "DESC";
-        String sortExpression = "user_name".equals(sortBy) ? "u.name" : "al." + sortBy;
 
         int page = Math.max(1, filter.currentPage());
         int limit = Math.max(1, filter.itemsPerPage());
@@ -96,13 +89,11 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
 
         List<AuditLog> logs = queryList(
                 """
-                SELECT al.*, u.name AS user_name
-                FROM audit_log al
-                LEFT JOIN users u ON al.user_id = u.id
+                SELECT * FROM audit_log
                 %s
                 ORDER BY %s %s
                 LIMIT ? OFFSET ?
-                """.formatted(whereClause, sortExpression, sortOrder),
+                """.formatted(whereClause, sortBy, sortOrder),
                 auditLogMapper,
                 params.toArray()
         );
@@ -114,19 +105,15 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
     private static String buildWhere(AuditLogFilter filter, List<Object> params) {
         StringJoiner joiner = new StringJoiner(" AND ");
         if (filter.tableName() != null && !filter.tableName().isBlank()) {
-            joiner.add("al.table_name = ?");
+            joiner.add("table_name = ?");
             params.add(filter.tableName());
         }
         if (filter.rowId() != null) {
-            joiner.add("al.row_id = ?");
+            joiner.add("row_id = ?");
             params.add(filter.rowId());
         }
-        if (filter.userId() != null) {
-            joiner.add("al.user_id = ?");
-            params.add(filter.userId());
-        }
         if (filter.actions() != null && !filter.actions().isEmpty()) {
-            StringJoiner inJoiner = new StringJoiner(",", "al.action IN (", ")");
+            StringJoiner inJoiner = new StringJoiner(",", "action IN (", ")");
             for (String action : filter.actions()) {
                 inJoiner.add("?");
                 params.add(action);
@@ -134,17 +121,16 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
             joiner.add(inJoiner.toString());
         }
         if (filter.startDate() != null && !filter.startDate().isBlank()) {
-            joiner.add("al.created_at >= ?");
+            joiner.add("created_at >= ?");
             params.add(filter.startDate());
         }
         if (filter.endDate() != null && !filter.endDate().isBlank()) {
-            joiner.add("al.created_at <= ?");
+            joiner.add("created_at <= ?");
             params.add(filter.endDate());
         }
         if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
-            joiner.add("(al.action LIKE ? OR al.table_name LIKE ? OR u.name LIKE ?)");
+            joiner.add("(action LIKE ? OR table_name LIKE ?)");
             String fuzzy = "%" + filter.searchTerm() + "%";
-            params.add(fuzzy);
             params.add(fuzzy);
             params.add(fuzzy);
         }

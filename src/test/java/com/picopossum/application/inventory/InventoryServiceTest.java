@@ -2,12 +2,13 @@ package com.picopossum.application.inventory;
 
 import com.picopossum.domain.enums.InventoryReason;
 import com.picopossum.domain.exceptions.InsufficientStockException;
+import com.picopossum.domain.model.StockMovement;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.domain.repositories.AuditRepository;
 import com.picopossum.domain.repositories.InventoryRepository;
-import com.picopossum.shared.dto.AvailableLot;
+import com.picopossum.shared.dto.GeneralSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,8 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,7 +36,10 @@ class InventoryServiceTest {
 
     @BeforeEach
     void setUp() {
-        inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository, transactionManager, jsonService, settingsStore, new com.picopossum.domain.services.StockManager());
+        inventoryService = new InventoryService(
+                inventoryRepository, productFlowService, auditRepository, 
+                transactionManager, jsonService, settingsStore
+        );
         
         lenient().when(transactionManager.runInTransaction(any())).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(0);
@@ -46,67 +48,75 @@ class InventoryServiceTest {
     }
 
     @Test
-    @DisplayName("Should receive inventory and create lot/adjustment")
+    @DisplayName("Should receive inventory and create stock movement")
     void receiveInventory_success() {
-        when(inventoryRepository.insertInventoryLot(any())).thenReturn(500L);
+        when(inventoryRepository.insertStockMovement(any())).thenReturn(500L);
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(20);
 
-        InventoryService.ReceiveInventoryResult result = inventoryService.receiveInventory(1L, 20, new BigDecimal("15.00"), "BATCH1", null, null, 1L);
+        long movementId = inventoryService.receiveInventory(1L, 20, "Manual restock");
 
-        assertNotNull(result);
-        assertEquals(500L, result.lotId());
-        assertEquals(20, result.newStock());
-        verify(inventoryRepository).insertInventoryLot(any());
-        verify(inventoryRepository).insertInventoryAdjustment(any());
-        verify(productFlowService).logProductFlow(eq(1L), any(), eq(20), any(), any());
+        assertEquals(500L, movementId);
+        verify(inventoryRepository).insertStockMovement(argThat(m -> 
+            m.productId() == 1L && m.quantityChange() == 20 && "receive".equals(m.reason())
+        ));
+        verify(auditRepository).log(eq("stock_movements"), eq(500L), eq("CREATE"), any());
     }
 
     @Test
-    @DisplayName("Should deduct stock using FIFO across multiple lots")
-    void deductStock_fifo_success() {
+    @DisplayName("Should deduct stock and create negative movement")
+    void deductStock_success() {
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(100);
-        // Lot 1: 10 units, Lot 2: 50 units
-        when(inventoryRepository.findAvailableLotsByProductId(1L)).thenReturn(List.of(
-            new AvailableLot(100L, 1L, null, null, null, 10, BigDecimal.TEN, java.time.LocalDateTime.now(), 10),
-            new AvailableLot(101L, 1L, null, null, null, 50, BigDecimal.TEN, java.time.LocalDateTime.now(), 50)
+
+        inventoryService.deductStock(1L, 15, InventoryReason.SALE, "sale", 1000L);
+
+        verify(inventoryRepository).insertStockMovement(argThat(m -> 
+            m.productId() == 1L && m.quantityChange() == -15 && "sale".equals(m.reason())
         ));
-
-        // Deduct 15 units
-        inventoryService.deductStock(1L, 15, 1L, InventoryReason.SALE, "sale", 1000L);
-
-        // Should create 2 adjustments: 10 from Lot 1, 5 from Lot 2
-        verify(inventoryRepository, times(2)).insertInventoryAdjustment(any());
-        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() != null && adj.lotId() == 100L && adj.quantityChange() == -10));
-        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() != null && adj.lotId() == 101L && adj.quantityChange() == -5));
     }
 
     @Test
     @DisplayName("Should block deduction if stock insufficient and restrictions enabled")
     void deductStock_insufficient_fail() throws Exception {
-        com.picopossum.shared.dto.GeneralSettings settings = mock(com.picopossum.shared.dto.GeneralSettings.class);
+        GeneralSettings settings = mock(GeneralSettings.class);
         when(settings.isInventoryAlertsAndRestrictionsEnabled()).thenReturn(true);
         when(settingsStore.loadGeneralSettings()).thenReturn(settings);
         
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(5);
 
-        assertThrows(InsufficientStockException.class, () -> inventoryService.deductStock(1L, 10, 1L, InventoryReason.SALE, null, null));
+        assertThrows(InsufficientStockException.class, () -> 
+            inventoryService.deductStock(1L, 10, InventoryReason.SALE, "sale", 1001L));
     }
 
     @Test
     @DisplayName("Should allow deduction if stock insufficient but restrictions disabled")
     void deductStock_insufficient_success_when_allowed() throws Exception {
-        com.picopossum.shared.dto.GeneralSettings settings = mock(com.picopossum.shared.dto.GeneralSettings.class);
+        GeneralSettings settings = mock(GeneralSettings.class);
         when(settings.isInventoryAlertsAndRestrictionsEnabled()).thenReturn(false);
         when(settingsStore.loadGeneralSettings()).thenReturn(settings);
         
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(5);
-        when(inventoryRepository.findAvailableLotsByProductId(1L)).thenReturn(List.of());
 
-        InventoryService.DeductStockResult result = inventoryService.deductStock(1L, 10, 1L, InventoryReason.SALE, null, null);
+        inventoryService.deductStock(1L, 10, InventoryReason.SALE, "sale", 1002L);
 
-        assertTrue(result.success());
-        assertEquals(10, result.deducted());
-        // Should create a headless adjustment (no lotId)
-        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.lotId() == null && adj.quantityChange() == -10));
+        verify(inventoryRepository).insertStockMovement(argThat(m -> 
+            m.productId() == 1L && m.quantityChange() == -10
+        ));
+    }
+
+    @Test
+    @DisplayName("Should adjust inventory correctly")
+    void adjustInventory_success() throws Exception {
+        GeneralSettings settings = mock(GeneralSettings.class);
+        when(settings.isInventoryAlertsAndRestrictionsEnabled()).thenReturn(false);
+        when(settingsStore.loadGeneralSettings()).thenReturn(settings);
+        
+        when(inventoryRepository.insertStockMovement(any())).thenReturn(600L);
+        
+        inventoryService.adjustInventory(1L, -5, InventoryReason.DAMAGE, "audit", 10L, "Found broken");
+
+        verify(inventoryRepository).insertStockMovement(argThat(m -> 
+            m.productId() == 1L && m.quantityChange() == -5 && "damage".equals(m.reason())
+        ));
+        verify(auditRepository).log(eq("stock_movements"), eq(600L), eq("CREATE"), any());
     }
 }

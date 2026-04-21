@@ -56,10 +56,6 @@ public class UserService {
 
         User updatedUser = new User(existingUser.id(), name, username, hashedPassword, active, existingUser.createdAt(), TimeUtil.nowUTC(), existingUser.deletedAt());
         User result = userRepository.updateUserById(id, updatedUser);
-        
-        if (!active) {
-            userRepository.revokeUserSessions(id);
-        }
         return result;
     }
 

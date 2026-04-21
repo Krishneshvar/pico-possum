@@ -10,12 +10,12 @@ import com.picopossum.shared.dto.ReturnFilter;
 import java.util.List;
 
 /**
- * Usage examples for ReturnsService
+ * Usage examples for ReturnsService (Modernized for Single-User SMB)
  * 
  * Demonstrates the complete return lifecycle:
  * 1. Create return with quantity validation
  * 2. Calculate pro-rated refunds
- * 3. Restore inventory (FIFO reversal)
+ * 3. Restore inventory (Direct stock movement)
  * 4. Create refund transaction
  * 5. Update sale status
  */
@@ -35,8 +35,7 @@ public class ReturnsServiceExample {
         CreateReturnRequest request = new CreateReturnRequest(
                 1001L,  // saleId
                 List.of(new CreateReturnItemRequest(5001L, 2)),  // saleItemId, quantity
-                "Customer changed mind",
-                100L  // userId
+                "Customer changed mind"
         );
 
         ReturnResponse response = returnsService.createReturn(request);
@@ -54,8 +53,7 @@ public class ReturnsServiceExample {
                         new CreateReturnItemRequest(5010L, 1),
                         new CreateReturnItemRequest(5011L, 3)
                 ),
-                "Defective products",
-                100L
+                "Defective products"
         );
 
         ReturnResponse response = returnsService.createReturn(request);
@@ -86,7 +84,6 @@ public class ReturnsServiceExample {
     public void searchReturns() {
         ReturnFilter filter = new ReturnFilter(
                 null,  // saleId
-                100L,  // userId - returns processed by this user
                 null,  // startDate
                 null,  // endDate
                 null,  // minAmount
@@ -109,71 +106,33 @@ public class ReturnsServiceExample {
      * This will throw ValidationException
      */
     public void invalidQuantityReturn() {
-        // Assuming sale item has quantity=5 and 3 already returned
-        // Trying to return 3 more (total would be 6 > 5)
         CreateReturnRequest request = new CreateReturnRequest(
                 1003L,
                 List.of(new CreateReturnItemRequest(5020L, 3)),
-                "Test",
-                100L
+                "Test"
         );
 
         try {
             returnsService.createReturn(request);
         } catch (Exception e) {
             System.out.println("Expected error: " + e.getMessage());
-            // "Cannot return 3 of Product X. Only 2 remaining to return."
         }
     }
 
     /**
      * Example 7: Validation - refund exceeds paid amount
-     * This will throw ValidationException
      */
     public void invalidRefundAmount() {
-        // Assuming sale paid_amount=100 but refund would be 150
         CreateReturnRequest request = new CreateReturnRequest(
                 1004L,
                 List.of(new CreateReturnItemRequest(5030L, 10)),
-                "Test",
-                100L
+                "Test"
         );
 
         try {
             returnsService.createReturn(request);
         } catch (Exception e) {
             System.out.println("Expected error: " + e.getMessage());
-            // "Cannot refund 150.00. Maximum refundable amount is 100.00."
         }
     }
-
-    /**
-     * Key behaviors preserved from TypeScript:
-     * 
-     * 1. Partial returns are allowed
-     *    - Can return subset of items
-     *    - Can return partial quantities
-     * 
-     * 2. Cumulative quantity validation
-     *    - Total returned quantity cannot exceed sold quantity
-     *    - Tracks all previous returns for same sale item
-     * 
-     * 3. Refund amount validation
-     *    - Refund cannot exceed sale paid amount
-     *    - Pro-rated discount distribution (line + global)
-     * 
-     * 4. Inventory restoration
-     *    - Reverses exact FIFO lots from original sale
-     *    - Uses LIFO order (newest deduction first)
-     *    - Handles headless stock gracefully
-     * 
-     * 5. Transaction integrity
-     *    - All operations in single transaction
-     *    - Rollback on any validation failure
-     *    - Audit trail for all changes
-     * 
-     * 6. Sale status updates
-     *    - Status becomes 'refunded' when paid_amount <= 0
-     *    - Partial refunds don't change status
-     */
 }

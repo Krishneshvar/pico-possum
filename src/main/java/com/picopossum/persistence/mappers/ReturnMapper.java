@@ -15,7 +15,6 @@ public final class ReturnMapper implements RowMapper<Return> {
         return new Return(
                 rs.getLong("id"),
                 rs.getLong("sale_id"),
-                rs.getLong("user_id"),
                 rs.getString("reason"),
                 SqlMapperUtils.getLocalDateTime(rs, "created_at"),
                 getOptionalColumn(rs, "invoice_number"),

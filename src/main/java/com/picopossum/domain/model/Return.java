@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 public record Return(
         Long id,
         Long saleId,
-        Long userId,
         String reason,
         LocalDateTime createdAt,
         String invoiceNumber,

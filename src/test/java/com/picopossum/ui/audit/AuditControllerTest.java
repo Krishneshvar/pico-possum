@@ -1,7 +1,5 @@
 package com.picopossum.ui.audit;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.model.AuditLog;
 import com.picopossum.shared.dto.AuditLogFilter;
@@ -39,7 +37,6 @@ class AuditControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new AuditController(auditService, workspaceManager);
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
@@ -48,23 +45,27 @@ class AuditControllerTest {
     }
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
-        java.lang.reflect.Field field = com.picopossum.ui.common.controllers.AbstractCrudController.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
-    }
-
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
+        Class<?> clazz = target.getClass();
+        while (clazz != null) {
+            try {
+                java.lang.reflect.Field field = clazz.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException("Field " + fieldName + " not found");
     }
 
     @Test
-    @DisplayName("Should fetch audit logs logic")
+    @DisplayName("Should fetch audit logs logic correctly")
     void fetchData_success() {
-        AuditLogFilter filter = new AuditLogFilter(null, null, null, null, null, null, null, "created_at", "DESC", 0, 25);
+        AuditLogFilter filter = new AuditLogFilter(null, null, null, null, null, null, "created_at", "DESC", 0, 25);
         List<AuditLog> logs = List.of(
-            createTestAuditLog(1L, "products", "INSERT", 1L, "testuser"),
-            createTestAuditLog(2L, "products", "UPDATE", 1L, "testuser")
+            createTestAuditLog(1L, "products", "INSERT", 1L),
+            createTestAuditLog(2L, "products", "UPDATE", 1L)
         );
         PagedResult<AuditLog> pagedResult = new PagedResult<>(logs, 2, 1, 0, 25);
         
@@ -79,7 +80,7 @@ class AuditControllerTest {
     }
 
     @Test
-    @DisplayName("Should build filter correctly")
+    @DisplayName("Should build filter correctly aligned with single-user core")
     void buildFilter_success() {
         AuditLogFilter filter = controller.buildFilter();
 
@@ -91,16 +92,13 @@ class AuditControllerTest {
     }
 
     @Test
-    @DisplayName("Should throw exception on delete")
+    @DisplayName("Should throw exception on delete for audit logs")
     void deleteEntity_throwsException() {
-        AuditLog log = createTestAuditLog(1L, "test", "INSERT", 1L, "user");
+        AuditLog log = createTestAuditLog(1L, "test", "INSERT", 1L);
         assertThrows(UnsupportedOperationException.class, () -> controller.deleteEntity(log));
     }
 
-    private AuditLog createTestAuditLog(Long id, String tableName, String action, Long rowId, String userName) {
-        return new AuditLog(
-            id, 1L, action, tableName, rowId, null, null, "Summary Details", userName, LocalDateTime.now()
-        );
+    private AuditLog createTestAuditLog(Long id, String tableName, String action, Long rowId) {
+        return new AuditLog(id, action, tableName, rowId, null, null, "Summary Details", LocalDateTime.now());
     }
 }
-

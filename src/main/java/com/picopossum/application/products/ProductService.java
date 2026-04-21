@@ -3,10 +3,8 @@ package com.picopossum.application.products;
 import com.picopossum.domain.exceptions.NotFoundException;
 import com.picopossum.domain.exceptions.ValidationException;
 import com.picopossum.domain.enums.InventoryReason;
-import com.picopossum.domain.model.InventoryAdjustment;
-import com.picopossum.domain.model.InventoryLot;
+import com.picopossum.domain.model.StockMovement;
 import com.picopossum.domain.model.Product;
-import com.picopossum.infrastructure.filesystem.AppPaths;
 import com.picopossum.infrastructure.filesystem.FileStorageService;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.logging.LoggingConfig;
@@ -24,6 +22,7 @@ import java.util.Objects;
 /**
  * Core service for Product management.
  * Follows production-grade standards: SOC, performance, and reliability.
+ * Optimized for minimalist Single-User SMB.
  */
 public class ProductService {
     private final ProductRepository productRepository;
@@ -74,7 +73,7 @@ public class ProductService {
                     command.stockAlertCap() != null ? command.stockAlertCap() : 10,
                     command.status() != null ? command.status() : "active",
                     command.imagePath(),
-                    0, // Stock starts at 0, updated below
+                    0, 
                     TimeUtil.nowUTC(),
                     TimeUtil.nowUTC(),
                     null
@@ -82,17 +81,23 @@ public class ProductService {
 
             long productId = productRepository.insertProduct(product);
 
-            logAudit(command.userId(), "CREATE", productId, null, 
+            // Minimalist Single-User Audit
+            logAudit("CREATE", productId, null, 
                     Map.of("name", command.name(), "sku", effectiveSku, "mrp", command.mrp()));
 
+            // Initial Stock Logic (Lot-less)
             if (command.initialStock() != null && command.initialStock() > 0) {
-                InventoryLot lot = new InventoryLot(null, productId, null, null, null, command.initialStock(), command.costPrice(), TimeUtil.nowUTC());
-                long lotId = inventoryRepository.insertInventoryLot(lot);
-
-                InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, lotId, command.initialStock(), 
-                        InventoryReason.CONFIRM_RECEIVE.getValue(), "initial", null, command.userId(), "Initial stock", TimeUtil.nowUTC());
-                inventoryRepository.insertInventoryAdjustment(adjustment);
-
+                StockMovement movement = new StockMovement(
+                        null, 
+                        productId, 
+                        command.initialStock(), 
+                        InventoryReason.RECEIVE.getValue(), 
+                        "initial", 
+                        productId, 
+                        "Initial stock entry", 
+                        TimeUtil.nowUTC()
+                );
+                inventoryRepository.insertStockMovement(movement);
                 LoggingConfig.getLogger().info("Initial stock {} added for product {}", command.initialStock(), productId);
             }
 
@@ -137,19 +142,27 @@ public class ProductService {
                 storageService.delete(oldProduct.imagePath());
             }
 
+            // High-Performance Stock Correction
             if (command.stock() != null) {
                 int currentStock = inventoryRepository.getStockByProductId(productId);
                 int diff = command.stock() - currentStock;
 
                 if (diff != 0) {
-                    InventoryAdjustment adjustment = new InventoryAdjustment(null, productId, null, diff, 
-                            InventoryReason.CORRECTION.getValue(), "manual", null, command.userId(), 
-                            command.stockAdjustmentReason(), TimeUtil.nowUTC());
-                    inventoryRepository.insertInventoryAdjustment(adjustment);
+                    StockMovement movement = new StockMovement(
+                            null, 
+                            productId, 
+                            diff, 
+                            InventoryReason.CORRECTION.getValue(), 
+                            "manual", 
+                            productId, 
+                            command.stockAdjustmentReason(), 
+                            TimeUtil.nowUTC()
+                    );
+                    inventoryRepository.insertStockMovement(movement);
                 }
             }
 
-            logAudit(command.userId(), "UPDATE", productId, 
+            logAudit("UPDATE", productId, 
                     Map.of("name", oldProduct.name(), "mrp", oldProduct.mrp()),
                     Map.of("name", updatedProduct.name(), "mrp", updatedProduct.mrp()));
 
@@ -157,22 +170,30 @@ public class ProductService {
         });
     }
 
-    public void deleteProduct(long id, long userId) {
+    public void deleteProduct(long id) {
         transactionManager.runInTransaction(() -> {
             Product product = productRepository.findProductById(id)
                     .orElseThrow(() -> new NotFoundException("Product not found"));
 
             int currentStock = inventoryRepository.getStockByProductId(id);
             if (currentStock != 0) {
-                InventoryAdjustment adjustment = new InventoryAdjustment(null, id, null, -currentStock, 
-                        InventoryReason.PRODUCT_DELETED.getValue(), "system", null, userId, "Final cleanup", TimeUtil.nowUTC());
-                inventoryRepository.insertInventoryAdjustment(adjustment);
+                StockMovement movement = new StockMovement(
+                        null, 
+                        id, 
+                        -currentStock, 
+                        InventoryReason.CLEANUP.getValue(), 
+                        "system", 
+                        id, 
+                        "Final cleanup on deletion", 
+                        TimeUtil.nowUTC()
+                );
+                inventoryRepository.insertStockMovement(movement);
             }
 
             productRepository.softDeleteProduct(id);
             storageService.delete(product.imagePath());
 
-            logAudit(userId, "DELETE", id, Map.of("name", product.name(), "sku", product.sku()), null);
+            logAudit("DELETE", id, Map.of("name", product.name(), "sku", product.sku()), null);
             return null;
         });
     }
@@ -194,10 +215,10 @@ public class ProductService {
         return productRepository.getNextGeneratedNumericSku();
     }
 
-    private void logAudit(long userId, String action, long rowId, Object oldData, Object newData) {
+    private void logAudit(String action, long rowId, Object oldData, Object newData) {
         try {
             com.picopossum.infrastructure.serialization.JsonService js = new com.picopossum.infrastructure.serialization.JsonService();
-            auditRepository.log("products", rowId, action, js.toJson(newData), userId);
+            auditRepository.log("products", rowId, action, js.toJson(newData));
         } catch (Exception e) {
             LoggingConfig.getLogger().error("Audit logging failed", e);
         }
@@ -206,10 +227,10 @@ public class ProductService {
     public record CreateProductCommand(String name, String description, Long categoryId, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
                                       Integer stockAlertCap, String status, String imagePath, 
-                                      Integer initialStock, Long userId) {}
+                                      Integer initialStock) {}
 
     public record UpdateProductCommand(String name, String description, Long categoryId, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
                                       Integer stockAlertCap, String status, String newImagePath, 
-                                      Integer stock, String stockAdjustmentReason, Long userId) {}
+                                      Integer stock, String stockAdjustmentReason) {}
 }

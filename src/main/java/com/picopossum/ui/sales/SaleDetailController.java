@@ -372,18 +372,17 @@ public class SaleDetailController implements Parameterizable {
             Long childCustomerId = selectedCustomer != null ? selectedCustomer.id() : null;
             long newMethodId = selectedMethod != null ? selectedMethod.id() : -1L;
             
-            com.picopossum.application.auth.AuthUser currentUser = com.picopossum.application.auth.AuthContext.getCurrentUser();
             boolean changed = false;
 
             if (!java.util.Objects.equals(currentSale.customerId(), childCustomerId)) {
-                salesService.changeSaleCustomer(currentSale.id(), childCustomerId, currentUser.id());
+                salesService.changeSaleCustomer(currentSale.id(), childCustomerId);
                 changed = true;
             }
 
             long currentMethodId = currentSale.paymentMethodId() != null ? currentSale.paymentMethodId() : -1L;
             
             if (newMethodId != -1 && newMethodId != currentMethodId) {
-                salesService.changeSalePaymentMethod(currentSale.id(), newMethodId, currentUser.id());
+                salesService.changeSalePaymentMethod(currentSale.id(), newMethodId);
                 changed = true;
             }
 
@@ -392,7 +391,7 @@ public class SaleDetailController implements Parameterizable {
                             item.productId(), item.quantity(), item.pricePerUnit(), item.discountAmount()
                     )).toList();
             
-            salesService.updateSaleItems(currentSale.id(), itemRequests, currentUser.id());
+            salesService.updateSaleItems(currentSale.id(), itemRequests);
             changed = true;
 
             if (changed) {

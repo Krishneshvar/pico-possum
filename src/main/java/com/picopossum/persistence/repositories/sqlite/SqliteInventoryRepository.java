@@ -1,31 +1,27 @@
 package com.picopossum.persistence.repositories.sqlite;
 
-import com.picopossum.domain.model.InventoryAdjustment;
-import com.picopossum.domain.model.InventoryLot;
 import com.picopossum.domain.model.Product;
+import com.picopossum.domain.model.StockMovement;
 import com.picopossum.persistence.db.ConnectionProvider;
-import com.picopossum.persistence.mappers.InventoryAdjustmentMapper;
-import com.picopossum.persistence.mappers.InventoryLotMapper;
 import com.picopossum.persistence.mappers.ProductMapper;
+import com.picopossum.persistence.mappers.StockHistoryMapper;
+import com.picopossum.persistence.mappers.StockMovementMapper;
 import com.picopossum.domain.repositories.InventoryRepository;
-import com.picopossum.shared.dto.AvailableLot;
-import com.picopossum.shared.util.SqlMapperUtils;
+import com.picopossum.shared.dto.StockHistoryDto;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+/**
+ * Minimalist implementation of InventoryRepository.
+ * Optimized for SMB single-user performance (O(1) stock lookups).
+ */
 public final class SqliteInventoryRepository extends BaseSqliteRepository implements InventoryRepository {
 
-    private static final String STOCK_SQL = """
-            COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE product_id = p.id), 0)
-            + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE product_id = p.id AND (reason != 'confirm_receive' OR lot_id IS NULL)), 0)
-            """;
-
-    private final InventoryLotMapper lotMapper = new InventoryLotMapper();
-    private final InventoryAdjustmentMapper adjustmentMapper = new InventoryAdjustmentMapper();
+    private final StockMovementMapper movementMapper = new StockMovementMapper();
+    private final StockHistoryMapper historyMapper = new StockHistoryMapper();
     private final ProductMapper productMapper = new ProductMapper();
 
     public SqliteInventoryRepository(ConnectionProvider connectionProvider) {
@@ -35,85 +31,48 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
     @Override
     public int getStockByProductId(long productId) {
         return queryOne(
-                """
-                SELECT
-                  COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE product_id = ?), 0)
-                  + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE product_id = ? AND (reason != 'confirm_receive' OR lot_id IS NULL)), 0) AS stock
-                """,
-                rs -> rs.getInt("stock"),
-                productId,
+                "SELECT current_stock FROM product_stock_cache WHERE product_id = ?",
+                rs -> rs.getInt("current_stock"),
                 productId
         ).orElse(0);
     }
 
     @Override
-    public List<InventoryLot> findLotsByProductId(long productId) {
+    public List<StockMovement> findMovementsByProductId(long productId, int limit, int offset) {
         return queryList(
                 """
-                SELECT il.*
-                FROM inventory_lots il
-                WHERE il.product_id = ?
-                ORDER BY il.created_at DESC
+                SELECT * FROM stock_movements 
+                WHERE product_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT ? OFFSET ?
                 """,
-                lotMapper,
-                productId
+                movementMapper,
+                productId,
+                limit,
+                offset
         );
     }
 
     @Override
-    public List<AvailableLot> findAvailableLotsByProductId(long productId) {
-        return queryList(
-                """
-                SELECT 
-                  il.id, il.product_id, il.batch_number, il.manufactured_date, il.expiry_date,
-                  il.quantity AS initial_quantity, il.unit_cost, il.created_at,
-                  (il.quantity + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE lot_id = il.id), 0)) AS remaining_quantity
-                FROM inventory_lots il
-                WHERE il.product_id = ?
-                  AND (il.quantity + COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE lot_id = il.id), 0)) > 0
-                ORDER BY il.created_at ASC
-                """,
-                rs -> new AvailableLot(
-                        rs.getLong("id"),
-                        rs.getLong("product_id"),
-                        rs.getString("batch_number"),
-                        SqlMapperUtils.getLocalDateTime(rs, "manufactured_date"),
-                        SqlMapperUtils.getLocalDateTime(rs, "expiry_date"),
-                        rs.getInt("initial_quantity"),
-                        SqlMapperUtils.getBigDecimal(rs, "unit_cost"),
-                        SqlMapperUtils.getLocalDateTime(rs, "created_at"),
-                        rs.getInt("remaining_quantity")
-                ),
-                productId
-        );
-    }
-
-    private static Long getNullableLong(ResultSet rs, String column) throws SQLException {
-        long value = rs.getLong(column);
-        return rs.wasNull() ? null : value;
-    }
-
-    @Override
-    public List<com.picopossum.shared.dto.StockHistoryDto> findStockHistory(String search, List<String> reasons, String fromDate, String toDate, List<Long> userIds, int limit, int offset) {
+    public List<StockHistoryDto> findStockHistory(String search, List<String> reasons, String fromDate, String toDate, int limit, int offset) {
         StringBuilder sql = new StringBuilder("""
                 SELECT
-                    ia.id,
-                    ia.product_id,
+                    sm.id,
+                    sm.product_id,
                     p.name AS product_name,
                     p.sku,
-                    ia.quantity_change,
-                    ia.reason,
-                    u.name AS adjusted_by_name,
-                    ia.adjusted_at,
+                    sm.quantity_change,
+                    sm.reason,
+                    sm.created_at,
                     p.stock_alert_cap,
-                    (%s) AS current_stock
-                FROM inventory_adjustments ia
-                JOIN products p ON ia.product_id = p.id
-                LEFT JOIN users u ON ia.adjusted_by = u.id
+                    COALESCE(sc.current_stock, 0) AS current_stock
+                FROM stock_movements sm
+                JOIN products p ON sm.product_id = p.id
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
                 WHERE 1=1
-                """.formatted(STOCK_SQL));
+                """);
 
-        java.util.List<Object> params = new java.util.ArrayList<>();
+        List<Object> params = new ArrayList<>();
 
         if (search != null && !search.trim().isEmpty()) {
             sql.append(" AND (p.name LIKE ? OR p.sku LIKE ?) ");
@@ -123,106 +82,43 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         }
 
         if (reasons != null && !reasons.isEmpty()) {
-            sql.append(" AND ia.reason IN (");
-            sql.append("?,".repeat(reasons.size()));
-            sql.setLength(sql.length() - 1); // remove last comma
-            sql.append(") ");
+            sql.append(" AND sm.reason IN (").append(placeholders(reasons.size())).append(") ");
             params.addAll(reasons);
         }
 
         if (fromDate != null && !fromDate.trim().isEmpty()) {
-            sql.append(" AND ia.adjusted_at >= ? ");
+            sql.append(" AND sm.created_at >= ? ");
             params.add(fromDate);
         }
 
         if (toDate != null && !toDate.trim().isEmpty()) {
-            sql.append(" AND ia.adjusted_at <= ? ");
+            sql.append(" AND sm.created_at <= ? ");
             params.add(toDate);
         }
 
-        if (userIds != null && !userIds.isEmpty()) {
-            sql.append(" AND ia.adjusted_by IN (");
-            sql.append("?,".repeat(userIds.size()));
-            sql.setLength(sql.length() - 1);
-            sql.append(") ");
-            params.addAll(userIds);
-        }
-
-        sql.append(" ORDER BY ia.adjusted_at DESC LIMIT ? OFFSET ? ");
+        sql.append(" ORDER BY sm.created_at DESC LIMIT ? OFFSET ? ");
         params.add(limit);
         params.add(offset);
 
-        return queryList(sql.toString(), new com.picopossum.persistence.mappers.StockHistoryMapper(), params.toArray());
+        return queryList(sql.toString(), historyMapper, params.toArray());
     }
 
     @Override
-    public List<InventoryAdjustment> findAdjustmentsByProductId(long productId, int limit, int offset) {
-        return queryList(
-                """
-                SELECT ia.*, u.name AS adjusted_by_name
-                FROM inventory_adjustments ia
-                LEFT JOIN users u ON ia.adjusted_by = u.id
-                WHERE ia.product_id = ?
-                ORDER BY ia.adjusted_at DESC
-                LIMIT ? OFFSET ?
-                """,
-                adjustmentMapper,
-                productId,
-                limit,
-                offset
-        );
-    }
-
-    @Override
-    public List<InventoryAdjustment> findAdjustmentsByReference(String referenceType, long referenceId) {
-        return queryList(
-                "SELECT * FROM inventory_adjustments WHERE reference_type = ? AND reference_id = ?",
-                adjustmentMapper,
-                referenceType,
-                referenceId
-        );
-    }
-
-    @Override
-    public long insertInventoryLot(InventoryLot lot) {
+    public long insertStockMovement(StockMovement movement) {
         return executeInsert(
                 """
-                INSERT INTO inventory_lots (
-                  product_id, batch_number, manufactured_date, expiry_date, quantity, unit_cost
+                INSERT INTO stock_movements (
+                    product_id, quantity_change, reason, reference_type, reference_id, notes
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                lot.productId(),
-                lot.batchNumber(),
-                lot.manufacturedDate(),
-                lot.expiryDate(),
-                lot.quantity(),
-                lot.unitCost()
+                movement.productId(),
+                movement.quantityChange(),
+                movement.reason(),
+                movement.referenceType(),
+                movement.referenceId(),
+                movement.notes()
         );
-    }
-
-    @Override
-    public long insertInventoryAdjustment(InventoryAdjustment adjustment) {
-        return executeInsert(
-                """
-                INSERT INTO inventory_adjustments (
-                  product_id, lot_id, quantity_change, reason, reference_type, reference_id, adjusted_by
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                adjustment.productId(),
-                adjustment.lotId(),
-                adjustment.quantityChange(),
-                adjustment.reason(),
-                adjustment.referenceType(),
-                adjustment.referenceId(),
-                adjustment.adjustedBy()
-        );
-    }
-
-    @Override
-    public Optional<InventoryLot> findLotById(long id) {
-        return queryOne("SELECT * FROM inventory_lots WHERE id = ?", lotMapper, id);
     }
 
     @Override
@@ -232,32 +128,17 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                 SELECT
                   p.id, p.name, p.description, p.category_id, c.name AS category_name,
                   p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
-                  p.status, p.image_path, (%s) AS stock, p.created_at, p.updated_at, p.deleted_at
+                  p.status, p.image_path, 
+                  COALESCE(sc.current_stock, 0) AS stock, 
+                  p.created_at, p.updated_at, p.deleted_at
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
                 WHERE p.deleted_at IS NULL
-                  AND (%s) <= p.stock_alert_cap
+                  AND COALESCE(sc.current_stock, 0) <= p.stock_alert_cap
                 ORDER BY stock ASC
-                """.formatted(STOCK_SQL, STOCK_SQL),
-                productMapper
-        );
-    }
-
-    @Override
-    public List<InventoryLot> findExpiringLots(int days) {
-        return queryList(
-                """
-                SELECT il.*
-                FROM inventory_lots il
-                JOIN products p ON il.product_id = p.id
-                WHERE il.expiry_date IS NOT NULL
-                  AND il.expiry_date <= date('now', '+' || ? || ' days')
-                  AND il.expiry_date >= date('now')
-                  AND p.deleted_at IS NULL
-                ORDER BY il.expiry_date ASC
                 """,
-                lotMapper,
-                days
+                productMapper
         );
     }
 
@@ -265,27 +146,25 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
     public Map<String, Object> getInventoryStats() {
         return queryOne(
                 """
-                WITH ProductStock AS (
-                  SELECT
-                    p.id,
-                    p.stock_alert_cap,
-                    (%s) AS current_stock
-                  FROM products p
-                  WHERE p.deleted_at IS NULL
-                )
                 SELECT
                   COALESCE(SUM(current_stock), 0) AS totalItemsInStock,
                   COUNT(CASE WHEN current_stock = 0 THEN 1 END) AS productsWithNoStock,
-                  COUNT(CASE WHEN current_stock <= stock_alert_cap THEN 1 END) AS productsWithLowStock
-                FROM ProductStock
-                """.formatted(STOCK_SQL),
+                  COUNT(CASE WHEN current_stock <= p.stock_alert_cap THEN 1 END) AS productsWithLowStock
+                FROM products p
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+                WHERE p.deleted_at IS NULL
+                """,
                 rs -> {
-                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    Map<String, Object> map = new HashMap<>();
                     map.put("totalItemsInStock", rs.getInt("totalItemsInStock"));
                     map.put("productsWithNoStock", rs.getInt("productsWithNoStock"));
                     map.put("productsWithLowStock", rs.getInt("productsWithLowStock"));
                     return map;
                 }
-        ).orElse(Map.<String, Object>of("totalItemsInStock", 0, "productsWithNoStock", 0, "productsWithLowStock", 0));
+        ).orElse(Map.of("totalItemsInStock", 0, "productsWithNoStock", 0, "productsWithLowStock", 0));
+    }
+
+    private String placeholders(int count) {
+        return "?,".repeat(count).replaceAll(",$", "");
     }
 }

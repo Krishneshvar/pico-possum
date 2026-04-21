@@ -1,14 +1,17 @@
 package com.picopossum.domain.enums;
 
+/**
+ * Audit reasons for stock movements.
+ * Strictly synchronized with V1__init.sql CHECK constraints.
+ */
 public enum InventoryReason {
     SALE("sale"),
     RETURN("return"),
-    CONFIRM_RECEIVE("confirm_receive"),
-    SPOILAGE("spoilage"),
+    RECEIVE("receive"),
     DAMAGE("damage"),
     THEFT("theft"),
     CORRECTION("correction"),
-    PRODUCT_DELETED("product_deleted");
+    CLEANUP("cleanup");
 
     private final String value;
 

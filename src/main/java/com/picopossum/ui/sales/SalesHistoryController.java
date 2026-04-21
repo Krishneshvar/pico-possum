@@ -233,7 +233,6 @@ public class SalesHistoryController {
         SaleFilter filter = new SaleFilter(
                 currentStatus,
                 null, // customerId
-                null, // userId
                 currentFromDate != null ? currentFromDate.atStartOfDay().toString() : null,
                 currentToDate != null ? currentToDate.atTime(23, 59, 59).toString() : null,
                 currentMinAmount,

@@ -131,18 +131,6 @@ class SqliteUserRepositoryTest {
     }
 
     @Test
-    void shouldRevokeUserSessions() throws SQLException {
-        PreparedStatement stmt = mock(PreparedStatement.class);
-        when(connection.prepareStatement(anyString())).thenReturn(stmt);
-        when(stmt.executeUpdate()).thenReturn(2);
-
-        repository.revokeUserSessions(1L);
-
-        verify(stmt).setObject(1, 1L);
-        verify(stmt).executeUpdate();
-    }
-
-    @Test
     void shouldSoftDeleteUser() throws SQLException {
         PreparedStatement stmt = mock(PreparedStatement.class);
         when(connection.prepareStatement(anyString())).thenReturn(stmt);

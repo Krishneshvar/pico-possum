@@ -1,7 +1,5 @@
 package com.picopossum.integration;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.inventory.ProductFlowService;
 import com.picopossum.application.returns.ReturnsService;
@@ -23,7 +21,6 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for the returns & refunds flow:
  * partial returns, full refunds, stock reversal, and validation guards.
+ * Synchronized for Single-User Identity-Agnostic architecture.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ReturnsFlowIntegrationTest {
@@ -45,10 +43,8 @@ class ReturnsFlowIntegrationTest {
     private static ReturnsService returnsService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
-    private static SqliteInventoryRepository inventoryRepository;
 
     private static long testProductId;
-    private static long testUserId;
     private static long cashPaymentMethodId;
 
     @BeforeAll
@@ -66,15 +62,14 @@ class ReturnsFlowIntegrationTest {
         SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager);
         salesRepository = new SqliteSalesRepository(databaseManager);
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
-        inventoryRepository = new SqliteInventoryRepository(databaseManager);
+        SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
-        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
-                transactionManager, jsonService, settingsStore, new com.picopossum.domain.services.StockManager());
+                transactionManager, jsonService, settingsStore);
 
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
@@ -87,7 +82,6 @@ class ReturnsFlowIntegrationTest {
                 auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
 
         // Seed
-        testUserId = seedUser(userRepository);
         cashPaymentMethodId = getOrSeedPaymentMethod();
         testProductId = seedProductWithStock(categoryRepository, productRepository, 100);
     }
@@ -96,17 +90,6 @@ class ReturnsFlowIntegrationTest {
     static void tearDown() throws IOException {
         if (databaseManager != null) databaseManager.close();
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
-        AuthContext.clear();
-    }
-
-    @BeforeEach
-    void setAuth() {
-        AuthContext.setCurrentUser(new AuthUser(testUserId, "Cashier", "cashier"));
-    }
-
-    @AfterEach
-    void clearAuth() {
-        AuthContext.clear();
     }
 
     @Test
@@ -123,8 +106,7 @@ class ReturnsFlowIntegrationTest {
         ReturnResponse returnResp = returnsService.createReturn(new CreateReturnRequest(
                 saleId,
                 List.of(new CreateReturnItemRequest(saleItemId, 1)),
-                "Defective item",
-                testUserId
+                "Defective item"
         ));
 
         assertNotNull(returnResp);
@@ -151,8 +133,7 @@ class ReturnsFlowIntegrationTest {
         returnsService.createReturn(new CreateReturnRequest(
                 saleId,
                 List.of(new CreateReturnItemRequest(saleItemId, 2)),
-                "Customer changed mind",
-                testUserId
+                "Customer changed mind"
         ));
 
         Sale updatedSale = salesRepository.findSaleById(saleId).orElseThrow();
@@ -161,7 +142,7 @@ class ReturnsFlowIntegrationTest {
     }
 
     @Test
-    @Order(4)
+    @Order(3)
     @DisplayName("Return more than sold — throws ValidationException")
     void returnMoreThanSold_throwsValidationException() {
         SaleResponse saleResp = createSale(testProductId, 2, new BigDecimal("50.00"), new BigDecimal("100.00"));
@@ -172,8 +153,7 @@ class ReturnsFlowIntegrationTest {
                 returnsService.createReturn(new CreateReturnRequest(
                         saleId,
                         List.of(new CreateReturnItemRequest(saleItemId, 5)), 
-                        "Overreturn",
-                        testUserId
+                        "Overreturn"
                 ))
         );
     }
@@ -185,19 +165,12 @@ class ReturnsFlowIntegrationTest {
                 List.of(new CreateSaleItemRequest(productId, qty, BigDecimal.ZERO, unitPrice)),
                 null, BigDecimal.ZERO,
                 List.of(new PaymentRequest(payment, cashPaymentMethodId))
-        ), testUserId);
-    }
-
-    private static long seedUser(SqliteUserRepository userRepository) {
-        User user = userRepository.insertUser(
-                new User(null, "Returns Tester", "rtester-" + UUID.randomUUID(), "hash", true, null, null, null)
-        );
-        return user.id();
+        ));
     }
 
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("ReturnsCat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 0, "active", null, 10, null, null, null);
+        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
         long productId = prodRepo.insertProduct(p);
         seedInventory(productId, qty);
         return productId;
@@ -205,52 +178,27 @@ class ReturnsFlowIntegrationTest {
 
     private static void seedInventory(long productId, int quantity) {
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_lots (product_id, quantity, unit_cost, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")) {
+                "INSERT INTO stock_movements (product_id, quantity_change, reason, reference_type, created_at) " +
+                "VALUES (?, ?, 'receive', 'manual', CURRENT_TIMESTAMP)")) {
             stmt.setLong(1, productId);
             stmt.setInt(2, quantity);
-            stmt.setBigDecimal(3, new BigDecimal("30.00"));
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new IllegalStateException("Seed inventory lot failed", e);
-        }
-
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO inventory_adjustments (product_id, lot_id, quantity_change, reason, adjusted_by, adjusted_at) " +
-                "VALUES (?, ?, ?, 'correction', ?, CURRENT_TIMESTAMP)")) {
-            stmt.setLong(1, productId);
-            stmt.setLong(2, queryLong("SELECT id FROM inventory_lots WHERE product_id = ? ORDER BY id DESC LIMIT 1", productId));
-            stmt.setInt(3, quantity);
-            stmt.setLong(4, testUserId);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new IllegalStateException("Seed inventory adjustment failed", e);
+            throw new IllegalStateException("Seed inventory target failed", e);
         }
     }
 
     private static long getOrSeedPaymentMethod() {
-        List<com.picopossum.domain.model.PaymentMethod> methods = salesRepository.findPaymentMethods();
-        if (!methods.isEmpty()) return methods.get(0).id();
         try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(
-                "INSERT INTO payment_methods (name, code, is_active) VALUES ('Cash', 'CA', 1) RETURNING id")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
+                "INSERT INTO payment_methods (name, code) VALUES ('Cash', 'CA') ON CONFLICT DO NOTHING")) {
+            stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new IllegalStateException("Failed to seed payment method", e);
+            // Might exist
         }
-        throw new IllegalStateException("No payment method ID returned");
-    }
 
-    private static long queryLong(String sql, Object... params) {
-        try (PreparedStatement stmt = databaseManager.getConnection().prepareStatement(sql)) {
-            for (int i = 0; i < params.length; i++) stmt.setObject(i + 1, params[i]);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getLong(1);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("queryLong failed: " + sql, e);
-        }
-        throw new IllegalStateException("No result: " + sql);
+        List<com.picopossum.domain.model.PaymentMethod> methods = salesRepository.findPaymentMethods();
+        for(var m : methods) if("Cash".equals(m.name())) return m.id();
+        throw new IllegalStateException("Failed to seed payment method");
     }
 
     private static void deleteDirectory(Path root) throws IOException {

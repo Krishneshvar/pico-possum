@@ -2,6 +2,10 @@ package com.picopossum.shared.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO for stock history visualization.
+ * Minimalist version for Single-User SMB.
+ */
 public record StockHistoryDto(
         Long id,
         Long productId,
@@ -9,8 +13,7 @@ public record StockHistoryDto(
         String sku,
         Integer quantityChange,
         String reason,
-        String adjustedByName,
-        LocalDateTime adjustedAt,
+        LocalDateTime createdAt,
         Integer currentStock,
         Integer stockAlertCap
 ) {}

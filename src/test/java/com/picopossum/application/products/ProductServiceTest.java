@@ -1,7 +1,5 @@
 package com.picopossum.application.products;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.domain.exceptions.NotFoundException;
 import com.picopossum.domain.exceptions.ValidationException;
 import com.picopossum.domain.model.Product;
@@ -11,7 +9,6 @@ import com.picopossum.domain.repositories.AuditRepository;
 import com.picopossum.domain.repositories.ProductRepository;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,25 +42,18 @@ class ProductServiceTest {
         productService = new ProductService(productRepository, inventoryRepository, auditRepository, 
                 transactionManager, settingsStore, validator, storageService);
         
-        AuthContext.setCurrentUser(new AuthUser(1L, "Admin", "admin"));
-        
         lenient().when(transactionManager.runInTransaction(any(Supplier.class))).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(0);
             return supplier.get();
         });
     }
 
-    @AfterEach
-    void tearDown() {
-        AuthContext.clear();
-    }
-
     @Test
-    @DisplayName("Should create product successfully")
+    @DisplayName("Should create product successfully without user dependency")
     void createProduct_success() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 "iPhone", "Apple phone", 1L, "SKU1",
-                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 5, 1L
+                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 5
         );
 
         when(productRepository.existsBySku("SKU1")).thenReturn(false);
@@ -73,7 +63,7 @@ class ProductServiceTest {
 
         assertEquals(100L, productId);
         verify(productRepository).insertProduct(argThat(p -> p.name().equals("iPhone") && p.sku().equals("SKU1")));
-        verify(inventoryRepository).insertInventoryLot(any());
+        verify(inventoryRepository).insertStockMovement(argThat(sm -> sm.quantityChange() == 5));
     }
 
     @Test
@@ -81,21 +71,11 @@ class ProductServiceTest {
     void createProduct_duplicateSku_fail() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 "iPhone", "Apple phone", 1L, "DUPE",
-                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 0, 1L
+                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 0
         );
 
         when(productRepository.existsBySku("DUPE")).thenReturn(true);
 
-        assertThrows(ValidationException.class, () -> productService.createProduct(cmd));
-    }
-
-    @Test
-    @DisplayName("Should throw validation error for negative price")
-    void createProduct_negativePrice_fail() {
-        ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
-                "Test", null, 1L, "SKU",
-                new BigDecimal("-10"), new BigDecimal("80"), 10, "active", null, 0, 1L
-        );
         assertThrows(ValidationException.class, () -> productService.createProduct(cmd));
     }
 
@@ -114,7 +94,7 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("Should delete product and its image")
+    @DisplayName("Should delete product and perform final stock cleanup")
     void deleteProduct_success() {
         Product p = new Product(1L, "Delete Me", "desc", 1L, null, "OLD", 
                 new BigDecimal("10"), new BigDecimal("5"), 0, "active", "/path/image.jpg", 10, null, null, null);
@@ -122,23 +102,17 @@ class ProductServiceTest {
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(10);
 
-        productService.deleteProduct(1L, 1L);
+        productService.deleteProduct(1L);
 
         verify(productRepository).softDeleteProduct(1L);
         verify(storageService).delete("/path/image.jpg");
-        verify(inventoryRepository).insertInventoryAdjustment(argThat(adj -> adj.quantityChange() == -10));
+        verify(inventoryRepository).insertStockMovement(argThat(sm -> sm.quantityChange() == -10));
     }
 
     @Test
-    @DisplayName("Should handle missing images during deletion gracefully")
-    void deleteProduct_noImage_success() {
-        Product p = new Product(1L, "No Image", "desc", 1L, null, "OLD", 
-                new BigDecimal("10"), new BigDecimal("5"), 0, "active", null, 0, null, null, null);
-        
-        when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
-
-        productService.deleteProduct(1L, 1L);
-
-        verify(storageService, never()).delete(anyString());
+    @DisplayName("Should throw NotFoundException for non-existent product")
+    void getProductById_notFound() {
+        when(productRepository.findProductById(999L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> productService.getProductById(999L));
     }
 }

@@ -18,6 +18,4 @@ public interface UserRepository {
     User updateUserById(long id, User userData);
 
     boolean softDeleteUser(long id);
-
-    void revokeUserSessions(long userId);
 }
