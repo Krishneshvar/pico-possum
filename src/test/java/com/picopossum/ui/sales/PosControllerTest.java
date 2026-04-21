@@ -125,8 +125,8 @@ class PosControllerTest {
 
     private Product createTestProduct(Long id, String name, String sku, BigDecimal price, Integer stock) {
         return new Product(
-            id, name, null, null, null, sku,
-            price, price, stock, "active", null, 5, null, null, null
+            id, name, null, null, null, BigDecimal.ZERO, sku, null,
+            price, price, 10, "active", null, stock, null, null, null
         );
     }
 

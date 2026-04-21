@@ -63,8 +63,8 @@ class ProductsControllerTest {
     @DisplayName("Should successfully delete product in identity-agnostic standard")
     void deleteProduct_success() throws Exception {
         long productId = 123L;
-        Product product = new Product(productId, "Test", null, null, null, "SKU", 
-                BigDecimal.ONE, BigDecimal.ONE, 10, "active", null, 0, 
+        Product product = new Product(productId, "Test", null, null, null, 
+                BigDecimal.ONE, "SKU", null, BigDecimal.ONE, BigDecimal.ONE, 10, "active", null, 0, 
                 LocalDateTime.now(), LocalDateTime.now(), null);
 
         doNothing().when(productService).deleteProduct(productId);

@@ -29,6 +29,9 @@ class ProductMapperTest {
         lenient().when(resultSet.getString("description")).thenReturn("A widget that is cool");
         lenient().when(resultSet.getLong("category_id")).thenReturn(5L);
         lenient().when(resultSet.getString("category_name")).thenReturn("Electronics");
+        lenient().when(resultSet.getString("sku")).thenReturn("SKU-123");
+        lenient().when(resultSet.getBigDecimal("mrp")).thenReturn(java.math.BigDecimal.TEN);
+        lenient().when(resultSet.getBigDecimal("cost_price")).thenReturn(java.math.BigDecimal.ONE);
         lenient().when(resultSet.getString("status")).thenReturn("active");
         lenient().when(resultSet.getInt("stock")).thenReturn(100);
         lenient().when(resultSet.wasNull()).thenReturn(false);
@@ -50,6 +53,8 @@ class ProductMapperTest {
         lenient().when(resultSet.getString("name")).thenReturn("Product X");
         lenient().when(resultSet.getString(anyString())).thenAnswer(invocation -> {
             String col = invocation.getArgument(0);
+            if (col.equals("name")) return "Product X";
+            if (col.equals("sku")) return "SKU-456";
             if (col.equals("category_name")) throw new SQLException("Column not found");
             return null;
         });

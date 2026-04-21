@@ -203,8 +203,8 @@ class TransactionRollbackIntegrationTest {
     private static long seedProductWithStock(int qty) {
         long catId = categoryRepository.insertCategory("RBCat-" + UUID.randomUUID(), null).id();
         long productId = productRepository.insertProduct(new Product(
-            null, "RBProd-" + UUID.randomUUID(), "desc", catId, null,
-            "RBSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 5, "active", null, 0, null, null, null
+            null, "RBProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO,
+            "RBSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 5, "active", null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

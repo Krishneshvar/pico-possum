@@ -33,6 +33,7 @@ class ProductServiceTest {
     @Mock private TransactionManager transactionManager;
     @Mock private SettingsStore settingsStore;
     @Mock private FileStorageService storageService;
+    @Mock private com.picopossum.infrastructure.serialization.JsonService jsonService;
 
     private ProductService productService;
 
@@ -40,7 +41,7 @@ class ProductServiceTest {
     void setUp() {
         ProductValidator validator = new ProductValidator();
         productService = new ProductService(productRepository, inventoryRepository, auditRepository, 
-                transactionManager, settingsStore, validator, storageService);
+                transactionManager, settingsStore, validator, storageService, jsonService);
         
         lenient().when(transactionManager.runInTransaction(any(Supplier.class))).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(0);
@@ -53,7 +54,8 @@ class ProductServiceTest {
     void createProduct_success() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 "iPhone", "Apple phone", 1L, "SKU1",
-                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 5
+                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 5,
+                BigDecimal.ZERO, "BAR1"
         );
 
         when(productRepository.existsBySku("SKU1")).thenReturn(false);
@@ -71,7 +73,8 @@ class ProductServiceTest {
     void createProduct_duplicateSku_fail() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 "iPhone", "Apple phone", 1L, "DUPE",
-                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 0
+                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 0,
+                BigDecimal.ZERO, "BAR2"
         );
 
         when(productRepository.existsBySku("DUPE")).thenReturn(true);
@@ -82,7 +85,7 @@ class ProductServiceTest {
     @Test
     @DisplayName("Should fetch product successfully")
     void getProductById_success() {
-        Product p = new Product(1L, "Widget", "Desc", 1L, null, "SKU1", 
+        Product p = new Product(1L, "Widget", "Desc", 1L, null, BigDecimal.ZERO, "SKU1", null, 
                 new BigDecimal("10"), new BigDecimal("5"), 0, "active", null, 10, null, null, null);
         
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
@@ -96,7 +99,7 @@ class ProductServiceTest {
     @Test
     @DisplayName("Should delete product and perform final stock cleanup")
     void deleteProduct_success() {
-        Product p = new Product(1L, "Delete Me", "desc", 1L, null, "OLD", 
+        Product p = new Product(1L, "Delete Me", "desc", 1L, null, BigDecimal.ZERO, "OLD", null, 
                 new BigDecimal("10"), new BigDecimal("5"), 0, "active", "/path/image.jpg", 10, null, null, null);
         
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));

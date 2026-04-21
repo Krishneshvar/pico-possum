@@ -100,8 +100,8 @@ class InventoryControllerTest {
 
     private Product createTestProduct(Long id, String name, int stock) {
         return new Product(
-            id, name, null, null, null, "SKU" + id,
-            new BigDecimal("10.00"), new BigDecimal("12.00"), stock, "active", null, 5, null, null, null
+            id, name, null, null, null, BigDecimal.ZERO, "SKU" + id, null,
+            new BigDecimal("10.00"), new BigDecimal("12.00"), 5, "active", null, stock, null, null, null
         );
     }
 }

@@ -187,8 +187,8 @@ class DayEndReconciliationIntegrationTest {
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("DayCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
-            null, "DayProd-" + UUID.randomUUID(), "desc", catId, null, "DSKU-" + UUID.randomUUID(),
-            new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 5, null, null, null
+            null, "DayProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "DSKU-" + UUID.randomUUID(),
+            null, new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 5, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

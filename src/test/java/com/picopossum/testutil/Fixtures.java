@@ -70,7 +70,7 @@ public final class Fixtures {
     // -------------------------------------------------------------------------
 
     public static Product product(long id, String name, String sku, String price) {
-        return new Product(id, name, null, null, null, sku,
+        return new Product(id, name, null, null, null, BigDecimal.ZERO, sku, null,
                 new BigDecimal(price), new BigDecimal(price), 10, "active", 
                 null, 0, LocalDateTime.now(), LocalDateTime.now(), null);
     }

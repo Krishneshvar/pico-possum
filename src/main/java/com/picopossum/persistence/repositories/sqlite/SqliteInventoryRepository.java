@@ -127,7 +127,7 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
                 """
                 SELECT
                   p.id, p.name, p.description, p.category_id, c.name AS category_name,
-                  p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
+                  p.tax_rate, p.sku, p.barcode, p.mrp, p.cost_price, p.stock_alert_cap,
                   p.status, p.image_path, 
                   COALESCE(sc.current_stock, 0) AS stock, 
                   p.created_at, p.updated_at, p.deleted_at

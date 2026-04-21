@@ -120,8 +120,8 @@ class InventoryPerformanceIntegrationTest {
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("PerfCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
-            null, "PerfProd-" + UUID.randomUUID(), "desc", catId, null, "PSKU-" + UUID.randomUUID(),
-            new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 5, null, null, null
+            null, "PerfProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "PSKU-" + UUID.randomUUID(),
+            null, new BigDecimal("100.00"), new BigDecimal("60.00"), 5, "active", null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

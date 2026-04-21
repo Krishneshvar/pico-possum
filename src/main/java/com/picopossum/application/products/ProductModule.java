@@ -24,6 +24,7 @@ public class ProductModule {
 
         ProductValidator validator = new ProductValidator();
         FileStorageService storageService = new FileStorageService(appPaths);
+        com.picopossum.infrastructure.serialization.JsonService jsonService = new com.picopossum.infrastructure.serialization.JsonService();
 
         this.productService = new ProductService(
                 productRepository,
@@ -32,7 +33,8 @@ public class ProductModule {
                 transactionManager,
                 settingsStore,
                 validator,
-                storageService
+                storageService,
+                jsonService
         );
     }
 

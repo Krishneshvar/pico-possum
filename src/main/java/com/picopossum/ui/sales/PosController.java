@@ -561,13 +561,15 @@ public class PosController implements CartCellHandler {
             final Category finalCat = cat;
             if (pId != null) {
                 productService.updateProduct(pId, new ProductService.UpdateProductCommand(
-                    pN, null, finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, "Quick add adjustment"
+                    pN, null, finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, "Quick add adjustment",
+                    null, null
                 ));
                 searchIndex.refresh();
                 pCart = searchIndex.findBySku(productService.getProductById(pId).sku()).orElse(null);
             } else {
                 long newId = productService.createProduct(new ProductService.CreateProductCommand(
-                    pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, "active", null, stock
+                    pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, "active", null, stock,
+                    BigDecimal.ZERO, null
                 ));
                 searchIndex.refresh();
                 pCart = productService.getProductById(newId);

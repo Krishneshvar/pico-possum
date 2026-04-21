@@ -15,6 +15,7 @@ public final class ProductValidator {
     public void validateCreate(ProductService.CreateProductCommand command) {
         validateName(command.name());
         validateSku(command.sku());
+        validateBarcode(command.barcode());
         validatePricing(command.mrp(), command.costPrice());
         
         if (command.stockAlertCap() != null && command.stockAlertCap() < 0) {
@@ -24,11 +25,16 @@ public final class ProductValidator {
         if (command.initialStock() != null && command.initialStock() < 0) {
             throw new ValidationException("Initial stock cannot be negative");
         }
+
+        if (command.taxRate() != null && (command.taxRate().compareTo(java.math.BigDecimal.ZERO) < 0 || command.taxRate().compareTo(new java.math.BigDecimal("100")) > 0)) {
+            throw new ValidationException("Tax rate must be between 0 and 100");
+        }
     }
 
     public void validateUpdate(ProductService.UpdateProductCommand command) {
         if (command.name() != null) validateName(command.name());
         if (command.sku() != null) validateSku(command.sku());
+        if (command.barcode() != null) validateBarcode(command.barcode());
         if (command.mrp() != null || command.costPrice() != null) {
             // If only one is provided, we'd need context of the other, 
             // but at minimum, check what we have.
@@ -42,6 +48,10 @@ public final class ProductValidator {
         
         if (command.stock() != null && command.stock() < 0) {
             throw new ValidationException("Target stock cannot be negative");
+        }
+
+        if (command.taxRate() != null && (command.taxRate().compareTo(java.math.BigDecimal.ZERO) < 0 || command.taxRate().compareTo(new java.math.BigDecimal("100")) > 0)) {
+            throw new ValidationException("Tax rate must be between 0 and 100");
         }
     }
 
@@ -57,6 +67,12 @@ public final class ProductValidator {
     private void validateSku(String sku) {
         if (sku != null && sku.length() > MAX_SKU_LENGTH) {
             throw new ValidationException("SKU cannot exceed " + MAX_SKU_LENGTH + " characters");
+        }
+    }
+
+    private void validateBarcode(String barcode) {
+        if (barcode != null && barcode.length() > 100) {
+            throw new ValidationException("Barcode cannot exceed 100 characters");
         }
     }
 

@@ -147,7 +147,7 @@ class SalesWorkflowIntegrationTest {
 
     private static long seedProductWithStock() {
         long catId = categoryRepository.insertCategory("Cat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, "SKU-" + UUID.randomUUID(), new BigDecimal("100.00"), new BigDecimal("60.00"), 10, "active", null, 50, null, null, null);
+        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "SKU-" + UUID.randomUUID(), null, new BigDecimal("100.00"), new BigDecimal("60.00"), 10, "active", null, 50, null, null, null);
         long productId = productRepository.insertProduct(p);
         seedInventory(productId, 50);
         return productId;

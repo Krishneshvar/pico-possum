@@ -31,6 +31,7 @@ public class ProductFormController extends AbstractFormController<Product> {
     @FXML private TextField nameField;
     @FXML private TextArea descriptionField;
     @FXML private TextField skuField;
+    @FXML private TextField taxRateField;
     @FXML private TextField barcodeField;
     @FXML private TextField priceField;
     @FXML private TextField costPriceField;
@@ -109,10 +110,10 @@ public class ProductFormController extends AbstractFormController<Product> {
         nameField.setText(p.name());
         descriptionField.setText(p.description());
         skuField.setText(p.sku());
-        // Handling barcode specifically if it's stored in a way not reflected in basic p.sku()
-        // For now using sku as primary identifier
+        barcodeField.setText(p.barcode() != null ? p.barcode() : "");
         priceField.setText(p.mrp() != null ? p.mrp().toString() : "");
         costPriceField.setText(p.costPrice() != null ? p.costPrice().toString() : "");
+        taxRateField.setText(p.taxRate() != null ? p.taxRate().toString() : "0.00");
         stockAlertField.setText(p.stockAlertCap() != null ? p.stockAlertCap().toString() : "10");
         
         initialStockCount = p.stock() != null ? p.stock() : 0;
@@ -139,6 +140,7 @@ public class ProductFormController extends AbstractFormController<Product> {
             replaceWithLabel(barcodeField);
             replaceWithLabel(priceField);
             replaceWithLabel(costPriceField);
+            replaceWithLabel(taxRateField);
             replaceWithLabel(stockAlertField);
             replaceWithLabel(stockField);
             replaceWithLabel(categoryFilter);
@@ -153,6 +155,7 @@ public class ProductFormController extends AbstractFormController<Product> {
             barcodeField.setEditable(true);
             priceField.setEditable(true);
             costPriceField.setEditable(true);
+            taxRateField.setEditable(true);
             stockAlertField.setEditable(true);
             stockField.setEditable(true);
             categoryFilter.setDisable(false);
@@ -162,6 +165,7 @@ public class ProductFormController extends AbstractFormController<Product> {
 
     @Override
     protected void createEntity() throws Exception {
+        validateInputs();
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 nameField.getText(), descriptionField.getText(),
                 categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
@@ -171,7 +175,9 @@ public class ProductFormController extends AbstractFormController<Product> {
                 Integer.parseInt(stockAlertField.getText().trim()),
                 statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
                 null,
-                Integer.parseInt(stockField.getText().trim())
+                Integer.parseInt(stockField.getText().trim()),
+                new BigDecimal(taxRateField.getText().trim()),
+                barcodeField.getText()
         );
         productService.createProduct(cmd);
         refreshIndex();
@@ -179,6 +185,7 @@ public class ProductFormController extends AbstractFormController<Product> {
 
     @Override
     protected void updateEntity() throws Exception {
+        validateInputs();
         ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
                 nameField.getText(), descriptionField.getText(),
                 categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
@@ -189,7 +196,9 @@ public class ProductFormController extends AbstractFormController<Product> {
                 statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
                 null,
                 Integer.parseInt(stockField.getText().trim()),
-                adjustmentReasonCombo.getValue().toLowerCase()
+                adjustmentReasonCombo.getValue().toLowerCase(),
+                new BigDecimal(taxRateField.getText().trim()),
+                barcodeField.getText()
         );
         productService.updateProduct(entityId, cmd);
         refreshIndex();
@@ -239,7 +248,9 @@ public class ProductFormController extends AbstractFormController<Product> {
             parseSafeInt(stockAlertField.getText()),
             statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
             null,
-            parseSafeInt(stockField.getText())
+            parseSafeInt(stockField.getText()),
+            parseSafeBigDecimal(taxRateField.getText()),
+            barcodeField.getText()
         );
 
         draftService.saveDraft("product_new", "product", cmd, 0L); // 0L as placeholder for single-user
@@ -253,6 +264,23 @@ public class ProductFormController extends AbstractFormController<Product> {
     private Integer parseSafeInt(String val) {
         if (val == null || val.isBlank()) return 0;
         try { return Integer.parseInt(val.trim()); } catch (Exception e) { return 0; }
+    }
+
+    private void validateInputs() {
+        if (nameField.getText() == null || nameField.getText().isBlank()) {
+            throw new RuntimeException("Product name is required");
+        }
+        if (skuField.getText() == null || skuField.getText().isBlank()) {
+            throw new RuntimeException("SKU is required");
+        }
+        try { new BigDecimal(priceField.getText().trim()); } 
+        catch (Exception e) { throw new RuntimeException("Invalid selling price format"); }
+        
+        try { new BigDecimal(costPriceField.getText().trim()); } 
+        catch (Exception e) { throw new RuntimeException("Invalid cost price format"); }
+        
+        try { new BigDecimal(taxRateField.getText().trim()); } 
+        catch (Exception e) { throw new RuntimeException("Invalid tax rate format"); }
     }
 
     private void loadCategories() {

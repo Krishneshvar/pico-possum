@@ -101,6 +101,12 @@
                             </HBox>
                             <TextField fx:id="costPriceField" promptText="0.00" styleClass="text-field"/>
                         </VBox>
+                        <VBox styleClass="form-group" spacing="8" HBox.hgrow="ALWAYS">
+                            <HBox spacing="4" alignment="BOTTOM_LEFT">
+                                <Label text="Tax Rate (%)" styleClass="form-label" labelFor="$taxRateField" style="-fx-font-weight: 600;"/>
+                            </HBox>
+                            <TextField fx:id="taxRateField" promptText="0.00" styleClass="text-field"/>
+                        </VBox>
                     </HBox>
 
                     <HBox spacing="15">

@@ -109,8 +109,8 @@ class PersistenceIntegrationTest {
         } catch (Exception ignored) {}
 
         long categoryId = categoryRepository.insertCategory("Test Cat", null).id();
-        Product product = new Product(null, "Test Prod", null, categoryId, "Cat Name", "SKU123", 
-                new BigDecimal("60.00"), new BigDecimal("40.00"), 0, "active", 
+        Product product = new Product(null, "Test Prod", null, categoryId, "Cat Name", BigDecimal.ZERO, "SKU123", 
+                null, new BigDecimal("60.00"), new BigDecimal("40.00"), 0, "active", 
                 null, 10, null, null, null);
         return productRepository.insertProduct(product);
     }

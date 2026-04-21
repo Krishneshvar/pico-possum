@@ -170,7 +170,7 @@ class ReturnsFlowIntegrationTest {
 
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("ReturnsCat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, "RSKU-" + UUID.randomUUID(), new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "RSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
         long productId = prodRepo.insertProduct(p);
         seedInventory(productId, qty);
         return productId;

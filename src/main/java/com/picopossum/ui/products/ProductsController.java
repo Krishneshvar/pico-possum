@@ -299,7 +299,12 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
                 CsvImportUtil.getValue(row, headers, "Opening Stock", "Current Stock", "Stock"), 0
             );
 
-            return new ProductImportRow(name, sku, categoryName, stockAlert, price, costPrice, initialStock);
+            BigDecimal taxRate = CsvImportUtil.parseDecimal(
+                CsvImportUtil.getValue(row, headers, "Tax Rate", "Tax%"), BigDecimal.ZERO
+            );
+            String barcode = CsvImportUtil.emptyToNull(CsvImportUtil.getValue(row, headers, "Barcode", "EAN"));
+
+            return new ProductImportRow(name, sku, categoryName, stockAlert, price, costPrice, initialStock, taxRate, barcode);
         }
 
         @Override
@@ -316,7 +321,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
                 new ProductService.CreateProductCommand(
                     record.name(), "", categoryId, record.sku(),
                     record.price(), record.costPrice(), record.stockAlert(), "active",
-                    null, record.initialStock()
+                    null, record.initialStock(), record.taxRate(), record.barcode()
                 )
             );
             return null;
@@ -353,6 +358,6 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     private record ProductImportRow(
         String name, String sku, String categoryName,
         Integer stockAlert, BigDecimal price, BigDecimal costPrice,
-        Integer initialStock
+        Integer initialStock, BigDecimal taxRate, String barcode
     ) {}
 }

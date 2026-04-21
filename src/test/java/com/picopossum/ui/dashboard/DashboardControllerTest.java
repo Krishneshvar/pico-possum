@@ -117,8 +117,8 @@ class DashboardControllerTest {
 
     private com.picopossum.domain.model.Product createTestProduct(Long id, String name, int stock) {
         return new com.picopossum.domain.model.Product(
-            id, name, "desc", 1L, null, "SKU" + id,
-            new java.math.BigDecimal("10.00"), new java.math.BigDecimal("12.00"), 5, "active", null, stock, null, null, null
+            id, name, "desc", 1L, null, java.math.BigDecimal.ZERO, "SKU" + id,
+            null, new java.math.BigDecimal("10.00"), new java.math.BigDecimal("12.00"), 5, "active", null, stock, null, null, null
         );
     }
 }

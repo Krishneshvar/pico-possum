@@ -26,13 +26,15 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public long insertProduct(Product product) {
         return executeInsert(
                 """
-                INSERT INTO products (name, description, category_id, sku, mrp, cost_price, stock_alert_cap, status, image_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO products (name, description, category_id, tax_rate, sku, barcode, mrp, cost_price, stock_alert_cap, status, image_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 product.name(),
                 product.description(),
                 product.categoryId(),
+                product.taxRate() == null ? BigDecimal.ZERO : product.taxRate(),
                 product.sku(),
+                product.barcode(),
                 product.mrp(),
                 product.costPrice(),
                 product.stockAlertCap() == null ? 10 : product.stockAlertCap(),
@@ -47,7 +49,8 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 """
                 SELECT
                   p.id, p.name, p.description, p.category_id, c.name AS category_name,
-                  p.sku, p.mrp, p.cost_price, p.stock_alert_cap,
+                  p.tax_rate,
+                  p.sku, p.barcode, p.mrp, p.cost_price, p.stock_alert_cap,
                   p.status, p.image_path,
                   COALESCE(sc.current_stock, 0) AS stock,
                   p.created_at, p.updated_at, p.deleted_at
@@ -68,53 +71,25 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
 
     @Override
     public int updateProductById(long productId, Product product) {
-        List<Object> params = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("UPDATE products SET updated_at = CURRENT_TIMESTAMP");
+        UpdateBuilder builder = new UpdateBuilder("products");
+        builder.set("name", product.name())
+               .set("description", product.description())
+               .set("category_id", product.categoryId())
+               .set("tax_rate", product.taxRate())
+               .set("sku", product.sku())
+               .set("barcode", product.barcode())
+               .set("mrp", product.mrp())
+               .set("cost_price", product.costPrice())
+               .set("stock_alert_cap", product.stockAlertCap())
+               .set("status", product.status())
+               .set("image_path", product.imagePath())
+               .where("id = ?", productId);
 
-        if (product.name() != null) {
-            sql.append(", name = ?");
-            params.add(product.name());
-        }
-        if (product.description() != null) {
-            sql.append(", description = ?");
-            params.add(product.description());
-        }
-        if (product.categoryId() != null) {
-            sql.append(", category_id = ?");
-            params.add(product.categoryId());
-        }
-        if (product.sku() != null) {
-            sql.append(", sku = ?");
-            params.add(product.sku());
-        }
-        if (product.mrp() != null) {
-            sql.append(", mrp = ?");
-            params.add(product.mrp());
-        }
-        if (product.costPrice() != null) {
-            sql.append(", cost_price = ?");
-            params.add(product.costPrice());
-        }
-        if (product.stockAlertCap() != null) {
-            sql.append(", stock_alert_cap = ?");
-            params.add(product.stockAlertCap());
-        }
-        if (product.status() != null) {
-            sql.append(", status = ?");
-            params.add(product.status());
-        }
-        if (product.imagePath() != null) {
-            sql.append(", image_path = ?");
-            params.add(product.imagePath());
-        }
-
-        if (params.isEmpty()) {
+        if (!builder.hasFields()) {
             return 0;
         }
 
-        params.add(productId);
-        sql.append(" WHERE id = ?");
-        return executeUpdate(sql.toString(), params.toArray());
+        return executeUpdate(builder.getSql(), builder.getParams());
     }
 
     @Override
@@ -124,60 +99,38 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
 
     @Override
     public PagedResult<Product> findProducts(ProductFilter filter) {
-        List<Object> countParams = new ArrayList<>();
-        List<Object> queryParams = new ArrayList<>();
-        
+        WhereBuilder where = new WhereBuilder()
+                .addNotDeleted("p")
+                .addSearch(filter.searchTerm(), "p.name", "p.sku", "p.barcode");
+
+        if (filter.categories() != null && !filter.categories().isEmpty()) {
+            where.addIn("p.category_id", filter.categories());
+        }
+        if (filter.status() != null && !filter.status().isEmpty()) {
+            where.addIn("p.status", filter.status());
+        }
+        if (filter.minPrice() != null) {
+            where.addCondition("p.mrp >= ?", filter.minPrice());
+        }
+        if (filter.maxPrice() != null) {
+            where.addCondition("p.mrp <= ?", filter.maxPrice());
+        }
+
         String baseSql = """
             SELECT 
                 p.id, p.name, p.description, p.category_id, c.name AS category_name, 
-                p.sku, p.mrp, p.cost_price, 
+                p.tax_rate,
+                p.sku, p.barcode, p.mrp, p.cost_price, 
                 p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
                 COALESCE(sc.current_stock, 0) AS stock
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
-            WHERE p.deleted_at IS NULL
-        """;
+            """ + where.build();
 
-        StringJoiner filterJoiner = new StringJoiner(" AND ");
-        
-        if (filter.searchTerm() != null && !filter.searchTerm().trim().isEmpty()) {
-            filterJoiner.add("(p.name LIKE ? OR p.sku LIKE ?)");
-            String term = "%" + filter.searchTerm().trim() + "%";
-            countParams.add(term); countParams.add(term);
-            queryParams.add(term); queryParams.add(term);
-        }
-        
-        if (filter.categories() != null && !filter.categories().isEmpty()) {
-            filterJoiner.add("p.category_id IN (" + placeholders(filter.categories().size()) + ")");
-            countParams.addAll(filter.categories());
-            queryParams.addAll(filter.categories());
-        }
-        
-        if (filter.status() != null && !filter.status().isEmpty()) {
-            filterJoiner.add("p.status IN (" + placeholders(filter.status().size()) + ")");
-            countParams.addAll(filter.status());
-            queryParams.addAll(filter.status());
-        }
-
-        if (filter.minPrice() != null) {
-            filterJoiner.add("p.mrp >= ?");
-            countParams.add(filter.minPrice());
-            queryParams.add(filter.minPrice());
-        }
-        
-        if (filter.maxPrice() != null) {
-            filterJoiner.add("p.mrp <= ?");
-            countParams.add(filter.maxPrice());
-            queryParams.add(filter.maxPrice());
-        }
-
-        String filterStr = filterJoiner.length() > 0 ? " AND " + filterJoiner.toString() : "";
-        
-        // Stock Status filtering requires wrapping in a subquery or CTE since stock is computed
-        String wrappedSql = "SELECT * FROM (" + baseSql + filterStr + ") AS t";
+        // Wrap for stock filtering
+        String wrappedSql = "SELECT * FROM (" + baseSql + ") AS t";
         StringJoiner stockJoiner = new StringJoiner(" OR ");
-        
         if (filter.stockStatuses() != null && !filter.stockStatuses().isEmpty()) {
             for (String status : filter.stockStatuses()) {
                 switch (status.toLowerCase()) {
@@ -187,11 +140,10 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 }
             }
         }
-        
         String stockFilterMatch = stockJoiner.length() > 0 ? " WHERE " + stockJoiner.toString() : "";
-        String finalCountSql = "SELECT COUNT(*) FROM (" + wrappedSql + stockFilterMatch + ")";
         
-        int total = queryOne(finalCountSql, rs -> rs.getInt(1), countParams.toArray()).orElse(0);
+        String countSql = "SELECT COUNT(*) FROM (" + wrappedSql + stockFilterMatch + ")";
+        int total = queryOne(countSql, rs -> rs.getInt(1), where.getParams().toArray()).orElse(0);
         
         int page = Math.max(1, filter.currentPage() + 1);
         int limit = Math.max(1, filter.itemsPerPage());
@@ -206,6 +158,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         String sortDir = "DESC".equalsIgnoreCase(filter.sortOrder()) ? "DESC" : "ASC";
 
         String finalQuerySql = wrappedSql + stockFilterMatch + " ORDER BY " + sortCol + " " + sortDir + " LIMIT ? OFFSET ?";
+        List<Object> queryParams = new ArrayList<>(where.getParams());
         queryParams.add(limit);
         queryParams.add(offset);
         

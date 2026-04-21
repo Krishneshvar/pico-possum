@@ -148,7 +148,7 @@ class FirstRunIntegrationTest {
         Category cat = categoryRepository.insertCategory("SeedCat-" + UUID.randomUUID(), null);
         long productId = productRepository.insertProduct(new Product(
                 null, "SeedProduct-" + UUID.randomUUID(), "First product", cat.id(),
-                null, "SKU-" + UUID.randomUUID(), BigDecimal.TEN, BigDecimal.ONE, 10, "active", null, 0, null, null, null
+                null, BigDecimal.ZERO, "SKU-" + UUID.randomUUID(), null, BigDecimal.TEN, BigDecimal.ONE, 10, "active", null, 0, null, null, null
         ));
         assertTrue(productId > 0, "Product ID should be positive");
     }

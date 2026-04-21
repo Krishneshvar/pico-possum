@@ -32,6 +32,7 @@ public class ProductService {
     private final SettingsStore settingsStore;
     private final ProductValidator validator;
     private final FileStorageService storageService;
+    private final com.picopossum.infrastructure.serialization.JsonService jsonService;
 
     public ProductService(ProductRepository productRepository,
                           InventoryRepository inventoryRepository,
@@ -39,7 +40,8 @@ public class ProductService {
                           TransactionManager transactionManager,
                           SettingsStore settingsStore,
                           ProductValidator validator,
-                          FileStorageService storageService) {
+                          FileStorageService storageService,
+                          com.picopossum.infrastructure.serialization.JsonService jsonService) {
         this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
         this.auditRepository = auditRepository;
@@ -47,6 +49,7 @@ public class ProductService {
         this.settingsStore = settingsStore;
         this.validator = validator;
         this.storageService = storageService;
+        this.jsonService = jsonService;
     }
 
     public long createProduct(CreateProductCommand command) {
@@ -67,7 +70,9 @@ public class ProductService {
                     command.description(),
                     command.categoryId(),
                     null,
+                    command.taxRate() != null ? command.taxRate() : java.math.BigDecimal.ZERO,
                     effectiveSku,
+                    command.barcode(),
                     command.mrp(),
                     command.costPrice(),
                     command.stockAlertCap() != null ? command.stockAlertCap() : 10,
@@ -126,7 +131,9 @@ public class ProductService {
                     command.description() != null ? command.description() : oldProduct.description(),
                     command.categoryId() != null ? command.categoryId() : oldProduct.categoryId(),
                     null,
+                    command.taxRate() != null ? command.taxRate() : oldProduct.taxRate(),
                     command.sku() != null ? command.sku() : oldProduct.sku(),
+                    command.barcode() != null ? command.barcode() : oldProduct.barcode(),
                     command.mrp() != null ? command.mrp() : oldProduct.mrp(),
                     command.costPrice() != null ? command.costPrice() : oldProduct.costPrice(),
                     command.stockAlertCap() != null ? command.stockAlertCap() : oldProduct.stockAlertCap(),
@@ -215,10 +222,18 @@ public class ProductService {
         return productRepository.getNextGeneratedNumericSku();
     }
 
+    public void bulkCreateProducts(java.util.List<CreateProductCommand> commands) {
+        transactionManager.runInTransaction(() -> {
+            for (CreateProductCommand cmd : commands) {
+                createProduct(cmd);
+            }
+            return null;
+        });
+    }
+
     private void logAudit(String action, long rowId, Object oldData, Object newData) {
         try {
-            com.picopossum.infrastructure.serialization.JsonService js = new com.picopossum.infrastructure.serialization.JsonService();
-            auditRepository.log("products", rowId, action, js.toJson(newData));
+            auditRepository.log("products", rowId, action, jsonService.toJson(newData));
         } catch (Exception e) {
             LoggingConfig.getLogger().error("Audit logging failed", e);
         }
@@ -227,10 +242,14 @@ public class ProductService {
     public record CreateProductCommand(String name, String description, Long categoryId, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
                                       Integer stockAlertCap, String status, String imagePath, 
-                                      Integer initialStock) {}
+                                      Integer initialStock, java.math.BigDecimal taxRate,
+                                      String barcode) {
+    }
 
     public record UpdateProductCommand(String name, String description, Long categoryId, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
                                       Integer stockAlertCap, String status, String newImagePath, 
-                                      Integer stock, String stockAdjustmentReason) {}
+                                      Integer stock, String stockAdjustmentReason, 
+                                      java.math.BigDecimal taxRate, String barcode) {
+    }
 }
