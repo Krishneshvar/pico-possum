@@ -68,9 +68,9 @@
                 </HBox>
                 <Label text="Thermal receipt preview" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
                 <Separator/>
-                <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-radius: 8;">
+                <ScrollPane fitToWidth="true" fitToHeight="true" styleClass="receipt-preview-container">
                     <VBox style="-fx-alignment: top-center; -fx-padding: 20 0;">
-                        <WebView fx:id="previewWebView" prefHeight="700" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 8, 0, 0, 3);"/>
+                        <WebView fx:id="previewWebView" prefHeight="700"/>
                     </VBox>
                 </ScrollPane>
             </VBox>

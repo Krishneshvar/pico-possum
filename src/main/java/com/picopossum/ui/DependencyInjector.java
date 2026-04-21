@@ -102,6 +102,8 @@ public class DependencyInjector {
         registry.put(com.picopossum.infrastructure.printing.PrinterService.class, serviceLocator::getPrinterService);
         registry.put(com.picopossum.infrastructure.backup.DatabaseBackupService.class, serviceLocator::getDatabaseBackupService);
         registry.put(com.picopossum.infrastructure.filesystem.AppPaths.class, () -> appPaths);
+        registry.put(com.picopossum.infrastructure.filesystem.UploadStore.class, serviceLocator::getUploadStore);
+        registry.put(com.picopossum.infrastructure.system.SystemInteropService.class, serviceLocator::getSystemInteropService);
 
         // UI
         registry.put(NavigationManager.class, () -> navigationManager);

@@ -4,6 +4,7 @@ import com.picopossum.application.sales.dto.SaleResponse;
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
+import com.picopossum.infrastructure.filesystem.UploadStore;
 import com.picopossum.infrastructure.printing.BillRenderer;
 import com.picopossum.shared.dto.BillSection;
 import com.picopossum.shared.dto.BillSettings;
@@ -40,15 +41,20 @@ public class BillSettingsController {
     @FXML private Button saveButton;
 
     private SettingsStore settingsStore;
+    private UploadStore uploadStore;
     private BillSettings billSettings;
     private GeneralSettings generalSettings;
 
-    public BillSettingsController(SettingsStore settingsStore) {
+    public BillSettingsController(SettingsStore settingsStore, UploadStore uploadStore) {
         this.settingsStore = settingsStore;
+        this.uploadStore = uploadStore;
     }
 
     @FXML
     public void initialize() {
+        if (previewWebView != null) {
+            previewWebView.getStyleClass().add("thermal-tape");
+        }
         setupFormatOptions();
         loadSettings();
         buildSectionsUI();
@@ -252,16 +258,13 @@ public class BillSettingsController {
             File selectedFile = fileChooser.showOpenDialog(window);
             if (selectedFile != null) {
                 try {
-                    byte[] fileContent = Files.readAllBytes(selectedFile.toPath());
-                    String encodedString = Base64.getEncoder().encodeToString(fileContent);
-                    String mimeType = Files.probeContentType(selectedFile.toPath());
-                    String dataUri = "data:" + mimeType + ";base64," + encodedString;
-                    
-                    section.setOption("logoUrl", dataUri);
-                    logoUrlField.setText("Image Selected (Base64)");
+                    String filename = uploadStore.saveFile(selectedFile.toPath());
+                    section.setOption("logoUrl", filename);
+                    logoUrlField.setText(filename);
                     updatePreview();
                 } catch (Exception ex) {
-                    NotificationService.error("Failed to load image: " + ex.getMessage());
+                    com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Logo upload failed", ex);
+                    NotificationService.error("Failed to save logo: " + ex.getMessage());
                 }
             }
         });
@@ -277,8 +280,9 @@ public class BillSettingsController {
         controls.getChildren().addAll(logoUrlField, browseButton, clearButton);
         box.getChildren().addAll(label, controls);
         
-        if (!section.getOptionAsString("logoUrl", "").isEmpty()) {
-            logoUrlField.setText("Image Selected (Base64)");
+        String currentLogo = section.getOptionAsString("logoUrl", "");
+        if (!currentLogo.isEmpty()) {
+            logoUrlField.setText(currentLogo.startsWith("data:") ? "Base64 (Old)" : currentLogo);
         }
 
         return box;
@@ -351,10 +355,49 @@ public class BillSettingsController {
     private void updatePreview() {
         Platform.runLater(() -> {
             SaleResponse mockSale = createMockSale();
-            String html = BillRenderer.renderBill(mockSale, generalSettings, billSettings);
+            
+            // Resolve logo URL if it's just a filename
+            BillSettings processedSettings = cloneSettings(billSettings);
+            for (BillSection section : processedSettings.getSections()) {
+                if (section.getId().equals("storeHeader")) {
+                    String logo = section.getOptionAsString("logoUrl", "");
+                    if (!logo.isEmpty() && !logo.startsWith("data:") && !logo.startsWith("http")) {
+                        section.setOption("logoUrl", uploadStore.getFilePath(logo).toUri().toString());
+                    }
+                }
+            }
+
+            String html = BillRenderer.renderBill(mockSale, generalSettings, processedSettings);
             WebEngine engine = previewWebView.getEngine();
             engine.loadContent(html);
         });
+    }
+
+    private BillSettings cloneSettings(BillSettings original) {
+        // Deep clone for processing without affecting original state
+        try {
+            // Simplest way to clone a complex DTO is often serializing it back and forth
+            // but here we just manually clone sections as it's small
+            BillSettings clone = new BillSettings();
+            clone.setPaperWidth(original.getPaperWidth());
+            clone.setDateFormat(original.getDateFormat());
+            clone.setTimeFormat(original.getTimeFormat());
+            clone.setCurrency(original.getCurrency());
+            
+            List<BillSection> sectionsClone = new ArrayList<>();
+            for (BillSection s : original.getSections()) {
+                BillSection sc = new BillSection();
+                sc.setId(s.getId());
+                sc.setType(s.getType());
+                sc.setVisible(s.isVisible());
+                sc.setOptions(new java.util.HashMap<>(s.getOptions()));
+                sectionsClone.add(sc);
+            }
+            clone.setSections(sectionsClone);
+            return clone;
+        } catch (Exception e) {
+            return original;
+        }
     }
 
     private SaleResponse createMockSale() {

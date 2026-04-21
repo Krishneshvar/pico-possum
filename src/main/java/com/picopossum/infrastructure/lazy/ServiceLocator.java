@@ -10,6 +10,7 @@ import com.picopossum.infrastructure.monitoring.PerformanceMonitor;
 import com.picopossum.infrastructure.monitoring.PerformanceMonitor;
 import com.picopossum.persistence.db.DatabaseManager;
 import com.picopossum.persistence.db.TransactionManager;
+import com.picopossum.infrastructure.system.SystemInteropService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,7 @@ public class ServiceLocator {
     private final LazyService<DatabaseBackupService> databaseBackupService;
     private final LazyService<PerformanceMonitor> performanceMonitor;
     private final LazyService<com.picopossum.application.drafts.DraftService> draftService;
+    private final LazyService<SystemInteropService> systemInteropService;
     
     public ServiceLocator(DatabaseManager databaseManager, TransactionManager transactionManager, AppPaths appPaths) {
         this.databaseManager = databaseManager;
@@ -66,6 +68,11 @@ public class ServiceLocator {
             LOGGER.debug("Initializing DraftService");
             return new com.picopossum.application.drafts.DraftService(databaseManager, jsonService.get());
         });
+        
+        this.systemInteropService = new LazyService<>(() -> {
+            LOGGER.debug("Initializing SystemInteropService");
+            return new SystemInteropService();
+        });
     }
     
     public JsonService getJsonService() {
@@ -102,5 +109,9 @@ public class ServiceLocator {
     
     public TransactionManager getTransactionManager() {
         return transactionManager;
+    }
+
+    public SystemInteropService getSystemInteropService() {
+        return systemInteropService.get();
     }
 }

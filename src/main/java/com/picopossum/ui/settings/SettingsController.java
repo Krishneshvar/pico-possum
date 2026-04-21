@@ -2,9 +2,11 @@ package com.picopossum.ui.settings;
 
 import com.picopossum.infrastructure.backup.DatabaseBackupService;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
+import com.picopossum.infrastructure.filesystem.UploadStore;
 import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.infrastructure.printing.PrintOutcome;
 import com.picopossum.infrastructure.printing.PrinterService;
+import com.picopossum.infrastructure.system.SystemInteropService;
 import com.picopossum.shared.dto.GeneralSettings;
 import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.common.dialogs.DialogStyler;
@@ -52,14 +54,19 @@ public class SettingsController {
     private SettingsStore settingsStore;
     private PrinterService printerService;
     private DatabaseBackupService backupService;
+    private SystemInteropService systemInteropService;
+    private UploadStore uploadStore;
     private GeneralSettings generalSettings;
     private boolean syncingPrinterSelection = false;
 
     public SettingsController(SettingsStore settingsStore, PrinterService printerService, 
-                              DatabaseBackupService backupService) {
+                              DatabaseBackupService backupService, SystemInteropService systemInteropService,
+                              UploadStore uploadStore) {
         this.settingsStore = settingsStore;
         this.printerService = printerService;
         this.backupService = backupService;
+        this.systemInteropService = systemInteropService;
+        this.uploadStore = uploadStore;
     }
 
     @FXML
@@ -115,42 +122,61 @@ public class SettingsController {
     }
 
     private void loadPrinters() {
-        List<String> printers = printerService.listPrinters();
-        printerCombo.setItems(FXCollections.observableArrayList(printers));
-        syncingPrinterSelection = true;
-        try {
-            if (printers.isEmpty()) {
-                printerCombo.setValue(null);
-                testPrintBtn.setDisable(true);
-                printerCombo.setPromptText("No printers found");
-                return;
+        testPrintBtn.setDisable(true);
+        printerCombo.setPromptText("Scanning printers...");
+        
+        Task<List<String>> scanTask = new Task<>() {
+            @Override
+            protected List<String> call() {
+                return printerService.listPrinters();
             }
+        };
 
-            String savedPrinter = generalSettings != null ? generalSettings.getDefaultPrinterName() : null;
-            if (savedPrinter != null && !savedPrinter.isBlank()) {
-                if (printers.contains(savedPrinter)) {
-                    printerCombo.setValue(savedPrinter);
-                    printerCombo.setPromptText("Select a printer");
-                    testPrintBtn.setDisable(false);
-                } else {
+        scanTask.setOnSucceeded(event -> {
+            List<String> printers = scanTask.getValue();
+            printerCombo.setItems(FXCollections.observableArrayList(printers));
+            syncingPrinterSelection = true;
+            try {
+                if (printers.isEmpty()) {
                     printerCombo.setValue(null);
-                    printerCombo.setPromptText("Saved printer unavailable - reselect");
-                    testPrintBtn.setDisable(true);
+                    printerCombo.setPromptText("No printers found");
+                    return;
                 }
-                return;
-            }
 
-            String defaultPrinter = printerService.getDefaultPrinterName();
-            if (defaultPrinter != null && printers.contains(defaultPrinter)) {
-                printerCombo.setValue(defaultPrinter);
-            } else {
-                printerCombo.setValue(printers.get(0));
+                String savedPrinter = generalSettings != null ? generalSettings.getDefaultPrinterName() : null;
+                if (savedPrinter != null && !savedPrinter.isBlank()) {
+                    if (printers.contains(savedPrinter)) {
+                        printerCombo.setValue(savedPrinter);
+                        printerCombo.setPromptText("Select a printer");
+                        testPrintBtn.setDisable(false);
+                    } else {
+                        printerCombo.setValue(null);
+                        printerCombo.setPromptText("Saved printer unavailable - reselect");
+                    }
+                    return;
+                }
+
+                String defaultPrinter = printerService.getDefaultPrinterName();
+                if (defaultPrinter != null && printers.contains(defaultPrinter)) {
+                    printerCombo.setValue(defaultPrinter);
+                } else {
+                    printerCombo.setValue(printers.get(0));
+                }
+                printerCombo.setPromptText("Select a printer");
+                testPrintBtn.setDisable(false);
+            } finally {
+                syncingPrinterSelection = false;
             }
-            printerCombo.setPromptText("Select a printer");
-            testPrintBtn.setDisable(false);
-        } finally {
-            syncingPrinterSelection = false;
-        }
+        });
+
+        scanTask.setOnFailed(event -> {
+            printerCombo.setPromptText("Failed to load printers");
+            LoggingConfig.getLogger().error("Printer scan failed", scanTask.getException());
+        });
+
+        Thread thread = new Thread(scanTask, "printer-scan-task");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private void configurePrinterSelectionPersistence() {
@@ -248,7 +274,7 @@ public class SettingsController {
     private void setupBillSettings() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings/bill-settings-view.fxml"));
-            BillSettingsController controller = new BillSettingsController(settingsStore);
+            BillSettingsController controller = new BillSettingsController(settingsStore, uploadStore);
             loader.setController(controller);
             Parent billSettingsView = loader.load();
             
@@ -313,120 +339,31 @@ public class SettingsController {
         }
 
         Path backupDir = backupService.getBackupsDirectory();
-
-        Task<Void> openTask = new Task<>() {
+        
+        Task<Boolean> openTask = new Task<>() {
             @Override
-            protected Void call() {
-                try {
-                    if (openFolderInFileManager(backupDir)) {
-                        return null;
-                    } else {
-                        Platform.runLater(() ->
-                                NotificationService.info("Backup folder: " + backupDir)
-                        );
-                    }
-                } catch (Exception ex) {
-                    Platform.runLater(() ->
-                            NotificationService.error("Failed to open backup folder: " + buildErrorMessage(ex))
-                    );
-                }
-                return null;
+            protected Boolean call() {
+                return systemInteropService.openFolder(backupDir);
             }
         };
 
         openTask.setOnRunning(event -> setBackupActionsDisabled(true));
-        openTask.setOnSucceeded(event -> setBackupActionsDisabled(false));
-        openTask.setOnFailed(event -> setBackupActionsDisabled(false));
+        openTask.setOnSucceeded(event -> {
+            setBackupActionsDisabled(false);
+            if (!openTask.getValue()) {
+                NotificationService.info("Backup folder location: " + backupDir);
+            }
+        });
+        openTask.setOnFailed(event -> {
+            setBackupActionsDisabled(false);
+            NotificationService.error("Failed to open backup folder");
+        });
 
-        Thread thread = new Thread(openTask, "open-backup-folder-task");
+        Thread thread = new Thread(openTask, "open-folder-task");
         thread.setDaemon(true);
         thread.start();
     }
 
-    private boolean openFolderInFileManager(Path folder) {
-        try {
-            if (folder == null || !Files.exists(folder)) {
-                return false;
-            }
-
-            folder = folder.toAbsolutePath().normalize();
-            String os = System.getProperty("os.name", "unknown").toLowerCase(Locale.ROOT);
-
-            // 1. Try standard Java AWT Desktop OPEN action first
-            if (Desktop.isDesktopSupported()) {
-                Desktop desktop = Desktop.getDesktop();
-                if (desktop.isSupported(Desktop.Action.OPEN)) {
-                    desktop.open(folder.toFile());
-                    return true;
-                }
-            }
-
-            // 2. OS-specific command fallbacks
-            if (os.contains("win")) {
-                new ProcessBuilder("explorer.exe", folder.toString()).start();
-                return true;
-            } else if (os.contains("mac")) {
-                new ProcessBuilder("open", folder.toString()).start();
-                return true;
-            } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
-                // On Linux, try D-Bus first to talk directly to GUI file managers (Nautilus, Dolphin, etc.)
-                // This often bypasses broken MIME associations that might point to a terminal.
-                if (tryOpenWithDbus(folder)) {
-                    return true;
-                }
-
-                // Try xdg-open with URI (more reliable than raw path on some distros)
-                if (tryOpenWithCommand("xdg-open", folder.toUri().toString())) {
-                    return true;
-                }
-                
-                // Fallback to gio
-                if (tryOpenWithCommand("gio", "open", folder.toUri().toString())) {
-                    return true;
-                }
-            }
-
-            // 3. Final fallback: try browse() which uses the system URI handler
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(folder.toUri());
-                return true;
-            }
-        } catch (Exception ignored) {
-            // Fall back to returning false so handleOpenBackupFolder can show an info notice instead
-        }
-        return false;
-    }
-
-    private boolean tryOpenWithCommand(String... command) {
-        try {
-            new ProcessBuilder(command).start();
-            return true;
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-
-
-    private boolean tryOpenWithDbus(Path folder) {
-        try {
-            // org.freedesktop.FileManager1.ShowItems is implemented by most GUI file managers
-            // It reliably opens the window without relying on user's default MIME application
-            new ProcessBuilder(
-                    "dbus-send",
-                    "--session",
-                    "--dest=org.freedesktop.FileManager1",
-                    "--type=method_call",
-                    "/org/freedesktop/FileManager1",
-                    "org.freedesktop.FileManager1.ShowItems",
-                    "array:string:file://" + folder.toAbsolutePath().toString(),
-                    "string:"
-            ).start();
-            return true;
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
 
     @FXML
     private void handleRestoreFromBackup() {
