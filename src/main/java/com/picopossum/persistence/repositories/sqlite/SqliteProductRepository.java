@@ -78,7 +78,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         UpdateBuilder builder = new UpdateBuilder("products");
         builder.set("name", product.name())
                .set("description", product.description())
-               .set("category_id", product.categoryId())
+               .set("category_id", product.categoryId(), true)
                .set("tax_rate", product.taxRate())
                .set("sku", product.sku())
                .set("barcode", product.barcode())

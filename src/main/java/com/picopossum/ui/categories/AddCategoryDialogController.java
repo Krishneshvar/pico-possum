@@ -73,9 +73,10 @@ public class AddCategoryDialogController implements Parameterizable {
 
     private void loadCategories() {
         List<Category> allCategories = categoryService.getAllCategories();
-        // Remove the current category from the parent possibilities if editing
+        // Remove the current category and its descendants from the parent possibilities if editing
         if (editingCategory != null) {
-            allCategories.removeIf(c -> c.id().equals(editingCategory.id()));
+            java.util.Set<Long> descendants = categoryService.getDescendantIds(editingCategory.id());
+            allCategories.removeIf(c -> c.id().equals(editingCategory.id()) || descendants.contains(c.id()));
         }
         parentCategoryComboBox.setItems(FXCollections.observableArrayList(allCategories));
 

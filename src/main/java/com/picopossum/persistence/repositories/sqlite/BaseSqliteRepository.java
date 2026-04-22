@@ -152,7 +152,11 @@ public abstract class BaseSqliteRepository {
         }
 
         public UpdateBuilder set(String column, Object value) {
-            if (value != null) {
+            return set(column, value, false);
+        }
+
+        public UpdateBuilder set(String column, Object value, boolean forceIncludeIfNull) {
+            if (value != null || forceIncludeIfNull) {
                 validateColumnName(column);
                 sql.append(", ").append(column).append(" = ?");
                 params.add(value);

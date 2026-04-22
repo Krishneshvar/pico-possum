@@ -141,6 +141,13 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
                     handleEdit(category);
                 }
             });
+            
+            private final Button deleteBtn = ButtonFactory.createButton("Delete", "bx-trash", () -> {
+                Category category = getItem();
+                if (category != null) {
+                    handleDelete(category);
+                }
+            });
 
             @Override
             protected void updateItem(Category item, boolean empty) {
@@ -148,7 +155,9 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
                 if (empty || item == null) {
                     setGraphic(null);
                 } else {
-                    setGraphic(editBtn);
+                    javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(8, editBtn, deleteBtn);
+                    deleteBtn.getStyleClass().add("btn-destructive-action");
+                    setGraphic(box);
                 }
             }
         });
@@ -224,7 +233,7 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
 
     @Override
     protected void deleteEntity(Category entity) throws Exception {
-        // Not implemented - categories don't have delete
+        categoryService.deleteCategory(entity.id());
     }
 
     @Override

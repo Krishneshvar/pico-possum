@@ -137,5 +137,25 @@ class CategoryServiceTest {
         Category result = categoryService.getCategoryById(1L);
         assertEquals("Books", result.name());
     }
+
+    @Test
+    @DisplayName("Should prevent circular reference in updates")
+    void updateCategory_circular_fail() {
+        // Build a small chain: 1 -> 2 -> 3
+        Category c1 = new Category(1L, "Root", null, LocalDateTime.now(), null, null);
+        Category c2 = new Category(2L, "Child", 1L, LocalDateTime.now(), null, null);
+        Category c3 = new Category(3L, "Grandchild", 2L, LocalDateTime.now(), null, null);
+
+        when(categoryRepository.findAllCategories()).thenReturn(List.of(c1, c2, c3));
+
+        // Attempt to set 1's parent to 3 (Cycle: 1 -> 2 -> 3 -> 1)
+        assertThrows(ValidationException.class, () -> categoryService.updateCategory(1L, "Root", 3L), "Circular reference detected");
+    }
+
+    @Test
+    @DisplayName("Should prevent category from being its own parent")
+    void updateCategory_selfParent_fail() {
+        assertThrows(ValidationException.class, () -> categoryService.updateCategory(1L, "Self", 1L));
+    }
 }
 

@@ -43,7 +43,7 @@ public final class SqliteCategoryRepository extends BaseSqliteRepository impleme
             builder.set("name", name);
         }
         if (parentIdProvided) {
-            builder.set("parent_id", parentId);
+            builder.set("parent_id", parentId, true);
         }
         
         if (!builder.hasFields()) {

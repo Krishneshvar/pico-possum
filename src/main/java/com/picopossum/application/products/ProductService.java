@@ -151,7 +151,7 @@ public class ProductService {
                     productId,
                     command.name() != null ? command.name() : oldProduct.name(),
                     command.description() != null ? command.description() : oldProduct.description(),
-                    command.categoryId() != null ? command.categoryId() : oldProduct.categoryId(),
+                    command.categoryIdProvided() ? command.categoryId() : oldProduct.categoryId(),
                     null,
                     command.taxRate() != null ? command.taxRate() : oldProduct.taxRate(),
                     command.sku() != null ? command.sku() : oldProduct.sku(),
@@ -266,10 +266,18 @@ public class ProductService {
                                       String barcode) {
     }
 
-    public record UpdateProductCommand(String name, String description, Long categoryId, String sku, 
+    public record UpdateProductCommand(String name, String description, Long categoryId, boolean categoryIdProvided, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
                                       Integer stockAlertCap, com.picopossum.domain.model.ProductStatus status, String newImagePath, 
                                       Integer stock, String stockAdjustmentReason, 
                                       java.math.BigDecimal taxRate, String barcode) {
+        // Compatibility constructor for when we don't care about the flag (backwards compat)
+        public UpdateProductCommand(String name, String description, Long categoryId, String sku, 
+                                   java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
+                                   Integer stockAlertCap, com.picopossum.domain.model.ProductStatus status, String newImagePath, 
+                                   Integer stock, String stockAdjustmentReason, 
+                                   java.math.BigDecimal taxRate, String barcode) {
+            this(name, description, categoryId, categoryId != null, sku, mrp, costPrice, stockAlertCap, status, newImagePath, stock, stockAdjustmentReason, taxRate, barcode);
+        }
     }
 }
