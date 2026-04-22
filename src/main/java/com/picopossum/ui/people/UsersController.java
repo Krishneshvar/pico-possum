@@ -10,6 +10,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import com.picopossum.infrastructure.system.AppExecutor;
 
 import java.util.List;
 import java.util.Map;
@@ -21,8 +22,8 @@ public class UsersController extends AbstractCrudController<User, UserFilter> {
     private final UserService userService;
     private List<Boolean> currentActiveStatuses = null;
 
-    public UsersController(UserService userService, WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+    public UsersController(UserService userService, WorkspaceManager workspaceManager, AppExecutor executor) {
+        super(workspaceManager, executor);
         this.userService = userService;
     }
 

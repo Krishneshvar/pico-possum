@@ -134,7 +134,7 @@ public class SqlitePosDraftRepository extends BaseSqliteRepository {
                 CartItem item = new CartItem(p, ri.quantity);
                 item.setPricePerUnit(ri.pricePerUnit);
                 item.setDiscountValue(ri.discountValue);
-                item.setDiscountType(ri.discountType);
+                item.setDiscountType(DiscountType.fromString(ri.discountType));
                 draft.addItem(item);
             });
         }

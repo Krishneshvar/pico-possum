@@ -13,6 +13,7 @@ import com.picopossum.domain.repositories.*;
 import com.picopossum.domain.services.SaleCalculator;
 import com.picopossum.persistence.db.TransactionManager;
 
+import com.picopossum.domain.model.DiscountType;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -74,7 +75,7 @@ public class CheckoutService {
             }
             CartItem cartItem = new CartItem(p, itemReq.quantity());
             cartItem.setPricePerUnit(itemReq.pricePerUnit() != null ? itemReq.pricePerUnit() : p.mrp());
-            cartItem.setDiscountType("fixed");
+            cartItem.setDiscountType(DiscountType.FIXED);
             cartItem.setDiscountValue(itemReq.discount() != null ? itemReq.discount() : BigDecimal.ZERO);
             
             draft.addItem(cartItem);

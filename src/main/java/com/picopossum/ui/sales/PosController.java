@@ -6,8 +6,8 @@ import com.picopossum.application.sales.SalesService;
 import com.picopossum.domain.model.*;
 import com.picopossum.domain.services.SaleCalculator;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
-import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.infrastructure.printing.PrinterService;
+import com.picopossum.infrastructure.system.AppExecutor;
 import com.picopossum.persistence.repositories.sqlite.SqlitePosDraftRepository;
 import com.picopossum.ui.common.ErrorHandler;
 import com.picopossum.ui.common.controls.DataTableView;
@@ -21,12 +21,16 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.input.KeyCode;
+import com.picopossum.ui.common.lifecycle.Disposable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.picopossum.shared.util.CurrencyUtil;
 import java.math.BigDecimal;
 import java.util.*;
 
-public class PosController implements CartCellHandler {
+public class PosController implements CartCellHandler, Disposable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PosController.class);
 
     @FXML private VBox leftVBox;
     @FXML private VBox cartCardVBox;
@@ -74,6 +78,7 @@ public class PosController implements CartCellHandler {
     private final CategoryService          categoryService;
     private final SaleCalculator           saleCalculator;
     private final SqlitePosDraftRepository posDraftRepository;
+    private final AppExecutor              executor;
 
     private static final int MAX_BILLS = 9;
     private final List<SaleDraft> bills = new ArrayList<>();
@@ -89,7 +94,8 @@ public class PosController implements CartCellHandler {
                          PrinterService printerService, SettingsStore settingsStore,
                          ProductService productService, CategoryService categoryService,
                          SaleCalculator saleCalculator,
-                         SqlitePosDraftRepository posDraftRepository) {
+                         SqlitePosDraftRepository posDraftRepository,
+                         AppExecutor executor) {
         this.salesService     = salesService;
         this.customerService  = customerService;
         this.searchIndex      = searchIndex;
@@ -99,6 +105,7 @@ public class PosController implements CartCellHandler {
         this.categoryService  = categoryService;
         this.saleCalculator   = saleCalculator;
         this.posDraftRepository = posDraftRepository;
+        this.executor        = executor;
     }
 
     @FXML
@@ -113,7 +120,7 @@ public class PosController implements CartCellHandler {
                 d = posDraftRepository.loadBill(i)
                         .orElseGet(() -> { SaleDraft newD = new SaleDraft(); newD.setIndex(idx); return newD; });
             } catch (Exception ex) {
-                com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load bill draft at index " + i, ex);
+                LOGGER.error("Failed to load bill draft at index " + i, ex);
                 d = new SaleDraft();
                 d.setIndex(idx);
             }
@@ -142,7 +149,7 @@ public class PosController implements CartCellHandler {
 
         completionHandler = new SaleCompletionHandler(
                 salesService, customerService, printerService, settingsStore,
-                rootPane, () -> { handleClearCart(); loadCombos(); });
+                executor, rootPane, () -> { handleClearCart(); loadCombos(); });
 
             setupKeyboardShortcuts();
             updatePaymentSectionState();
@@ -558,14 +565,14 @@ public class PosController implements CartCellHandler {
             final Category finalCat = cat;
             if (pId != null) {
                 productService.updateProduct(pId, new ProductService.UpdateProductCommand(
-                    pN, null, finalCat.id(), null, price, costPrice, alertCap, "active", null, stock, "Quick add adjustment",
+                    pN, null, finalCat.id(), null, price, costPrice, alertCap, ProductStatus.ACTIVE, null, stock, "Quick add adjustment",
                     null, null
                 ));
                 searchIndex.refresh();
                 pCart = searchIndex.findBySku(productService.getProductById(pId).sku()).orElse(null);
             } else {
                 long newId = productService.createProduct(new ProductService.CreateProductCommand(
-                    pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, "active", null, stock,
+                    pN, "Quick added from POS", finalCat.id(), null, price, costPrice, alertCap, ProductStatus.ACTIVE, null, stock,
                     BigDecimal.ZERO, null
                 ));
                 searchIndex.refresh();
@@ -582,7 +589,7 @@ public class PosController implements CartCellHandler {
         } catch (NumberFormatException e) { 
             NotificationService.error("Please enter valid numeric values for prices/stock."); 
         } catch (Exception e) { 
-            LoggingConfig.getLogger().error("Quick add failed", e); 
+            LOGGER.error("Quick add failed", e); 
             NotificationService.error("Quick add failed: " + ErrorHandler.toUserMessage(e)); 
         }
     }
@@ -737,5 +744,17 @@ public class PosController implements CartCellHandler {
     public boolean isInventoryRestrictionsEnabled() {
         try { return settingsStore.loadGeneralSettings().isInventoryAlertsAndRestrictionsEnabled(); }
         catch (Exception ex) { return true; }
+    }
+
+    @Override
+    public void dispose() {
+        LOGGER.debug("Disposing PosController resources...");
+        if (autocomplete != null) {
+            // Add autocomplete cleanup if needed
+        }
+        // Save final draft state if not empty
+        if (currentBill != null && !currentBill.getItems().isEmpty()) {
+            saveCurrentDraft();
+        }
     }
 }

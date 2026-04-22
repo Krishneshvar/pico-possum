@@ -1,5 +1,7 @@
 package com.picopossum.ui.common.controllers;
-
+ 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.common.validation.FormValidator;
 import com.picopossum.ui.navigation.Parameterizable;
@@ -26,6 +28,7 @@ public abstract class AbstractFormController<T> implements Parameterizable {
 
     protected final WorkspaceManager workspaceManager;
     protected final FormValidator formValidator = new FormValidator();
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractFormController.class);
     
     protected Long entityId = null;
     protected FormMode mode = FormMode.CREATE;
@@ -266,7 +269,7 @@ public abstract class AbstractFormController<T> implements Parameterizable {
             
             closeForm();
         } catch (Exception e) {
-            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to save " + getEntityDisplayName(), e);
+            LOGGER.error("Failed to save " + getEntityDisplayName(), e);
             NotificationService.error("Failed to save " + getEntityDisplayName() + ": " + com.picopossum.ui.common.ErrorHandler.toUserMessage(e)); 
             
             if (saveButton != null) {

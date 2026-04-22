@@ -9,6 +9,8 @@ import com.picopossum.shared.dto.ProductFilter;
 import com.picopossum.ui.common.controllers.AbstractCrudController;
 import com.picopossum.ui.common.controllers.AbstractImportController;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
+import com.picopossum.domain.model.ProductStatus;
 import com.picopossum.shared.util.CsvImportUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
@@ -38,8 +40,9 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     public ProductsController(ProductService productService,
                               CategoryService categoryService,
-                              WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+                              WorkspaceManager workspaceManager,
+                              AppExecutor executor) {
+        super(workspaceManager, executor);
         this.productService = productService;
         this.categoryService = categoryService;
         this.importHandler = new ImportHandler();
@@ -113,7 +116,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
         TableColumn<Product, String> statusCol = new TableColumn<>("Status");
         statusCol.setSortable(false);
-        statusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status()));
+        statusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status().name().toLowerCase()));
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String status, boolean empty) {
@@ -319,7 +322,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             productService.createProduct(
                 new ProductService.CreateProductCommand(
                     record.name(), "", categoryId, record.sku(),
-                    record.price(), record.costPrice(), record.stockAlert(), "active",
+                    record.price(), record.costPrice(), record.stockAlert(), ProductStatus.ACTIVE,
                     null, record.initialStock(), record.taxRate(), record.barcode()
                 )
             );

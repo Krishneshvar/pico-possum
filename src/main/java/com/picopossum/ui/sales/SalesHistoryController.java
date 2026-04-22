@@ -13,6 +13,9 @@ import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.printing.PrinterService;
 import com.picopossum.ui.common.controls.*;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -57,14 +60,18 @@ public class SalesHistoryController {
     private SalesHistoryActionsHandler actionsHandler;
     private LegacySaleImporter importer;
 
+    private final AppExecutor executor;
+ 
     public SalesHistoryController(SalesService salesService, 
                                   SettingsStore settingsStore, 
                                   PrinterService printerService,
-                                  WorkspaceManager workspaceManager) {
+                                  WorkspaceManager workspaceManager,
+                                  AppExecutor executor) {
         this.salesService = salesService;
         this.settingsStore = settingsStore;
         this.printerService = printerService;
         this.workspaceManager = workspaceManager;
+        this.executor = executor;
     }
 
     @FXML
@@ -248,23 +255,21 @@ public class SalesHistoryController {
 
         salesTable.setLoading(true);
         AuthUser currentUser = AuthContext.getCurrentUser();
-        CompletableFuture.runAsync(() -> {
+        executor.execute(() -> {
             AuthContext.setCurrentUser(currentUser);
             try {
                 PagedResult<Sale> results = salesService.findSales(filter);
-
+ 
                 Platform.runLater(() -> {
                     salesList.setAll(results.items());
                     paginationBar.setTotalItems(results.totalCount());
                     salesTable.setLoading(false);
                 });
+            } catch (Exception e) {
+                Platform.runLater(() -> salesTable.setLoading(false));
             } finally {
                 AuthContext.clear();
             }
-        }).exceptionally(ex -> {
-            ex.printStackTrace();
-            Platform.runLater(() -> salesTable.setLoading(false));
-            return null;
         });
     }
 

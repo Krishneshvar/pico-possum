@@ -43,9 +43,9 @@ class TransactionRollbackIntegrationTest {
     private static SalesService salesService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
+    private static AuditService auditService;
     private static SqliteCategoryRepository categoryRepository;
     private static SqliteProductRepository productRepository;
-
     private static long testProductId;
     private static long cashPaymentMethodId;
 
@@ -69,7 +69,7 @@ class TransactionRollbackIntegrationTest {
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
-        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+        auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
@@ -88,9 +88,18 @@ class TransactionRollbackIntegrationTest {
 
     @AfterAll
     static void tearDown() throws IOException {
+        if (auditService != null) {
+            auditService.waitForCompletion();
+            auditService.shutdown();
+        }
         if (databaseManager != null) databaseManager.close();
+
+        // Help Windows release file handles
+        System.gc();
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
-    }
+     }
 
     @Test
     @Order(1)
@@ -207,7 +216,7 @@ class TransactionRollbackIntegrationTest {
         long catId = categoryRepository.insertCategory("RBCat-" + UUID.randomUUID(), null).id();
         long productId = productRepository.insertProduct(new Product(
             null, "RBProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO,
-            "RBSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 5, "active", null, 0, null, null, null
+            "RBSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 5, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

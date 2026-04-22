@@ -1,6 +1,6 @@
 package com.picopossum.persistence.repositories.sqlite;
 
-import com.picopossum.domain.model.Product;
+import com.picopossum.domain.model.*;
 import com.picopossum.domain.repositories.ProductRepository;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ProductFilter;
@@ -27,7 +27,10 @@ class SqliteProductRepositoryTest {
     void setUp() throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite::memory:");
         createSchema();
-        repository = new SqliteProductRepository(() -> connection);
+        repository = new SqliteProductRepository(new com.picopossum.persistence.db.ConnectionProvider() {
+            @Override public Connection getConnection() { return connection; }
+            @Override public boolean isBound(Connection conn) { return true; }
+        });
     }
 
     @AfterEach
@@ -44,7 +47,6 @@ class SqliteProductRepositoryTest {
                 name TEXT NOT NULL,
                 description TEXT,
                 category_id INTEGER,
-                category_name TEXT,
                 tax_rate REAL,
                 sku TEXT,
                 barcode TEXT,
@@ -53,7 +55,6 @@ class SqliteProductRepositoryTest {
                 stock_alert_cap INTEGER DEFAULT 10,
                 status TEXT DEFAULT 'active',
                 image_path TEXT,
-                stock INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 deleted_at TEXT
@@ -91,7 +92,7 @@ class SqliteProductRepositoryTest {
 
     @Test
     void existsBySku_returnsCorrectResult() {
-        repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "DUPE", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "DUPE", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
         
         assertTrue(repository.existsBySku("DUPE"));
         assertTrue(repository.existsBySkuExcludeId("DUPE", 999L));
@@ -103,17 +104,17 @@ class SqliteProductRepositoryTest {
     void insert_withInvalidData_throwsException() {
         // Enforced by the record constructor validation
         assertThrows(IllegalArgumentException.class, () -> 
-            new Product(null, "", null, null, null, BigDecimal.ZERO, "SKU1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null)
+            new Product(null, "", null, null, null, BigDecimal.ZERO, "SKU1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null)
         );
         
         assertThrows(IllegalArgumentException.class, () -> 
-            new Product(null, "Name", null, null, null, BigDecimal.valueOf(-1), "SKU1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null)
+            new Product(null, "Name", null, null, null, BigDecimal.valueOf(-1), "SKU1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null)
         );
     }
 
     @Test
     void insert_validProduct_insertsSuccessfully() {
-        Product product = new Product(null, "Test Product", "Description", null, null, BigDecimal.ZERO, "SKU1", null, new java.math.BigDecimal("100"), new java.math.BigDecimal("80"), 10, "active", null, 0, null, null, null);
+        Product product = new Product(null, "Test Product", "Description", null, null, BigDecimal.ZERO, "SKU1", null, new java.math.BigDecimal("100"), new java.math.BigDecimal("80"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
 
         long id = repository.insertProduct(product);
 
@@ -122,7 +123,7 @@ class SqliteProductRepositoryTest {
 
     @Test
     void findById_found_returnsProduct() {
-        Product product = new Product(null, "Find Me", "Description", null, null, BigDecimal.ZERO, "SKU1", null, new java.math.BigDecimal("100"), new java.math.BigDecimal("80"), 10, "active", null, 0, null, null, null);
+        Product product = new Product(null, "Find Me", "Description", null, null, BigDecimal.ZERO, "SKU1", null, new java.math.BigDecimal("100"), new java.math.BigDecimal("80"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
         long id = repository.insertProduct(product);
 
         Optional<Product> result = repository.findProductById(id);
@@ -134,9 +135,9 @@ class SqliteProductRepositoryTest {
 
     @Test
     void findAll_withPagination_returnsPagedResult() {
-        repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
-        repository.insertProduct(new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
-        repository.insertProduct(new Product(null, "P3", null, null, null, BigDecimal.ZERO, "S3", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P3", null, null, null, BigDecimal.ZERO, "S3", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
 
         ProductFilter filter = new ProductFilter(null, null, null, 0, 2, "name", "ASC");
         PagedResult<Product> result = repository.findProducts(filter);
@@ -147,22 +148,22 @@ class SqliteProductRepositoryTest {
 
     @Test
     void update_validChanges_updatesSuccessfully() {
-        Product product = new Product(null, "Original", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null);
+        Product product = new Product(null, "Original", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
         long id = repository.insertProduct(product);
 
-        Product updated = new Product(id, "Updated", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("12"), new java.math.BigDecimal("6"), 15, "inactive", null, 0, null, null, null);
+        Product updated = new Product(id, "Updated", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("12"), new java.math.BigDecimal("6"), 15, ProductStatus.INACTIVE, null, 0, null, null, null);
         int changes = repository.updateProductById(id, updated);
 
         assertTrue(changes > 0);
         Optional<Product> found = repository.findProductById(id);
         assertTrue(found.isPresent());
         assertEquals("Updated", found.get().name());
-        assertEquals("inactive", found.get().status());
+        assertEquals(ProductStatus.INACTIVE, found.get().status());
     }
 
     @Test
     void softDelete_successful() {
-        Product product = new Product(null, "Delete Me", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null);
+        Product product = new Product(null, "Delete Me", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
         long id = repository.insertProduct(product);
 
         int changes = repository.softDeleteProduct(id);
@@ -173,9 +174,9 @@ class SqliteProductRepositoryTest {
 
     @Test
     void getProductStats_returnsStatistics() {
-        repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
-        repository.insertProduct(new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "active", null, 0, null, null, null));
-        repository.insertProduct(new Product(null, "P3", null, null, null, BigDecimal.ZERO, "S3", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, "inactive", null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
+        repository.insertProduct(new Product(null, "P3", null, null, null, BigDecimal.ZERO, "S3", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.INACTIVE, null, 0, null, null, null));
 
         Map<String, Object> stats = repository.getProductStats();
 

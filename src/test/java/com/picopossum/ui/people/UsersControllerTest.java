@@ -33,6 +33,7 @@ class UsersControllerTest {
     @Mock private DataTableView<User> dataTable;
     @Mock private TableView<User> tableView;
     @Mock private Button addButton;
+    @Mock private com.picopossum.infrastructure.system.AppExecutor executor;
 
     private UsersController controller;
 
@@ -49,7 +50,12 @@ class UsersControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        controller = new UsersController(userService, workspaceManager);
+        lenient().doAnswer(inv -> {
+            ((Runnable)inv.getArgument(0)).run();
+            return null;
+        }).when(executor).execute(any());
+
+        controller = new UsersController(userService, workspaceManager, executor);
 
         // Inject mocks into controller using reflection
         injectField("filterBar", filterBar);

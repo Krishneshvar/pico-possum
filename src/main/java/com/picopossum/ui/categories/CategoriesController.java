@@ -7,6 +7,7 @@ import com.picopossum.ui.common.controllers.AbstractCrudController;
 import com.picopossum.ui.common.controllers.AbstractImportController;
 import com.picopossum.ui.common.components.ButtonFactory;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
 import com.picopossum.shared.util.CsvImportUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -43,9 +44,9 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
 
     private final CategoryService categoryService;
     private final ImportHandler importHandler;
-
-    public CategoriesController(CategoryService categoryService, WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+ 
+    public CategoriesController(CategoryService categoryService, WorkspaceManager workspaceManager, AppExecutor executor) {
+        super(workspaceManager, executor);
         this.categoryService = categoryService;
         this.importHandler = new ImportHandler();
     }

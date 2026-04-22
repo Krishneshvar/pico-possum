@@ -9,6 +9,7 @@ import com.picopossum.ui.common.components.BadgeFactory;
 import com.picopossum.ui.common.dialogs.DialogStyler;
 import com.picopossum.ui.workspace.WorkspaceManager;
 import com.picopossum.shared.util.TimeUtil;
+import com.picopossum.infrastructure.system.AppExecutor;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
@@ -27,8 +28,8 @@ public class AuditController extends AbstractCrudController<AuditLog, AuditLogFi
     private String startDateStr = null;
     private String endDateStr = null;
 
-    public AuditController(AuditService auditService, WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+    public AuditController(AuditService auditService, WorkspaceManager workspaceManager, AppExecutor executor) {
+        super(workspaceManager, executor);
         this.auditService = auditService;
     }
 

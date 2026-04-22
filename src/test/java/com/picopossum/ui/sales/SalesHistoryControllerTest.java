@@ -38,12 +38,18 @@ class SalesHistoryControllerTest {
     @Mock private FilterBar filterBar;
     @Mock private PaginationBar paginationBar;
     @Mock private com.picopossum.ui.common.controls.DataTableView<Sale> salesTable;
+    @Mock private com.picopossum.infrastructure.system.AppExecutor executor;
 
     private SalesHistoryController controller;
 
     @BeforeEach
     void setUp() throws Exception {
-        controller = new SalesHistoryController(salesService, settingsStore, printerService, workspaceManager);
+        lenient().doAnswer(inv -> {
+            ((Runnable)inv.getArgument(0)).run();
+            return null;
+        }).when(executor).execute(any());
+
+        controller = new SalesHistoryController(salesService, settingsStore, printerService, workspaceManager, executor);
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
         setField(controller, "salesTable", salesTable);

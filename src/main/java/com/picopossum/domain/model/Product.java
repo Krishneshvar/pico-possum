@@ -14,7 +14,7 @@ public record Product(
         java.math.BigDecimal mrp,
         java.math.BigDecimal costPrice,
         Integer stockAlertCap,
-        String status,
+        ProductStatus status,
         String imagePath,
         Integer stock,
         LocalDateTime createdAt,

@@ -6,7 +6,7 @@ import com.picopossum.domain.model.SaleDraft;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-public class SaleCalculator implements DomainService {
+public class SaleCalculator {
 
     public SaleCalculator() {
     }

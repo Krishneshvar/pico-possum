@@ -21,7 +21,10 @@ class SqliteSessionRepositoryTest {
     void setUp() throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite::memory:");
         createSchema();
-        repository = new SqliteSessionRepository(() -> connection);
+        repository = new SqliteSessionRepository(new com.picopossum.persistence.db.ConnectionProvider() {
+            @Override public Connection getConnection() { return connection; }
+            @Override public boolean isBound(Connection conn) { return true; }
+        });
     }
 
     @AfterEach

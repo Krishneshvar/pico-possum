@@ -49,7 +49,7 @@ class PosControllerTest {
     void setUp() throws Exception {
         AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
         controller = new PosController(salesService, customerService, searchIndex,
-                printerService, settingsStore, productService, categoryService, saleCalculator, posDraftRepository);
+                printerService, settingsStore, productService, categoryService, saleCalculator, posDraftRepository, null);
         
         java.lang.reflect.Field billsField = PosController.class.getDeclaredField("bills");
         billsField.setAccessible(true);
@@ -126,7 +126,7 @@ class PosControllerTest {
     private Product createTestProduct(Long id, String name, String sku, BigDecimal price, Integer stock) {
         return new Product(
             id, name, null, null, null, BigDecimal.ZERO, sku, null,
-            price, price, 10, "active", null, stock, null, null, null
+            price, price, 10, ProductStatus.ACTIVE, null, stock, null, null, null
         );
     }
 

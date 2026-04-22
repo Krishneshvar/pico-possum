@@ -45,6 +45,7 @@ class SalesWorkflowIntegrationTest {
     private static SqliteProductRepository productRepository;
     private static SqliteCategoryRepository categoryRepository;
     private static SqliteAuditRepository auditRepository;
+    private static AuditService auditService;
 
     private static long testProductId;
     private static long cashPaymentMethodId;
@@ -68,7 +69,7 @@ class SalesWorkflowIntegrationTest {
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
 
-        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+        auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
@@ -89,7 +90,16 @@ class SalesWorkflowIntegrationTest {
 
     @AfterAll
     static void tearDown() throws IOException {
+        if (auditService != null) {
+            auditService.waitForCompletion();
+            auditService.shutdown();
+        }
         if (databaseManager != null) databaseManager.close();
+        
+        // Help Windows release file handles
+        System.gc();
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
@@ -119,6 +129,7 @@ class SalesWorkflowIntegrationTest {
         assertEquals(stockBefore - 2, stockAfter);
 
         long saleId = response.sale().id();
+        auditService.waitForCompletion();
         int auditCount = queryInt("SELECT COUNT(*) FROM audit_log WHERE table_name = 'sales' AND row_id = ?", saleId);
         assertTrue(auditCount >= 1);
     }
@@ -150,7 +161,7 @@ class SalesWorkflowIntegrationTest {
 
     private static long seedProductWithStock() {
         long catId = categoryRepository.insertCategory("Cat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "SKU-" + UUID.randomUUID(), null, new BigDecimal("100.00"), new BigDecimal("60.00"), 10, "active", null, 50, null, null, null);
+        Product p = new Product(null, "Product-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "SKU-" + UUID.randomUUID(), null, new BigDecimal("100.00"), new BigDecimal("60.00"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 50, null, null, null);
         long productId = productRepository.insertProduct(p);
         seedInventory(productId, 50);
         return productId;

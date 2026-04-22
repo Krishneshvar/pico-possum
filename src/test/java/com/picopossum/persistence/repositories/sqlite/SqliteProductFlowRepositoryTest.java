@@ -22,7 +22,10 @@ class SqliteProductFlowRepositoryTest {
     void setUp() throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite::memory:");
         createSchema();
-        repository = new SqliteProductFlowRepository(() -> connection);
+        repository = new SqliteProductFlowRepository(new com.picopossum.persistence.db.ConnectionProvider() {
+            @Override public Connection getConnection() { return connection; }
+            @Override public boolean isBound(Connection conn) { return true; }
+        });
     }
 
     @AfterEach

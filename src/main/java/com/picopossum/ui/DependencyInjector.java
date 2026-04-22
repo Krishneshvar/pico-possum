@@ -13,6 +13,8 @@ import com.picopossum.persistence.repositories.sqlite.SqlitePosDraftRepository;
 import com.picopossum.domain.repositories.*;
 import com.picopossum.ui.common.toast.ToastService;
 import com.picopossum.ui.navigation.NavigationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Parameter;
 import java.util.HashMap;
@@ -20,6 +22,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class DependencyInjector {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DependencyInjector.class);
 
     private final ApplicationModule applicationModule;
     private final ServiceLocator serviceLocator;
@@ -108,6 +111,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.infrastructure.filesystem.UploadStore.class, serviceLocator::getUploadStore);
         registry.put(com.picopossum.infrastructure.system.SystemInteropService.class, serviceLocator::getSystemInteropService);
         registry.put(com.picopossum.infrastructure.monitoring.PerformanceMonitor.class, serviceLocator::getPerformanceMonitor);
+        registry.put(com.picopossum.infrastructure.system.AppExecutor.class, serviceLocator::getAppExecutor);
 
         // UI
         registry.put(NavigationManager.class, () -> navigationManager);
@@ -118,7 +122,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.ui.sales.SalesHistoryController.class,
                 () -> new com.picopossum.ui.sales.SalesHistoryController(
                         salesService, serviceLocator.getSettingsStore(),
-                        serviceLocator.getPrinterService(), workspaceManager));
+                        serviceLocator.getPrinterService(), workspaceManager, serviceLocator.getAppExecutor()));
         registry.put(com.picopossum.ui.sales.SaleDetailController.class,
                 () -> new com.picopossum.ui.sales.SaleDetailController(
                         salesService, workspaceManager,
@@ -134,7 +138,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
                         applicationModule.getInventoryService(), productRepository,
-                        applicationModule.getCategoryService(), workspaceManager));
+                        applicationModule.getCategoryService(), workspaceManager, serviceLocator.getAppExecutor()));
         registry.put(com.picopossum.ui.dashboard.DashboardController.class,
                 () -> new com.picopossum.ui.dashboard.DashboardController(
                         reportsService, applicationModule.getInventoryService(),
@@ -180,7 +184,7 @@ public class DependencyInjector {
                 // Fallback to no-args constructor if available or found first
                 return type.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
-                LoggingConfig.getLogger().error("DependencyInjector failed to instantiate controller of type {}: {}", type.getName(), e.getMessage(), e);
+                LOGGER.error("DependencyInjector failed to instantiate controller of type {}: {}", type.getName(), e.getMessage(), e);
                 return null;
             }
         };
@@ -198,7 +202,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.ui.sales.SalesHistoryController.class,
                 () -> new com.picopossum.ui.sales.SalesHistoryController(
                         salesService, serviceLocator.getSettingsStore(),
-                        serviceLocator.getPrinterService(), workspaceManager));
+                        serviceLocator.getPrinterService(), workspaceManager, serviceLocator.getAppExecutor()));
         registry.put(com.picopossum.ui.sales.SaleDetailController.class,
                 () -> new com.picopossum.ui.sales.SaleDetailController(
                         salesService, workspaceManager,
@@ -211,7 +215,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
                         applicationModule.getInventoryService(), productRepository,
-                        applicationModule.getCategoryService(), workspaceManager));
+                        applicationModule.getCategoryService(), workspaceManager, serviceLocator.getAppExecutor()));
     }
 
     public void injectDependencies(Object controller) {
@@ -227,7 +231,7 @@ public class DependencyInjector {
         if (supplier != null) {
             return supplier.get();
         }
-        LoggingConfig.getLogger().error("Could not resolve dependency of type: {}", type.getName());
+        LOGGER.error("Could not resolve dependency of type: {}", type.getName());
         return null;
     }
 }

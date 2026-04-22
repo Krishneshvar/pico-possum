@@ -44,6 +44,7 @@ class ReturnsFlowIntegrationTest {
     private static ReturnsService returnsService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
+    private static AuditService auditService;
 
     private static long testProductId;
     private static long cashPaymentMethodId;
@@ -68,7 +69,7 @@ class ReturnsFlowIntegrationTest {
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
-        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+        auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
@@ -91,7 +92,16 @@ class ReturnsFlowIntegrationTest {
 
     @AfterAll
     static void tearDown() throws IOException {
+        if (auditService != null) {
+            auditService.waitForCompletion();
+            auditService.shutdown();
+        }
         if (databaseManager != null) databaseManager.close();
+
+        // Help Windows release file handles
+        System.gc();
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
@@ -173,7 +183,7 @@ class ReturnsFlowIntegrationTest {
 
     private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
         long catId = catRepo.insertCategory("ReturnsCat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "RSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 10, "active", null, 0, null, null, null);
+        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "RSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, null, null, null);
         long productId = prodRepo.insertProduct(p);
         seedInventory(productId, qty);
         return productId;

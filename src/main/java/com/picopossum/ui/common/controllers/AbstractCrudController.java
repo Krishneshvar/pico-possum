@@ -13,6 +13,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.MenuItem;
 import com.picopossum.ui.common.dialogs.DialogStyler;
+import com.picopossum.infrastructure.system.AppExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -30,12 +33,15 @@ public abstract class AbstractCrudController<T, F> {
     @FXML protected FilterBar filterBar;
     @FXML protected DataTableView<T> dataTable;
     @FXML protected PaginationBar paginationBar;
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCrudController.class);
+ 
     protected final WorkspaceManager workspaceManager;
+    protected final AppExecutor executor;
     protected String currentSearch = "";
-
-    protected AbstractCrudController(WorkspaceManager workspaceManager) {
+ 
+    protected AbstractCrudController(WorkspaceManager workspaceManager, AppExecutor executor) {
         this.workspaceManager = workspaceManager;
+        this.executor = executor;
     }
 
     @FXML
@@ -106,8 +112,8 @@ public abstract class AbstractCrudController<T, F> {
         // Build filter on UI thread since it accesses UI properties
         final F filter = buildFilter();
         
-        // Execute fetch in a background thread
-        Thread fetchThread = new Thread(() -> {
+        // Execute fetch using managed executor
+        executor.execute(() -> {
             try {
                 final PagedResult<T> result = fetchData(filter);
                 
@@ -124,15 +130,12 @@ public abstract class AbstractCrudController<T, F> {
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     if (dataTable != null) dataTable.setLoading(false);
-                    com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load " + getEntityName(), e);
+                    LOGGER.error("Failed to load " + getEntityName(), e);
                     NotificationService.error("Failed to load " + getEntityName() + ": " + 
                         com.picopossum.ui.common.ErrorHandler.toUserMessage(e));
                 });
             }
         });
-        
-        fetchThread.setDaemon(true); // Ensure thread doesn't prevent app shutdown
-        fetchThread.start();
     }
 
     /**

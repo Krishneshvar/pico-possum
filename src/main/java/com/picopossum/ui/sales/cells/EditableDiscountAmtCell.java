@@ -1,6 +1,7 @@
 package com.picopossum.ui.sales.cells;
 
 import com.picopossum.domain.model.CartItem;
+import com.picopossum.domain.model.DiscountType;
 import javafx.geometry.Pos;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -53,7 +54,7 @@ public class EditableDiscountAmtCell extends TableCell<CartItem, CartItem> {
             try { 
                 String v = tf.getText().trim(); 
                 it.setDiscountValue(v.isEmpty() ? BigDecimal.ZERO : new BigDecimal(v)); 
-                it.setDiscountType("fixed"); 
+                it.setDiscountType(DiscountType.FIXED); 
                 handler.refreshCurrentBill(); 
             } catch (Exception e) { 
                 cancelEdit(); 

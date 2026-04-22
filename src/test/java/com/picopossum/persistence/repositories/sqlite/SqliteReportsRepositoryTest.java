@@ -23,7 +23,10 @@ class SqliteReportsRepositoryTest {
         connection = DriverManager.getConnection("jdbc:sqlite::memory:");
         createSchema();
         seedData();
-        repository = new SqliteReportsRepository(() -> connection);
+        repository = new SqliteReportsRepository(new com.picopossum.persistence.db.ConnectionProvider() {
+            @Override public Connection getConnection() { return connection; }
+            @Override public boolean isBound(Connection conn) { return true; }
+        });
     }
 
     @AfterEach

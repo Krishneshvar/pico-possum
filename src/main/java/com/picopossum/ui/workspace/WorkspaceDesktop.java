@@ -7,6 +7,8 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.input.MouseEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +17,7 @@ import java.util.List;
  * WorkspaceDesktop – a BorderPane that fills the content area.
  */
 public class WorkspaceDesktop extends BorderPane {
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorkspaceDesktop.class);
 
     private final List<InternalWindow> windows = new ArrayList<>();
     private InternalWindow activeWindow;
@@ -75,7 +78,7 @@ public class WorkspaceDesktop extends BorderPane {
             try {
                 d.dispose();
             } catch (Exception e) {
-                com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Error during window disposal: {}", window.getTitle(), e);
+                LOGGER.error("Error during window disposal: {}", window.getTitle(), e);
             }
         }
         

@@ -1,16 +1,18 @@
 package com.picopossum.ui.workspace;
 
-import com.picopossum.infrastructure.logging.LoggingConfig;
+import com.picopossum.ui.navigation.Parameterizable;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import com.picopossum.ui.common.accessibility.AccessibilityEnhancer;
 import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.common.controls.ViewStateEnhancer;
-import com.picopossum.ui.navigation.Parameterizable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class WorkspaceManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorkspaceManager.class);
 
     private final WorkspaceDesktop desktop;
     private com.picopossum.ui.DependencyInjector dependencyInjector;
@@ -73,8 +75,7 @@ public class WorkspaceManager {
             desktop.addWindow(window);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            LoggingConfig.getLogger().error("Failed to load window '{}': {}", fxmlPath, e.getMessage(), e);
+            LOGGER.error("Failed to load window '{}': {}", fxmlPath, e.getMessage(), e);
             NotificationService.error("Failed to open view. Please try again.");
         }
     }
@@ -111,7 +112,7 @@ public class WorkspaceManager {
             stage.showAndWait();
 
         } catch (Exception e) {
-            LoggingConfig.getLogger().error("Failed to show dialog '{}': {}", fxmlPath, e.getMessage(), e);
+            LOGGER.error("Failed to show dialog '{}': {}", fxmlPath, e.getMessage(), e);
             NotificationService.error("Failed to open dialog. Please try again.");
         }
     }

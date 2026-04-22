@@ -11,6 +11,7 @@ import com.picopossum.shared.dto.ReturnFilter;
 import com.picopossum.ui.common.controllers.AbstractCrudController;
 import com.picopossum.ui.common.components.ButtonFactory;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
 import com.picopossum.shared.util.TimeUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -40,8 +41,9 @@ public class ReturnsController extends AbstractCrudController<Return, ReturnFilt
 
     public ReturnsController(ReturnsService returnsService, 
                             SalesService salesService, 
-                            WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+                            WorkspaceManager workspaceManager,
+                            AppExecutor executor) {
+        super(workspaceManager, executor);
         this.returnsService = returnsService;
         this.salesService = salesService;
     }

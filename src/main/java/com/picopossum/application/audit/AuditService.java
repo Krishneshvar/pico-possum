@@ -180,6 +180,14 @@ public final class AuditService {
         }
     }
 
+    public void waitForCompletion() {
+        try {
+            executor.submit(() -> {}).get(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Audit wait failed", e);
+        }
+    }
+
     public void shutdown() {
         executor.shutdown();
     }

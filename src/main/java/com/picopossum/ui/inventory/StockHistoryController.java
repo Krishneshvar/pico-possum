@@ -9,6 +9,7 @@ import com.picopossum.ui.common.controllers.AbstractCrudController;
 import com.picopossum.ui.common.components.BadgeFactory;
 import com.picopossum.ui.common.components.ButtonFactory;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
 import com.picopossum.ui.common.controls.DateControlUtils;
 import com.picopossum.shared.util.TimeUtil;
 import com.picopossum.shared.util.TextFormatter;
@@ -35,8 +36,9 @@ public class StockHistoryController extends AbstractCrudController<StockHistoryD
 
     public StockHistoryController(InventoryService inventoryService, 
                                   UserService userService,
-                                  WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+                                  WorkspaceManager workspaceManager,
+                                  AppExecutor executor) {
+        super(workspaceManager, executor);
         this.inventoryService = inventoryService;
         this.userService = userService;
     }

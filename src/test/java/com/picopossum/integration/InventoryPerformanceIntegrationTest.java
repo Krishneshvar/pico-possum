@@ -42,6 +42,7 @@ class InventoryPerformanceIntegrationTest {
     private static SalesService salesService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
+    private static AuditService auditService;
 
     private static long testProductId;
     private static long cashPaymentMethodId;
@@ -66,7 +67,7 @@ class InventoryPerformanceIntegrationTest {
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
-        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+        auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
@@ -85,7 +86,16 @@ class InventoryPerformanceIntegrationTest {
 
     @AfterAll
     static void tearDown() throws IOException {
+        if (auditService != null) {
+            auditService.waitForCompletion();
+            auditService.shutdown();
+        }
         if (databaseManager != null) databaseManager.close();
+
+        // Help Windows release file handles
+        System.gc();
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
@@ -113,6 +123,7 @@ class InventoryPerformanceIntegrationTest {
         int finalStock = inventoryService.getProductStock(testProductId);
         assertEquals(initialStock - iterations, finalStock);
 
+        auditService.waitForCompletion();
         int auditCount = queryInt("SELECT COUNT(*) FROM audit_log WHERE table_name = 'sales'");
         assertTrue(auditCount >= iterations);
 
@@ -124,7 +135,7 @@ class InventoryPerformanceIntegrationTest {
         long catId = catRepo.insertCategory("PerfCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
             null, "PerfProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "PSKU-" + UUID.randomUUID(),
-            null, new BigDecimal("100.00"), new BigDecimal("60.00"), 5, "active", null, 0, null, null, null
+            null, new BigDecimal("100.00"), new BigDecimal("60.00"), 5, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

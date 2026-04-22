@@ -45,7 +45,7 @@ class CategoriesControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
-        controller = new CategoriesController(categoryService, workspaceManager);
+        controller = new CategoriesController(categoryService, workspaceManager, null);
         
         lenient().when(dataTable.getTableView()).thenReturn(tableView);
         lenient().when(tableView.getColumns()).thenReturn(javafx.collections.FXCollections.observableArrayList());

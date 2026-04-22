@@ -56,6 +56,11 @@ class FirstRunIntegrationTest {
     @AfterAll
     static void tearDown() throws IOException {
         if (databaseManager != null) databaseManager.close();
+        
+        // Help Windows release file handles
+        System.gc();
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
@@ -148,7 +153,7 @@ class FirstRunIntegrationTest {
         Category cat = categoryRepository.insertCategory("SeedCat-" + UUID.randomUUID(), null);
         long productId = productRepository.insertProduct(new Product(
                 null, "SeedProduct-" + UUID.randomUUID(), "First product", cat.id(),
-                null, BigDecimal.ZERO, "SKU-" + UUID.randomUUID(), null, BigDecimal.TEN, BigDecimal.ONE, 10, "active", null, 0, null, null, null
+                null, BigDecimal.ZERO, "SKU-" + UUID.randomUUID(), null, BigDecimal.TEN, BigDecimal.ONE, 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, null, null, null
         ));
         assertTrue(productId > 0, "Product ID should be positive");
     }
@@ -165,9 +170,10 @@ class FirstRunIntegrationTest {
     @Order(10)
     @DisplayName("Fresh DB — connection is valid")
     void freshDatabase_connectionIsValid() throws SQLException {
-        var conn = databaseManager.getConnection();
-        assertNotNull(conn);
-        assertFalse(conn.isClosed(), "Connection should be open");
+        try (var conn = databaseManager.getConnection()) {
+            assertNotNull(conn);
+            assertFalse(conn.isClosed(), "Connection should be open");
+        }
     }
 
     private static void deleteDirectory(Path root) throws IOException {

@@ -9,6 +9,7 @@ import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.infrastructure.printing.BillRenderer;
 import com.picopossum.infrastructure.printing.PrintOutcome;
 import com.picopossum.infrastructure.printing.PrinterService;
+import com.picopossum.infrastructure.system.AppExecutor;
 import com.picopossum.shared.dto.BillSettings;
 import com.picopossum.shared.dto.GeneralSettings;
 import com.picopossum.ui.common.ErrorHandler;
@@ -20,6 +21,8 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,6 +36,7 @@ import java.util.Optional;
  * the controller below 400 lines.
  */
 public class SaleCompletionHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SaleCompletionHandler.class);
 
     public interface Callbacks {
         void onSaleSuccess();
@@ -42,6 +46,7 @@ public class SaleCompletionHandler {
     private final CustomerService customerService;
     private final PrinterService printerService;
     private final SettingsStore settingsStore;
+    private final AppExecutor executor;
     private final StackPane rootPane;
     private final Callbacks callbacks;
 
@@ -49,12 +54,14 @@ public class SaleCompletionHandler {
                                   CustomerService customerService,
                                   PrinterService printerService,
                                   SettingsStore settingsStore,
+                                  AppExecutor executor,
                                   StackPane rootPane,
                                   Callbacks callbacks) {
         this.salesService = salesService;
         this.customerService = customerService;
         this.printerService = printerService;
         this.settingsStore = settingsStore;
+        this.executor = executor;
         this.rootPane = rootPane;
         this.callbacks = callbacks;
     }
@@ -89,21 +96,9 @@ public class SaleCompletionHandler {
             protected SaleResponse call() throws Exception {
                 Long cId = existingCustomerId;
                 if (cId == null && (!customerName.isEmpty() || !customerPhone.isEmpty())) {
-                    try {
-                        Optional<Customer> existing = customerService.getCustomers(
-                                new com.picopossum.shared.dto.CustomerFilter(customerPhone, 1, 1, 0, 10, "name", "asc")
-                        ).items().stream().filter(c -> c.phone().equals(customerPhone)).findFirst();
-
-                        if (existing.isPresent()) {
-                            cId = existing.get().id();
-                        } else {
-                            Customer created = customerService.createCustomer(customerName, customerPhone, customerEmail, customerAddress);
-                            cId = created.id();
-                            final String name = created.name();
-                            Platform.runLater(() -> NotificationService.success("New customer added: " + name));
-                        }
-                    } catch (Exception e) {
-                        Platform.runLater(() -> NotificationService.warning("Failed to automatically add customer: " + e.getMessage()));
+                    Customer resolved = customerService.resolveOrCreateCustomer(customerName, customerPhone, customerEmail, customerAddress);
+                    if (resolved != null) {
+                        cId = resolved.id();
                     }
                 }
 
@@ -131,13 +126,13 @@ public class SaleCompletionHandler {
 
         task.setOnFailed(e -> {
             Throwable ex = task.getException();
-            LoggingConfig.getLogger().error("Sale completion failed", ex);
+            LOGGER.error("Sale completion failed", ex);
             NotificationService.error("Sale failed: " + ErrorHandler.toUserMessage(ex));
             completeButton.setText("Complete Sale");
             completeButton.setDisable(false);
         });
 
-        new Thread(task).start();
+        executor.execute(task);
     }
 
     private boolean showCompletionSuccessDialog(BigDecimal change) {

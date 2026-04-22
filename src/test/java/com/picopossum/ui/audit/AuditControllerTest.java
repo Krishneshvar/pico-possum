@@ -37,7 +37,7 @@ class AuditControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        controller = new AuditController(auditService, workspaceManager);
+        controller = new AuditController(auditService, workspaceManager, null);
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
         lenient().when(paginationBar.getCurrentPage()).thenReturn(0);

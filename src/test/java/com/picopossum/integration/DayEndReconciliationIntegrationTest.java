@@ -44,6 +44,7 @@ class DayEndReconciliationIntegrationTest {
     private static SalesService salesService;
     private static ReturnsService returnsService;
     private static SqliteSalesRepository salesRepository;
+    private static AuditService auditService;
 
     private static long testProductId;
     private static long cashPaymentMethodId;
@@ -68,7 +69,7 @@ class DayEndReconciliationIntegrationTest {
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
-        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+        auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         InventoryService inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
@@ -90,7 +91,16 @@ class DayEndReconciliationIntegrationTest {
 
     @AfterAll
     static void tearDown() throws IOException {
+        if (auditService != null) {
+            auditService.waitForCompletion();
+            auditService.shutdown();
+        }
         if (databaseManager != null) databaseManager.close();
+
+        // Help Windows release file handles
+        System.gc();
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
         if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
     }
 
@@ -191,7 +201,7 @@ class DayEndReconciliationIntegrationTest {
         long catId = catRepo.insertCategory("DayCat-" + UUID.randomUUID(), null).id();
         long productId = prodRepo.insertProduct(new Product(
             null, "DayProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "DSKU-" + UUID.randomUUID(),
-            null, new BigDecimal("100.00"), new BigDecimal("60.00"), 0, "active", null, 5, null, null, null
+            null, new BigDecimal("100.00"), new BigDecimal("60.00"), 0, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 5, null, null, null
         ));
         seedInventory(productId, qty);
         return productId;

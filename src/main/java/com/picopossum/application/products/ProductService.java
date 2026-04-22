@@ -7,7 +7,6 @@ import com.picopossum.domain.model.StockMovement;
 import com.picopossum.domain.model.Product;
 import com.picopossum.infrastructure.filesystem.FileStorageService;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
-import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
@@ -16,6 +15,8 @@ import com.picopossum.ui.sales.ProductSearchIndex;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ProductFilter;
 import com.picopossum.shared.util.TimeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Objects;
@@ -26,6 +27,7 @@ import java.util.Objects;
  * Optimized for minimalist Single-User SMB.
  */
 public class ProductService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductService.class);
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final AuditService auditService;
@@ -80,7 +82,7 @@ public class ProductService {
                     command.mrp(),
                     command.costPrice(),
                     command.stockAlertCap() != null ? command.stockAlertCap() : 10,
-                    command.status() != null ? command.status() : "active",
+                    command.status() != null ? command.status() : com.picopossum.domain.model.ProductStatus.ACTIVE,
                     command.imagePath(),
                     0, 
                     TimeUtil.nowUTC(),
@@ -107,7 +109,7 @@ public class ProductService {
                         TimeUtil.nowUTC()
                 );
                 inventoryRepository.insertStockMovement(movement);
-                LoggingConfig.getLogger().info("Initial stock {} added for product {}", command.initialStock(), productId);
+                LOGGER.info("Initial stock {} added for product {}", command.initialStock(), productId);
             }
 
             if (searchIndex != null) searchIndex.refresh();
@@ -244,14 +246,14 @@ public class ProductService {
 
     public record CreateProductCommand(String name, String description, Long categoryId, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
-                                      Integer stockAlertCap, String status, String imagePath, 
+                                      Integer stockAlertCap, com.picopossum.domain.model.ProductStatus status, String imagePath, 
                                       Integer initialStock, java.math.BigDecimal taxRate,
                                       String barcode) {
     }
 
     public record UpdateProductCommand(String name, String description, Long categoryId, String sku, 
                                       java.math.BigDecimal mrp, java.math.BigDecimal costPrice, 
-                                      Integer stockAlertCap, String status, String newImagePath, 
+                                      Integer stockAlertCap, com.picopossum.domain.model.ProductStatus status, String newImagePath, 
                                       Integer stock, String stockAdjustmentReason, 
                                       java.math.BigDecimal taxRate, String barcode) {
     }

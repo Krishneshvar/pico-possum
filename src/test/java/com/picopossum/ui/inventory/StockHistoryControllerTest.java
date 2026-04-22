@@ -35,7 +35,7 @@ class StockHistoryControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new StockHistoryController(inventoryService, userService, workspaceManager);
+        controller = new StockHistoryController(inventoryService, userService, workspaceManager, null);
     }
 
     @Test

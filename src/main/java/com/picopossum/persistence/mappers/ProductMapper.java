@@ -21,7 +21,7 @@ public final class ProductMapper implements RowMapper<Product> {
                 rs.getBigDecimal("mrp"),
                 rs.getBigDecimal("cost_price"),
                 getNullableInt(rs, "stock_alert_cap"),
-                rs.getString("status"),
+                com.picopossum.domain.model.ProductStatus.fromString(rs.getString("status")),
                 getOptionalColumn(rs, "image_path"),
                 getNullableInt(rs, "stock"),
                 SqlMapperUtils.getLocalDateTime(rs, "created_at"),

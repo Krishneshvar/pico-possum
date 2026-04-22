@@ -14,6 +14,7 @@ import com.picopossum.ui.common.components.ButtonFactory;
 import com.picopossum.ui.common.controls.FormDialog;
 import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
 import javafx.beans.property.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -40,8 +41,9 @@ public class InventoryController extends AbstractCrudController<Product, Product
     public InventoryController(InventoryService inventoryService, 
                                ProductRepository productRepository,
                                CategoryService categoryService,
-                               WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+                               WorkspaceManager workspaceManager,
+                               AppExecutor executor) {
+        super(workspaceManager, executor);
         this.inventoryService = inventoryService;
         this.productRepository = productRepository;
         this.categoryService = categoryService;
@@ -129,7 +131,7 @@ public class InventoryController extends AbstractCrudController<Product, Product
         
         TableColumn<Product, String> statusCol = new TableColumn<>("Status");
         statusCol.setSortable(false);
-        statusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status()));
+        statusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status().name().toLowerCase()));
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String status, boolean empty) {

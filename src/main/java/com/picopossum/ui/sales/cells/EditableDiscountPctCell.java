@@ -1,6 +1,7 @@
 package com.picopossum.ui.sales.cells;
 
 import com.picopossum.domain.model.CartItem;
+import com.picopossum.domain.model.DiscountType;
 import javafx.geometry.Pos;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -26,7 +27,7 @@ public class EditableDiscountPctCell extends TableCell<CartItem, CartItem> {
         setText(null); setGraphic(tf); 
         CartItem it = getItem(); 
         BigDecimal lT = it.getPricePerUnit().multiply(BigDecimal.valueOf(it.getQuantity())); 
-        BigDecimal pct = it.getDiscountType().equals("pct") ? it.getDiscountValue() : (lT.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : it.getDiscountAmount().multiply(BigDecimal.valueOf(100)).divide(lT, 2, RoundingMode.HALF_UP)); 
+        BigDecimal pct = it.getDiscountType().equals(DiscountType.PERCENTAGE) ? it.getDiscountValue() : (lT.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : it.getDiscountAmount().multiply(BigDecimal.valueOf(100)).divide(lT, 2, RoundingMode.HALF_UP)); 
         tf.setText(pct.compareTo(BigDecimal.ZERO) == 0 ? "" : pct.toString()); 
         tf.selectAll(); 
         tf.requestFocus(); 
@@ -34,7 +35,7 @@ public class EditableDiscountPctCell extends TableCell<CartItem, CartItem> {
 
     @Override public void cancelEdit() { super.cancelEdit(); updateDisplay(); }
     @Override public void updateItem(CartItem it, boolean e) { super.updateItem(it, e); if (e || it == null) { setText(null); setGraphic(null); } else if (isEditing()) { setGraphic(tf); setText(null); } else updateDisplay(); }
-    private void updateDisplay() { CartItem it = getItem(); if (it != null) { BigDecimal lT = it.getPricePerUnit().multiply(BigDecimal.valueOf(it.getQuantity())); BigDecimal pct = it.getDiscountType().equals("pct") ? it.getDiscountValue() : (lT.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : it.getDiscountAmount().multiply(BigDecimal.valueOf(100)).divide(lT, 2, RoundingMode.HALF_UP)); setText(pct.compareTo(BigDecimal.ZERO) == 0 ? "0%" : pct + "%"); } setGraphic(null); }
+    private void updateDisplay() { CartItem it = getItem(); if (it != null) { BigDecimal lT = it.getPricePerUnit().multiply(BigDecimal.valueOf(it.getQuantity())); BigDecimal pct = it.getDiscountType().equals(DiscountType.PERCENTAGE) ? it.getDiscountValue() : (lT.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : it.getDiscountAmount().multiply(BigDecimal.valueOf(100)).divide(lT, 2, RoundingMode.HALF_UP)); setText(pct.compareTo(BigDecimal.ZERO) == 0 ? "0%" : pct + "%"); } setGraphic(null); }
 
     private TextField createTF() { 
         TextField f = new TextField(); 
@@ -55,7 +56,7 @@ public class EditableDiscountPctCell extends TableCell<CartItem, CartItem> {
             try { 
                 String v = tf.getText().trim(); 
                 it.setDiscountValue(v.isEmpty() ? BigDecimal.ZERO : new BigDecimal(v)); 
-                it.setDiscountType("pct"); 
+                it.setDiscountType(DiscountType.PERCENTAGE); 
                 handler.refreshCurrentBill(); 
             } catch (Exception e) { 
                 cancelEdit(); 

@@ -7,7 +7,7 @@ public class CartItem {
     private Product product;
     private int quantity;
     private BigDecimal pricePerUnit;
-    private String discountType = "fixed"; // "fixed" or "pct"
+    private DiscountType discountType = DiscountType.FIXED;
     private BigDecimal discountValue = BigDecimal.ZERO;
     
     // Calculated fields
@@ -27,7 +27,7 @@ public class CartItem {
 
     public void calculateBasics() {
         BigDecimal lineGross = pricePerUnit.multiply(BigDecimal.valueOf(quantity));
-        if ("pct".equals(discountType)) {
+        if (discountType == DiscountType.PERCENTAGE) {
             this.discountAmount = lineGross.multiply(discountValue)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         } else {
@@ -53,11 +53,8 @@ public class CartItem {
         this.pricePerUnit = pricePerUnit; 
         calculateBasics();
     }
-    public String getDiscountType() { return discountType; }
-    public void setDiscountType(String discountType) { 
-        if (!"fixed".equals(discountType) && !"pct".equals(discountType)) {
-            throw new IllegalArgumentException("Discount type must be 'fixed' or 'pct'");
-        }
+    public DiscountType getDiscountType() { return discountType; }
+    public void setDiscountType(DiscountType discountType) { 
         this.discountType = discountType; 
         calculateBasics();
     }

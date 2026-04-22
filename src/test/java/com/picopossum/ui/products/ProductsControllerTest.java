@@ -37,7 +37,7 @@ class ProductsControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        controller = new ProductsController(productService, categoryService, workspaceManager);
+        controller = new ProductsController(productService, categoryService, workspaceManager, null);
         setField(controller, "dataTable", dataTable);
         setField(controller, "filterBar", filterBar);
         setField(controller, "paginationBar", paginationBar);
@@ -64,7 +64,7 @@ class ProductsControllerTest {
     void deleteProduct_success() throws Exception {
         long productId = 123L;
         Product product = new Product(productId, "Test", null, null, null, 
-                BigDecimal.ONE, "SKU", null, BigDecimal.ONE, BigDecimal.ONE, 10, "active", null, 0, 
+                BigDecimal.ONE, "SKU", null, BigDecimal.ONE, BigDecimal.ONE, 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, 
                 LocalDateTime.now(), LocalDateTime.now(), null);
 
         doNothing().when(productService).deleteProduct(productId);

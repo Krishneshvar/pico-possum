@@ -4,6 +4,7 @@ import com.picopossum.application.categories.CategoryService;
 import com.picopossum.application.products.ProductService;
 import com.picopossum.domain.model.Category;
 import com.picopossum.domain.model.Product;
+import com.picopossum.domain.model.ProductStatus;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.common.controls.SingleSelectFilter;
@@ -13,12 +14,15 @@ import com.picopossum.ui.workspace.WorkspaceManager;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.scene.layout.VBox;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 public class ProductFormController extends AbstractFormController<Product> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductFormController.class);
 
     private final ProductService productService;
     private final CategoryService categoryService;
@@ -121,7 +125,7 @@ public class ProductFormController extends AbstractFormController<Product> {
             categoryFilter.setSelectedItem(new CategoryItem(p.categoryId(), p.categoryName()));
         }
 
-        statusCombo.setValue(p.status() != null ? com.picopossum.shared.util.TextFormatter.toTitleCase(p.status()) : "Active");
+        statusCombo.setValue(p.status() != null ? p.status().toDisplayString() : ProductStatus.ACTIVE.toDisplayString());
     }
 
     @Override
@@ -171,7 +175,7 @@ public class ProductFormController extends AbstractFormController<Product> {
                 new BigDecimal(priceField.getText().trim()),
                 new BigDecimal(costPriceField.getText().trim()),
                 Integer.parseInt(stockAlertField.getText().trim()),
-                statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
+                ProductStatus.fromString(statusCombo.getValue()),
                 null,
                 Integer.parseInt(stockField.getText().trim()),
                 new BigDecimal(taxRateField.getText().trim()),
@@ -191,7 +195,7 @@ public class ProductFormController extends AbstractFormController<Product> {
                 new BigDecimal(priceField.getText().trim()),
                 new BigDecimal(costPriceField.getText().trim()),
                 Integer.parseInt(stockAlertField.getText().trim()),
-                statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
+                ProductStatus.fromString(statusCombo.getValue()),
                 null,
                 Integer.parseInt(stockField.getText().trim()),
                 adjustmentReasonCombo.getValue().toLowerCase(),
@@ -222,7 +226,7 @@ public class ProductFormController extends AbstractFormController<Product> {
                 categoryService.findCategoryById(draft.categoryId()).ifPresent(c -> 
                     categoryFilter.setSelectedItem(new CategoryItem(c.id(), c.name())));
             }
-            statusCombo.setValue(draft.status() != null ? com.picopossum.shared.util.TextFormatter.toTitleCase(draft.status()) : "Active");
+            statusCombo.setValue(draft.status() != null ? draft.status().toDisplayString() : ProductStatus.ACTIVE.toDisplayString());
             
             NotificationService.success("Unsaved product draft restored.");
         });
@@ -244,7 +248,7 @@ public class ProductFormController extends AbstractFormController<Product> {
             parseSafeBigDecimal(priceField.getText()),
             parseSafeBigDecimal(costPriceField.getText()),
             parseSafeInt(stockAlertField.getText()),
-            statusCombo.getValue() != null ? statusCombo.getValue().toLowerCase() : "active",
+            ProductStatus.fromString(statusCombo.getValue()),
             null,
             parseSafeInt(stockField.getText()),
             parseSafeBigDecimal(taxRateField.getText()),

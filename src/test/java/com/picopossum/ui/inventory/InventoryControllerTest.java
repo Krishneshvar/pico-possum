@@ -101,7 +101,7 @@ class InventoryControllerTest {
     private Product createTestProduct(Long id, String name, int stock) {
         return new Product(
             id, name, null, null, null, BigDecimal.ZERO, "SKU" + id, null,
-            new BigDecimal("10.00"), new BigDecimal("12.00"), 5, "active", null, stock, null, null, null
+            new BigDecimal("10.00"), new BigDecimal("12.00"), 5, com.picopossum.domain.model.ProductStatus.ACTIVE, null, stock, null, null, null
         );
     }
 }

@@ -40,7 +40,7 @@ class ReturnsControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        controller = new ReturnsController(returnsService, salesService, workspaceManager);
+        controller = new ReturnsController(returnsService, salesService, workspaceManager, null);
         setField(controller, "paginationBar", paginationBar);
         setField(controller, "filterBar", filterBar);
     }

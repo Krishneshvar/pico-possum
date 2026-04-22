@@ -56,7 +56,7 @@ class ProductServiceTest {
     void createProduct_success() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 "iPhone", "Apple phone", 1L, "SKU1",
-                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 5,
+                new BigDecimal("100"), new BigDecimal("80"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 5,
                 BigDecimal.ZERO, "BAR1"
         );
 
@@ -75,7 +75,7 @@ class ProductServiceTest {
     void createProduct_duplicateSku_fail() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
                 "iPhone", "Apple phone", 1L, "DUPE",
-                new BigDecimal("100"), new BigDecimal("80"), 10, "active", null, 0,
+                new BigDecimal("100"), new BigDecimal("80"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0,
                 BigDecimal.ZERO, "BAR2"
         );
 
@@ -88,7 +88,7 @@ class ProductServiceTest {
     @DisplayName("Should fetch product successfully")
     void getProductById_success() {
         Product p = new Product(1L, "Widget", "Desc", 1L, null, BigDecimal.ZERO, "SKU1", null, 
-                new BigDecimal("10"), new BigDecimal("5"), 0, "active", null, 10, null, null, null);
+                new BigDecimal("10"), new BigDecimal("5"), 0, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 10, null, null, null);
         
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
 
@@ -102,7 +102,7 @@ class ProductServiceTest {
     @DisplayName("Should delete product and perform final stock cleanup")
     void deleteProduct_success() {
         Product p = new Product(1L, "Delete Me", "desc", 1L, null, BigDecimal.ZERO, "OLD", null, 
-                new BigDecimal("10"), new BigDecimal("5"), 0, "active", "/path/image.jpg", 10, null, null, null);
+                new BigDecimal("10"), new BigDecimal("5"), 0, com.picopossum.domain.model.ProductStatus.ACTIVE, "/path/image.jpg", 10, null, null, null);
         
         when(productRepository.findProductById(1L)).thenReturn(Optional.of(p));
         when(inventoryRepository.getStockByProductId(1L)).thenReturn(10);

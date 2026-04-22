@@ -42,7 +42,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 product.mrp(),
                 product.costPrice(),
                 product.stockAlertCap() == null ? 10 : product.stockAlertCap(),
-                product.status() == null ? "active" : product.status(),
+                product.status() == null ? com.picopossum.domain.model.ProductStatus.ACTIVE.toString() : product.status().toString(),
                 product.imagePath()
         );
     }
@@ -85,7 +85,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                .set("mrp", product.mrp())
                .set("cost_price", product.costPrice())
                .set("stock_alert_cap", product.stockAlertCap())
-               .set("status", product.status())
+               .set("status", product.status() != null ? product.status().toString() : null)
                .set("image_path", product.imagePath())
                .where("id = ?", productId);
 

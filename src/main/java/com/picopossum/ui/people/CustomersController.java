@@ -7,6 +7,7 @@ import com.picopossum.shared.dto.CustomerFilter;
 import com.picopossum.ui.common.controllers.AbstractCrudController;
 import com.picopossum.ui.common.controllers.AbstractImportController;
 import com.picopossum.ui.workspace.WorkspaceManager;
+import com.picopossum.infrastructure.system.AppExecutor;
 import com.picopossum.shared.util.CsvImportUtil;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
@@ -24,8 +25,8 @@ public class CustomersController extends AbstractCrudController<Customer, Custom
     private final CustomerService customerService;
     private final ImportHandler importHandler;
 
-    public CustomersController(CustomerService customerService, WorkspaceManager workspaceManager) {
-        super(workspaceManager);
+    public CustomersController(CustomerService customerService, WorkspaceManager workspaceManager, AppExecutor executor) {
+        super(workspaceManager, executor);
         this.customerService = customerService;
         this.importHandler = new ImportHandler();
     }
