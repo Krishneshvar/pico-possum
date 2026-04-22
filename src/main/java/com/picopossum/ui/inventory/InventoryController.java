@@ -1,6 +1,5 @@
 package com.picopossum.ui.inventory;
 
-import com.picopossum.application.auth.AuthContext;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.categories.CategoryService;
 import com.picopossum.domain.enums.InventoryReason;

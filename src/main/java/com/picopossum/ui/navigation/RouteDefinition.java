@@ -1,7 +1,5 @@
 package com.picopossum.ui.navigation;
 
-import java.util.List;
-
 public class RouteDefinition {
     private final String routeId;
     private final String fxmlPath;

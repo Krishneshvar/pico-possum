@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.StringJoiner;
 
 public final class SqliteSalesRepository extends BaseSqliteRepository implements SalesRepository {
 
@@ -313,27 +312,28 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
     @Override
     public long getNextSequenceForPaymentType(String paymentTypeCode) {
         Connection conn = connection();
-        try {
-            try (PreparedStatement upsert = conn.prepareStatement(
+        try (PreparedStatement upsert = conn.prepareStatement(
                     """
                     INSERT INTO invoice_sequences (payment_type_code, last_sequence)
                     VALUES (?, 1)
                     ON CONFLICT(payment_type_code) DO UPDATE SET last_sequence = last_sequence + 1
-                    """)) {
-                upsert.setString(1, paymentTypeCode);
-                upsert.executeUpdate();
-            }
-            try (PreparedStatement select = conn.prepareStatement(
+                    """);
+             PreparedStatement select = conn.prepareStatement(
                     "SELECT last_sequence FROM invoice_sequences WHERE payment_type_code = ?")) {
-                select.setString(1, paymentTypeCode);
-                try (ResultSet rs = select.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getLong("last_sequence");
-                    }
+            
+            upsert.setString(1, paymentTypeCode);
+            upsert.executeUpdate();
+            
+            select.setString(1, paymentTypeCode);
+            try (ResultSet rs = select.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("last_sequence");
                 }
             }
         } catch (SQLException e) {
-            throw new IllegalStateException("Failed to get next sequence for payment type: " + paymentTypeCode, e);
+            throw DatabaseExceptionTranslator.translate("Failed to get next sequence for payment type: " + paymentTypeCode, e);
+        } finally {
+            release(conn);
         }
         throw new IllegalStateException("No sequence row found for payment type: " + paymentTypeCode);
     }

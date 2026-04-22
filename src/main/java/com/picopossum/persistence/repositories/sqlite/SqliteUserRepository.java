@@ -10,7 +10,6 @@ import com.picopossum.shared.dto.UserFilter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.StringJoiner;
 
 public final class SqliteUserRepository extends BaseSqliteRepository implements UserRepository {
 

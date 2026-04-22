@@ -172,10 +172,6 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         return new PagedResult<>(items, total, totalPages, page, limit);
     }
 
-    private String placeholders(int count) {
-        return "?,".repeat(count).replaceAll(",$", "");
-    }
-
     @Override
     public Map<String, Object> getProductStats() {
         return queryOne(

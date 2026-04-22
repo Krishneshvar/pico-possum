@@ -22,8 +22,9 @@ import javafx.scene.Node;
 import com.picopossum.shared.util.CurrencyUtil;
 import java.time.LocalDate;
 import java.util.List;
+import com.picopossum.ui.common.lifecycle.Disposable;
 
-public class SalesAnalyticsController {
+public class SalesAnalyticsController implements Disposable {
     
     @FXML private javafx.scene.control.DatePicker startDatePicker;
     @FXML private javafx.scene.control.DatePicker endDatePicker;
@@ -42,6 +43,7 @@ public class SalesAnalyticsController {
     private SalesService salesService;
     private LocalDate startDate;
     private LocalDate endDate;
+    private boolean disposed = false;
     
     // Tooltip elements
     private Popup tooltip;
@@ -181,6 +183,7 @@ public class SalesAnalyticsController {
         };
 
         task.setOnSucceeded(e -> {
+            if (disposed) return;
             AnalyticsBundle bundle = task.getValue();
             updateSummaryUI(bundle.summary());
             updateTopProductsChart(bundle.topProducts());
@@ -266,5 +269,11 @@ public class SalesAnalyticsController {
         paymentMethodsChart.setData(pieData);
     }
 
-
+    @Override
+    public void dispose() {
+        disposed = true;
+        if (tooltip != null) {
+            tooltip.hide();
+        }
+    }
 }

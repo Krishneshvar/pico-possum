@@ -2,11 +2,9 @@ package com.picopossum.ui.navigation;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.layout.StackPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.picopossum.ui.common.dialogs.DialogStyler;
 
 import java.io.IOException;
 import java.util.ArrayList;

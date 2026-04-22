@@ -8,8 +8,6 @@ import com.picopossum.application.returns.ReturnsService;
 import com.picopossum.application.reports.ReportsService;
 import com.picopossum.persistence.repositories.sqlite.*;
 import com.picopossum.ui.DependencyInjector;
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -25,7 +23,6 @@ import com.picopossum.persistence.db.DatabaseManager;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.infrastructure.lazy.ServiceLocator;
 import com.picopossum.infrastructure.serialization.JsonService;
-import com.picopossum.infrastructure.security.PasswordHasher;
 import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.ui.AppShellController;
 
@@ -45,6 +42,7 @@ public final class AppBootstrap {
     private ReturnsService returnsService;
     private ReportsService reportsService;
     private SqliteSalesRepository salesRepository;
+    private SqliteProductRepository productRepository;
     private com.picopossum.domain.services.SaleCalculator saleCalculator;
     private com.picopossum.domain.services.ReturnCalculator returnCalculator;
     private com.picopossum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
@@ -70,6 +68,9 @@ public final class AppBootstrap {
     public void shutdown() {
         if (backupService != null) {
             backupService.stopDailyBackups();
+        }
+        if (applicationModule != null && applicationModule.getAuditService() != null) {
+            applicationModule.getAuditService().shutdown();
         }
         if (databaseManager != null) {
             databaseManager.close();
@@ -107,19 +108,20 @@ public final class AppBootstrap {
         databaseManager.initialize();
         transactionManager = new TransactionManager(databaseManager);
         passwordHasher = new com.picopossum.infrastructure.security.PasswordHasher();
-        performanceMonitor = new com.picopossum.infrastructure.monitoring.PerformanceMonitor();
-
         serviceLocator = new ServiceLocator(databaseManager, transactionManager, appPaths);
+        performanceMonitor = serviceLocator.getPerformanceMonitor();
         backupService = serviceLocator.getDatabaseBackupService();
         backupService.startDailyBackups();
     }
 
     private void initializeApplication() {
-        JsonService jsonService = new JsonService();
+        JsonService jsonService = serviceLocator.getJsonService();
+        performanceMonitor = serviceLocator.getPerformanceMonitor();
+        
         SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager, performanceMonitor);
         SqliteSessionRepository sessionRepository = new SqliteSessionRepository(databaseManager);
 
-        SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager, performanceMonitor);
+        productRepository = new SqliteProductRepository(databaseManager, performanceMonitor);
         SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager, performanceMonitor);
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager, performanceMonitor);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager, performanceMonitor);
@@ -176,7 +178,7 @@ public final class AppBootstrap {
     private void initializeUI() {
         dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
                 saleCalculator, productSearchIndex, returnsService, returnCalculator,
-                reportsService, salesRepository, appPaths, authService);
+                reportsService, salesRepository, productRepository, appPaths, authService);
 
         dependencyInjector.getToastService().setMainStage(null);
     }
@@ -195,7 +197,9 @@ public final class AppBootstrap {
         }
 
         // 2. Database integrity check
-        try (java.sql.ResultSet rs = databaseManager.getConnection().createStatement().executeQuery("PRAGMA integrity_check")) {
+        try (java.sql.Connection conn = databaseManager.getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery("PRAGMA integrity_check")) {
             if (rs.next()) {
                 String result = rs.getString(1);
                 if (!"ok".equalsIgnoreCase(result)) {
@@ -229,14 +233,15 @@ public final class AppBootstrap {
     }
 
     private void handleRepairAction(String action, Stage stage) {
-        try {
+        try (java.sql.Connection conn = databaseManager.getConnection();
+             java.sql.Statement stmt = conn.createStatement()) {
             switch (action) {
                 case "REINDEX":
-                    databaseManager.getConnection().createStatement().execute("REINDEX");
+                    stmt.execute("REINDEX");
                     Platform.runLater(() -> com.picopossum.ui.common.controls.NotificationService.success("Database indices rebuilt successfully."));
                     break;
                 case "VACUUM":
-                    databaseManager.getConnection().createStatement().execute("VACUUM");
+                    stmt.execute("VACUUM");
                     Platform.runLater(() -> com.picopossum.ui.common.controls.NotificationService.success("Database compacted and optimized."));
                     break;
                 case "OPEN_BACKUPS":

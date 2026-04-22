@@ -75,7 +75,6 @@ public class BillRenderer {
             billSettings = new BillSettings();
         }
 
-        Sale sale = saleResponse.sale();
         String paperWidth = billSettings.getPaperWidth();
         String currency = billSettings.getCurrency() != null && !billSettings.getCurrency().isEmpty() 
             ? billSettings.getCurrency() 

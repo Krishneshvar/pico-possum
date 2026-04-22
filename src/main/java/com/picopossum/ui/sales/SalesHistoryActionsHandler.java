@@ -1,7 +1,5 @@
 package com.picopossum.ui.sales;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.sales.SalesService;
 import com.picopossum.application.sales.dto.SaleResponse;
 import com.picopossum.domain.model.Sale;

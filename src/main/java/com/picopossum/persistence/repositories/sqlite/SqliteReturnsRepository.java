@@ -12,7 +12,6 @@ import com.picopossum.shared.dto.ReturnFilter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.StringJoiner;
 
 public final class SqliteReturnsRepository extends BaseSqliteRepository implements ReturnsRepository {
 

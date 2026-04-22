@@ -13,13 +13,6 @@ import java.util.List;
 
 /**
  * WorkspaceDesktop – a BorderPane that fills the content area.
- *
- *  ┌──────────────────────────────────────┐
- *  │         content (center)             │  ← active InternalWindow fills this
- *  │                                      │
- *  ├──────────────────────────────────────┤
- *  │  [Tab A ×]  [Tab B ×]  [Tab C ×]    │  ← tab bar (bottom)
- *  └──────────────────────────────────────┘
  */
 public class WorkspaceDesktop extends BorderPane {
 
@@ -76,6 +69,16 @@ public class WorkspaceDesktop extends BorderPane {
     public void removeWindow(InternalWindow window) {
         windows.remove(window);
         contentPane.getChildren().remove(window);
+        
+        // Dispatch disposal
+        if (window.getController() instanceof com.picopossum.ui.common.lifecycle.Disposable d) {
+            try {
+                d.dispose();
+            } catch (Exception e) {
+                com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Error during window disposal: {}", window.getTitle(), e);
+            }
+        }
+        
         rebuildTabBar();
 
         if (activeWindow == window) {

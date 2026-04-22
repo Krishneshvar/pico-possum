@@ -7,7 +7,6 @@ import com.picopossum.infrastructure.filesystem.UploadStore;
 import com.picopossum.infrastructure.printing.PrinterService;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.infrastructure.monitoring.PerformanceMonitor;
-import com.picopossum.infrastructure.monitoring.PerformanceMonitor;
 import com.picopossum.persistence.db.DatabaseManager;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.infrastructure.system.SystemInteropService;

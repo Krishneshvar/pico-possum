@@ -11,7 +11,6 @@ import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.*;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
-import com.picopossum.shared.util.TimeUtil;
 import com.picopossum.persistence.db.TransactionManager;
 
 import java.math.BigDecimal;

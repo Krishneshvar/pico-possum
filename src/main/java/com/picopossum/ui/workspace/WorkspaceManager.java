@@ -68,6 +68,7 @@ public class WorkspaceManager {
 
             InternalWindow window = new InternalWindow(title);
             window.setContent(content);
+            window.setController(controller);
 
             desktop.addWindow(window);
 

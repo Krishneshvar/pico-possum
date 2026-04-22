@@ -38,6 +38,7 @@ public class DependencyInjector {
 
     private NavigationManager navigationManager;
     private com.picopossum.ui.workspace.WorkspaceManager workspaceManager;
+    private final ProductRepository productRepository;
     private final com.picopossum.application.auth.AuthService authService;
     private final ToastService toastService = new ToastService();
 
@@ -51,6 +52,7 @@ public class DependencyInjector {
                                com.picopossum.domain.services.ReturnCalculator returnCalculator,
                                ReportsService reportsService,
                                SalesRepository salesRepository,
+                               ProductRepository productRepository,
                                com.picopossum.infrastructure.filesystem.AppPaths appPaths,
                                com.picopossum.application.auth.AuthService authService) {
 
@@ -65,6 +67,7 @@ public class DependencyInjector {
         this.returnCalculator = returnCalculator;
         this.reportsService = reportsService;
         this.salesRepository = salesRepository;
+        this.productRepository = productRepository;
         this.appPaths = appPaths;
         this.authService = authService;
         buildRegistry();
@@ -92,8 +95,8 @@ public class DependencyInjector {
 
         // Repositories
         registry.put(SalesRepository.class, () -> salesRepository);
-        registry.put(ProductRepository.class, () -> serviceLocator.getDatabaseManager().getProductRepository());
-        registry.put(SqlitePosDraftRepository.class, () -> new SqlitePosDraftRepository(serviceLocator.getDatabaseManager(), serviceLocator.getDatabaseManager().getProductRepository(), serviceLocator.getTransactionManager()));
+        registry.put(ProductRepository.class, () -> productRepository);
+        registry.put(SqlitePosDraftRepository.class, () -> new SqlitePosDraftRepository(serviceLocator.getDatabaseManager(), productRepository, serviceLocator.getTransactionManager()));
 
         // Infrastructure
         registry.put(ToastService.class, () -> toastService);
@@ -130,7 +133,7 @@ public class DependencyInjector {
                         salesService, salesRepository, returnsService, returnCalculator));
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
-                        applicationModule.getInventoryService(), serviceLocator.getDatabaseManager().getProductRepository(),
+                        applicationModule.getInventoryService(), productRepository,
                         applicationModule.getCategoryService(), workspaceManager));
         registry.put(com.picopossum.ui.dashboard.DashboardController.class,
                 () -> new com.picopossum.ui.dashboard.DashboardController(
@@ -207,7 +210,7 @@ public class DependencyInjector {
                         serviceLocator.getDraftService()));
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
-                        applicationModule.getInventoryService(), serviceLocator.getDatabaseManager().getProductRepository(),
+                        applicationModule.getInventoryService(), productRepository,
                         applicationModule.getCategoryService(), workspaceManager));
     }
 

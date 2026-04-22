@@ -26,7 +26,6 @@ import com.picopossum.application.sales.dto.UpdateSaleItemRequest;
 import javafx.application.Platform;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class SaleDetailController implements Parameterizable {
 

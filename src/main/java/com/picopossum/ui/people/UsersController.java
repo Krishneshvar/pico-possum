@@ -11,7 +11,6 @@ import javafx.scene.control.*;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 

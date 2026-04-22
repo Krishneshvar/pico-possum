@@ -3,7 +3,6 @@ package com.picopossum.persistence.db;
 import com.picopossum.infrastructure.filesystem.AppPaths;
 import com.picopossum.persistence.repositories.sqlite.*;
 import org.flywaydb.core.Flyway;
-import org.sqlite.SQLiteConfig;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -169,11 +168,4 @@ public final class DatabaseManager implements ConnectionProvider, AutoCloseable 
         }
     }
 
-    public SqliteProductRepository getProductRepository() {
-        return new SqliteProductRepository(this);
-    }
-
-    public SqliteInventoryRepository getInventoryRepository() {
-        return new SqliteInventoryRepository(this);
-    }
 }

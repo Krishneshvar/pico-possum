@@ -148,6 +148,38 @@ public final class AuditService {
         return auditRepository.findAuditLogs(filter);
     }
 
+    /**
+     * Verifies the integrity of the entire audit log chain.
+     * Re-calculates hashes from genesis to detect tampering.
+     * @return true if chain is valid, false if tampering detected
+     */
+    public boolean verifyIntegrityChain() {
+        try {
+            AuditLogFilter filter = new AuditLogFilter(
+                    null, null, null, null, null, null,
+                    "created_at", "ASC", 1, 100000
+            );
+            PagedResult<AuditLog> allLogs = auditRepository.findAuditLogs(filter);
+            String currentHash = "GENESIS";
+            
+            for (AuditLog log : allLogs.items()) {
+                String calculated = calculateIntegrityHash(log, currentHash);
+                if (!calculated.equals(log.integrityHash())) {
+                    com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error(
+                        "Audit integrity violation at ID {}: expected {}, found {}", 
+                        log.id(), log.integrityHash(), calculated
+                    );
+                    return false;
+                }
+                currentHash = log.integrityHash();
+            }
+            return true;
+        } catch (Exception e) {
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Audit verification failed", e);
+            return false;
+        }
+    }
+
     public void shutdown() {
         executor.shutdown();
     }

@@ -4,7 +4,6 @@ import com.picopossum.domain.model.Product;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ProductFilter;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 

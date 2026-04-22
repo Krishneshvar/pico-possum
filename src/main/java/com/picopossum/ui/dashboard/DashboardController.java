@@ -14,13 +14,14 @@ import javafx.scene.control.TableColumn;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import com.picopossum.infrastructure.monitoring.PerformanceMonitor;
+import com.picopossum.ui.common.lifecycle.Disposable;
 
 import java.math.BigDecimal;
 import com.picopossum.shared.util.CurrencyUtil;
 import java.time.LocalDate;
 import java.util.List;
 
-public class DashboardController {
+public class DashboardController implements Disposable {
     
     @FXML private Label dailySalesLabel;
     @FXML private Label transactionsLabel;
@@ -42,6 +43,7 @@ public class DashboardController {
     private InventoryService inventoryService;
     private com.picopossum.infrastructure.backup.DatabaseBackupService backupService;
     private PerformanceMonitor performanceMonitor;
+    private boolean disposed = false;
 
     public DashboardController(ReportsService reportsService, InventoryService inventoryService, 
                                com.picopossum.infrastructure.backup.DatabaseBackupService backupService,
@@ -133,6 +135,7 @@ public class DashboardController {
         };
 
         task.setOnSucceeded(e -> {
+            if (disposed) return;
             DashboardBundle bundle = task.getValue();
             updateUI(bundle);
             setLoading(false);
@@ -208,5 +211,10 @@ public class DashboardController {
     public void handleRefresh() {
         refresh();
         com.picopossum.ui.common.controls.NotificationService.success("Dashboard data refreshed");
+    }
+
+    @Override
+    public void dispose() {
+        this.disposed = true;
     }
 }

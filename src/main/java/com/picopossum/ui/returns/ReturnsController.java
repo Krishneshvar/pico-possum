@@ -10,7 +10,6 @@ import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ReturnFilter;
 import com.picopossum.ui.common.controllers.AbstractCrudController;
 import com.picopossum.ui.common.components.ButtonFactory;
-import com.picopossum.ui.common.controls.NotificationService;
 import com.picopossum.ui.workspace.WorkspaceManager;
 import com.picopossum.shared.util.TimeUtil;
 import javafx.beans.property.SimpleStringProperty;

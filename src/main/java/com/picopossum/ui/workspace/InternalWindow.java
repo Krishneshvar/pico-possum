@@ -12,6 +12,7 @@ public class InternalWindow extends StackPane {
 
     private final String title;
     private Runnable onCloseRequest;
+    private Object controller;
 
     public InternalWindow(String title) {
         this.title = title;
@@ -40,5 +41,13 @@ public class InternalWindow extends StackPane {
     /** No-op – kept so WorkspaceDesktop compile-calls work. */
     public void setActive(boolean active) {
         // Visual active state is handled by the tab bar, not the window itself.
+    }
+    
+    public void setController(Object controller) {
+        this.controller = controller;
+    }
+    
+    public Object getController() {
+        return controller;
     }
 }

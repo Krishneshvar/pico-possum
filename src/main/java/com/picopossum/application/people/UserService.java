@@ -8,7 +8,6 @@ import com.picopossum.shared.dto.UserFilter;
 import com.picopossum.shared.util.DomainValidators;
 
 import com.picopossum.shared.util.TimeUtil;
-import java.util.List;
 import java.util.Optional;
 
 public class UserService {

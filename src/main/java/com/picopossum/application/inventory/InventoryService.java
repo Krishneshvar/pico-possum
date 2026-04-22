@@ -1,6 +1,5 @@
 package com.picopossum.application.inventory;
 
-import com.picopossum.domain.enums.FlowEventType;
 import com.picopossum.domain.enums.InventoryReason;
 import com.picopossum.domain.exceptions.InsufficientStockException;
 import com.picopossum.domain.exceptions.ValidationException;
@@ -14,7 +13,6 @@ import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.shared.util.TimeUtil;
 import com.picopossum.shared.dto.StockHistoryDto;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 

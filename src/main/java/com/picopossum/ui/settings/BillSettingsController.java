@@ -24,10 +24,8 @@ import javafx.stage.Window;
 
 import java.io.File;
 import java.math.BigDecimal;
-import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 public class BillSettingsController {

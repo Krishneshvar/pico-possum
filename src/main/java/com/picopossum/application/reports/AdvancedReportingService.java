@@ -2,8 +2,6 @@ package com.picopossum.application.reports;
 
 import com.picopossum.domain.repositories.SalesRepository;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 

@@ -3,7 +3,6 @@ package com.picopossum.application.auth;
 import com.picopossum.domain.model.User;
 import com.picopossum.domain.repositories.UserRepository;
 import com.picopossum.infrastructure.security.PasswordHasher;
-import java.util.List;
 import java.util.Optional;
 
 public class AuthService {

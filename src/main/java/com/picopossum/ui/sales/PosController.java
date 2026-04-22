@@ -1,7 +1,5 @@
 package com.picopossum.ui.sales;
 
-import com.picopossum.application.auth.AuthContext;
-import com.picopossum.application.auth.AuthUser;
 import com.picopossum.application.categories.CategoryService;
 import com.picopossum.application.products.ProductService;
 import com.picopossum.application.sales.SalesService;
@@ -18,7 +16,6 @@ import com.picopossum.ui.sales.cells.*;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;

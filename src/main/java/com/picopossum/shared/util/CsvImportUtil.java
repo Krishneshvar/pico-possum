@@ -22,22 +22,80 @@ public final class CsvImportUtil {
     }
 
     public static List<List<String>> readCsv(Path path) throws IOException {
-        String content = Files.readString(path, StandardCharsets.UTF_8);
-        return parseCsv(content);
+        try (java.io.BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            List<List<String>> rows = new ArrayList<>();
+            List<String> currentRow = new ArrayList<>();
+            StringBuilder currentField = new StringBuilder();
+            boolean inQuotes = false;
+            boolean firstChar = true;
+
+            int chInt;
+            while ((chInt = reader.read()) != -1) {
+                char ch = (char) chInt;
+
+                // Strip BOM only at the very start of the file
+                if (firstChar) {
+                    firstChar = false;
+                    if (ch == '\uFEFF') continue;
+                }
+
+                if (ch == '"') {
+                    reader.mark(1);
+                    int next = reader.read();
+                    if (inQuotes && next == '"') {
+                        currentField.append('"');
+                    } else {
+                        inQuotes = !inQuotes;
+                        if (next != -1) reader.reset();
+                    }
+                    continue;
+                }
+
+                if (!inQuotes && ch == ',') {
+                    currentRow.add(currentField.toString().trim());
+                    currentField.setLength(0);
+                    continue;
+                }
+
+                if (!inQuotes && (ch == '\n' || ch == '\r')) {
+                    currentRow.add(currentField.toString().trim());
+                    currentField.setLength(0);
+                    if (!currentRow.isEmpty()) {
+                        rows.add(currentRow);
+                        currentRow = new ArrayList<>();
+                    }
+
+                    if (ch == '\r') {
+                        reader.mark(1);
+                        if (reader.read() != '\n') reader.reset();
+                    }
+                    continue;
+                }
+
+                currentField.append(ch);
+            }
+
+            if (currentField.length() > 0 || !currentRow.isEmpty()) {
+                currentRow.add(currentField.toString().trim());
+                rows.add(currentRow);
+            }
+
+            return rows;
+        }
     }
 
     public static List<List<String>> parseCsv(String content) {
+        // Fallback for string-based parsing if needed
         List<List<String>> rows = new ArrayList<>();
-        if (content == null || content.isEmpty()) {
-            return rows;
-        }
-
+        if (content == null || content.isEmpty()) return rows;
+        
         List<String> currentRow = new ArrayList<>();
         StringBuilder currentField = new StringBuilder();
         boolean inQuotes = false;
-
+        
         for (int i = 0; i < content.length(); i++) {
             char ch = content.charAt(i);
+            if (i == 0 && ch == '\uFEFF') continue;
 
             if (ch == '"') {
                 if (inQuotes && i + 1 < content.length() && content.charAt(i + 1) == '"') {
@@ -48,33 +106,25 @@ public final class CsvImportUtil {
                 }
                 continue;
             }
-
             if (!inQuotes && ch == ',') {
-                currentRow.add(stripBom(currentField.toString()));
+                currentRow.add(currentField.toString().trim());
                 currentField.setLength(0);
                 continue;
             }
-
             if (!inQuotes && (ch == '\n' || ch == '\r')) {
-                currentRow.add(stripBom(currentField.toString()));
+                currentRow.add(currentField.toString().trim());
                 currentField.setLength(0);
                 rows.add(currentRow);
                 currentRow = new ArrayList<>();
-
-                if (ch == '\r' && i + 1 < content.length() && content.charAt(i + 1) == '\n') {
-                    i++;
-                }
+                if (ch == '\r' && i + 1 < content.length() && content.charAt(i + 1) == '\n') i++;
                 continue;
             }
-
             currentField.append(ch);
         }
-
         if (currentField.length() > 0 || !currentRow.isEmpty()) {
-            currentRow.add(stripBom(currentField.toString()));
+            currentRow.add(currentField.toString().trim());
             rows.add(currentRow);
         }
-
         return rows;
     }
 

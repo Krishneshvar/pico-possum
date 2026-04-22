@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 
 public class ProductSearchIndex {
     
-    private final Map<String, Product> skuIndex = new ConcurrentHashMap<>();
-    private final Map<String, Product> barcodeIndex = new ConcurrentHashMap<>();
+    private volatile Map<String, Product> skuIndex = new ConcurrentHashMap<>();
+    private volatile Map<String, Product> barcodeIndex = new ConcurrentHashMap<>();
     private final List<Product> allProducts = new CopyOnWriteArrayList<>();
     private final ProductRepository productRepository;
 
@@ -71,9 +71,26 @@ public class ProductSearchIndex {
     }
 
     public synchronized void refresh() {
-        skuIndex.clear();
-        barcodeIndex.clear();
-        allProducts.clear();
-        buildIndex();
+        ProductFilter filter = new ProductFilter(null, List.of("active"), null, 0, 10000, "name", "ASC");
+        PagedResult<Product> result = productRepository.findProducts(filter);
+        
+        List<Product> newAllProducts = new ArrayList<>(result.items());
+        Map<String, Product> newSkuIndex = new HashMap<>();
+        Map<String, Product> newBarcodeIndex = new HashMap<>();
+        
+        for (Product product : newAllProducts) {
+            if (product.sku() != null && !product.sku().isEmpty()) {
+                newSkuIndex.put(product.sku().toLowerCase(), product);
+            }
+            if (product.barcode() != null && !product.barcode().isEmpty()) {
+                newBarcodeIndex.put(product.barcode(), product);
+            }
+        }
+        
+        // Atomic swap
+        this.allProducts.clear();
+        this.allProducts.addAll(newAllProducts);
+        this.skuIndex = new ConcurrentHashMap<>(newSkuIndex);
+        this.barcodeIndex = new ConcurrentHashMap<>(newBarcodeIndex);
     }
 }

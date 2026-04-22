@@ -1,6 +1,5 @@
 package com.picopossum.ui.products;
 
-import com.picopossum.application.auth.AuthContext;
 import com.picopossum.application.categories.CategoryService;
 import com.picopossum.application.products.ProductService;
 import com.picopossum.domain.model.Category;
