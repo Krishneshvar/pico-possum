@@ -15,8 +15,9 @@ import com.picopossum.application.audit.AuditService;
 import com.picopossum.persistence.db.DatabaseManager;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.persistence.repositories.sqlite.*;
+import com.picopossum.shared.dto.PagedResult;
+import com.picopossum.shared.dto.ReturnFilter;
 import org.junit.jupiter.api.*;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -26,14 +27,8 @@ import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Integration tests for the returns & refunds flow:
- * partial returns, full refunds, stock reversal, and validation guards.
- * Synchronized for Single-User Identity-Agnostic architecture.
- */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ReturnsFlowIntegrationTest {
 
@@ -44,9 +39,11 @@ class ReturnsFlowIntegrationTest {
     private static ReturnsService returnsService;
     private static InventoryService inventoryService;
     private static SqliteSalesRepository salesRepository;
+    private static SqliteReturnsRepository returnsRepository;
     private static AuditService auditService;
 
     private static long testProductId;
+    private static long testTaxProductId;
     private static long cashPaymentMethodId;
 
     @BeforeAll
@@ -66,7 +63,7 @@ class ReturnsFlowIntegrationTest {
         SqliteAuditRepository auditRepository = new SqliteAuditRepository(databaseManager);
         SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
         SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
-        SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
+        returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
         auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
@@ -87,7 +84,8 @@ class ReturnsFlowIntegrationTest {
 
         // Seed
         cashPaymentMethodId = getOrSeedPaymentMethod();
-        testProductId = seedProductWithStock(categoryRepository, productRepository, 100);
+        testProductId = seedProductWithStock(categoryRepository, productRepository, 100, BigDecimal.ZERO);
+        testTaxProductId = seedProductWithStock(categoryRepository, productRepository, 100, new BigDecimal("5.00"));
     }
 
     @AfterAll
@@ -96,13 +94,18 @@ class ReturnsFlowIntegrationTest {
             auditService.waitForCompletion();
             auditService.shutdown();
         }
-        if (databaseManager != null) databaseManager.close();
+        if (databaseManager != null) {
+            databaseManager.close();
+        }
 
         // Help Windows release file handles
         System.gc();
-        try { Thread.sleep(100); } catch (InterruptedException e) {}
+        System.runFinalization();
+        try { Thread.sleep(300); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 
-        if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
+        if (appPaths != null && Files.exists(appPaths.getAppRoot())) {
+            deleteDirectory(appPaths.getAppRoot());
+        }
     }
 
     @Test
@@ -133,6 +136,68 @@ class ReturnsFlowIntegrationTest {
         Return returnRecord = returnsService.getReturn(returnResp.id());
         assertNotNull(returnRecord);
         assertTrue(returnRecord.totalRefund().compareTo(BigDecimal.ZERO) > 0);
+        
+        // Verify denormalized fields
+        List<ReturnItem> items = returnsRepository.findReturnItems(returnResp.id());
+        assertEquals(1, items.size());
+        assertEquals(testProductId, items.get(0).productId());
+        assertNotNull(items.get(0).sku());
+        assertNotNull(items.get(0).productName());
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("Complex return — items with tax and global discount")
+    void returnWithTaxAndDiscount_calculatesProRatedRefund() {
+        // Item 1: MRP 50, Tax 5% ($2.50). Total w/ Tax = 52.50.
+        // Item 2: MRP 50, Tax 5% ($2.50). Total w/ Tax = 52.50.
+        // Bill Total w/ Tax = 105.00.
+        // Global Discount = $5.00.
+        // Paid = $100.00.
+        
+        // Refund for 1 item should be exactly $50.00.
+        
+        SaleResponse saleResp = salesService.createSale(new CreateSaleRequest(
+                List.of(
+                    new CreateSaleItemRequest(testTaxProductId, 1, BigDecimal.ZERO, new BigDecimal("50.00")),
+                    new CreateSaleItemRequest(testTaxProductId, 1, BigDecimal.ZERO, new BigDecimal("50.00"))
+                ),
+                null, new BigDecimal("5.00"),
+                List.of(new PaymentRequest(new BigDecimal("100.00"), cashPaymentMethodId))
+        ));
+        
+        long saleId = saleResp.sale().id();
+        long item1Id = saleResp.items().get(0).id();
+        
+        ReturnResponse returnResp = returnsService.createReturn(new CreateReturnRequest(
+                saleId,
+                List.of(new CreateReturnItemRequest(item1Id, 1)),
+                "Tax/Discount Test"
+        ));
+        
+        assertEquals(0, returnResp.totalRefund().compareTo(new BigDecimal("50.00")));
+    }
+
+    @Test
+    @Order(5)
+    @DisplayName("Search and Filter returns")
+    void filterReturns_returnsCorrectResults() {
+        // Clear or just use existing ones
+        ReturnFilter filter = new ReturnFilter(null, null, null, null, null, null, "Defective", 1, 10, "created_at", "DESC");
+        PagedResult<Return> result = returnsService.getReturns(filter);
+        
+        // Should have at least one from test 1
+        assertTrue(result.totalCount() >= 1);
+        assertTrue(result.items().stream().anyMatch(r -> r.reason().contains("Defective")));
+        
+        // Filter by amount
+        ReturnFilter amountFilter = new ReturnFilter(null, null, null, new BigDecimal("10.00"), new BigDecimal("100.00"), null, null, 1, 10, "total_refund", "ASC");
+        PagedResult<Return> amountResult = returnsService.getReturns(amountFilter);
+        assertNotNull(amountResult);
+        for (Return r : amountResult.items()) {
+            assertTrue(r.totalRefund().compareTo(new BigDecimal("10.00")) >= 0);
+            assertTrue(r.totalRefund().compareTo(new BigDecimal("100.00")) <= 0);
+        }
     }
 
     @Test
@@ -181,9 +246,9 @@ class ReturnsFlowIntegrationTest {
         ));
     }
 
-    private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty) {
+    private static long seedProductWithStock(SqliteCategoryRepository catRepo, SqliteProductRepository prodRepo, int qty, BigDecimal taxRate) {
         long catId = catRepo.insertCategory("ReturnsCat-" + UUID.randomUUID(), null).id();
-        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, BigDecimal.ZERO, "RSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, null, null, null);
+        Product p = new Product(null, "ReturnsProd-" + UUID.randomUUID(), "desc", catId, null, taxRate, "RSKU-" + UUID.randomUUID(), null, new BigDecimal("50.00"), new BigDecimal("30.00"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0, null, null, null);
         long productId = prodRepo.insertProduct(p);
         seedInventory(productId, qty);
         return productId;
@@ -215,13 +280,22 @@ class ReturnsFlowIntegrationTest {
     }
 
     private static void deleteDirectory(Path root) throws IOException {
-        if (root == null || Files.notExists(root)) return;
-        try (var walk = Files.walk(root)) {
-            walk.sorted(Comparator.reverseOrder()).forEach(path -> {
-                try { Files.deleteIfExists(path); } catch (IOException ex) {
-                    throw new IllegalStateException("Failed to delete: " + path, ex);
-                }
-            });
+        if (root == null || !Files.exists(root)) return;
+        
+        // Retry logic for Windows file locks
+        for (int i = 0; i < 3; i++) {
+            try (var walk = Files.walk(root)) {
+                walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ex) {
+                        // Ignore and retry
+                    }
+                });
+            }
+            if (!Files.exists(root)) return;
+            System.gc();
+            try { Thread.sleep(100 * (i + 1)); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
     }
 }

@@ -41,11 +41,15 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
     @Override
     public long insertReturnItem(ReturnItem item) {
         return executeInsert(
-                "INSERT INTO return_items (return_id, sale_item_id, quantity, refund_amount) VALUES (?, ?, ?, ?)",
+                "INSERT INTO return_items (return_id, sale_item_id, quantity, refund_amount, product_id, price_per_unit, sku, product_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 item.returnId(),
                 item.saleItemId(),
                 item.quantity(),
-                item.refundAmount()
+                item.refundAmount(),
+                item.productId(),
+                item.pricePerUnit(),
+                item.sku(),
+                item.productName()
         );
     }
 
@@ -77,14 +81,8 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
         return queryList(
                 """
                 SELECT
-                  ri.*,
-                  si.product_id,
-                  si.price_per_unit,
-                  p.sku,
-                  p.name AS product_name
+                  ri.*
                 FROM return_items ri
-                JOIN sale_items si ON ri.sale_item_id = si.id
-                JOIN products p ON si.product_id = p.id
                 WHERE ri.return_id = ?
                 ORDER BY ri.id ASC
                 """,

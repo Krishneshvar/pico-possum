@@ -53,6 +53,11 @@ public class ReturnsService {
         return transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(request.saleId())
                     .orElseThrow(() -> new NotFoundException("Sale not found"));
+            
+            if ("cancelled".equals(sale.status())) {
+                throw new ValidationException("Cannot process return on a cancelled sale");
+            }
+
             List<SaleItem> saleItems = salesRepository.findSaleItems(request.saleId());
 
             Map<Long, Integer> aggregatedItems = aggregateDuplicateItems(request.items());
