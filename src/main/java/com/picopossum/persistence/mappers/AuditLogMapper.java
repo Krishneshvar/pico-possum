@@ -21,7 +21,8 @@ public final class AuditLogMapper implements RowMapper<AuditLog> {
                 rs.getString("new_data"),
                 rs.getString("event_details"),
                 rs.getString("severity"),
-                SqlMapperUtils.getLocalDateTime(rs, "created_at")
+                SqlMapperUtils.getLocalDateTime(rs, "created_at"),
+                rs.getString("integrity_hash")
         );
     }
 }

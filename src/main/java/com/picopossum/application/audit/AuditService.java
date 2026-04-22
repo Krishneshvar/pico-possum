@@ -19,6 +19,8 @@ public final class AuditService {
     private final AuditRepository auditRepository;
     private final ObjectMapper objectMapper;
     private final java.util.concurrent.atomic.AtomicLong logCounter = new java.util.concurrent.atomic.AtomicLong(0);
+    private volatile String lastHash = "GENESIS";
+    
     private final java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "audit-logger");
         t.setDaemon(true);
@@ -28,6 +30,25 @@ public final class AuditService {
     public AuditService(AuditRepository auditRepository, ObjectMapper objectMapper) {
         this.auditRepository = Objects.requireNonNull(auditRepository, "auditRepository must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+        initializeLastHash();
+    }
+
+    private void initializeLastHash() {
+        try {
+            AuditLogFilter filter = new AuditLogFilter(
+                    null, null, null, null, null, null,
+                    "created_at", "DESC", 1, 1
+            );
+            PagedResult<AuditLog> latest = auditRepository.findAuditLogs(filter);
+            if (latest != null && !latest.items().isEmpty()) {
+                AuditLog log = latest.items().get(0);
+                if (log.integrityHash() != null) {
+                    this.lastHash = log.integrityHash();
+                }
+            }
+        } catch (Exception e) {
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to initialize audit last hash", e);
+        }
     }
 
     /**
@@ -40,17 +61,26 @@ public final class AuditService {
 
         executor.submit(() -> {
             try {
-                AuditLog auditLog = new AuditLog(
-                        null,
-                        action,
-                        tableName,
-                        rowId,
-                        toJson(oldData),
-                        toJson(newData),
-                        toJson(eventDetails),
-                        effectiveSeverity,
-                        TimeUtil.nowUTC()
+                String oldDataJson = toJson(oldData);
+                String newDataJson = toJson(newData);
+                String detailsJson = toJson(eventDetails);
+                java.time.LocalDateTime now = TimeUtil.nowUTC();
+
+                // 1. Create temporary log to calculate hash
+                AuditLog tempLog = new AuditLog(
+                        null, action, tableName, rowId, oldDataJson, newDataJson, 
+                        detailsJson, effectiveSeverity, now, null
                 );
+                
+                // 2. Calculate integrity hash
+                lastHash = calculateIntegrityHash(tempLog, lastHash);
+                
+                // 3. Create final log with hash
+                AuditLog auditLog = new AuditLog(
+                        null, action, tableName, rowId, oldDataJson, newDataJson, 
+                        detailsJson, effectiveSeverity, now, lastHash
+                );
+                
                 auditRepository.insertAuditLog(auditLog);
                 
                 // Periodic cleanup
@@ -61,6 +91,18 @@ public final class AuditService {
                 com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to record audit event: {}", action, e);
             }
         });
+    }
+
+    private String calculateIntegrityHash(AuditLog log, String previousHash) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            String data = previousHash + "|" + log.createdAt() + "|" + log.action() + "|" + 
+                         log.tableName() + "|" + log.eventDetails();
+            byte[] hashBytes = digest.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.Base64.getEncoder().encodeToString(hashBytes);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "HASH_ERROR";
+        }
     }
 
     public void recordEvent(String action, String tableName, Long rowId,

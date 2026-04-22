@@ -6,6 +6,8 @@ import com.picopossum.infrastructure.backup.DatabaseBackupService;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.printing.PrinterService;
 import com.picopossum.infrastructure.serialization.JsonService;
+import com.picopossum.infrastructure.system.SystemInteropService;
+import com.picopossum.infrastructure.filesystem.UploadStore;
 import com.picopossum.ui.JavaFXInitializer;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,13 +32,15 @@ class SettingsControllerTest {
     @Mock private PrinterService printerService;
     @Mock private JsonService jsonService;
     @Mock private DatabaseBackupService backupService;
+    @Mock private SystemInteropService interopService;
+    @Mock private UploadStore uploadStore;
 
     private SettingsController controller;
 
     @BeforeEach
     void setUp() {
         AuthContext.setCurrentUser(new AuthUser(1L, "Test User", "testuser"));
-        controller = new SettingsController(settingsStore, printerService, backupService);
+        controller = new SettingsController(settingsStore, printerService, backupService, interopService, uploadStore);
     }
 
     @AfterEach

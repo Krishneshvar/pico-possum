@@ -13,6 +13,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import com.picopossum.infrastructure.monitoring.PerformanceMonitor;
 
 import java.math.BigDecimal;
 import com.picopossum.shared.util.CurrencyUtil;
@@ -40,12 +41,15 @@ public class DashboardController {
     private ReportsService reportsService;
     private InventoryService inventoryService;
     private com.picopossum.infrastructure.backup.DatabaseBackupService backupService;
+    private PerformanceMonitor performanceMonitor;
 
     public DashboardController(ReportsService reportsService, InventoryService inventoryService, 
-                               com.picopossum.infrastructure.backup.DatabaseBackupService backupService) {
+                               com.picopossum.infrastructure.backup.DatabaseBackupService backupService,
+                               PerformanceMonitor performanceMonitor) {
         this.reportsService = reportsService;
         this.inventoryService = inventoryService;
         this.backupService = backupService;
+        this.performanceMonitor = performanceMonitor;
     }
 
     @FXML
@@ -141,6 +145,7 @@ public class DashboardController {
         });
 
         new Thread(task).start();
+        if (performanceMonitor != null) performanceMonitor.recordOperation("dashboard_load_trigger", 0);
     }
 
     private void updateUI(DashboardBundle bundle) {

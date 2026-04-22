@@ -44,6 +44,8 @@ class SqliteAuditRepositoryTest {
                 old_data TEXT,
                 new_data TEXT,
                 event_details TEXT,
+                severity TEXT,
+                integrity_hash TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """);
@@ -51,14 +53,14 @@ class SqliteAuditRepositoryTest {
 
     @Test
     void insertAuditLog_validLog_insertsSuccessfully() {
-        AuditLog log = new AuditLog(null, "UPDATE", "products", 100L, "{}", "{}", "Product updated", "info", LocalDateTime.now());
+        AuditLog log = new AuditLog(null, "UPDATE", "products", 100L, "{}", "{}", "Product updated", "info", LocalDateTime.now(), null);
         long id = repository.insertAuditLog(log);
         assertTrue(id > 0);
     }
 
     @Test
     void findAuditLogById_found_returnsLog() {
-        AuditLog log = new AuditLog(null, "CREATE", "products", 10L, null, "{}", "A", "info", LocalDateTime.now());
+        AuditLog log = new AuditLog(null, "CREATE", "products", 10L, null, "{}", "A", "info", LocalDateTime.now(), null);
         long id = repository.insertAuditLog(log);
 
         AuditLog result = repository.findAuditLogById(id);
@@ -70,9 +72,9 @@ class SqliteAuditRepositoryTest {
 
     @Test
     void findAuditLogs_withFilters_returnsCorrectResults() {
-        repository.insertAuditLog(new AuditLog(null, "CREATE", "products", 10L, null, "{}", "A", "info", LocalDateTime.now()));
-        repository.insertAuditLog(new AuditLog(null, "UPDATE", "products", 10L, "{}", "{}", "B", "info", LocalDateTime.now()));
-        repository.insertAuditLog(new AuditLog(null, "DELETE", "categories", 5L, "{}", null, "C", "info", LocalDateTime.now()));
+        repository.insertAuditLog(new AuditLog(null, "CREATE", "products", 10L, null, "{}", "A", "info", LocalDateTime.now(), null));
+        repository.insertAuditLog(new AuditLog(null, "UPDATE", "products", 10L, "{}", "{}", "B", "info", LocalDateTime.now(), null));
+        repository.insertAuditLog(new AuditLog(null, "DELETE", "categories", 5L, "{}", null, "C", "info", LocalDateTime.now(), null));
 
         AuditLogFilter filter1 = new AuditLogFilter("products", null, null, null, null, null, "id", "ASC", 1, 10);
         PagedResult<AuditLog> result1 = repository.findAuditLogs(filter1);
@@ -87,7 +89,7 @@ class SqliteAuditRepositoryTest {
     @Test
     void findAuditLogs_pagination_worksCorrectly() {
         for (int i = 0; i < 5; i++) {
-            repository.insertAuditLog(new AuditLog(null, "UPDATE", "products", (long) i, null, null, null, "info", LocalDateTime.now()));
+            repository.insertAuditLog(new AuditLog(null, "UPDATE", "products", (long) i, null, null, null, "info", LocalDateTime.now(), null));
         }
 
         AuditLogFilter filter = new AuditLogFilter(null, null, null, null, null, null, "id", "ASC", 1, 2);
@@ -105,7 +107,7 @@ class SqliteAuditRepositoryTest {
     @Test
     void insertAuditLog_oneOverLimit_removesFirst() {
         for (int i = 0; i < 1001; i++) {
-            repository.insertAuditLog(new AuditLog(null, "ACTION", "TABLE", (long)i, null, null, null, "info", LocalDateTime.now()));
+            repository.insertAuditLog(new AuditLog(null, "ACTION", "TABLE", (long)i, null, null, null, "info", LocalDateTime.now(), null));
         }
         repository.cleanupOldLogs();
 

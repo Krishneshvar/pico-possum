@@ -3,6 +3,7 @@ package com.picopossum.ui.settings;
 import com.picopossum.application.auth.AuthContext;
 import com.picopossum.application.auth.AuthUser;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
+import com.picopossum.infrastructure.filesystem.UploadStore;
 import com.picopossum.shared.dto.BillSettings;
 import com.picopossum.shared.dto.GeneralSettings;
 import com.picopossum.ui.JavaFXInitializer;
@@ -26,6 +27,7 @@ class BillSettingsControllerTest {
     }
 
     @Mock private SettingsStore settingsStore;
+    @Mock private UploadStore uploadStore;
     @Mock private javafx.scene.layout.VBox sectionsContainer;
     @Mock private javafx.scene.control.ComboBox<String> paperWidthCombo;
     @Mock private javafx.scene.control.ComboBox<String> dateFormatCombo;
@@ -45,9 +47,10 @@ class BillSettingsControllerTest {
         lenient().when(dateFormatCombo.getItems()).thenReturn(javafx.collections.FXCollections.observableArrayList());
         lenient().when(timeFormatCombo.getItems()).thenReturn(javafx.collections.FXCollections.observableArrayList());
         lenient().when(previewWebView.getEngine()).thenReturn(webEngine);
+        lenient().when(previewWebView.getStyleClass()).thenReturn(javafx.collections.FXCollections.observableArrayList());
         lenient().when(sectionsContainer.getChildren()).thenReturn(javafx.collections.FXCollections.observableArrayList());
         
-        controller = new BillSettingsController(settingsStore);
+        controller = new BillSettingsController(settingsStore, uploadStore);
         setField(controller, "sectionsContainer", sectionsContainer);
         setField(controller, "paperWidthCombo", paperWidthCombo);
         setField(controller, "dateFormatCombo", dateFormatCombo);

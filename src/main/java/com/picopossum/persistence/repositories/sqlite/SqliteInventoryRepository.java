@@ -28,6 +28,10 @@ public final class SqliteInventoryRepository extends BaseSqliteRepository implem
         super(connectionProvider);
     }
 
+    public SqliteInventoryRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public int getStockByProductId(long productId) {
         return queryOne(

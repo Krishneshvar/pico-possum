@@ -22,6 +22,10 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         super(connectionProvider);
     }
 
+    public SqliteProductRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public long insertProduct(Product product) {
         return executeInsert(

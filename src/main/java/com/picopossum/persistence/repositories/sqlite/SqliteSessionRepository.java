@@ -13,6 +13,10 @@ public final class SqliteSessionRepository extends BaseSqliteRepository implemen
         super(connectionProvider);
     }
 
+    public SqliteSessionRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public void create(SessionRecord session) {
         boolean userExists = queryOne(

@@ -4,7 +4,7 @@ import com.picopossum.infrastructure.filesystem.AppPaths;
 import com.picopossum.infrastructure.filesystem.FileStorageService;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.persistence.db.TransactionManager;
-import com.picopossum.domain.repositories.AuditRepository;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.domain.repositories.ProductRepository;
 
@@ -17,10 +17,11 @@ public class ProductModule {
 
     public ProductModule(ProductRepository productRepository,
                          InventoryRepository inventoryRepository,
-                         AuditRepository auditRepository,
+                         AuditService auditService,
                          TransactionManager transactionManager,
                          AppPaths appPaths,
-                         SettingsStore settingsStore) {
+                         SettingsStore settingsStore,
+                         com.picopossum.ui.sales.ProductSearchIndex searchIndex) {
 
         ProductValidator validator = new ProductValidator();
         FileStorageService storageService = new FileStorageService(appPaths);
@@ -29,12 +30,13 @@ public class ProductModule {
         this.productService = new ProductService(
                 productRepository,
                 inventoryRepository,
-                auditRepository,
+                auditService,
                 transactionManager,
                 settingsStore,
                 validator,
                 storageService,
-                jsonService
+                jsonService,
+                searchIndex
         );
     }
 

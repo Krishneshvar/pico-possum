@@ -99,6 +99,6 @@ class AuditControllerTest {
     }
 
     private AuditLog createTestAuditLog(Long id, String tableName, String action, Long rowId) {
-        return new AuditLog(id, action, tableName, rowId, null, null, "Summary Details", LocalDateTime.now());
+        return new AuditLog(id, action, tableName, rowId, null, null, "Summary Details", "info", LocalDateTime.now(), null);
     }
 }

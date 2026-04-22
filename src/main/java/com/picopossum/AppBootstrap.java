@@ -51,6 +51,7 @@ public final class AppBootstrap {
     private com.picopossum.application.auth.AuthService authService;
     private TransactionManager transactionManager;
     private com.picopossum.infrastructure.security.PasswordHasher passwordHasher;
+    private com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor;
 
 
 
@@ -106,6 +107,7 @@ public final class AppBootstrap {
         databaseManager.initialize();
         transactionManager = new TransactionManager(databaseManager);
         passwordHasher = new com.picopossum.infrastructure.security.PasswordHasher();
+        performanceMonitor = new com.picopossum.infrastructure.monitoring.PerformanceMonitor();
 
         serviceLocator = new ServiceLocator(databaseManager, transactionManager, appPaths);
         backupService = serviceLocator.getDatabaseBackupService();
@@ -114,31 +116,36 @@ public final class AppBootstrap {
 
     private void initializeApplication() {
         JsonService jsonService = new JsonService();
-        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager);
+        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager, performanceMonitor);
         SqliteSessionRepository sessionRepository = new SqliteSessionRepository(databaseManager);
 
-        SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager);
-        SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager);
-        SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager);
-        SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager);
-        auditRepository = new SqliteAuditRepository(databaseManager);
+        SqliteProductRepository productRepository = new SqliteProductRepository(databaseManager, performanceMonitor);
+        SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager, performanceMonitor);
+        SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager, performanceMonitor);
+        SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager, performanceMonitor);
+        auditRepository = new SqliteAuditRepository(databaseManager, performanceMonitor);
 
         com.picopossum.persistence.repositories.sqlite.SqliteCustomerRepository customerRepository =
-                new com.picopossum.persistence.repositories.sqlite.SqliteCustomerRepository(databaseManager);
+                new com.picopossum.persistence.repositories.sqlite.SqliteCustomerRepository(databaseManager, performanceMonitor);
+
+        productSearchIndex = new ProductSearchIndex(productRepository);
 
         applicationModule = new ApplicationModule(
                 userRepository, sessionRepository, productRepository,
                 categoryRepository, inventoryRepository, productFlowRepository, auditRepository,
                 customerRepository, transactionManager, passwordHasher, jsonService, appPaths,
-                serviceLocator.getSettingsStore(), databaseManager
+                serviceLocator.getSettingsStore(), databaseManager, performanceMonitor, productSearchIndex
         );
 
         authService = new com.picopossum.application.auth.AuthService(userRepository, passwordHasher);
 
-        salesRepository = new SqliteSalesRepository(databaseManager);
+        salesRepository = new SqliteSalesRepository(databaseManager, performanceMonitor);
 
         com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository returnRepository =
-                new com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository(databaseManager);
+                new com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository(databaseManager, performanceMonitor);
+
+        com.picopossum.persistence.repositories.sqlite.SqlitePosDraftRepository draftRepository =
+                new com.picopossum.persistence.repositories.sqlite.SqlitePosDraftRepository(databaseManager, performanceMonitor, productRepository, transactionManager);
 
         com.picopossum.application.sales.PaymentService paymentService =
                 new com.picopossum.application.sales.PaymentService(salesRepository);
@@ -146,12 +153,9 @@ public final class AppBootstrap {
                 new com.picopossum.application.sales.InvoiceNumberService(salesRepository);
         saleCalculator = new com.picopossum.domain.services.SaleCalculator();
         salesService = new SalesService(salesRepository, productRepository,
-                customerRepository, auditRepository, applicationModule.getInventoryService(),
+                customerRepository, applicationModule.getAuditService(), applicationModule.getInventoryService(),
                 saleCalculator, paymentService, transactionManager, jsonService,
                 serviceLocator.getSettingsStore(), invoiceNumberService, returnRepository);
-
-        productSearchIndex = new ProductSearchIndex(productRepository);
-
 
 
         com.picopossum.shared.util.TimeUtil.initialize(serviceLocator.getSettingsStore());
@@ -159,7 +163,7 @@ public final class AppBootstrap {
 
         com.picopossum.application.returns.ReturnsModule returnsModule = new com.picopossum.application.returns.ReturnsModule(
                 returnRepository, salesRepository, applicationModule.getInventoryService(),
-                auditRepository, transactionManager, jsonService, invoiceNumberService
+                applicationModule.getAuditService(), transactionManager, jsonService, invoiceNumberService
         );
         returnsService = returnsModule.getReturnsService();
         returnCalculator = returnsModule.getReturnCalculator();

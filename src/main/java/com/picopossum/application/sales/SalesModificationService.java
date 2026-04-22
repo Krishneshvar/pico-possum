@@ -8,10 +8,11 @@ import com.picopossum.domain.exceptions.NotFoundException;
 import com.picopossum.domain.exceptions.ValidationException;
 import com.picopossum.domain.model.*;
 import com.picopossum.infrastructure.serialization.JsonService;
-import com.picopossum.persistence.db.TransactionManager;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.*;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.shared.util.TimeUtil;
+import com.picopossum.persistence.db.TransactionManager;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ public class SalesModificationService {
     private final SalesRepository salesRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
-    private final AuditRepository auditRepository;
+    private final AuditService auditService;
     private final InventoryService inventoryService;
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
@@ -33,7 +34,7 @@ public class SalesModificationService {
     public SalesModificationService(SalesRepository salesRepository,
                                     ProductRepository productRepository,
                                     CustomerRepository customerRepository,
-                                    AuditRepository auditRepository,
+                                    AuditService auditService,
                                     InventoryService inventoryService,
                                     TransactionManager transactionManager,
                                     JsonService jsonService,
@@ -41,7 +42,7 @@ public class SalesModificationService {
         this.salesRepository = salesRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
-        this.auditRepository = auditRepository;
+        this.auditService = auditService;
         this.inventoryService = inventoryService;
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
@@ -130,15 +131,10 @@ public class SalesModificationService {
                 salesRepository.updateSalePaidAmount(saleId, grandTotal);
             }
 
-            AuditLog auditLog = new AuditLog(
-                    null, "UPDATE", "sales", saleId,
-                    jsonService.toJson(Map.of("total", sale.totalAmount())), 
-                    jsonService.toJson(Map.of("total", grandTotal)),
-                    "Line item correction",
-                    "info",
-                    TimeUtil.nowUTC()
-            );
-            auditRepository.insertAuditLog(auditLog);
+            auditService.logUpdate("sales", saleId, 
+                    Map.of("total", sale.totalAmount()), 
+                    Map.of("total", grandTotal),
+                    "Line item correction");
 
             return null;
         });
@@ -173,14 +169,7 @@ public class SalesModificationService {
 
             Map<String, Object> oldData = Map.of("status", sale.status());
             Map<String, Object> newData = Map.of("status", "cancelled");
-            AuditLog auditLog = new AuditLog(
-                    null, "UPDATE", "sales", saleId,
-                    jsonService.toJson(oldData), jsonService.toJson(newData),
-                    "Cancellation",
-                    "warning",
-                    TimeUtil.nowUTC()
-            );
-            auditRepository.insertAuditLog(auditLog);
+            auditService.recordEvent("UPDATE", "sales", saleId, oldData, newData, "Cancellation", "warning");
 
             return null;
         });
@@ -202,14 +191,7 @@ public class SalesModificationService {
 
             Map<String, Object> oldData = Map.of("fulfillment_status", sale.fulfillmentStatus());
             Map<String, Object> newData = Map.of("fulfillment_status", "fulfilled");
-            AuditLog auditLog = new AuditLog(
-                    null, "UPDATE", "sales", saleId,
-                    jsonService.toJson(oldData), jsonService.toJson(newData),
-                    "Fulfillment",
-                    "info",
-                    TimeUtil.nowUTC()
-            );
-            auditRepository.insertAuditLog(auditLog);
+            auditService.logUpdate("sales", saleId, oldData, newData, "Fulfillment");
 
             return null;
         });
@@ -237,14 +219,7 @@ public class SalesModificationService {
             Map<String, Object> oldData = Map.of("payment_method_id", sale.paymentMethodId() != null ? sale.paymentMethodId() : -1L);
             Map<String, Object> newData = Map.of("payment_method_id", newPaymentMethodId);
             
-            AuditLog auditLog = new AuditLog(
-                    null, "UPDATE", "sales", saleId,
-                    jsonService.toJson(oldData), jsonService.toJson(newData),
-                    "Payment method correction",
-                    "info",
-                    TimeUtil.nowUTC()
-            );
-            auditRepository.insertAuditLog(auditLog);
+            auditService.logUpdate("sales", saleId, oldData, newData, "Payment method correction");
 
             return null;
         });
@@ -268,14 +243,7 @@ public class SalesModificationService {
             Map<String, Object> oldData = Map.of("customer_id", sale.customerId() != null ? sale.customerId() : -1L);
             Map<String, Object> newData = Map.of("customer_id", newCustomerId != null ? newCustomerId : -1L);
             
-            AuditLog auditLog = new AuditLog(
-                    null, "UPDATE", "sales", saleId,
-                    jsonService.toJson(oldData), jsonService.toJson(newData),
-                    "Customer correction",
-                    "info",
-                    TimeUtil.nowUTC()
-            );
-            auditRepository.insertAuditLog(auditLog);
+            auditService.logUpdate("sales", saleId, oldData, newData, "Customer correction");
 
             return null;
         });

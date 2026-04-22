@@ -16,6 +16,10 @@ public final class SqliteCategoryRepository extends BaseSqliteRepository impleme
         super(connectionProvider);
     }
 
+    public SqliteCategoryRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public List<Category> findAllCategories() {
         return queryList("SELECT * FROM categories WHERE deleted_at IS NULL ORDER BY name ASC", mapper);

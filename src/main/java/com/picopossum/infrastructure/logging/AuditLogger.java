@@ -71,7 +71,8 @@ public final class AuditLogger {
                 newData,
                 eventDetails,
                 severity,
-                timestamp
+                timestamp,
+                null
             );
             
             // Calculate integrity hash (chain with previous) to prevent tampering

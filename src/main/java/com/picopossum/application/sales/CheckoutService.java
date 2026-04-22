@@ -8,9 +8,10 @@ import com.picopossum.domain.exceptions.NotFoundException;
 import com.picopossum.domain.model.*;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.serialization.JsonService;
-import com.picopossum.persistence.db.TransactionManager;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.*;
 import com.picopossum.domain.services.SaleCalculator;
+import com.picopossum.persistence.db.TransactionManager;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -21,7 +22,7 @@ public class CheckoutService {
     private final SalesRepository salesRepository;
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
-    private final AuditRepository auditRepository;
+    private final AuditService auditService;
     private final InventoryService inventoryService;
     private final SaleCalculator saleCalculator;
     private final TransactionManager transactionManager;
@@ -32,7 +33,7 @@ public class CheckoutService {
     public CheckoutService(SalesRepository salesRepository,
                            ProductRepository productRepository,
                            CustomerRepository customerRepository,
-                           AuditRepository auditRepository,
+                           AuditService auditService,
                            InventoryService inventoryService,
                            SaleCalculator saleCalculator,
                            TransactionManager transactionManager,
@@ -42,7 +43,7 @@ public class CheckoutService {
         this.salesRepository = salesRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
-        this.auditRepository = auditRepository;
+        this.auditService = auditService;
         this.inventoryService = inventoryService;
         this.saleCalculator = saleCalculator;
         this.transactionManager = transactionManager;
@@ -153,7 +154,7 @@ public class CheckoutService {
                 salesRepository.updateFulfillmentStatus(newSaleId, "fulfilled");
             }
             
-            auditRepository.log("sales", newSaleId, "CREATE", jsonService.toJson(saleEntity));
+            auditService.logCreate("sales", newSaleId, saleEntity);
             
             return newSaleId;
         });

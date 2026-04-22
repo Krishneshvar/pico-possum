@@ -30,6 +30,8 @@ class AuditLogMapperTest {
         lenient().when(resultSet.getString("old_data")).thenReturn("{\"price\": 10}");
         lenient().when(resultSet.getString("new_data")).thenReturn("{\"price\": 15}");
         lenient().when(resultSet.getString("event_details")).thenReturn("Price updated");
+        lenient().when(resultSet.getString("severity")).thenReturn("info");
+        lenient().when(resultSet.getString("integrity_hash")).thenReturn("HASH123");
         lenient().when(resultSet.wasNull()).thenReturn(false);
         lenient().when(resultSet.getString("created_at")).thenReturn("2023-10-15 14:30:00");
 
@@ -40,6 +42,8 @@ class AuditLogMapperTest {
         assertEquals("UPDATE", log.action());
         assertEquals("products", log.tableName());
         assertEquals(100L, log.rowId());
+        assertEquals("info", log.severity());
+        assertEquals("HASH123", log.integrityHash());
         assertEquals(LocalDateTime.of(2023, 10, 15, 14, 30), log.createdAt());
     }
 

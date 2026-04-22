@@ -11,6 +11,7 @@ import com.picopossum.domain.model.*;
 import com.picopossum.infrastructure.filesystem.AppPaths;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.serialization.JsonService;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.persistence.db.DatabaseManager;
 import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.persistence.repositories.sqlite.*;
@@ -67,19 +68,21 @@ class ReturnsFlowIntegrationTest {
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
+        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
-        inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
+        inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
                 transactionManager, jsonService, settingsStore);
 
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
-                auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
+                auditService, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
                 jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
         returnsService = new ReturnsService(returnsRepository, salesRepository, inventoryService,
-                auditRepository, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
+                auditService, transactionManager, jsonService, new com.picopossum.domain.services.ReturnCalculator(), invoiceNumberService);
 
         // Seed
         cashPaymentMethodId = getOrSeedPaymentMethod();

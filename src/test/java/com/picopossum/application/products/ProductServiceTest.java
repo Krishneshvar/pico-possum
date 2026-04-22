@@ -5,10 +5,11 @@ import com.picopossum.domain.exceptions.ValidationException;
 import com.picopossum.domain.model.Product;
 import com.picopossum.infrastructure.filesystem.FileStorageService;
 import com.picopossum.persistence.db.TransactionManager;
-import com.picopossum.domain.repositories.AuditRepository;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.ProductRepository;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
+import com.picopossum.ui.sales.ProductSearchIndex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,19 +30,20 @@ class ProductServiceTest {
 
     @Mock private ProductRepository productRepository;
     @Mock private InventoryRepository inventoryRepository;
-    @Mock private AuditRepository auditRepository;
+    @Mock private AuditService auditService;
     @Mock private TransactionManager transactionManager;
     @Mock private SettingsStore settingsStore;
     @Mock private FileStorageService storageService;
     @Mock private com.picopossum.infrastructure.serialization.JsonService jsonService;
+    @Mock private ProductSearchIndex searchIndex;
 
     private ProductService productService;
 
     @BeforeEach
     void setUp() {
         ProductValidator validator = new ProductValidator();
-        productService = new ProductService(productRepository, inventoryRepository, auditRepository, 
-                transactionManager, settingsStore, validator, storageService, jsonService);
+        productService = new ProductService(productRepository, inventoryRepository, auditService, 
+                transactionManager, settingsStore, validator, storageService, jsonService, searchIndex);
         
         lenient().when(transactionManager.runInTransaction(any(Supplier.class))).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(0);

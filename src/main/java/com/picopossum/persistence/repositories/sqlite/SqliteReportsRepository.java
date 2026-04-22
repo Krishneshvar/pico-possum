@@ -16,6 +16,10 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         super(connectionProvider);
     }
 
+    public SqliteReportsRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public Map<String, Object> getSalesReportSummary(String startDate, String endDate, List<Long> paymentMethodIds) {
         String paymentFilter = (paymentMethodIds == null || paymentMethodIds.isEmpty())

@@ -12,6 +12,7 @@ import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.domain.repositories.*;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ReturnFilter;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.application.sales.InvoiceNumberService;
 
 import java.math.BigDecimal;
@@ -22,7 +23,7 @@ public class ReturnsService {
     private final ReturnsRepository returnsRepository;
     private final SalesRepository salesRepository;
     private final InventoryService inventoryService;
-    private final AuditRepository auditRepository;
+    private final AuditService auditService;
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
     private final ReturnCalculator returnCalculator;
@@ -31,7 +32,7 @@ public class ReturnsService {
     public ReturnsService(ReturnsRepository returnsRepository,
                           SalesRepository salesRepository,
                           InventoryService inventoryService,
-                          AuditRepository auditRepository,
+                          AuditService auditService,
                           TransactionManager transactionManager,
                           JsonService jsonService,
                           ReturnCalculator returnCalculator,
@@ -39,7 +40,7 @@ public class ReturnsService {
         this.returnsRepository = returnsRepository;
         this.salesRepository = salesRepository;
         this.inventoryService = inventoryService;
-        this.auditRepository = auditRepository;
+        this.auditService = auditService;
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
         this.returnCalculator = returnCalculator;
@@ -116,7 +117,7 @@ public class ReturnsService {
                     "item_count", refundCalculations.size(),
                     "reason", request.reason()
             );
-            auditRepository.log("returns", returnId, "CREATE", jsonService.toJson(auditData));
+            auditService.logCreate("returns", returnId, auditData);
 
             return new ReturnResponse(returnId, request.saleId(), totalRefund, refundCalculations.size());
         });

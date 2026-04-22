@@ -15,6 +15,10 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
         super(connectionProvider);
     }
 
+    public SqliteProductFlowRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public long insertProductFlow(ProductFlow flow) {
         return executeInsert(

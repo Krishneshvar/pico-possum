@@ -1,5 +1,6 @@
 package com.picopossum.application.sales;
 
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.sales.dto.*;
 import com.picopossum.domain.model.*;
@@ -30,7 +31,7 @@ class SalesServiceTest {
     @Mock private SalesRepository salesRepository;
     @Mock private ProductRepository productRepository;
     @Mock private CustomerRepository customerRepository;
-    @Mock private AuditRepository auditRepository;
+    @Mock private AuditService auditService;
     @Mock private InventoryService inventoryService;
     @Mock private SaleCalculator saleCalculator;
     @Mock private PaymentService paymentService;
@@ -45,7 +46,7 @@ class SalesServiceTest {
     @BeforeEach
     void setUp() {
         salesService = new SalesService(
-            salesRepository, productRepository, customerRepository, auditRepository,
+            salesRepository, productRepository, customerRepository, auditService,
             inventoryService, saleCalculator, paymentService,
             transactionManager, jsonService, settingsStore, invoiceNumberService, returnsRepository
         );

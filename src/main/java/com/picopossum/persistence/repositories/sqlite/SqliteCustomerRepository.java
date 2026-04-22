@@ -19,6 +19,10 @@ public final class SqliteCustomerRepository extends BaseSqliteRepository impleme
         super(connectionProvider);
     }
 
+    public SqliteCustomerRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public PagedResult<Customer> findCustomers(CustomerFilter filter) {
         WhereBuilder whereBuilder = new WhereBuilder()

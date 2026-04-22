@@ -16,42 +16,29 @@ import java.util.Objects;
 public final class DatabaseManager implements ConnectionProvider, AutoCloseable {
 
     private final AppPaths appPaths;
-    private Connection connection;
+    private HikariConnectionPool pool;
 
     public DatabaseManager(AppPaths appPaths) {
         this.appPaths = Objects.requireNonNull(appPaths, "appPaths must not be null");
     }
 
     public synchronized void initialize() {
-        if (isConnectionOpen()) {
+        if (pool != null) {
             return;
         }
 
         Path databasePath = appPaths.getDatabasePath().toAbsolutePath();
         String jdbcUrl = "jdbc:sqlite:" + databasePath;
 
+        // Perform migrations and self-healing using direct connections before initializing the pool
         runMigrations(jdbcUrl);
         ensurePosOpenBillItemsCorrect(jdbcUrl);
+        ensureCodeColumnExists(jdbcUrl);
 
-        SQLiteConfig config = new SQLiteConfig();
-        config.enforceForeignKeys(true);
-        config.setBusyTimeout(5_000);
-
-        Connection candidate = null;
-
-        try {
-            candidate = DriverManager.getConnection(jdbcUrl, config.toProperties());
-            candidate.setAutoCommit(true);
-            try (Statement statement = candidate.createStatement()) {
-                statement.execute("PRAGMA foreign_keys = ON");
-                statement.execute("PRAGMA journal_mode = WAL");
-                statement.execute("PRAGMA schema_version"); // startup health check
-            }
-            connection = candidate;
-        } catch (SQLException ex) {
-            closeQuietly(candidate);
-            throw new IllegalStateException("Failed to initialize database connection", ex);
-        }
+        // Initialize connection pool
+        pool = new HikariConnectionPool(jdbcUrl);
+        
+        com.picopossum.infrastructure.logging.LoggingConfig.getLogger().info("Database system initialized with HikariCP pool");
     }
 
     private static void runMigrations(String jdbcUrl) {
@@ -132,58 +119,53 @@ public final class DatabaseManager implements ConnectionProvider, AutoCloseable 
         }
     }
 
+    private final ThreadLocal<Connection> activeConnection = new ThreadLocal<>();
+
     @Override
-    public synchronized Connection getConnection() {
-        if (!isConnectionOpen() || isConnectionStale()) {
+    public Connection getConnection() {
+        Connection conn = activeConnection.get();
+        if (conn != null) {
+            try {
+                if (!conn.isClosed()) {
+                    return conn;
+                }
+            } catch (SQLException ignored) {
+            }
+            activeConnection.remove();
+        }
+
+        if (pool == null) {
             initialize();
         }
-        return connection;
+        return pool.getConnection();
+    }
+
+    @Override
+    public boolean isBound(Connection connection) {
+        return connection == activeConnection.get();
+    }
+
+    /**
+     * Binds a connection to the current thread. 
+     * Used by TransactionManager to ensure all repository calls within a transaction block use the same connection.
+     */
+    public void bindConnection(Connection connection) {
+        activeConnection.set(connection);
+    }
+
+    /**
+     * Unbinds the connection from the current thread.
+     */
+    public void unbindConnection() {
+        activeConnection.remove();
     }
 
     @Override
     public synchronized void close() {
-        if (!isConnectionOpen()) {
-            return;
-        }
-
-        try {
-            connection.close();
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to close database connection", ex);
-        } finally {
-            connection = null;
-        }
-    }
-
-    private boolean isConnectionStale() {
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("PRAGMA schema_version");
-            return false;
-        } catch (SQLException ex) {
-            return true;
-        }
-    }
-
-    private boolean isConnectionOpen() {
-        if (connection == null) {
-            return false;
-        }
-
-        try {
-            return !connection.isClosed();
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Unable to evaluate database connection state", ex);
-        }
-    }
-
-    private static void closeQuietly(Connection candidate) {
-        if (candidate == null) {
-            return;
-        }
-        try {
-            candidate.close();
-        } catch (SQLException ignored) {
-            // Best effort cleanup during failed initialization.
+        activeConnection.remove();
+        if (pool != null) {
+            pool.close();
+            pool = null;
         }
     }
 

@@ -104,6 +104,7 @@ public class DependencyInjector {
         registry.put(com.picopossum.infrastructure.filesystem.AppPaths.class, () -> appPaths);
         registry.put(com.picopossum.infrastructure.filesystem.UploadStore.class, serviceLocator::getUploadStore);
         registry.put(com.picopossum.infrastructure.system.SystemInteropService.class, serviceLocator::getSystemInteropService);
+        registry.put(com.picopossum.infrastructure.monitoring.PerformanceMonitor.class, serviceLocator::getPerformanceMonitor);
 
         // UI
         registry.put(NavigationManager.class, () -> navigationManager);
@@ -134,7 +135,8 @@ public class DependencyInjector {
         registry.put(com.picopossum.ui.dashboard.DashboardController.class,
                 () -> new com.picopossum.ui.dashboard.DashboardController(
                         reportsService, applicationModule.getInventoryService(),
-                        serviceLocator.getDatabaseBackupService()));
+                        serviceLocator.getDatabaseBackupService(),
+                        serviceLocator.getPerformanceMonitor()));
         registry.put(com.picopossum.ui.insights.BusinessInsightsController.class,
                 () -> new com.picopossum.ui.insights.BusinessInsightsController(reportsService));
     }

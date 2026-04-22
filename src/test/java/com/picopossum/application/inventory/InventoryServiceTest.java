@@ -6,7 +6,7 @@ import com.picopossum.domain.model.StockMovement;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.persistence.db.TransactionManager;
-import com.picopossum.domain.repositories.AuditRepository;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.shared.dto.GeneralSettings;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ class InventoryServiceTest {
 
     @Mock private InventoryRepository inventoryRepository;
     @Mock private ProductFlowService productFlowService;
-    @Mock private AuditRepository auditRepository;
+    @Mock private AuditService auditService;
     @Mock private TransactionManager transactionManager;
     @Mock private JsonService jsonService;
     @Mock private SettingsStore settingsStore;
@@ -38,7 +38,7 @@ class InventoryServiceTest {
     @BeforeEach
     void setUp() {
         inventoryService = new InventoryService(
-                inventoryRepository, productFlowService, auditRepository, 
+                inventoryRepository, productFlowService, auditService, 
                 transactionManager, jsonService, settingsStore
         );
         
@@ -60,7 +60,7 @@ class InventoryServiceTest {
         verify(inventoryRepository).insertStockMovement(argThat(m -> 
             m.productId() == 1L && m.quantityChange() == 20 && "receive".equals(m.reason())
         ));
-        verify(auditRepository).log(eq("stock_movements"), eq(500L), eq("CREATE"), any());
+        verify(auditService).logCreate(eq("stock_movements"), eq(500L), any());
     }
 
     @Test
@@ -118,7 +118,7 @@ class InventoryServiceTest {
         verify(inventoryRepository).insertStockMovement(argThat(m -> 
             m.productId() == 1L && m.quantityChange() == -5 && "damage".equals(m.reason())
         ));
-        verify(auditRepository).log(eq("stock_movements"), eq(600L), eq("CREATE"), any());
+        verify(auditService).logCreate(eq("stock_movements"), eq(600L), any());
     }
 
     @Test

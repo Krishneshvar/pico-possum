@@ -5,7 +5,7 @@ import com.picopossum.domain.services.ReturnCalculator;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.persistence.db.TransactionManager;
-import com.picopossum.domain.repositories.AuditRepository;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.ReturnsRepository;
 import com.picopossum.domain.repositories.SalesRepository;
 import com.picopossum.application.sales.InvoiceNumberService;
@@ -17,7 +17,7 @@ public class ReturnsModule {
     public ReturnsModule(ReturnsRepository returnsRepository,
                          SalesRepository salesRepository,
                          InventoryService inventoryService,
-                         AuditRepository auditRepository,
+                         AuditService auditService,
                          TransactionManager transactionManager,
                          JsonService jsonService,
                          InvoiceNumberService invoiceNumberService) {
@@ -26,7 +26,7 @@ public class ReturnsModule {
                 returnsRepository,
                 salesRepository,
                 inventoryService,
-                auditRepository,
+                auditService,
                 transactionManager,
                 jsonService,
                 returnCalculator,

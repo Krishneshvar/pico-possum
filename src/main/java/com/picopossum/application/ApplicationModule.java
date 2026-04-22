@@ -40,7 +40,9 @@ public final class ApplicationModule {
                             JsonService jsonService,
                             AppPaths appPaths,
                             SettingsStore settingsStore,
-                            ConnectionProvider connectionProvider) {
+                            ConnectionProvider connectionProvider,
+                            com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor,
+                            com.picopossum.ui.sales.ProductSearchIndex productSearchIndex) {
         this.userService = new com.picopossum.application.people.UserService(userRepository, passwordHasher);
         this.customerService = new com.picopossum.application.people.CustomerService(customerRepository);
         
@@ -51,7 +53,7 @@ public final class ApplicationModule {
         this.inventoryService = new InventoryService(
                 inventoryRepository,
                 productFlowService,
-                auditRepository,
+                auditService, // Use Service instead of Repository for consistency
                 transactionManager,
                 jsonService,
                 settingsStore
@@ -60,10 +62,11 @@ public final class ApplicationModule {
         this.productModule = new ProductModule(
                 productRepository,
                 inventoryRepository,
-                auditRepository,
+                auditService,
                 transactionManager,
                 appPaths,
-                settingsStore
+                settingsStore,
+                productSearchIndex
         );
         
         this.categoryService = new CategoryService(categoryRepository);

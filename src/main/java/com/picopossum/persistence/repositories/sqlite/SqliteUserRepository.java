@@ -20,6 +20,10 @@ public final class SqliteUserRepository extends BaseSqliteRepository implements 
         super(connectionProvider);
     }
 
+    public SqliteUserRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public PagedResult<User> findUsers(UserFilter filter) {
         int page = Math.max(1, filter.page() == null ? 1 : filter.page());

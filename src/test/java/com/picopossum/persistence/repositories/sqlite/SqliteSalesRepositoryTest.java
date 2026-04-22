@@ -1,4 +1,4 @@
-package com.picopossum.persistence.repositories;
+package com.picopossum.persistence.repositories.sqlite;
 
 import com.picopossum.domain.model.Sale;
 import com.picopossum.domain.model.SaleItem;

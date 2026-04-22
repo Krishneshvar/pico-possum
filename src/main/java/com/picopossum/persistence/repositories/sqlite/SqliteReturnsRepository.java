@@ -23,6 +23,10 @@ public final class SqliteReturnsRepository extends BaseSqliteRepository implemen
         super(connectionProvider);
     }
 
+    public SqliteReturnsRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public long insertReturn(Return returnRecord) {
         return executeInsert(

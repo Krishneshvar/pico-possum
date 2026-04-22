@@ -25,12 +25,16 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
         super(connectionProvider);
     }
 
+    public SqliteAuditRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public long insertAuditLog(AuditLog auditLog) {
         return executeInsert(
                 """
-                INSERT INTO audit_log (action, table_name, row_id, old_data, new_data, event_details, severity)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO audit_log (action, table_name, row_id, old_data, new_data, event_details, severity, integrity_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 auditLog.action(),
                 auditLog.tableName(),
@@ -38,7 +42,8 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
                 auditLog.oldData(),
                 auditLog.newData(),
                 auditLog.eventDetails(),
-                auditLog.severity()
+                auditLog.severity(),
+                auditLog.integrityHash()
         );
     }
 

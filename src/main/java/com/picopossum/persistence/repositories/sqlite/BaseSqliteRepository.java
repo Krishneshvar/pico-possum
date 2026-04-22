@@ -17,9 +17,16 @@ import java.util.StringJoiner;
 public abstract class BaseSqliteRepository {
 
     private final ConnectionProvider connectionProvider;
+    private final com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor;
 
     protected BaseSqliteRepository(ConnectionProvider connectionProvider) {
+        this(connectionProvider, null);
+    }
+
+    protected BaseSqliteRepository(ConnectionProvider connectionProvider, 
+                                 com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
         this.connectionProvider = connectionProvider;
+        this.performanceMonitor = performanceMonitor;
     }
 
     protected Connection connection() {
@@ -27,55 +34,97 @@ public abstract class BaseSqliteRepository {
     }
 
     protected <T> Optional<T> queryOne(String sql, RowMapper<T> mapper, Object... params) {
-        try (PreparedStatement statement = prepare(sql, params);
+        long start = System.currentTimeMillis();
+        Connection conn = connection();
+        try (PreparedStatement statement = prepare(conn, sql, params);
              ResultSet rs = statement.executeQuery()) {
-            if (!rs.next()) {
-                return Optional.empty();
-            }
-            return Optional.ofNullable(mapper.map(rs));
+            Optional<T> result = rs.next() ? Optional.ofNullable(mapper.map(rs)) : Optional.empty();
+            recordPerformance(sql, start, true);
+            return result;
         } catch (SQLException ex) {
+            recordPerformance(sql, start, false);
             throw DatabaseExceptionTranslator.translate("Failed queryOne for SQL: " + sql, ex);
+        } finally {
+            release(conn);
         }
     }
 
     protected <T> List<T> queryList(String sql, RowMapper<T> mapper, Object... params) {
-        try (PreparedStatement statement = prepare(sql, params);
+        long start = System.currentTimeMillis();
+        Connection conn = connection();
+        try (PreparedStatement statement = prepare(conn, sql, params);
              ResultSet rs = statement.executeQuery()) {
             List<T> results = new ArrayList<>();
             while (rs.next()) {
                 results.add(mapper.map(rs));
             }
+            recordPerformance(sql, start, true);
             return results;
         } catch (SQLException ex) {
+            recordPerformance(sql, start, false);
             throw DatabaseExceptionTranslator.translate("Failed queryList for SQL: " + sql, ex);
+        } finally {
+            release(conn);
         }
     }
 
     protected long executeInsert(String sql, Object... params) {
-        try (PreparedStatement statement = connection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        long start = System.currentTimeMillis();
+        Connection conn = connection();
+        try (PreparedStatement statement = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bind(statement, params);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
-                if (keys.next()) {
-                    return keys.getLong(1);
-                }
+                long id = keys.next() ? keys.getLong(1) : -1L;
+                recordPerformance(sql, start, true);
+                return id;
             }
-            return -1L;
         } catch (SQLException ex) {
+            recordPerformance(sql, start, false);
             throw DatabaseExceptionTranslator.translate("Failed executeInsert for SQL: " + sql, ex);
+        } finally {
+            release(conn);
         }
     }
 
     protected int executeUpdate(String sql, Object... params) {
-        try (PreparedStatement statement = prepare(sql, params)) {
-            return statement.executeUpdate();
+        long start = System.currentTimeMillis();
+        Connection conn = connection();
+        try (PreparedStatement statement = prepare(conn, sql, params)) {
+            int rows = statement.executeUpdate();
+            recordPerformance(sql, start, true);
+            return rows;
         } catch (SQLException ex) {
+            recordPerformance(sql, start, false);
             throw DatabaseExceptionTranslator.translate("Failed executeUpdate for SQL: " + sql, ex);
+        } finally {
+            release(conn);
         }
     }
 
-    protected PreparedStatement prepare(String sql, Object... params) throws SQLException {
-        PreparedStatement statement = connection().prepareStatement(sql);
+    private void recordPerformance(String sql, long startTime, boolean success) {
+        if (performanceMonitor == null) return;
+        
+        long duration = System.currentTimeMillis() - startTime;
+        String opName = getClass().getSimpleName() + ":" + sql.split(" ")[0].toUpperCase();
+        performanceMonitor.recordOperation(opName, duration);
+        if (success) performanceMonitor.recordSuccess(opName);
+        else performanceMonitor.recordFailure(opName);
+    }
+
+    protected void release(Connection conn) {
+        if (conn == null) return;
+        if (!connectionProvider.isBound(conn)) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to release DB connection", e);
+            }
+        }
+    }
+
+    protected PreparedStatement prepare(Connection conn, String sql, Object... params) throws SQLException {
+        PreparedStatement statement = conn.prepareStatement(sql);
         bind(statement, params);
         return statement;
     }

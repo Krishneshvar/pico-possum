@@ -9,7 +9,7 @@ import com.picopossum.domain.model.Product;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.serialization.JsonService;
 import com.picopossum.persistence.db.TransactionManager;
-import com.picopossum.domain.repositories.AuditRepository;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.shared.util.TimeUtil;
 import com.picopossum.shared.dto.StockHistoryDto;
@@ -25,20 +25,20 @@ import java.util.Map;
 public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final ProductFlowService productFlowService;
-    private final AuditRepository auditRepository;
+    private final AuditService auditService;
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
     private final SettingsStore settingsStore;
 
     public InventoryService(InventoryRepository inventoryRepository,
                             ProductFlowService productFlowService,
-                            AuditRepository auditRepository,
+                            AuditService auditService,
                             TransactionManager transactionManager,
                             JsonService jsonService,
                             SettingsStore settingsStore) {
         this.inventoryRepository = inventoryRepository;
         this.productFlowService = productFlowService;
-        this.auditRepository = auditRepository;
+        this.auditService = auditService;
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
         this.settingsStore = settingsStore;
@@ -87,7 +87,7 @@ public class InventoryService {
                     "quantity", quantity,
                     "new_stock", inventoryRepository.getStockByProductId(productId)
             );
-            auditRepository.log("stock_movements", movementId, "CREATE", jsonService.toJson(auditData));
+            auditService.logCreate("stock_movements", movementId, auditData);
 
             return movementId;
         });
@@ -137,7 +137,7 @@ public class InventoryService {
                     "reason", reason.getValue(),
                     "new_stock", inventoryRepository.getStockByProductId(productId)
             );
-            auditRepository.log("stock_movements", movementId, "CREATE", jsonService.toJson(auditData));
+            auditService.logCreate("stock_movements", movementId, auditData);
 
             return null;
         });

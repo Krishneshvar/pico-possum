@@ -1,5 +1,6 @@
 package com.picopossum.application.sales;
 
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.sales.dto.*;
 import com.picopossum.domain.exceptions.NotFoundException;
@@ -26,7 +27,7 @@ public class SalesService {
     public SalesService(SalesRepository salesRepository,
                         ProductRepository productRepository,
                         CustomerRepository customerRepository,
-                        AuditRepository auditRepository,
+                        AuditService auditService,
                         InventoryService inventoryService,
                         SaleCalculator saleCalculator,
                         PaymentService paymentService,
@@ -41,11 +42,11 @@ public class SalesService {
         this.returnsRepository = returnsRepository;
 
         this.checkoutService = new CheckoutService(
-            salesRepository, productRepository, customerRepository, auditRepository,
+            salesRepository, productRepository, customerRepository, auditService,
             inventoryService, saleCalculator, transactionManager, jsonService, settingsStore, invoiceNumberService
         );
         this.modificationService = new SalesModificationService(
-            salesRepository, productRepository, customerRepository, auditRepository,
+            salesRepository, productRepository, customerRepository, auditService,
             inventoryService, transactionManager, jsonService, settingsStore
         );
     }

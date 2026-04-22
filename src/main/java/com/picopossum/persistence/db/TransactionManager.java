@@ -14,16 +14,37 @@ public final class TransactionManager {
         this.connectionProvider = Objects.requireNonNull(connectionProvider, "connectionProvider must not be null");
     }
 
-    public synchronized <T> T runInTransaction(Supplier<T> block) {
+    public <T> T runInTransaction(Supplier<T> block) {
         Objects.requireNonNull(block, "block must not be null");
 
         Connection connection = connectionProvider.getConnection();
         boolean isOuterTransaction = getAutoCommit(connection);
-        
+
         if (isOuterTransaction) {
-            return com.picopossum.shared.util.RetryUtil.executeWithRetry(() -> runOutermost(connection, block));
+            // Outermost transaction: manage lifecycle and binding
+            if (connectionProvider instanceof DatabaseManager dbm) {
+                dbm.bindConnection(connection);
+            }
+            try {
+                return com.picopossum.shared.util.RetryUtil.executeWithRetry(() -> runOutermost(connection, block));
+            } finally {
+                if (connectionProvider instanceof DatabaseManager dbm) {
+                    dbm.unbindConnection();
+                }
+                closeQuietly(connection);
+            }
         } else {
+            // Nested transaction: reuse existing connection and binding
             return runNested(connection, block);
+        }
+    }
+
+    private static void closeQuietly(Connection connection) {
+        if (connection == null) return;
+        try {
+            connection.close();
+        } catch (SQLException ex) {
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to close transaction connection", ex);
         }
     }
 

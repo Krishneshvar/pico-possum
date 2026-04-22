@@ -23,7 +23,7 @@ public interface AuditRepository {
      */
     default void log(String tableName, long rowId, String action, String data) {
         insertAuditLog(new AuditLog(
-            null, action, tableName, rowId, null, data, null, "info", TimeUtil.nowUTC()
+            null, action, tableName, rowId, null, data, null, "info", TimeUtil.nowUTC(), null
         ));
     }
 }

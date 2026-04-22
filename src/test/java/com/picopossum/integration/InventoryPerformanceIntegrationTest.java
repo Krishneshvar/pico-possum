@@ -1,5 +1,6 @@
 package com.picopossum.integration;
 
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.application.inventory.InventoryService;
 import com.picopossum.application.inventory.ProductFlowService;
 import com.picopossum.application.sales.*;
@@ -65,15 +66,17 @@ class InventoryPerformanceIntegrationTest {
         SqliteReturnsRepository returnsRepository = new SqliteReturnsRepository(databaseManager);
         SqliteCustomerRepository customerRepository = new SqliteCustomerRepository(databaseManager);
 
+        AuditService auditService = new AuditService(auditRepository, jsonService.getObjectMapper());
+
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
-        inventoryService = new InventoryService(inventoryRepository, productFlowService, auditRepository,
+        inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
                 transactionManager, jsonService, settingsStore);
 
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);
 
         salesService = new SalesService(salesRepository, productRepository, customerRepository, 
-                auditRepository, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
+                auditService, inventoryService, new com.picopossum.domain.services.SaleCalculator(), paymentService, transactionManager, 
                 jsonService, settingsStore, invoiceNumberService, returnsRepository);
 
         cashPaymentMethodId = getOrSeedPaymentMethod();

@@ -21,6 +21,15 @@ public class SqlitePosDraftRepository extends BaseSqliteRepository {
         this.transactionManager = transactionManager;
     }
 
+    public SqlitePosDraftRepository(ConnectionProvider connectionProvider, 
+                                     com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor,
+                                     ProductRepository productRepository,
+                                     TransactionManager transactionManager) {
+        super(connectionProvider, performanceMonitor);
+        this.productRepository = productRepository;
+        this.transactionManager = transactionManager;
+    }
+
     public void saveBill(SaleDraft draft) {
         transactionManager.runInTransaction(() -> {
             // 1. Save main bill info

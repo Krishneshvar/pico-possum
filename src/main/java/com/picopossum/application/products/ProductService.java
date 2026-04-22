@@ -9,9 +9,10 @@ import com.picopossum.infrastructure.filesystem.FileStorageService;
 import com.picopossum.infrastructure.filesystem.SettingsStore;
 import com.picopossum.infrastructure.logging.LoggingConfig;
 import com.picopossum.persistence.db.TransactionManager;
-import com.picopossum.domain.repositories.AuditRepository;
+import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.domain.repositories.ProductRepository;
+import com.picopossum.ui.sales.ProductSearchIndex;
 import com.picopossum.shared.dto.PagedResult;
 import com.picopossum.shared.dto.ProductFilter;
 import com.picopossum.shared.util.TimeUtil;
@@ -27,29 +28,32 @@ import java.util.Objects;
 public class ProductService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
-    private final AuditRepository auditRepository;
+    private final AuditService auditService;
     private final TransactionManager transactionManager;
     private final SettingsStore settingsStore;
     private final ProductValidator validator;
     private final FileStorageService storageService;
     private final com.picopossum.infrastructure.serialization.JsonService jsonService;
+    private final ProductSearchIndex searchIndex;
 
     public ProductService(ProductRepository productRepository,
                           InventoryRepository inventoryRepository,
-                          AuditRepository auditRepository,
+                          AuditService auditService,
                           TransactionManager transactionManager,
                           SettingsStore settingsStore,
                           ProductValidator validator,
                           FileStorageService storageService,
-                          com.picopossum.infrastructure.serialization.JsonService jsonService) {
+                          com.picopossum.infrastructure.serialization.JsonService jsonService,
+                          ProductSearchIndex searchIndex) {
         this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
-        this.auditRepository = auditRepository;
+        this.auditService = auditService;
         this.transactionManager = transactionManager;
         this.settingsStore = settingsStore;
         this.validator = validator;
         this.storageService = storageService;
         this.jsonService = jsonService;
+        this.searchIndex = searchIndex;
     }
 
     public long createProduct(CreateProductCommand command) {
@@ -106,6 +110,7 @@ public class ProductService {
                 LoggingConfig.getLogger().info("Initial stock {} added for product {}", command.initialStock(), productId);
             }
 
+            if (searchIndex != null) searchIndex.refresh();
             return productId;
         });
     }
@@ -173,6 +178,7 @@ public class ProductService {
                     Map.of("name", oldProduct.name(), "mrp", oldProduct.mrp()),
                     Map.of("name", updatedProduct.name(), "mrp", updatedProduct.mrp()));
 
+            if (searchIndex != null) searchIndex.refresh();
             return null;
         });
     }
@@ -201,6 +207,7 @@ public class ProductService {
             storageService.delete(product.imagePath());
 
             logAudit("DELETE", id, Map.of("name", product.name(), "sku", product.sku()), null);
+            if (searchIndex != null) searchIndex.refresh();
             return null;
         });
     }
@@ -232,11 +239,7 @@ public class ProductService {
     }
 
     private void logAudit(String action, long rowId, Object oldData, Object newData) {
-        try {
-            auditRepository.log("products", rowId, action, jsonService.toJson(newData));
-        } catch (Exception e) {
-            LoggingConfig.getLogger().error("Audit logging failed", e);
-        }
+        auditService.recordEvent(action, "products", rowId, oldData, newData, null, "info");
     }
 
     public record CreateProductCommand(String name, String description, Long categoryId, String sku, 

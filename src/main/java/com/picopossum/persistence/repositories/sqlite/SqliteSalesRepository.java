@@ -82,6 +82,10 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         super(connectionProvider);
     }
 
+    public SqliteSalesRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+        super(connectionProvider, performanceMonitor);
+    }
+
     @Override
     public long insertSale(Sale sale) {
         return executeInsert(
