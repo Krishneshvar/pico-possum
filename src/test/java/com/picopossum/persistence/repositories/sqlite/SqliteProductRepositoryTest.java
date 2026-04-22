@@ -173,6 +173,44 @@ class SqliteProductRepositoryTest {
     }
 
     @Test
+    void findProducts_stockFilters_returnCorrectSubset() {
+        // P1: In stock (stock 50 > alert 10)
+        long id1 = repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 50, null, null, null));
+        seedStockCache(id1, 50);
+
+        // P2: Low stock (stock 5 <= alert 10)
+        long id2 = repository.insertProduct(new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 5, null, null, null));
+        seedStockCache(id2, 5);
+
+        // P3: Out of stock (stock 0)
+        long id3 = repository.insertProduct(new Product(null, "P3", null, null, null, BigDecimal.ZERO, "S3", null, new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
+        seedStockCache(id3, 0);
+
+        // Filter: In stock
+        ProductFilter inStock = new ProductFilter(null, null, null, List.of("in-stock"), null, null, 0, 10, "name", "ASC");
+        assertEquals(1, repository.findProducts(inStock).totalCount());
+        assertEquals("P1", repository.findProducts(inStock).items().get(0).name());
+
+        // Filter: Low stock
+        ProductFilter lowStock = new ProductFilter(null, null, null, List.of("low-stock"), null, null, 0, 10, "name", "ASC");
+        assertEquals(1, repository.findProducts(lowStock).totalCount());
+        assertEquals("P2", repository.findProducts(lowStock).items().get(0).name());
+
+        // Filter: Out of stock
+        ProductFilter outOfStock = new ProductFilter(null, null, null, List.of("out-of-stock"), null, null, 0, 10, "name", "ASC");
+        assertEquals(1, repository.findProducts(outOfStock).totalCount());
+        assertEquals("P3", repository.findProducts(outOfStock).items().get(0).name());
+    }
+
+    private void seedStockCache(long productId, int qty) {
+        try {
+            connection.createStatement().execute("INSERT INTO product_stock_cache (product_id, current_stock) VALUES (" + productId + ", " + qty + ")");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
     void getProductStats_returnsStatistics() {
         repository.insertProduct(new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));
         repository.insertProduct(new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new java.math.BigDecimal("10"), new java.math.BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null));

@@ -85,7 +85,7 @@ public class ProductFormController extends AbstractFormController<Product> {
         if (isCreateMode()) {
             recoverDraft();
             setupDrafting();
-            skuField.setEditable(false);
+            skuField.setEditable(false); // Numerical SKUs are auto-generated and non-editable
             if (skuField.getText() == null || skuField.getText().isEmpty()) {
                 skuField.setText(String.valueOf(productService.getNextGeneratedNumericSku()));
             }
@@ -270,19 +270,34 @@ public class ProductFormController extends AbstractFormController<Product> {
 
     private void validateInputs() {
         if (nameField.getText() == null || nameField.getText().isBlank()) {
-            throw new RuntimeException("Product name is required");
+            NotificationService.error("Product name is required");
+            throw new RuntimeException("Validation failed");
         }
         if (skuField.getText() == null || skuField.getText().isBlank()) {
-            throw new RuntimeException("SKU is required");
+            NotificationService.error("SKU is required");
+            throw new RuntimeException("Validation failed");
         }
         try { new BigDecimal(priceField.getText().trim()); } 
-        catch (Exception e) { throw new RuntimeException("Invalid selling price format"); }
+        catch (Exception e) { 
+            NotificationService.error("Invalid selling price format");
+            throw new RuntimeException("Validation failed"); 
+        }
         
         try { new BigDecimal(costPriceField.getText().trim()); } 
-        catch (Exception e) { throw new RuntimeException("Invalid cost price format"); }
+        catch (Exception e) { 
+            NotificationService.error("Invalid cost price format");
+            throw new RuntimeException("Validation failed"); 
+        }
         
-        try { new BigDecimal(taxRateField.getText().trim()); } 
-        catch (Exception e) { throw new RuntimeException("Invalid tax rate format"); }
+        try { 
+            String tax = taxRateField.getText().trim();
+            if (tax.isEmpty()) tax = "0";
+            new BigDecimal(tax); 
+        } 
+        catch (Exception e) { 
+            NotificationService.error("Invalid tax rate format");
+            throw new RuntimeException("Validation failed"); 
+        }
     }
 
     private void loadCategories() {

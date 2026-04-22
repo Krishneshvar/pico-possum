@@ -66,8 +66,17 @@ public class ProductService {
                     ? String.valueOf(productRepository.getNextGeneratedNumericSku()) 
                     : command.sku();
 
-            if (productRepository.existsBySku(effectiveSku)) {
-                throw new ValidationException("Product with SKU " + effectiveSku + " already exists");
+            // Auto-resolve numeric conflicts to stabilize single-user multiple-window race conditions
+            while (productRepository.existsBySku(effectiveSku)) {
+                if (effectiveSku.matches("\\d+")) {
+                    effectiveSku = String.valueOf(productRepository.getNextGeneratedNumericSku());
+                } else {
+                    throw new ValidationException("Product with SKU " + effectiveSku + " already exists");
+                }
+            }
+
+            if (command.barcode() != null && !command.barcode().isBlank() && productRepository.existsByBarcode(command.barcode())) {
+                throw new ValidationException("Product with Barcode " + command.barcode() + " already exists");
             }
 
             Product product = new Product(
@@ -127,6 +136,12 @@ public class ProductService {
             if (command.sku() != null && !command.sku().equals(oldProduct.sku())) {
                 if (productRepository.existsBySkuExcludeId(command.sku(), productId)) {
                     throw new ValidationException("Product with SKU " + command.sku() + " already exists");
+                }
+            }
+
+            if (command.barcode() != null && !command.barcode().equals(oldProduct.barcode())) {
+                if (productRepository.existsByBarcodeExcludeId(command.barcode(), productId)) {
+                    throw new ValidationException("Product with Barcode " + command.barcode() + " already exists");
                 }
             }
 

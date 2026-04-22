@@ -19,12 +19,13 @@ public interface ProductRepository {
     int softDeleteProduct(long id);
 
     PagedResult<Product> findProducts(ProductFilter filter);
-
+    java.util.List<Product> findAllActive();
     Map<String, Object> getProductStats();
 
     boolean existsBySku(String sku);
 
     boolean existsBySkuExcludeId(String sku, long id);
-
+    boolean existsByBarcode(String barcode);
+    boolean existsByBarcodeExcludeId(String barcode, long id);
     int getNextGeneratedNumericSku();
 }

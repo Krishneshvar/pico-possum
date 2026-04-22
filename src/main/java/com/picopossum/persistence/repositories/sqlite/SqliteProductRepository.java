@@ -173,6 +173,24 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     }
 
     @Override
+    public List<Product> findAllActive() {
+        String sql = """
+            SELECT 
+                p.id, p.name, p.description, p.category_id, c.name AS category_name, 
+                p.tax_rate,
+                p.sku, p.barcode, p.mrp, p.cost_price, 
+                p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
+                COALESCE(sc.current_stock, 0) AS stock
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+            WHERE p.deleted_at IS NULL AND p.status = 'active'
+            ORDER BY p.name ASC
+            """;
+        return queryList(sql, productMapper);
+    }
+
+    @Override
     public Map<String, Object> getProductStats() {
         return queryOne(
                 """
@@ -204,6 +222,18 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public boolean existsBySkuExcludeId(String sku, long id) {
         if (sku == null || sku.isBlank()) return false;
         return queryOne("SELECT 1 FROM products WHERE sku = ? AND id != ? AND deleted_at IS NULL", rs -> true, sku, id).orElse(false);
+    }
+
+    @Override
+    public boolean existsByBarcode(String barcode) {
+        if (barcode == null || barcode.isBlank()) return false;
+        return queryOne("SELECT 1 FROM products WHERE barcode = ? AND deleted_at IS NULL", rs -> true, barcode).orElse(false);
+    }
+
+    @Override
+    public boolean existsByBarcodeExcludeId(String barcode, long id) {
+        if (barcode == null || barcode.isBlank()) return false;
+        return queryOne("SELECT 1 FROM products WHERE barcode = ? AND id != ? AND deleted_at IS NULL", rs -> true, barcode, id).orElse(false);
     }
 
     @Override
