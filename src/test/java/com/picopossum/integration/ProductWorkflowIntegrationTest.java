@@ -64,7 +64,7 @@ class ProductWorkflowIntegrationTest {
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
-                transactionManager, jsonService, settingsStore);
+                transactionManager, jsonService, settingsStore, null);
 
         categoryService = new CategoryService(categoryRepository);
 

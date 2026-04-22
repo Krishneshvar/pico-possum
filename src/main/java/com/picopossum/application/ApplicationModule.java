@@ -56,7 +56,8 @@ public final class ApplicationModule {
                 auditService, // Use Service instead of Repository for consistency
                 transactionManager,
                 jsonService,
-                settingsStore
+                settingsStore,
+                productSearchIndex
         );
         
         this.productModule = new ProductModule(

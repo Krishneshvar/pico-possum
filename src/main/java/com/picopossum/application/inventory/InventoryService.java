@@ -12,6 +12,7 @@ import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.shared.util.TimeUtil;
 import com.picopossum.shared.dto.StockHistoryDto;
+import com.picopossum.ui.sales.ProductSearchIndex;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class InventoryService {
     private final AuditService auditService;
     private final TransactionManager transactionManager;
     private final JsonService jsonService;
+    private final ProductSearchIndex searchIndex;
     private final SettingsStore settingsStore;
 
     public InventoryService(InventoryRepository inventoryRepository,
@@ -33,13 +35,15 @@ public class InventoryService {
                             AuditService auditService,
                             TransactionManager transactionManager,
                             JsonService jsonService,
-                            SettingsStore settingsStore) {
+                            SettingsStore settingsStore,
+                            ProductSearchIndex searchIndex) {
         this.inventoryRepository = inventoryRepository;
         this.productFlowService = productFlowService;
         this.auditService = auditService;
         this.transactionManager = transactionManager;
         this.jsonService = jsonService;
         this.settingsStore = settingsStore;
+        this.searchIndex = searchIndex;
     }
 
     public int getProductStock(long productId) {
@@ -68,27 +72,27 @@ public class InventoryService {
     public long receiveInventory(long productId, int quantity, String notes) {
         if (quantity <= 0) throw new ValidationException("Quantity must be positive");
 
-        return transactionManager.runInTransaction(() -> {
+        long movementId = transactionManager.runInTransaction(() -> {
             StockMovement movement = new StockMovement(
                     null, productId, quantity, 
                     InventoryReason.RECEIVE.getValue(), "manual", 
                     null, notes, TimeUtil.nowUTC()
             );
             
-            long movementId = inventoryRepository.insertStockMovement(movement);
-            
-            // Handled by DB Trigger automatically for ProductFlow and Cache
-            // But we can log manually if we want extra auditing
+            long mid = inventoryRepository.insertStockMovement(movement);
             
             Map<String, Object> auditData = Map.of(
                     "product_id", productId,
                     "quantity", quantity,
                     "new_stock", inventoryRepository.getStockByProductId(productId)
             );
-            auditService.logCreate("stock_movements", movementId, auditData);
+            auditService.logCreate("stock_movements", mid, auditData);
 
-            return movementId;
+            return mid;
         });
+
+        if (searchIndex != null) searchIndex.refresh();
+        return movementId;
     }
 
     public void deductStock(long productId, int quantity, InventoryReason reason,
@@ -109,11 +113,15 @@ public class InventoryService {
             inventoryRepository.insertStockMovement(movement);
             return null;
         });
+
+        if (searchIndex != null) searchIndex.refresh();
     }
 
     public void adjustInventory(long productId, int quantityChange,
                                                  InventoryReason reason, String referenceType,
                                                  Long referenceId, String notes) {
+        if (quantityChange == 0) return; // Ignore no-op adjustments
+
         if (quantityChange < 0 && isInventoryRestrictionsEnabled()) {
             int currentStock = inventoryRepository.getStockByProductId(productId);
             if (currentStock + quantityChange < 0) {
@@ -139,6 +147,8 @@ public class InventoryService {
 
             return null;
         });
+
+        if (searchIndex != null) searchIndex.refresh();
     }
 
     private boolean isInventoryRestrictionsEnabled() {

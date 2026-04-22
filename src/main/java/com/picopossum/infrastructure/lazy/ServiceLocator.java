@@ -167,7 +167,7 @@ public class ServiceLocator {
         
         this.inventoryService = new LazyService<>(() -> new InventoryService(
                 getInventoryRepository(), getProductFlowService(), getAuditService(),
-                transactionManager, getJsonService(), getSettingsStore()));
+                transactionManager, getJsonService(), getSettingsStore(), getProductSearchIndex()));
 
         this.productService = new LazyService<>(() -> {
             ProductModule mod = new ProductModule(

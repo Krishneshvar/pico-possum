@@ -71,7 +71,7 @@ class InventoryPerformanceIntegrationTest {
 
         ProductFlowService productFlowService = new ProductFlowService(productFlowRepository);
         inventoryService = new InventoryService(inventoryRepository, productFlowService, auditService,
-                transactionManager, jsonService, settingsStore);
+                transactionManager, jsonService, settingsStore, null);
 
         PaymentService paymentService = new PaymentService(salesRepository);
         InvoiceNumberService invoiceNumberService = new InvoiceNumberService(salesRepository);

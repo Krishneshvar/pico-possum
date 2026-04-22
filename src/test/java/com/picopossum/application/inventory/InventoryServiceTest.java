@@ -9,6 +9,7 @@ import com.picopossum.persistence.db.TransactionManager;
 import com.picopossum.application.audit.AuditService;
 import com.picopossum.domain.repositories.InventoryRepository;
 import com.picopossum.shared.dto.GeneralSettings;
+import com.picopossum.ui.sales.ProductSearchIndex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ class InventoryServiceTest {
     @Mock private AuditService auditService;
     @Mock private TransactionManager transactionManager;
     @Mock private JsonService jsonService;
+    @Mock private ProductSearchIndex searchIndex;
     @Mock private SettingsStore settingsStore;
 
     private InventoryService inventoryService;
@@ -39,7 +41,7 @@ class InventoryServiceTest {
     void setUp() {
         inventoryService = new InventoryService(
                 inventoryRepository, productFlowService, auditService, 
-                transactionManager, jsonService, settingsStore
+                transactionManager, jsonService, settingsStore, searchIndex
         );
         
         lenient().when(transactionManager.runInTransaction(any())).thenAnswer(invocation -> {
