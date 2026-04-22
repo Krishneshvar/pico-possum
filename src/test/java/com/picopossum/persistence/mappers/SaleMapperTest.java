@@ -58,6 +58,7 @@ class SaleMapperTest {
                 case "total_amount" -> new BigDecimal("1000.00");
                 case "paid_amount" -> new BigDecimal("1000.00");
                 case "discount" -> BigDecimal.ZERO;
+                case "tax_amount" -> BigDecimal.ZERO;
                 default -> null;
             };
         });

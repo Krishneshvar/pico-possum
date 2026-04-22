@@ -88,6 +88,8 @@ class SqliteSalesRepositoryTest {
         when(rs.getObject("price_per_unit")).thenReturn(new BigDecimal("50.00"));
         when(rs.getObject("cost_per_unit")).thenReturn(new BigDecimal("30.00"));
         when(rs.getObject("discount_amount")).thenReturn(BigDecimal.ZERO);
+        when(rs.getObject("tax_rate")).thenReturn(BigDecimal.ZERO);
+        when(rs.getObject("tax_amount")).thenReturn(BigDecimal.ZERO);
         when(rs.getInt("returned_quantity")).thenReturn(0);
 
         List<SaleItem> result = repository.findSaleItems(1L);

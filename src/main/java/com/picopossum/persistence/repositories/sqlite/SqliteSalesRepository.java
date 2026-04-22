@@ -364,7 +364,8 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         }
         if (filter.searchTerm() != null && !filter.searchTerm().isBlank()) {
             String fuzzy = "%" + filter.searchTerm() + "%";
-            where.addCondition("(us.invoice_number LIKE ? OR COALESCE(us.customer_name, '') LIKE ?)", fuzzy, fuzzy);
+            where.addCondition("(us.invoice_number LIKE ? OR COALESCE(us.customer_name, '') LIKE ? OR COALESCE(us.customer_phone, '') LIKE ? OR COALESCE(us.customer_email, '') LIKE ?)", 
+                    fuzzy, fuzzy, fuzzy, fuzzy);
         }
         if (filter.minAmount() != null) {
             where.addCondition("us.total_amount >= ?", filter.minAmount());
