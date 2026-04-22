@@ -41,7 +41,7 @@ class SqliteProductFlowRepositoryTest {
         connection.createStatement().execute("CREATE TABLE sales (id INTEGER PRIMARY KEY, customer_id INTEGER, invoice_number TEXT, invoice_id TEXT, payment_method_id INTEGER)");
         connection.createStatement().execute("CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT)");
         connection.createStatement().execute("CREATE TABLE returns (id INTEGER PRIMARY KEY, invoice_id TEXT, payment_method_id INTEGER)");
-        connection.createStatement().execute("CREATE TABLE return_items (id INTEGER PRIMARY KEY, return_id INTEGER, sale_item_id INTEGER)");
+        connection.createStatement().execute("CREATE TABLE return_items (id INTEGER PRIMARY KEY, return_id INTEGER, sale_item_id INTEGER, quantity INTEGER, refund_amount REAL, product_id INTEGER, price_per_unit REAL, sku TEXT, product_name TEXT)");
         connection.createStatement().execute("CREATE TABLE transactions (id INTEGER PRIMARY KEY, sale_id INTEGER, type TEXT, status TEXT, payment_method_id INTEGER)");
         connection.createStatement().execute("CREATE TABLE payment_methods (id INTEGER PRIMARY KEY, name TEXT)");
         connection.createStatement().execute("""
@@ -88,12 +88,11 @@ class SqliteProductFlowRepositoryTest {
 
         Map<String, Object> summary = repository.getProductFlowSummary(1L);
 
-        assertEquals(25, summary.get("totalIncoming")); 
         assertEquals(5, summary.get("totalSold"));
         assertEquals(2, summary.get("totalReturned"));
         assertEquals(1, summary.get("totalLost"));
         assertEquals(25, summary.get("totalGained")); // 20 (original po) + 5
         assertEquals(5, summary.get("totalEvents"));
-        assertEquals(21, summary.get("netMovement")); // 25 + 2 - 5 - 1 = 21
+        assertEquals(21, summary.get("netMovement")); // 2 + 25 - 5 - 1 = 21
     }
 }

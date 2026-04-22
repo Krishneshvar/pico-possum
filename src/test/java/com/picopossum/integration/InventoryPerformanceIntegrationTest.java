@@ -53,6 +53,9 @@ class InventoryPerformanceIntegrationTest {
         appPaths = new AppPaths(appDir);
         databaseManager = new DatabaseManager(appPaths);
         databaseManager.initialize();
+        try (java.sql.Statement stmt = databaseManager.getConnection().createStatement()) {
+            stmt.execute("PRAGMA busy_timeout = 10000");
+        } catch (SQLException e) { e.printStackTrace(); }
         transactionManager = new TransactionManager(databaseManager);
 
         JsonService jsonService = new JsonService();
@@ -176,13 +179,22 @@ class InventoryPerformanceIntegrationTest {
     }
 
     private static void deleteDirectory(Path root) throws IOException {
-        if (root == null || Files.notExists(root)) return;
-        try (var walk = Files.walk(root)) {
-            walk.sorted(Comparator.reverseOrder()).forEach(path -> {
-                try { Files.deleteIfExists(path); } catch (IOException ex) {
-                    throw new IllegalStateException("Failed to delete: " + path, ex);
-                }
-            });
+        if (root == null || !Files.exists(root)) return;
+        
+        for (int i = 0; i < 5; i++) {
+            try (var walk = Files.walk(root)) {
+                walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ex) {
+                        // Ignore and retry
+                    }
+                });
+            }
+            if (!Files.exists(root)) return;
+            System.gc();
+            System.runFinalization();
+            try { Thread.sleep(200 * (i + 1)); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
     }
 }

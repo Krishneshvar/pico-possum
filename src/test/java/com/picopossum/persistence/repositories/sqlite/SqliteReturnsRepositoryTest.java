@@ -44,7 +44,7 @@ class SqliteReturnsRepositoryTest {
         connection.createStatement().execute("CREATE TABLE sales (id INTEGER PRIMARY KEY, invoice_number TEXT, invoice_id TEXT)");
         connection.createStatement().execute("CREATE TABLE sale_items (id INTEGER PRIMARY KEY, sale_id INTEGER, product_id INTEGER, price_per_unit REAL, cost_per_unit REAL)");
         connection.createStatement().execute("CREATE TABLE returns (id INTEGER PRIMARY KEY AUTOINCREMENT, invoice_id TEXT UNIQUE, sale_id INTEGER, reason TEXT, refund_amount REAL, payment_method_id INTEGER, created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
-        connection.createStatement().execute("CREATE TABLE return_items (id INTEGER PRIMARY KEY AUTOINCREMENT, return_id INTEGER, sale_item_id INTEGER, quantity INTEGER, refund_amount REAL)");
+        connection.createStatement().execute("CREATE TABLE return_items (id INTEGER PRIMARY KEY AUTOINCREMENT, return_id INTEGER, sale_item_id INTEGER, quantity INTEGER, refund_amount REAL, product_id INTEGER, price_per_unit REAL, sku TEXT, product_name TEXT)");
         connection.createStatement().execute("CREATE TABLE payment_methods (id INTEGER PRIMARY KEY, name TEXT)");
 
         connection.createStatement().execute("INSERT INTO products (id, name, sku) VALUES (1, 'Product', 'SKU')");

@@ -85,14 +85,12 @@ class DatabaseBackupServiceIntegrationTest {
 
     private int countCategoriesByName(String name) {
         final String sql = "SELECT COUNT(*) FROM categories WHERE name = ?";
-        try {
-            Connection connection = databaseManager.getConnection();
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, name);
-                try (ResultSet rs = statement.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getInt(1);
-                    }
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, name);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
                 }
             }
         } catch (SQLException ex) {
@@ -102,19 +100,22 @@ class DatabaseBackupServiceIntegrationTest {
     }
 
     private static void deleteDirectory(Path root) throws IOException {
-        if (root == null || Files.notExists(root)) {
-            return;
-        }
-
-        try (var stream = Files.walk(root)) {
-            stream.sorted(Comparator.reverseOrder())
-                    .forEach(path -> {
-                        try {
-                            Files.deleteIfExists(path);
-                        } catch (IOException ex) {
-                            throw new IllegalStateException("Failed to delete test artifact: " + path, ex);
-                        }
-                    });
+        if (root == null || !Files.exists(root)) return;
+        
+        for (int i = 0; i < 5; i++) {
+            try (var walk = Files.walk(root)) {
+                walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ex) {
+                        // Best effort
+                    }
+                });
+            }
+            if (!Files.exists(root)) return;
+            System.gc();
+            System.runFinalization();
+            try { Thread.sleep(200 * (i + 1)); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
     }
 }

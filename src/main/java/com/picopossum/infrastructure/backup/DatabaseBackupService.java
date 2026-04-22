@@ -215,15 +215,36 @@ public final class DatabaseBackupService implements AutoCloseable {
 
     private void replaceLiveDatabase(Path candidateBackup, Path databasePath, Path rollbackBackup) throws IOException {
         databaseManager.close();
-        try {
-            deleteSqliteSidecarFiles(databasePath);
-            Files.deleteIfExists(databasePath);
-            moveReplacing(candidateBackup, databasePath);
+        
+        // Help Windows release file handles
+        System.gc();
+        System.runFinalization();
+        try { Thread.sleep(300); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+        boolean success = false;
+        Exception lastError = null;
+        
+        for (int i = 0; i < 5; i++) {
+            try {
+                deleteSqliteSidecarFiles(databasePath);
+                Files.deleteIfExists(databasePath);
+                moveReplacing(candidateBackup, databasePath);
+                success = true;
+                break;
+            } catch (Exception ex) {
+                lastError = ex;
+                LOGGER.warn("Attempt {} to replace live database failed: {}", i + 1, ex.getMessage());
+                System.gc();
+                try { Thread.sleep(200 * (i + 1)); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        }
+
+        if (success) {
             databaseManager.initialize();
-        } catch (Exception ex) {
-            LOGGER.error("Restore failed while replacing live database", ex);
-            recoverFromRollbackBackup(databasePath, rollbackBackup, ex);
-            throw new IllegalStateException("Restore failed while replacing the live database", ex);
+        } else {
+            LOGGER.error("Restore failed after 5 attempts while replacing live database", lastError);
+            recoverFromRollbackBackup(databasePath, rollbackBackup, lastError);
+            throw new IllegalStateException("Restore failed while replacing the live database", lastError);
         }
     }
 
