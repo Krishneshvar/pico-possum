@@ -51,7 +51,13 @@ public class SaleCalculator {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         draft.setDiscountTotal(lineDiscounts.add(overallDiscount));
 
+        BigDecimal lineTaxes = draft.getItems().stream()
+                .map(CartItem::getTaxAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        draft.setTaxTotal(lineTaxes);
+
         draft.setSubtotal(grossTotal);
-        draft.setTotal(grossTotal.subtract(overallDiscount).max(BigDecimal.ZERO));
+        // Total = Subtotal + Tax - Overall Discount
+        draft.setTotal(grossTotal.add(lineTaxes).subtract(overallDiscount).max(BigDecimal.ZERO));
     }
 }

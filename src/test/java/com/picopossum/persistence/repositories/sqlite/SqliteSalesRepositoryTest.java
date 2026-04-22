@@ -41,7 +41,7 @@ class SqliteSalesRepositoryTest {
         when(keys.getLong(1)).thenReturn(1L);
 
         Sale sale = new Sale(null, "INV-001", null, new BigDecimal("100.00"),
-                new BigDecimal("100.00"), BigDecimal.ZERO,
+                new BigDecimal("100.00"), BigDecimal.ZERO, BigDecimal.ZERO,
                 "paid", "fulfilled", null, "Guest", null, null, "System", 1L, "Cash", "INV-001");
 
         long id = repository.insertSale(sale);
@@ -63,7 +63,7 @@ class SqliteSalesRepositoryTest {
 
         SaleItem item = new SaleItem(null, 1L, 1L, "SKU", "Product",
                 2, new BigDecimal("50.00"), new BigDecimal("30.00"),
-                BigDecimal.ZERO, 0);
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0);
 
         long id = repository.insertSaleItem(item);
 
@@ -105,7 +105,7 @@ class SqliteSalesRepositoryTest {
 
         SaleItem item = new SaleItem(1L, 1L, 1L, "SKU", "Product",
                 3, new BigDecimal("60.00"), new BigDecimal("40.00"),
-                BigDecimal.ZERO, 0);
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0);
 
         int result = repository.updateSaleItem(item);
         assertEquals(1, result);

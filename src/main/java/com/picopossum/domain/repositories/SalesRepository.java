@@ -50,7 +50,7 @@ public interface SalesRepository {
 
     int updateSaleItem(SaleItem item);
 
-    int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal discount);
+    int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal taxAmount, BigDecimal discount);
     
     int updateSalePaymentMethod(long saleId, long paymentMethodId);
 

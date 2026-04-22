@@ -75,7 +75,7 @@ class SalesHistoryControllerTest {
     void fetchData_success() {
         List<Sale> sales = List.of(
             new Sale(1L, "INV-001", LocalDateTime.now(), new BigDecimal("100.00"), 
-                new BigDecimal("100.00"), BigDecimal.ZERO, "paid", "fulfilled", 
+                new BigDecimal("100.00"), BigDecimal.ZERO, BigDecimal.ZERO, "paid", "fulfilled", 
                 null, "Guest", null, null, "System", 1L, "Cash", "INV-001")
         );
         PagedResult<Sale> pagedResult = new PagedResult<>(sales, 1, 1, 1, 15);
@@ -92,7 +92,7 @@ class SalesHistoryControllerTest {
     @Test
     @DisplayName("Should protected sale history from deletion")
     void deleteEntity_throwsException() {
-        Sale sale = new Sale(1L, "INV-001", LocalDateTime.now(), BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", null, "Guest", null, null, "System", 1L, "Cash", "INV-001");
+        Sale sale = new Sale(1L, "INV-001", LocalDateTime.now(), BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, "paid", "fulfilled", null, "Guest", null, null, "System", 1L, "Cash", "INV-001");
         assertThrows(Exception.class, () -> {
             java.lang.reflect.Method deleteEntity = SalesHistoryController.class.getDeclaredMethod("deleteEntity", Sale.class);
             deleteEntity.setAccessible(true);

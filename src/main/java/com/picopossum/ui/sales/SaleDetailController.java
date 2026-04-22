@@ -147,7 +147,7 @@ public class SaleDetailController implements Parameterizable {
                     editingItems.set(idx, new SaleItem(
                         existing.id(), existing.saleId(), existing.productId(),
                         existing.sku(), existing.productName(), existing.quantity() + 1, existing.pricePerUnit(),
-                        existing.costPerUnit(), existing.discountAmount(), existing.returnedQuantity()
+                        existing.costPerUnit(), existing.discountAmount(), existing.taxRate(), existing.taxAmount(), existing.returnedQuantity()
                     ));
                 },
                 () -> {
@@ -155,7 +155,7 @@ public class SaleDetailController implements Parameterizable {
                         null, currentSale.id(), product.id(),
                         product.sku(), product.name(), 
                         1, product.mrp(), product.costPrice(), 
-                        BigDecimal.ZERO, 0
+                        BigDecimal.ZERO, product.taxRate() != null ? product.taxRate() : BigDecimal.ZERO, BigDecimal.ZERO, 0
                     ));
                 }
             );

@@ -17,12 +17,13 @@ public class ReturnCalculator {
             List<SaleItem> saleItems,
             BigDecimal saleGlobalDiscount
     ) {
-        BigDecimal billItemsSubtotal = BigDecimal.ZERO;
+        BigDecimal billItemsTotalWithTax = BigDecimal.ZERO;
         for (SaleItem si : saleItems) {
             BigDecimal lineSubtotal = si.pricePerUnit()
                     .multiply(BigDecimal.valueOf(si.quantity()))
                     .subtract(si.discountAmount());
-            billItemsSubtotal = billItemsSubtotal.add(lineSubtotal);
+            BigDecimal lineTax = si.taxAmount() != null ? si.taxAmount() : BigDecimal.ZERO;
+            billItemsTotalWithTax = billItemsTotalWithTax.add(lineSubtotal).add(lineTax);
         }
 
         BigDecimal globalDiscount = saleGlobalDiscount != null ? saleGlobalDiscount : BigDecimal.ZERO;
@@ -37,16 +38,17 @@ public class ReturnCalculator {
             BigDecimal linePricePerUnit = saleItem.pricePerUnit();
             BigDecimal lineQuantity = BigDecimal.valueOf(saleItem.quantity());
             BigDecimal lineDiscountAmount = saleItem.discountAmount();
-            BigDecimal lineSubtotal = linePricePerUnit.multiply(lineQuantity).subtract(lineDiscountAmount);
+            BigDecimal lineTaxAmount = saleItem.taxAmount() != null ? saleItem.taxAmount() : BigDecimal.ZERO;
+            BigDecimal lineSubtotalWithTax = linePricePerUnit.multiply(lineQuantity).subtract(lineDiscountAmount).add(lineTaxAmount);
 
             BigDecimal lineGlobalDiscount = BigDecimal.ZERO;
-            if (billItemsSubtotal.compareTo(BigDecimal.ZERO) > 0) {
-                lineGlobalDiscount = lineSubtotal
-                        .divide(billItemsSubtotal, 10, RoundingMode.HALF_UP)
+            if (billItemsTotalWithTax.compareTo(BigDecimal.ZERO) > 0) {
+                lineGlobalDiscount = lineSubtotalWithTax
+                        .divide(billItemsTotalWithTax, 10, RoundingMode.HALF_UP)
                         .multiply(globalDiscount);
             }
 
-            BigDecimal lineNetPaid = lineSubtotal.subtract(lineGlobalDiscount);
+            BigDecimal lineNetPaid = lineSubtotalWithTax.subtract(lineGlobalDiscount);
 
             BigDecimal refundAmount = lineNetPaid
                     .divide(lineQuantity, 10, RoundingMode.HALF_UP)

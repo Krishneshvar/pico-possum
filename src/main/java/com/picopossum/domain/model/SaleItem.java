@@ -12,6 +12,8 @@ public record SaleItem(
         BigDecimal pricePerUnit,
         BigDecimal costPerUnit,
         BigDecimal discountAmount,
+        BigDecimal taxRate,
+        BigDecimal taxAmount,
         Integer returnedQuantity
 ) {
     public SaleItem {
@@ -29,6 +31,12 @@ public record SaleItem(
         }
         if (discountAmount == null || discountAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("SaleItem discountAmount cannot be null or negative");
+        }
+        if (taxRate == null || taxRate.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("SaleItem taxRate cannot be null or negative");
+        }
+        if (taxAmount == null || taxAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("SaleItem taxAmount cannot be null or negative");
         }
     }
 }

@@ -107,24 +107,31 @@ public class SalesModificationService {
 
             Map<Long, Product> productDetails = fetchProductsBatch(new ArrayList<>(newProductTotals.keySet()));
             BigDecimal newSubtotal = BigDecimal.ZERO;
+            BigDecimal newTaxTotal = BigDecimal.ZERO;
             for (UpdateSaleItemRequest req : itemRequests) {
                 Product p = productDetails.get(req.productId());
-                BigDecimal lineNet = req.pricePerUnit().multiply(BigDecimal.valueOf(req.quantity()))
-                                     .subtract(req.discount() != null ? req.discount() : BigDecimal.ZERO)
-                                     .max(BigDecimal.ZERO);
-                newSubtotal = newSubtotal.add(lineNet);
+                BigDecimal lineBeforeTax = req.pricePerUnit().multiply(BigDecimal.valueOf(req.quantity()))
+                                      .subtract(req.discount() != null ? req.discount() : BigDecimal.ZERO)
+                                      .max(BigDecimal.ZERO);
+                
+                BigDecimal rate = p.taxRate() != null ? p.taxRate() : BigDecimal.ZERO;
+                BigDecimal lineTax = lineBeforeTax.multiply(rate)
+                                      .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                
+                newSubtotal = newSubtotal.add(lineBeforeTax);
+                newTaxTotal = newTaxTotal.add(lineTax);
 
                 salesRepository.insertSaleItem(new SaleItem(
                     null, saleId, p.id(), p.sku(), p.name(),
                     req.quantity(), req.pricePerUnit(), p.costPrice(),
-                    req.discount(), null
+                    req.discount(), rate, lineTax, null
                 ));
             }
 
             BigDecimal totalDiscount = sale.discount() != null ? sale.discount() : BigDecimal.ZERO;
-            BigDecimal grandTotal = newSubtotal.subtract(totalDiscount).max(BigDecimal.ZERO);
+            BigDecimal grandTotal = newSubtotal.subtract(totalDiscount).add(newTaxTotal).max(BigDecimal.ZERO);
 
-            salesRepository.updateSaleTotals(saleId, grandTotal, totalDiscount);
+            salesRepository.updateSaleTotals(saleId, grandTotal, newTaxTotal, totalDiscount);
 
             if (sale.totalAmount().compareTo(sale.paidAmount()) == 0) {
                 salesRepository.updateSalePaidAmount(saleId, grandTotal);

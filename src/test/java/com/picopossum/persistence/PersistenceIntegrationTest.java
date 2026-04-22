@@ -86,7 +86,7 @@ class PersistenceIntegrationTest {
                 new Sale(
                         null, invoice, java.time.LocalDateTime.now(),
                         new BigDecimal("120.00"), new BigDecimal("120.00"),
-                        BigDecimal.ZERO, "paid", "fulfilled",
+                        BigDecimal.ZERO, BigDecimal.ZERO, "paid", "fulfilled",
                         null, "Guest", null, null, "System", 1L, "Cash", invoice
                 )
         );
@@ -95,7 +95,7 @@ class PersistenceIntegrationTest {
                 new SaleItem(
                         null, saleId, productId, "SKU123", "Test Prod",
                         2, new BigDecimal("60.00"), new BigDecimal("40.00"),
-                        BigDecimal.ZERO, 0
+                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0
                 )
         );
 

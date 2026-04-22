@@ -100,7 +100,10 @@ class SalesWorkflowIntegrationTest {
         System.gc();
         try { Thread.sleep(100); } catch (InterruptedException e) {}
 
-        if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
+        if (appPaths != null) {
+            try { deleteDirectory(appPaths.getAppRoot()); }
+            catch (Exception e) { System.err.println("Cleanup failed (expected on Windows): " + e.getMessage()); }
+        }
     }
 
     @Test
@@ -155,6 +158,37 @@ class SalesWorkflowIntegrationTest {
 
         int stockAfterCancel = inventoryService.getProductStock(testProductId);
         assertEquals(stockBefore, stockAfterCancel);
+    }
+
+    @Test
+    @Order(3)
+    @DisplayName("Tax calculation — applies product tax rate correctly")
+    void taxCalculation_appliesProductTaxRateCorrectly() {
+        // Create product with 10% tax
+        long catId = categoryRepository.insertCategory("Cat-Tax", null).id();
+        Product p = new Product(null, "Taxed Product", "desc", catId, null, new BigDecimal("10.00"), "SKU-TAX", null, new BigDecimal("100.00"), new BigDecimal("60.00"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 10, null, null, null);
+        long pId = productRepository.insertProduct(p);
+        seedInventory(pId, 10);
+
+        // Sale: 1 unit of $100 item with 10% tax
+        CreateSaleRequest request = new CreateSaleRequest(
+                List.of(new CreateSaleItemRequest(pId, 1, BigDecimal.ZERO, new BigDecimal("100.00"))),
+                null,
+                BigDecimal.ZERO,
+                List.of(new PaymentRequest(new BigDecimal("110.00"), cashPaymentMethodId))
+        );
+
+        SaleResponse response = salesService.createSale(request);
+
+        // Expected: Subtotal 100, Tax 10, Total 110
+        assertEquals(0, new BigDecimal("100.00").compareTo(response.sale().totalAmount().subtract(response.sale().taxAmount())));
+        assertEquals(0, new BigDecimal("10.00").compareTo(response.sale().taxAmount()));
+        assertEquals(0, new BigDecimal("110.00").compareTo(response.sale().totalAmount()));
+
+        // Check line item tax
+        SaleItem item = response.items().get(0);
+        assertEquals(0, new BigDecimal("10.00").compareTo(item.taxRate()));
+        assertEquals(0, new BigDecimal("10.00").compareTo(item.taxAmount()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

@@ -98,7 +98,10 @@ class TransactionRollbackIntegrationTest {
         System.gc();
         try { Thread.sleep(100); } catch (InterruptedException e) {}
 
-        if (appPaths != null) deleteDirectory(appPaths.getAppRoot());
+        if (appPaths != null) {
+            try { deleteDirectory(appPaths.getAppRoot()); }
+            catch (Exception e) { System.err.println("Cleanup failed (expected on Windows): " + e.getMessage()); }
+        }
      }
 
     @Test
@@ -176,7 +179,7 @@ class TransactionRollbackIntegrationTest {
         salesRepository.insertSale(new Sale(
                 null, invoice, null,
                 new BigDecimal("100.00"), new BigDecimal("100.00"),
-                BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO,
                 "paid", "fulfilled", null, "Guest",
                 null, null, "System Admin", 1L, "Cash", invoice
         ));
@@ -186,7 +189,7 @@ class TransactionRollbackIntegrationTest {
                 salesRepository.insertSale(new Sale(
                         null, invoice, null,
                         new BigDecimal("50.00"), new BigDecimal("50.00"),
-                        BigDecimal.ZERO,
+                        BigDecimal.ZERO, BigDecimal.ZERO,
                         "paid", "fulfilled", null, "Guest",
                         null, null, "System Admin", 1L, "Cash", invoice
                 ))

@@ -9,6 +9,7 @@ public record Sale(
         LocalDateTime saleDate,
         BigDecimal totalAmount,
         BigDecimal paidAmount,
+        BigDecimal taxAmount,
         BigDecimal discount,
         String status,
         String fulfillmentStatus,
@@ -27,6 +28,9 @@ public record Sale(
         }
         if (paidAmount == null || paidAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Sale paid amount cannot be null or negative");
+        }
+        if (taxAmount == null || taxAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Sale tax amount cannot be null or negative");
         }
         if (discount == null || discount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Sale discount cannot be null or negative");

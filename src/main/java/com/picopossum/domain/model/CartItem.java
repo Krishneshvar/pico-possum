@@ -12,6 +12,7 @@ public class CartItem {
     
     // Calculated fields
     private BigDecimal discountAmount = BigDecimal.ZERO;
+    private BigDecimal taxAmount = BigDecimal.ZERO;
     private BigDecimal netLineTotal = BigDecimal.ZERO;
 
     public CartItem() {}
@@ -33,7 +34,12 @@ public class CartItem {
         } else {
             this.discountAmount = discountValue;
         }
+        
         this.netLineTotal = lineGross.subtract(discountAmount).max(BigDecimal.ZERO);
+        
+        BigDecimal rate = product.taxRate() != null ? product.taxRate() : BigDecimal.ZERO;
+        this.taxAmount = this.netLineTotal.multiply(rate)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
     // Getters and Setters
@@ -68,6 +74,7 @@ public class CartItem {
     }
     public BigDecimal getDiscountAmount() { return discountAmount; }
     public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
+    public BigDecimal getTaxAmount() { return taxAmount; }
     public BigDecimal getNetLineTotal() { return netLineTotal; }
     public void setNetLineTotal(BigDecimal netLineTotal) { this.netLineTotal = netLineTotal; }
 

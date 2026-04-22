@@ -15,6 +15,7 @@ public final class SaleMapper implements RowMapper<Sale> {
                 SqlMapperUtils.getLocalDateTime(rs, "sale_date"),
                 SqlMapperUtils.getBigDecimal(rs, "total_amount"),
                 SqlMapperUtils.getBigDecimal(rs, "paid_amount"),
+                SqlMapperUtils.getBigDecimal(rs, "tax_amount"),
                 SqlMapperUtils.getBigDecimal(rs, "discount"),
                 rs.getString("status"),
                 rs.getString("fulfillment_status"),

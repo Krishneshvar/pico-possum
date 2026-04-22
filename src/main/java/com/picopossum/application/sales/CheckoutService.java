@@ -97,6 +97,7 @@ public class CheckoutService {
                     com.picopossum.shared.util.TimeUtil.nowUTC(),
                     draft.getTotal(),
                     BigDecimal.ZERO,
+                    draft.getTaxTotal(),
                     draft.getDiscountTotal(),
                     "draft", 
                     "pending",
@@ -118,6 +119,8 @@ public class CheckoutService {
                         cartItem.getPricePerUnit(),
                         cartItem.getProduct().costPrice(),
                         cartItem.getDiscountAmount(),
+                        cartItem.getProduct().taxRate() != null ? cartItem.getProduct().taxRate() : BigDecimal.ZERO,
+                        cartItem.getTaxAmount(),
                         null
                 );
                 salesRepository.insertSaleItem(item);

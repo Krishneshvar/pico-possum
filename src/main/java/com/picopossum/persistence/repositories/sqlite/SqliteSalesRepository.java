@@ -35,6 +35,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 s.sale_date AS sale_date,
                 s.total_amount AS total_amount,
                 s.paid_amount AS paid_amount,
+                s.tax_amount AS tax_amount,
                 s.discount AS discount,
                 s.status AS status,
                 s.fulfillment_status AS fulfillment_status,
@@ -58,6 +59,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 ls.sale_date AS sale_date,
                 ls.net_amount AS total_amount,
                 ls.net_amount AS paid_amount,
+                0 AS tax_amount,
                 0 AS discount,
                 'legacy' AS status,
                 'fulfilled' AS fulfillment_status,
@@ -90,14 +92,15 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sales (
-                  invoice_number, invoice_id, total_amount, paid_amount, discount, status, fulfillment_status, customer_id, payment_method_id
+                  invoice_number, invoice_id, total_amount, paid_amount, tax_amount, discount, status, fulfillment_status, customer_id, payment_method_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sale.invoiceNumber(),
                 sale.invoiceId(),
                 sale.totalAmount(),
                 sale.paidAmount(),
+                sale.taxAmount(),
                 sale.discount(),
                 sale.status(),
                 sale.fulfillmentStatus() == null ? "pending" : sale.fulfillmentStatus(),
@@ -111,16 +114,18 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return executeInsert(
                 """
                 INSERT INTO sale_items (
-                  sale_id, product_id, quantity, price_per_unit, cost_per_unit, discount_amount
+                  sale_id, product_id, quantity, price_per_unit, cost_per_unit, discount_amount, tax_rate, tax_amount
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 item.saleId(),
                 item.productId(),
                 item.quantity(),
                 item.pricePerUnit(),
                 item.costPerUnit(),
-                item.discountAmount()
+                item.discountAmount(),
+                item.taxRate(),
+                item.taxAmount()
         );
     }
 
@@ -395,22 +400,25 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 """
                 UPDATE sale_items SET 
                   quantity = ?, price_per_unit = ?, cost_per_unit = ?, 
-                  discount_amount = ?
+                  discount_amount = ?, tax_rate = ?, tax_amount = ?
                 WHERE id = ?
                 """,
                 item.quantity(),
                 item.pricePerUnit(),
                 item.costPerUnit(),
                 item.discountAmount(),
+                item.taxRate(),
+                item.taxAmount(),
                 item.id()
         );
     }
 
     @Override
-    public int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal discount) {
+    public int updateSaleTotals(long saleId, BigDecimal totalAmount, BigDecimal taxAmount, BigDecimal discount) {
         return executeUpdate(
-                "UPDATE sales SET total_amount = ?, discount = ? WHERE id = ?",
+                "UPDATE sales SET total_amount = ?, tax_amount = ?, discount = ? WHERE id = ?",
                 totalAmount,
+                taxAmount,
                 discount,
                 saleId
         );

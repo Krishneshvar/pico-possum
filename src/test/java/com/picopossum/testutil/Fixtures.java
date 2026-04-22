@@ -27,24 +27,24 @@ public final class Fixtures {
     // -------------------------------------------------------------------------
 
     public static Sale paidSale(long id, BigDecimal total, BigDecimal paid) {
-        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid, BigDecimal.ZERO, 
+        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid, BigDecimal.ZERO, BigDecimal.ZERO, 
                 "paid", "fulfilled", null, "Guest", null, null, "System", 1L, "Cash", "INV-00-" + id);
     }
 
     public static Sale paidSaleWithDiscount(long id, BigDecimal total, BigDecimal paid, BigDecimal discount) {
-        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid, discount, 
+        return new Sale(id, "INV-00" + id, LocalDateTime.now(), total, paid, BigDecimal.ZERO, discount, 
                 "paid", "fulfilled", null, "Guest", null, null, "System", 1L, "Cash", "INV-00-" + id);
     }
 
     public static Sale cancelledSale(long id) {
         return new Sale(id, "INV-00" + id, LocalDateTime.now(), new BigDecimal("100.00"), 
-                new BigDecimal("100.00"), BigDecimal.ZERO, "cancelled", "cancelled", 
+                new BigDecimal("100.00"), BigDecimal.ZERO, BigDecimal.ZERO, "cancelled", "cancelled", 
                 null, "Guest", null, null, "System", 1L, "Cash", "INV-00-" + id);
     }
 
     public static Sale refundedSale(long id) {
         return new Sale(id, "INV-00" + id, LocalDateTime.now(), new BigDecimal("100.00"), 
-                BigDecimal.ZERO, BigDecimal.ZERO, "refunded", "fulfilled", 
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, "refunded", "fulfilled", 
                 null, "Guest", null, null, "System", 1L, "Cash", "INV-00-" + id);
     }
 
@@ -55,14 +55,14 @@ public final class Fixtures {
     public static SaleItem saleItem(long id, long saleId, long productId, int qty, String price) {
         return new SaleItem(id, saleId, productId, "SKU-" + id, "Product",
                 qty, new BigDecimal(price), new BigDecimal(price),
-                BigDecimal.ZERO, 0);
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0);
     }
 
     public static SaleItem saleItemWithDiscount(long id, long saleId, long productId,
                                                 int qty, String price, String lineDiscount) {
         return new SaleItem(id, saleId, productId, "SKU-" + id, "Product",
                 qty, new BigDecimal(price), new BigDecimal(price),
-                new BigDecimal(lineDiscount), 0);
+                new BigDecimal(lineDiscount), BigDecimal.ZERO, BigDecimal.ZERO, 0);
     }
 
     // -------------------------------------------------------------------------

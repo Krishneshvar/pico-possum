@@ -19,6 +19,8 @@ public final class SaleItemMapper implements RowMapper<SaleItem> {
                 SqlMapperUtils.getBigDecimal(rs, "price_per_unit"),
                 SqlMapperUtils.getBigDecimal(rs, "cost_per_unit"),
                 SqlMapperUtils.getBigDecimal(rs, "discount_amount"),
+                SqlMapperUtils.getBigDecimal(rs, "tax_rate"),
+                SqlMapperUtils.getBigDecimal(rs, "tax_amount"),
                 getOptionalInt(rs, "returned_quantity")
         );
     }

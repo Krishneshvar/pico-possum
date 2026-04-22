@@ -59,7 +59,7 @@ class SaleDetailControllerTest {
     private Sale createTestSale(Long id, String invoiceNumber) {
         return new Sale(
             id, invoiceNumber, LocalDateTime.now(), new BigDecimal("100.00"),
-            new BigDecimal("100.00"), BigDecimal.ZERO,
+            new BigDecimal("100.00"), BigDecimal.ZERO, BigDecimal.ZERO,
             "paid", "fulfilled", 1L, "Test Customer", "1234567890",
             "test@customer.com", "Test Biller", 1L, "Cash", invoiceNumber
         );

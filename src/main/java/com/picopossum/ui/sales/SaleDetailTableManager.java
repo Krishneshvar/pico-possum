@@ -59,7 +59,7 @@ public class SaleDetailTableManager {
                             getTableView().getItems().set(index, new SaleItem(
                                     current.id(), current.saleId(), current.productId(),
                                     current.sku(), current.productName(), newVal, current.pricePerUnit(),
-                                    current.costPerUnit(), current.discountAmount(), null
+                                    current.costPerUnit(), current.discountAmount(), current.taxRate(), current.taxAmount(), current.returnedQuantity()
                             ));
                             onDataChanged.run();
                         }
@@ -94,7 +94,7 @@ public class SaleDetailTableManager {
                                     getTableView().getItems().set(index, new SaleItem(
                                             current.id(), current.saleId(), current.productId(),
                                             current.sku(), current.productName(), current.quantity(), newVal,
-                                            current.costPerUnit(), current.discountAmount(), null
+                                            current.costPerUnit(), current.discountAmount(), current.taxRate(), current.taxAmount(), current.returnedQuantity()
                                     ));
                                     onDataChanged.run();
                                 }

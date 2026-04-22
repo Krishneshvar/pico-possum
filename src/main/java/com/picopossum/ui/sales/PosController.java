@@ -57,7 +57,7 @@ public class PosController implements CartCellHandler, Disposable {
     @FXML private TextField    discountField;
     @FXML private ToggleButton btnDiscountFixed, btnDiscountPercent;
 
-    @FXML private Label subtotalLabel, totalDiscountLabel, totalLabel;
+    @FXML private Label subtotalLabel, totalDiscountLabel, taxLabel, totalLabel;
     @FXML private TextField tenderedField;
     @FXML private Label balanceTypeLabel, balanceLabel;
 
@@ -601,6 +601,7 @@ public class PosController implements CartCellHandler, Disposable {
     private void updateUI() {
         subtotalLabel.setText(CurrencyUtil.format(currentBill.getSubtotal()));
         totalDiscountLabel.setText(CurrencyUtil.format(currentBill.getDiscountTotal()));
+        if (taxLabel != null) taxLabel.setText(CurrencyUtil.format(currentBill.getTaxTotal()));
         totalLabel.setText(CurrencyUtil.format(currentBill.getTotal()));
         bottomTotalLabel.setText(CurrencyUtil.format(currentBill.getTotal()));
         bottomMrpLabel.setText(CurrencyUtil.format(currentBill.getTotalMrp()));

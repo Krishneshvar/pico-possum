@@ -60,7 +60,7 @@ class SalesServiceTest {
     @Test
     @DisplayName("Should fetch sale details correctly")
     void getSaleDetails_success() {
-        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, "paid", "fulfilled", 10L, "John Doe", null, null, "System Admin", 1L, "Cash", "INV-001");
+        Sale sale = new Sale(1L, "INV-001", null, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, "paid", "fulfilled", 10L, "John Doe", null, null, "System Admin", 1L, "Cash", "INV-001");
         when(salesRepository.findSaleById(1L)).thenReturn(Optional.of(sale));
         when(salesRepository.findSaleItems(1L)).thenReturn(List.of());
         when(returnsRepository.findReturnsBySaleId(1L)).thenReturn(List.of());
