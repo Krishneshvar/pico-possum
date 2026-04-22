@@ -6,6 +6,7 @@ public record SalesReportSummary(
         int totalTransactions,
         BigDecimal totalSales,
         BigDecimal totalDiscount,
+        BigDecimal totalTax,
         BigDecimal totalCollected,
         BigDecimal totalRefunds,
         BigDecimal totalCost,
@@ -16,6 +17,7 @@ public record SalesReportSummary(
     public SalesReportSummary {
         totalSales = totalSales == null ? BigDecimal.ZERO : totalSales;
         totalDiscount = totalDiscount == null ? BigDecimal.ZERO : totalDiscount;
+        totalTax = totalTax == null ? BigDecimal.ZERO : totalTax;
         totalCollected = totalCollected == null ? BigDecimal.ZERO : totalCollected;
         totalRefunds = totalRefunds == null ? BigDecimal.ZERO : totalRefunds;
         totalCost = totalCost == null ? BigDecimal.ZERO : totalCost;

@@ -50,7 +50,7 @@ class SalesReportsControllerTest {
         LocalDate endDate = LocalDate.now();
         
         SalesReportSummary summary = new SalesReportSummary(
-            25, new BigDecimal("5000.00"), new BigDecimal("900.00"), new BigDecimal("5400.00"),
+            25, new BigDecimal("5000.00"), new BigDecimal("900.00"), BigDecimal.ZERO, new BigDecimal("5400.00"),
             BigDecimal.ZERO, new BigDecimal("3000.00"), new BigDecimal("2400.00"),
             new BigDecimal("5000.00"), new BigDecimal("200.00")
         );

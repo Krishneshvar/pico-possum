@@ -95,8 +95,8 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                 SELECT
                   SUM(CASE WHEN pf.event_type = 'sale' THEN ABS(pf.quantity) ELSE 0 END) AS total_sold,
                   SUM(CASE WHEN pf.event_type = 'return' THEN pf.quantity ELSE 0 END) AS total_returned,
-                  SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity < 0 THEN ABS(pf.quantity) ELSE 0 END) AS total_lost,
-                  SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity > 0 THEN pf.quantity ELSE 0 END) AS total_gained,
+                  SUM(CASE WHEN pf.event_type IN ('adjustment', 'damage', 'theft', 'spoilage') AND pf.quantity < 0 THEN ABS(pf.quantity) ELSE 0 END) AS total_lost,
+                  SUM(CASE WHEN (pf.event_type = 'adjustment' AND pf.quantity > 0) OR pf.event_type = 'receive' THEN pf.quantity ELSE 0 END) AS total_incoming,
                   COUNT(pf.id) AS total_events
                 FROM product_flow pf
                 WHERE pf.product_id = ?
@@ -105,16 +105,15 @@ public final class SqliteProductFlowRepository extends BaseSqliteRepository impl
                     int sold = rs.getInt("total_sold");
                     int returned = rs.getInt("total_returned");
                     int lost = rs.getInt("total_lost");
-                    int gained = rs.getInt("total_gained");
+                    int incoming = rs.getInt("total_incoming");
                     int events = rs.getInt("total_events");
                     java.util.Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("totalIncoming", gained);
                     map.put("totalSold", sold);
                     map.put("totalReturned", returned);
                     map.put("totalLost", lost);
-                    map.put("totalGained", gained);
+                    map.put("totalGained", incoming);
                     map.put("totalEvents", events);
-                    map.put("netMovement", returned + gained - sold - lost);
+                    map.put("netMovement", returned + incoming - sold - lost);
                     return map;
                 },
                 productId

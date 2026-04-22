@@ -27,22 +27,19 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                 : "AND payment_method_id IN (" + buildInPlaceholders(paymentMethodIds.size()) + ")";
 
         List<Object> params = new ArrayList<>();
-        // Note: Using 'YYYY-MM-DD 00:00:00' format to allow range scans onTIMESTAMP columns if present
         String start = startDate + " 00:00:00";
         String end = endDate + " 23:59:59";
 
-        // Collect all params for the subqueries
-        // tx/sales subquery
+        // Collect all params
         params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
         params.add(start); params.add(end);
-        // discount subquery
+        params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
+        params.add(start); params.add(end);
         params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
         params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
-        // collected subquery
         params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
-        // cost subquery
         params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
-        // returns subquery
+        params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
         params.add(start); params.add(end); if (!paymentFilter.isEmpty()) params.addAll(paymentMethodIds);
 
         return queryOne(
@@ -54,6 +51,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                    (SELECT COALESCE(SUM(net_amount), 0) FROM legacy_sales WHERE sale_date >= ? AND sale_date <= ?)) AS total_sales,
                   (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE sale_date >= ? AND sale_date <= ? AND status NOT IN ('cancelled', 'draft') %1$s) +
                   (SELECT COALESCE(SUM(si.discount_amount), 0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE s.sale_date >= ? AND s.sale_date <= ? AND s.status NOT IN ('cancelled', 'draft') %1$s) AS total_discount,
+                  (SELECT COALESCE(SUM(tax_amount), 0) FROM sales WHERE sale_date >= ? AND sale_date <= ? AND status NOT IN ('cancelled', 'draft') %1$s) AS total_tax,
                   (SELECT COALESCE(SUM(paid_amount), 0) FROM sales WHERE sale_date >= ? AND sale_date <= ? AND status NOT IN ('cancelled', 'draft') %1$s) AS total_collected,
                   (SELECT COALESCE(SUM(si.quantity * si.cost_per_unit), 0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE s.sale_date >= ? AND s.sale_date <= ? AND s.status NOT IN ('cancelled', 'draft') %1$s) AS total_cost,
                   (SELECT COALESCE(SUM(refund_amount), 0) FROM returns WHERE created_at >= ? AND created_at <= ? %1$s) AS total_refunds
@@ -65,6 +63,7 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     BigDecimal totalRefunds = rs.getBigDecimal("total_refunds");
                     BigDecimal totalCost = rs.getBigDecimal("total_cost");
                     BigDecimal totalDiscount = rs.getBigDecimal("total_discount");
+                    BigDecimal totalTax = rs.getBigDecimal("total_tax");
                     BigDecimal totalCollected = rs.getBigDecimal("total_collected");
 
                     map.put("total_transactions", totalTransactions);
@@ -72,9 +71,11 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                     map.put("total_refunds", totalRefunds);
                     map.put("total_cost", totalCost);
                     map.put("total_discount", totalDiscount);
+                    map.put("total_tax", totalTax);
                     map.put("total_collected", totalCollected);
 
-                    BigDecimal netSales = totalSales.subtract(totalRefunds).subtract(totalDiscount);
+                    // Net Sales = Total Sales - Refunds - Tax (Discounts are already subtracted from total_amount in checkout)
+                    BigDecimal netSales = totalSales.subtract(totalRefunds).subtract(totalTax);
                     map.put("net_sales", netSales);
                     map.put("gross_profit", netSales.subtract(totalCost));
                     map.put("average_sale", totalTransactions > 0 
@@ -234,18 +235,12 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
         
         Map<String, Object> stockCounts = queryOne(
                 """
-                WITH ProductStock AS (
-                    SELECT 
-                        COALESCE((SELECT SUM(quantity) FROM inventory_lots WHERE product_id = p.id), 0) +
-                        COALESCE((SELECT SUM(quantity_change) FROM inventory_adjustments WHERE product_id = p.id), 0) as current_stock,
-                        p.stock_alert_cap
-                    FROM products p
-                    WHERE p.status = 'active' AND p.deleted_at IS NULL
-                )
                 SELECT 
                     COUNT(CASE WHEN current_stock <= stock_alert_cap AND current_stock > 0 THEN 1 END) as low_stock,
                     COUNT(CASE WHEN current_stock <= 0 THEN 1 END) as out_of_stock
-                FROM ProductStock
+                FROM product_stock_cache psc
+                JOIN products p ON psc.product_id = p.id
+                WHERE p.status = 'active' AND p.deleted_at IS NULL
                 """,
                 rs -> {
                     Map<String, Object> m = new HashMap<>();
@@ -273,14 +268,14 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                 SELECT 
                     p.name AS product_name,
                     p.sku,
-                    SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity > 0 THEN pf.quantity ELSE 0 END) AS incoming,
+                    SUM(CASE WHEN pf.event_type = 'receive' OR (pf.event_type = 'adjustment' AND pf.quantity > 0) THEN pf.quantity ELSE 0 END) AS incoming,
                     SUM(CASE WHEN pf.event_type = 'sale' THEN ABS(pf.quantity) ELSE 0 END) AS outgoing,
                     SUM(CASE WHEN pf.event_type = 'return' THEN pf.quantity ELSE 0 END) AS returns,
                     SUM(CASE WHEN pf.event_type = 'adjustment' AND pf.quantity < 0 THEN ABS(pf.quantity) ELSE 0 END) AS adjustments,
-                    (COALESCE((SELECT SUM(il.quantity) FROM inventory_lots il WHERE il.product_id = p.id), 0) +
-                     COALESCE((SELECT SUM(ia.quantity_change) FROM inventory_adjustments ia WHERE ia.product_id = p.id), 0)) AS current_stock
+                    COALESCE(psc.current_stock, 0) AS current_stock
                 FROM product_flow pf
                 JOIN products p ON pf.product_id = p.id
+                LEFT JOIN product_stock_cache psc ON p.id = psc.product_id
                 WHERE pf.event_date >= ? AND pf.event_date <= ?
                   AND p.deleted_at IS NULL
                   %s
@@ -326,24 +321,34 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
                   %s AS %s,
                   COUNT(DISTINCT s.id) AS total_transactions,
                   COALESCE(SUM(s.total_amount), 0) AS total_sales,
-                  COALESCE(SUM(s.discount), 0) + COALESCE((SELECT SUM(si.discount_amount) FROM sale_items si JOIN sales s2 ON si.sale_id = s2.id WHERE %s = %s), 0) AS total_discount,
+                  COALESCE(SUM(s.discount), 0) + COALESCE(SUM(item_discounts.total_item_discount), 0) AS total_discount,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'cash' THEN s.paid_amount ELSE 0 END), 0) AS cash,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'upi' THEN s.paid_amount ELSE 0 END), 0) AS upi,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'card' THEN s.paid_amount ELSE 0 END), 0) AS card,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'gift card' THEN s.paid_amount ELSE 0 END), 0) AS gift_card,
-                  COALESCE((SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id IN (SELECT id FROM sales s2 WHERE %s = %s)), 0) AS refunds,
+                  COALESCE(SUM(sale_refunds.total_refund), 0) AS refunds,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'cash' THEN 1 ELSE 0 END), 0) AS cash_count,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'upi' THEN 1 ELSE 0 END), 0) AS upi_count,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'card' THEN 1 ELSE 0 END), 0) AS card_count,
                   COALESCE(SUM(CASE WHEN lower(pm.name) = 'gift card' THEN 1 ELSE 0 END), 0) AS gift_card_count
                 FROM sales s
                 LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
+                LEFT JOIN (
+                  SELECT sale_id, SUM(discount_amount) as total_item_discount 
+                  FROM sale_items 
+                  GROUP BY sale_id
+                ) item_discounts ON s.id = item_discounts.sale_id
+                LEFT JOIN (
+                  SELECT sale_id, SUM(refund_amount) as total_refund 
+                  FROM returns 
+                  GROUP BY sale_id
+                ) sale_refunds ON s.id = sale_refunds.sale_id
                 WHERE s.sale_date >= ? AND s.sale_date <= ?
                   AND s.status NOT IN ('cancelled', 'draft')
                   %s
                 GROUP BY %s
                 ORDER BY %s ASC
-                """.formatted(expression, alias, expression.replace("sale_date", "s2.sale_date"), expression, expression.replace("sale_date", "s2.sale_date"), expression, paymentFilter, expression, alias),
+                """.formatted(expression, alias, paymentFilter, expression, alias),
                 rs -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put(alias, rs.getString(alias));

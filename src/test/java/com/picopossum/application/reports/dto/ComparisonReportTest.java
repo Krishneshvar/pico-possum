@@ -50,7 +50,7 @@ class ComparisonReportTest {
 
     private SalesReportSummary createSummary(BigDecimal sales, BigDecimal profit) {
         return new SalesReportSummary(
-            1, sales, BigDecimal.ZERO, sales, BigDecimal.ZERO, 
+            1, sales, BigDecimal.ZERO, BigDecimal.ZERO, sales, BigDecimal.ZERO, 
             BigDecimal.ZERO, profit, sales, BigDecimal.ZERO
         );
     }

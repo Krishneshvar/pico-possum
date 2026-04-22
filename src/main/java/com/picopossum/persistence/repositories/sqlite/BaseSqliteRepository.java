@@ -131,7 +131,13 @@ public abstract class BaseSqliteRepository {
 
     protected static void bind(PreparedStatement statement, Object... params) throws SQLException {
         for (int i = 0; i < params.length; i++) {
-            statement.setObject(i + 1, params[i]);
+            Object p = params[i];
+            if (p instanceof java.time.LocalDateTime ldt) {
+                // Standardize on SQLite's preferred format: YYYY-MM-DD HH:MM:SS
+                statement.setObject(i + 1, ldt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                statement.setObject(i + 1, p);
+            }
         }
     }
 

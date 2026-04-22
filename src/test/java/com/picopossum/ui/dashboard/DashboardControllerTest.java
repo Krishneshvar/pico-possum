@@ -50,7 +50,7 @@ class DashboardControllerTest {
         
         lenient().when(reportsService.getHourlyAnalytics(any(), any())).thenReturn(List.of());
         lenient().when(reportsService.getSalesSummary(any(), any(), any())).thenReturn(
-            new SalesReportSummary(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)
+            new SalesReportSummary(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)
         );
         lenient().when(reportsService.getTopProducts(any(), any(), anyInt(), any())).thenReturn(List.of());
         lenient().when(inventoryService.getLowStockAlerts()).thenReturn(List.of());
@@ -89,7 +89,7 @@ class DashboardControllerTest {
     void loadDashboardData_success() {
         LocalDate today = LocalDate.now();
         SalesReportSummary summary = new SalesReportSummary(
-            10, new BigDecimal("1000.00"), new BigDecimal("100.00"),
+            10, new BigDecimal("1000.00"), new BigDecimal("100.00"), BigDecimal.ZERO,
             new BigDecimal("1080.00"), BigDecimal.ZERO, new BigDecimal("600.00"), new BigDecimal("400.00"),
             new BigDecimal("1000.00"), new BigDecimal("100.00")
         );

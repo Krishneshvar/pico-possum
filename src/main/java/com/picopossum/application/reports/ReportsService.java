@@ -154,6 +154,7 @@ public final class ReportsService {
         int totalTransactions = (int) data.getOrDefault("total_transactions", 0);
         BigDecimal totalSales = (BigDecimal) data.getOrDefault("total_sales", BigDecimal.ZERO);
         BigDecimal totalDiscount = (BigDecimal) data.getOrDefault("total_discount", BigDecimal.ZERO);
+        BigDecimal totalTax = (BigDecimal) data.getOrDefault("total_tax", BigDecimal.ZERO);
         BigDecimal totalCollected = (BigDecimal) data.getOrDefault("total_collected", BigDecimal.ZERO);
         BigDecimal totalRefunds = (BigDecimal) data.getOrDefault("total_refunds", BigDecimal.ZERO);
         BigDecimal totalCost = (BigDecimal) data.getOrDefault("total_cost", BigDecimal.ZERO);
@@ -165,6 +166,7 @@ public final class ReportsService {
                 totalTransactions,
                 totalSales,
                 totalDiscount,
+                totalTax,
                 totalCollected,
                 totalRefunds,
                 totalCost,

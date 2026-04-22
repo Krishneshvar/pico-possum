@@ -25,22 +25,4 @@ public class ProductFlowService {
     public List<ProductFlow> getFlowByReference(String referenceType, long referenceId) {
         return productFlowRepository.findFlowByReference(referenceType, referenceId);
     }
-
-    public void logProductFlow(long productId, FlowEventType eventType, int quantity, String referenceType, Long referenceId) {
-        ProductFlow flow = new ProductFlow(
-                null,
-                productId,
-                eventType.getValue(),
-                quantity,
-                referenceType,
-                referenceId,
-                null,
-                null,
-                null,
-                null,
-                null,
-                TimeUtil.nowUTC()
-        );
-        productFlowRepository.insertProductFlow(flow);
-    }
 }
