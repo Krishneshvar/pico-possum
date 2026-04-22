@@ -32,7 +32,7 @@ public class BillSettings {
         header.setOptions(headerOpts);
         sections.add(header);
 
-        BillSection meta = new BillSection("billMeta", BillSection.SectionType.META, true);
+        BillSection meta = new BillSection("billMetadata", BillSection.SectionType.META, true);
         Map<String, Object> metaOpts = new HashMap<>();
         metaOpts.put("alignment", "left");
         metaOpts.put("fontSize", "small");

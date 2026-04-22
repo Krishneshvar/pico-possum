@@ -41,7 +41,7 @@ public class BillRenderer {
       .text-small { font-size: 11px; }
       .text-medium { font-size: 13px; }
       .text-large { font-size: 18px; }
-      .store-name { font-size: 28px; }
+      .store-name { font-size: 28px; font-family: 'Times New Roman', Times, serif; }
       
       table { width: 100%; border-collapse: collapse; }
       th, td { text-align: left; vertical-align: top; padding: 2px 0; }
@@ -61,6 +61,7 @@ public class BillRenderer {
       .header-content { flex: 1; }
       
       .footer-text { white-space: pre-wrap; }
+      .bold { font-weight: bold; }
     """;
 
     public static String renderBill(SaleResponse saleResponse, GeneralSettings general, BillSettings billSettings) {
@@ -167,17 +168,30 @@ public class BillRenderer {
 
     private static String renderMeta(BillSection section, Sale sale, BillSettings billSettings, String commonClasses) {
         StringBuilder html = new StringBuilder();
-        html.append("<div class=\"").append(commonClasses).append("\">")
-            .append("<div><span class=\"bold\">Bill No:</span> ").append(escapeHtml(sale.shortInvoiceNumber())).append("</div>")
-            .append("<div><span class=\"bold\">Date:</span> ").append(formatDate(sale.saleDate(), billSettings)).append("</div>");
+        html.append("<div class=\"").append(commonClasses).append("\">");
+        
+        LocalDateTime dt = com.picopossum.shared.util.TimeUtil.toLocal(sale.saleDate());
+        String dateStr = formatDateOnly(dt, billSettings.getDateFormat());
+        String timeStr = formatTimeOnly(dt, billSettings.getTimeFormat());
+        String customer = sale.customerName() != null ? sale.customerName() : "Cash Customer";
+
+        html.append("<table style=\"width: 100%; border: none; table-layout: fixed; border-collapse: collapse;\">")
+            .append("<tr>")
+            .append("<td style=\"width: 52%; text-align: left; padding: 1px 0;\"><span class=\"bold\">Bill No:</span> ").append(escapeHtml(sale.shortInvoiceNumber())).append("</td>")
+            .append("<td style=\"width: 48%; text-align: left; padding: 1px 0;\"><span class=\"bold\">Date:</span> ").append(dateStr).append("</td>")
+            .append("</tr>")
+            .append("<tr>")
+            .append("<td style=\"width: 52%; text-align: left; padding: 1px 0;\"><span class=\"bold\">Cust:</span> ").append(escapeHtml(customer)).append("</td>")
+            .append("<td style=\"width: 48%; text-align: left; padding: 1px 0;\"><span class=\"bold\">Time:</span> ").append(timeStr).append("</td>")
+            .append("</tr>");
 
         if (sale.billerName() != null) {
-            html.append("<div><span class=\"bold\">User:</span> ").append(escapeHtml(sale.billerName())).append("</div>");
+            html.append("<tr>")
+                .append("<td colspan=\"2\" style=\"padding: 1px 0;\"><span class=\"bold\">User:</span> ").append(escapeHtml(sale.billerName())).append("</td>")
+                .append("</tr>");
         }
-        if (sale.customerName() != null) {
-            html.append("<div><span class=\"bold\">Customer:</span> ").append(escapeHtml(sale.customerName())).append("</div>");
-        }
-
+        
+        html.append("</table>");
         html.append("</div><div class=\"divider\"></div>");
         return html.toString();
     }
@@ -239,21 +253,27 @@ public class BillRenderer {
         return "<div class=\"" + commonClasses + " footer-text\">" + escapeHtml(text) + "</div>";
     }
 
-    private static String formatDate(LocalDateTime dateTime, BillSettings billSettings) {
+    public static String formatDate(LocalDateTime dateTime, BillSettings billSettings) {
         LocalDateTime localTime = com.picopossum.shared.util.TimeUtil.toLocal(dateTime);
-        if (localTime == null) {
-            return "";
-        }
+        if (localTime == null) return "";
+        return formatDateOnly(localTime, billSettings.getDateFormat()) + " " + formatTimeOnly(localTime, billSettings.getTimeFormat());
+    }
 
-        String datePattern = switch (billSettings.getDateFormat()) {
-            case "ISO" -> "yyyy-MM-dd";
+    private static String formatDateOnly(LocalDateTime localTime, String format) {
+        if (localTime == null) return "";
+        String pattern = switch (format != null ? format.toLowerCase() : "standard") {
+            case "iso" -> "yyyy-MM-dd";
             case "short" -> "dd/MM/yy";
             case "long" -> "EEEE, dd MMMM yyyy";
             default -> "dd/MM/yyyy";
         };
-        String timePattern = "24h".equals(billSettings.getTimeFormat()) ? "HH:mm" : "hh:mm a";
+        return localTime.format(DateTimeFormatter.ofPattern(pattern));
+    }
 
-        return localTime.format(DateTimeFormatter.ofPattern(datePattern + " " + timePattern));
+    private static String formatTimeOnly(LocalDateTime localTime, String format) {
+        if (localTime == null) return "";
+        String pattern = "24h".equals(format) ? "HH:mm" : "hh:mm a";
+        return localTime.format(DateTimeFormatter.ofPattern(pattern));
     }
 
     private static String formatCurrency(BigDecimal amount, String currency) {
