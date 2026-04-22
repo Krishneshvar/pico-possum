@@ -19,7 +19,16 @@ public class ProductSearchIndex {
 
     public ProductSearchIndex(ProductRepository productRepository) {
         this.productRepository = productRepository;
-        buildIndex();
+    }
+
+    private void ensureIndexed() {
+        if (allProducts.isEmpty()) {
+            synchronized (this) {
+                if (allProducts.isEmpty()) {
+                    buildIndex();
+                }
+            }
+        }
     }
 
     private void buildIndex() {
@@ -40,6 +49,7 @@ public class ProductSearchIndex {
     }
 
     public Optional<Product> findBySku(String code) {
+        ensureIndexed();
         if (code == null || code.isEmpty()) return Optional.empty();
         
         String lowerCode = code.toLowerCase();
@@ -51,6 +61,7 @@ public class ProductSearchIndex {
     }
 
     public List<Product> searchByName(String query) {
+        ensureIndexed();
         if (query == null || query.trim().isEmpty()) {
             return allProducts.stream()
                 .limit(50)

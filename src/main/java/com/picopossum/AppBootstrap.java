@@ -32,24 +32,8 @@ public final class AppBootstrap {
 
     private AppPaths appPaths;
     private DatabaseManager databaseManager;
-    private DatabaseBackupService backupService;
     private ServiceLocator serviceLocator;
-    private ApplicationModule applicationModule;
     private DependencyInjector dependencyInjector;
-    private SalesService salesService;
-    private ProductSearchIndex productSearchIndex;
-
-    private ReturnsService returnsService;
-    private ReportsService reportsService;
-    private SqliteSalesRepository salesRepository;
-    private SqliteProductRepository productRepository;
-    private com.picopossum.domain.services.SaleCalculator saleCalculator;
-    private com.picopossum.domain.services.ReturnCalculator returnCalculator;
-    private com.picopossum.persistence.repositories.sqlite.SqliteAuditRepository auditRepository;
-    private com.picopossum.application.auth.AuthService authService;
-    private TransactionManager transactionManager;
-    private com.picopossum.infrastructure.security.PasswordHasher passwordHasher;
-    private com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor;
 
 
 
@@ -66,11 +50,9 @@ public final class AppBootstrap {
     }
 
     public void shutdown() {
-        if (backupService != null) {
-            backupService.stopDailyBackups();
-        }
-        if (applicationModule != null && applicationModule.getAuditService() != null) {
-            applicationModule.getAuditService().shutdown();
+        if (serviceLocator != null) {
+            serviceLocator.getDatabaseBackupService().stopDailyBackups();
+            serviceLocator.getAuditService().shutdown();
         }
         if (databaseManager != null) {
             databaseManager.close();
@@ -106,80 +88,17 @@ public final class AppBootstrap {
     private void initializePersistence() {
         databaseManager = new DatabaseManager(appPaths);
         databaseManager.initialize();
-        transactionManager = new TransactionManager(databaseManager);
-        passwordHasher = new com.picopossum.infrastructure.security.PasswordHasher();
-        serviceLocator = new ServiceLocator(databaseManager, transactionManager, appPaths);
-        performanceMonitor = serviceLocator.getPerformanceMonitor();
-        backupService = serviceLocator.getDatabaseBackupService();
-        backupService.startDailyBackups();
+        TransactionManager tm = new TransactionManager(databaseManager);
+        serviceLocator = new ServiceLocator(databaseManager, tm, appPaths);
+        serviceLocator.getDatabaseBackupService().startDailyBackups();
     }
 
     private void initializeApplication() {
-        JsonService jsonService = serviceLocator.getJsonService();
-        performanceMonitor = serviceLocator.getPerformanceMonitor();
-        
-        SqliteUserRepository userRepository = new SqliteUserRepository(databaseManager, performanceMonitor);
-        SqliteSessionRepository sessionRepository = new SqliteSessionRepository(databaseManager);
-
-        productRepository = new SqliteProductRepository(databaseManager, performanceMonitor);
-        SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(databaseManager, performanceMonitor);
-        SqliteInventoryRepository inventoryRepository = new SqliteInventoryRepository(databaseManager, performanceMonitor);
-        SqliteProductFlowRepository productFlowRepository = new SqliteProductFlowRepository(databaseManager, performanceMonitor);
-        auditRepository = new SqliteAuditRepository(databaseManager, performanceMonitor);
-
-        com.picopossum.persistence.repositories.sqlite.SqliteCustomerRepository customerRepository =
-                new com.picopossum.persistence.repositories.sqlite.SqliteCustomerRepository(databaseManager, performanceMonitor);
-
-        productSearchIndex = new ProductSearchIndex(productRepository);
-
-        applicationModule = new ApplicationModule(
-                userRepository, sessionRepository, productRepository,
-                categoryRepository, inventoryRepository, productFlowRepository, auditRepository,
-                customerRepository, transactionManager, passwordHasher, jsonService, appPaths,
-                serviceLocator.getSettingsStore(), databaseManager, performanceMonitor, productSearchIndex
-        );
-
-        authService = new com.picopossum.application.auth.AuthService(userRepository, passwordHasher);
-
-        salesRepository = new SqliteSalesRepository(databaseManager, performanceMonitor);
-
-        com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository returnRepository =
-                new com.picopossum.persistence.repositories.sqlite.SqliteReturnsRepository(databaseManager, performanceMonitor);
-
-        com.picopossum.persistence.repositories.sqlite.SqlitePosDraftRepository draftRepository =
-                new com.picopossum.persistence.repositories.sqlite.SqlitePosDraftRepository(databaseManager, performanceMonitor, productRepository, transactionManager);
-
-        com.picopossum.application.sales.PaymentService paymentService =
-                new com.picopossum.application.sales.PaymentService(salesRepository);
-        com.picopossum.application.sales.InvoiceNumberService invoiceNumberService =
-                new com.picopossum.application.sales.InvoiceNumberService(salesRepository);
-        saleCalculator = new com.picopossum.domain.services.SaleCalculator();
-        salesService = new SalesService(salesRepository, productRepository,
-                customerRepository, applicationModule.getAuditService(), applicationModule.getInventoryService(),
-                saleCalculator, paymentService, transactionManager, jsonService,
-                serviceLocator.getSettingsStore(), invoiceNumberService, returnRepository);
-
-
-        com.picopossum.shared.util.TimeUtil.initialize(serviceLocator.getSettingsStore());
-        com.picopossum.shared.util.CurrencyUtil.initialize(serviceLocator.getSettingsStore());
-
-        com.picopossum.application.returns.ReturnsModule returnsModule = new com.picopossum.application.returns.ReturnsModule(
-                returnRepository, salesRepository, applicationModule.getInventoryService(),
-                applicationModule.getAuditService(), transactionManager, jsonService, invoiceNumberService
-        );
-        returnsService = returnsModule.getReturnsService();
-        returnCalculator = returnsModule.getReturnCalculator();
-
-        com.picopossum.persistence.repositories.sqlite.SqliteReportsRepository reportsRepository =
-                new com.picopossum.persistence.repositories.sqlite.SqliteReportsRepository(databaseManager);
-        reportsService = new ReportsService(reportsRepository, productFlowRepository);
+        // Services will be initialized lazily via ServiceLocator
     }
 
     private void initializeUI() {
-        dependencyInjector = new DependencyInjector(applicationModule, serviceLocator, salesService,
-                saleCalculator, productSearchIndex, returnsService, returnCalculator,
-                reportsService, salesRepository, productRepository, appPaths, authService);
-
+        dependencyInjector = new DependencyInjector(serviceLocator);
         dependencyInjector.getToastService().setMainStage(null);
     }
 
@@ -285,9 +204,10 @@ public final class AppBootstrap {
             
             loader.setControllerFactory(type -> {
                 if (type == com.picopossum.ui.auth.LoginController.class) {
-                    return new com.picopossum.ui.auth.LoginController(authService, applicationModule.getUserService(), () -> {
-                        loadMainShell(stage);
-                    });
+                    return new com.picopossum.ui.auth.LoginController(
+                            serviceLocator.getAuthService(), 
+                            serviceLocator.getUserService(), 
+                            () -> loadMainShell(stage));
                 }
                 return dependencyInjector.getControllerFactory().call(type);
             });

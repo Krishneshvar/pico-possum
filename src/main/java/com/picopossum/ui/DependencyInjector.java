@@ -24,82 +24,44 @@ import java.util.function.Supplier;
 public class DependencyInjector {
     private static final Logger LOGGER = LoggerFactory.getLogger(DependencyInjector.class);
 
-    private final ApplicationModule applicationModule;
     private final ServiceLocator serviceLocator;
-
-    private final SalesService salesService;
-    private final com.picopossum.domain.services.SaleCalculator saleCalculator;
-    private final ProductSearchIndex productSearchIndex;
-
-
-    private final ReturnsService returnsService;
-    private final com.picopossum.domain.services.ReturnCalculator returnCalculator;
-    private final ReportsService reportsService;
-
-    private final SalesRepository salesRepository;
-    private final com.picopossum.infrastructure.filesystem.AppPaths appPaths;
-
     private NavigationManager navigationManager;
     private com.picopossum.ui.workspace.WorkspaceManager workspaceManager;
-    private final ProductRepository productRepository;
-    private final com.picopossum.application.auth.AuthService authService;
+    private final com.picopossum.infrastructure.filesystem.AppPaths appPaths;
     private final ToastService toastService = new ToastService();
 
     private final Map<Class<?>, Supplier<Object>> registry = new HashMap<>();
 
-    public DependencyInjector(ApplicationModule applicationModule, ServiceLocator serviceLocator,
-                               SalesService salesService,
-                               com.picopossum.domain.services.SaleCalculator saleCalculator,
-                               ProductSearchIndex productSearchIndex,
-                               ReturnsService returnsService,
-                               com.picopossum.domain.services.ReturnCalculator returnCalculator,
-                               ReportsService reportsService,
-                               SalesRepository salesRepository,
-                               ProductRepository productRepository,
-                               com.picopossum.infrastructure.filesystem.AppPaths appPaths,
-                               com.picopossum.application.auth.AuthService authService) {
-
-        this.applicationModule = applicationModule;
+    public DependencyInjector(ServiceLocator serviceLocator) {
         this.serviceLocator = serviceLocator;
-        this.salesService = salesService;
-        this.saleCalculator = saleCalculator;
-        this.productSearchIndex = productSearchIndex;
-
-
-        this.returnsService = returnsService;
-        this.returnCalculator = returnCalculator;
-        this.reportsService = reportsService;
-        this.salesRepository = salesRepository;
-        this.productRepository = productRepository;
-        this.appPaths = appPaths;
-        this.authService = authService;
+        this.appPaths = serviceLocator.getAppPaths();
         buildRegistry();
     }
 
     private void buildRegistry() {
         // Application services
-        registry.put(com.picopossum.application.products.ProductService.class, applicationModule::getProductService);
-        registry.put(com.picopossum.application.categories.CategoryService.class, applicationModule::getCategoryService);
-        registry.put(com.picopossum.application.inventory.InventoryService.class, applicationModule::getInventoryService);
-        registry.put(com.picopossum.application.inventory.ProductFlowService.class, applicationModule::getProductFlowService);
-        registry.put(com.picopossum.application.audit.AuditService.class, applicationModule::getAuditService);
-        registry.put(com.picopossum.application.people.UserService.class, applicationModule::getUserService);
-        registry.put(com.picopossum.application.people.CustomerService.class, applicationModule::getCustomerService);
-        registry.put(com.picopossum.application.auth.AuthService.class, () -> authService);
-        registry.put(DraftService.class, applicationModule::getDraftService);
-        registry.put(SalesService.class, () -> salesService);
-        registry.put(com.picopossum.domain.services.SaleCalculator.class, () -> saleCalculator);
-        registry.put(ProductSearchIndex.class, () -> productSearchIndex);
+        registry.put(com.picopossum.application.products.ProductService.class, serviceLocator::getProductService);
+        registry.put(com.picopossum.application.categories.CategoryService.class, serviceLocator::getCategoryService);
+        registry.put(com.picopossum.application.inventory.InventoryService.class, serviceLocator::getInventoryService);
+        registry.put(com.picopossum.application.inventory.ProductFlowService.class, serviceLocator::getProductFlowService);
+        registry.put(com.picopossum.application.audit.AuditService.class, serviceLocator::getAuditService);
+        registry.put(com.picopossum.application.people.UserService.class, serviceLocator::getUserService);
+        registry.put(com.picopossum.application.people.CustomerService.class, serviceLocator::getCustomerService);
+        registry.put(com.picopossum.application.auth.AuthService.class, serviceLocator::getAuthService);
+        registry.put(DraftService.class, serviceLocator::getDraftService);
+        registry.put(SalesService.class, serviceLocator::getSalesService);
+        registry.put(com.picopossum.domain.services.SaleCalculator.class, serviceLocator::getSaleCalculator);
+        registry.put(ProductSearchIndex.class, serviceLocator::getProductSearchIndex);
 
 
-        registry.put(ReturnsService.class, () -> returnsService);
-        registry.put(com.picopossum.domain.services.ReturnCalculator.class, () -> returnCalculator);
-        registry.put(ReportsService.class, () -> reportsService);
+        registry.put(ReturnsService.class, serviceLocator::getReturnsService);
+        registry.put(com.picopossum.domain.services.ReturnCalculator.class, serviceLocator::getReturnCalculator);
+        registry.put(ReportsService.class, serviceLocator::getReportsService);
 
         // Repositories
-        registry.put(SalesRepository.class, () -> salesRepository);
-        registry.put(ProductRepository.class, () -> productRepository);
-        registry.put(SqlitePosDraftRepository.class, () -> new SqlitePosDraftRepository(serviceLocator.getDatabaseManager(), productRepository, serviceLocator.getTransactionManager()));
+        registry.put(SalesRepository.class, serviceLocator::getSalesRepository);
+        registry.put(ProductRepository.class, serviceLocator::getProductRepository);
+        registry.put(SqlitePosDraftRepository.class, () -> new SqlitePosDraftRepository(serviceLocator.getDatabaseManager(), serviceLocator.getProductRepository(), serviceLocator.getTransactionManager()));
 
         // Infrastructure
         registry.put(ToastService.class, () -> toastService);
@@ -121,39 +83,35 @@ public class DependencyInjector {
         // Composite controllers
         registry.put(com.picopossum.ui.sales.SalesHistoryController.class,
                 () -> new com.picopossum.ui.sales.SalesHistoryController(
-                        salesService, serviceLocator.getSettingsStore(),
+                        serviceLocator.getSalesService(), serviceLocator.getSettingsStore(),
                         serviceLocator.getPrinterService(), workspaceManager, serviceLocator.getAppExecutor()));
         registry.put(com.picopossum.ui.sales.SaleDetailController.class,
                 () -> new com.picopossum.ui.sales.SaleDetailController(
-                        salesService, workspaceManager,
-                        serviceLocator.getSettingsStore(), serviceLocator.getPrinterService(), productSearchIndex));
+                        serviceLocator.getSalesService(), workspaceManager,
+                        serviceLocator.getSettingsStore(), serviceLocator.getPrinterService(), serviceLocator.getProductSearchIndex()));
         registry.put(com.picopossum.ui.products.ProductFormController.class,
                 () -> new com.picopossum.ui.products.ProductFormController(
-                        applicationModule.getProductService(), applicationModule.getCategoryService(),
-                        workspaceManager, serviceLocator.getSettingsStore(), productSearchIndex,
+                        serviceLocator.getProductService(), serviceLocator.getCategoryService(),
+                        workspaceManager, serviceLocator.getSettingsStore(), serviceLocator.getProductSearchIndex(),
                         serviceLocator.getDraftService()));
         registry.put(com.picopossum.ui.returns.CreateReturnDialogController.class,
                 () -> new com.picopossum.ui.returns.CreateReturnDialogController(
-                        salesService, salesRepository, returnsService, returnCalculator));
+                        serviceLocator.getSalesService(), serviceLocator.getSalesRepository(), serviceLocator.getReturnsService(), serviceLocator.getReturnCalculator()));
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
-                        applicationModule.getInventoryService(), productRepository,
-                        applicationModule.getCategoryService(), workspaceManager, serviceLocator.getAppExecutor()));
+                        serviceLocator.getInventoryService(), serviceLocator.getProductRepository(),
+                        serviceLocator.getCategoryService(), workspaceManager, serviceLocator.getAppExecutor()));
         registry.put(com.picopossum.ui.dashboard.DashboardController.class,
                 () -> new com.picopossum.ui.dashboard.DashboardController(
-                        reportsService, applicationModule.getInventoryService(),
+                        serviceLocator.getReportsService(), serviceLocator.getInventoryService(),
                         serviceLocator.getDatabaseBackupService(),
                         serviceLocator.getPerformanceMonitor()));
         registry.put(com.picopossum.ui.insights.BusinessInsightsController.class,
-                () -> new com.picopossum.ui.insights.BusinessInsightsController(reportsService));
+                () -> new com.picopossum.ui.insights.BusinessInsightsController(serviceLocator.getReportsService()));
     }
 
     public com.picopossum.infrastructure.filesystem.AppPaths getAppPaths() {
         return appPaths;
-    }
-
-    public ApplicationModule getApplicationModule() {
-        return applicationModule;
     }
 
     public javafx.util.Callback<Class<?>, Object> getControllerFactory() {
@@ -201,21 +159,21 @@ public class DependencyInjector {
         // Re-register composite controllers that depend on workspaceManager
         registry.put(com.picopossum.ui.sales.SalesHistoryController.class,
                 () -> new com.picopossum.ui.sales.SalesHistoryController(
-                        salesService, serviceLocator.getSettingsStore(),
+                        serviceLocator.getSalesService(), serviceLocator.getSettingsStore(),
                         serviceLocator.getPrinterService(), workspaceManager, serviceLocator.getAppExecutor()));
         registry.put(com.picopossum.ui.sales.SaleDetailController.class,
                 () -> new com.picopossum.ui.sales.SaleDetailController(
-                        salesService, workspaceManager,
-                        serviceLocator.getSettingsStore(), serviceLocator.getPrinterService(), productSearchIndex));
+                        serviceLocator.getSalesService(), workspaceManager,
+                        serviceLocator.getSettingsStore(), serviceLocator.getPrinterService(), serviceLocator.getProductSearchIndex()));
         registry.put(com.picopossum.ui.products.ProductFormController.class,
                 () -> new com.picopossum.ui.products.ProductFormController(
-                        applicationModule.getProductService(), applicationModule.getCategoryService(),
-                        workspaceManager, serviceLocator.getSettingsStore(), productSearchIndex,
+                        serviceLocator.getProductService(), serviceLocator.getCategoryService(),
+                        workspaceManager, serviceLocator.getSettingsStore(), serviceLocator.getProductSearchIndex(),
                         serviceLocator.getDraftService()));
         registry.put(com.picopossum.ui.inventory.InventoryController.class,
                 () -> new com.picopossum.ui.inventory.InventoryController(
-                        applicationModule.getInventoryService(), productRepository,
-                        applicationModule.getCategoryService(), workspaceManager, serviceLocator.getAppExecutor()));
+                        serviceLocator.getInventoryService(), serviceLocator.getProductRepository(),
+                        serviceLocator.getCategoryService(), workspaceManager, serviceLocator.getAppExecutor()));
     }
 
     public void injectDependencies(Object controller) {
