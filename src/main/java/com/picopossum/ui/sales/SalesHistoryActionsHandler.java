@@ -182,15 +182,13 @@ public class SalesHistoryActionsHandler {
             CompletableFuture.runAsync(() -> {
                 salesService.cancelSale(sale.id());
             })
-            .thenRun(() -> Platform.runLater(onDataChanged))
+            .thenRun(() -> Platform.runLater(() -> {
+                NotificationService.success("Sale cancelled successfully");
+                onDataChanged.run();
+            }))
             .exceptionally(ex -> {
                 LoggingConfig.getLogger().error("Failed to cancel sale: {}", ex.getMessage(), ex);
-                Platform.runLater(() -> {
-                    Alert error = new Alert(Alert.AlertType.ERROR);
-                    DialogStyler.apply(error);
-                    error.setContentText("Failed to cancel sale: " + ErrorHandler.toUserMessage(ex));
-                    error.show();
-                });
+                Platform.runLater(() -> NotificationService.error("Failed to cancel sale: " + ErrorHandler.toUserMessage(ex)));
                 return null;
             });
         }

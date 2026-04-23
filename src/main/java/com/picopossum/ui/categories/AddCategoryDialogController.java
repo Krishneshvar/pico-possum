@@ -12,6 +12,7 @@ import javafx.util.StringConverter;
 import com.picopossum.ui.common.dialogs.DialogStyler;
 
 import com.picopossum.ui.common.ErrorHandler;
+import com.picopossum.ui.common.controls.NotificationService;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -99,7 +100,7 @@ public class AddCategoryDialogController implements Parameterizable {
     private void handleSave() {
         String name = nameField.getText();
         if (name == null || name.trim().isEmpty()) {
-            showAlert("Error", "Category name is required.");
+            NotificationService.warning("Category name is required.");
             return;
         }
 
@@ -109,26 +110,20 @@ public class AddCategoryDialogController implements Parameterizable {
         try {
             if (editingCategory == null) {
                 categoryService.createCategory(name.trim(), parentId);
+                NotificationService.success("Category created successfully");
             } else {
                 categoryService.updateCategory(editingCategory.id(), name.trim(), parentId);
+                NotificationService.success("Category updated successfully");
             }
             nameField.getScene().getWindow().hide();
         } catch (Exception e) {
             String action = editingCategory == null ? "create" : "update";
-            showAlert("Error", "Failed to " + action + " category: " + ErrorHandler.toUserMessage(e));
+            NotificationService.error("Failed to " + action + " category: " + ErrorHandler.toUserMessage(e));
         }
     }
 
     @FXML
     private void handleCancel() {
         nameField.getScene().getWindow().hide();
-    }
-
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
-        DialogStyler.apply(alert);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.showAndWait();
     }
 }

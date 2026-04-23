@@ -40,7 +40,8 @@ public class NotificationService {
         Window window = notificationContainer.getScene().getWindow();
         if (!(window instanceof Stage stage)) return;
 
-        ToastPopup.show(stage, message, new ToastPopup.ToastSpec(type.styleClass, type.iconCode), Duration.seconds(5));
+        Duration duration = (type == Type.WARNING || type == Type.ERROR) ? Duration.seconds(5) : Duration.seconds(3);
+        ToastPopup.show(stage, message, new ToastPopup.ToastSpec(type.styleClass, type.iconCode), duration);
     }
 
     public static void success(String message) {

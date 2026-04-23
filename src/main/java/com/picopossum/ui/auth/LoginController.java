@@ -16,6 +16,7 @@ import java.util.Optional;
 
 public class LoginController {
 
+    @FXML private javafx.scene.layout.StackPane rootPane;
     @FXML private VBox loginForm;
     @FXML private VBox setupForm;
     
@@ -43,6 +44,8 @@ public class LoginController {
 
     @FXML
     public void initialize() {
+        NotificationService.initialize(rootPane);
+        
         if (authService.anyUserExists()) {
             showLoginForm();
         } else {

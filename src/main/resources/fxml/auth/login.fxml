@@ -7,7 +7,7 @@
 <?import javafx.scene.shape.Circle?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+<StackPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
            fx:controller="com.picopossum.ui.auth.LoginController"
            prefWidth="1000.0" prefHeight="700.0" 
            style="-fx-background-color: linear-gradient(to bottom right, #f1f5f9, #cbd5e1);">
