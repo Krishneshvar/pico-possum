@@ -115,7 +115,7 @@
                             <TextField fx:id="stockAlertField" promptText="10" styleClass="text-field"/>
                         </VBox>
                         <VBox styleClass="form-group" spacing="8" HBox.hgrow="ALWAYS">
-                            <Label text="Initial Stock" styleClass="form-label" labelFor="$stockField" style="-fx-font-weight: 600;"/>
+                            <Label text="Current Stock" styleClass="form-label" labelFor="$stockField" style="-fx-font-weight: 600;"/>
                             <TextField fx:id="stockField" promptText="0" styleClass="text-field"/>
                         </VBox>
                     </HBox>

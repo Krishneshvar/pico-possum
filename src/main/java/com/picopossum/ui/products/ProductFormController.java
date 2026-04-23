@@ -169,16 +169,17 @@ public class ProductFormController extends AbstractFormController<Product> {
     protected void createEntity() throws Exception {
         validateInputs();
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
-                nameField.getText(), descriptionField.getText(),
+                nameField.getText(),
+                descriptionField.getText(),
                 categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
                 skuField.getText(),
-                new BigDecimal(priceField.getText().trim()),
-                new BigDecimal(costPriceField.getText().trim()),
-                Integer.parseInt(stockAlertField.getText().trim()),
+                parseSafeBigDecimal(priceField.getText()),
+                parseSafeBigDecimal(costPriceField.getText()),
+                parseSafeInt(stockAlertField.getText(), 10),
                 ProductStatus.fromString(statusCombo.getValue()),
-                null,
-                Integer.parseInt(stockField.getText().trim()),
-                new BigDecimal(taxRateField.getText().trim()),
+                null, // imagePath
+                parseSafeInt(stockField.getText(), 0),
+                parseSafeBigDecimal(taxRateField.getText()),
                 barcodeField.getText()
         );
         productService.createProduct(cmd);
@@ -192,14 +193,14 @@ public class ProductFormController extends AbstractFormController<Product> {
                 nameField.getText(), descriptionField.getText(),
                 categoryFilter.getSelectedItem() != null ? categoryFilter.getSelectedItem().id() : null,
                 skuField.getText(),
-                new BigDecimal(priceField.getText().trim()),
-                new BigDecimal(costPriceField.getText().trim()),
-                Integer.parseInt(stockAlertField.getText().trim()),
+                parseSafeBigDecimal(priceField.getText()),
+                parseSafeBigDecimal(costPriceField.getText()),
+                parseSafeInt(stockAlertField.getText(), 10),
                 ProductStatus.fromString(statusCombo.getValue()),
                 null,
-                Integer.parseInt(stockField.getText().trim()),
-                adjustmentReasonCombo.getValue().toLowerCase(),
-                new BigDecimal(taxRateField.getText().trim()),
+                parseSafeInt(stockField.getText(), 0),
+                adjustmentReasonCombo.getValue() != null ? adjustmentReasonCombo.getValue().toLowerCase() : "correction",
+                parseSafeBigDecimal(taxRateField.getText()),
                 barcodeField.getText()
         );
         productService.updateProduct(entityId, cmd);
@@ -247,10 +248,10 @@ public class ProductFormController extends AbstractFormController<Product> {
             skuField.getText(),
             parseSafeBigDecimal(priceField.getText()),
             parseSafeBigDecimal(costPriceField.getText()),
-            parseSafeInt(stockAlertField.getText()),
+            parseSafeInt(stockAlertField.getText(), 10),
             ProductStatus.fromString(statusCombo.getValue()),
             null,
-            parseSafeInt(stockField.getText()),
+            parseSafeInt(stockField.getText(), 0),
             parseSafeBigDecimal(taxRateField.getText()),
             barcodeField.getText()
         );
@@ -263,41 +264,47 @@ public class ProductFormController extends AbstractFormController<Product> {
         try { return new BigDecimal(val.trim()); } catch (Exception e) { return BigDecimal.ZERO; }
     }
 
-    private Integer parseSafeInt(String val) {
-        if (val == null || val.isBlank()) return 0;
-        try { return Integer.parseInt(val.trim()); } catch (Exception e) { return 0; }
+    private Integer parseSafeInt(String val, int defaultValue) {
+        if (val == null || val.isBlank()) return defaultValue;
+        try { return Integer.parseInt(val.trim()); } catch (Exception e) { return defaultValue; }
     }
 
     private void validateInputs() {
         if (nameField.getText() == null || nameField.getText().isBlank()) {
-            NotificationService.error("Product name is required");
-            throw new RuntimeException("Validation failed");
+            throw new com.picopossum.domain.exceptions.ValidationException("Product name is required");
         }
+
         if (skuField.getText() == null || skuField.getText().isBlank()) {
-            NotificationService.error("SKU is required");
-            throw new RuntimeException("Validation failed");
+            throw new com.picopossum.domain.exceptions.ValidationException("SKU is required");
         }
-        try { new BigDecimal(priceField.getText().trim()); } 
-        catch (Exception e) { 
-            NotificationService.error("Invalid selling price format");
-            throw new RuntimeException("Validation failed"); 
+
+        String priceText = priceField.getText();
+        if (priceText == null || priceText.isBlank()) {
+            throw new com.picopossum.domain.exceptions.ValidationException("Selling price is required");
         }
-        
-        try { new BigDecimal(costPriceField.getText().trim()); } 
-        catch (Exception e) { 
-            NotificationService.error("Invalid cost price format");
-            throw new RuntimeException("Validation failed"); 
-        }
-        
         try { 
-            String tax = taxRateField.getText().trim();
-            if (tax.isEmpty()) tax = "0";
-            new BigDecimal(tax); 
-        } 
-        catch (Exception e) { 
-            NotificationService.error("Invalid tax rate format");
-            throw new RuntimeException("Validation failed"); 
+            new BigDecimal(priceText.trim()); 
+        } catch (Exception e) { 
+            throw new com.picopossum.domain.exceptions.ValidationException("Invalid selling price format"); 
         }
+        
+        // Optional numeric fields format validation
+        validateNumericFormat(costPriceField.getText(), "cost price");
+        validateNumericFormat(taxRateField.getText(), "tax rate");
+        validateIntFormat(stockField.getText(), "stock count");
+        validateIntFormat(stockAlertField.getText(), "stock alert level");
+    }
+
+    private void validateNumericFormat(String val, String fieldName) {
+        if (val == null || val.isBlank()) return;
+        try { new BigDecimal(val.trim()); } 
+        catch (Exception e) { throw new com.picopossum.domain.exceptions.ValidationException("Invalid " + fieldName + " format"); }
+    }
+
+    private void validateIntFormat(String val, String fieldName) {
+        if (val == null || val.isBlank()) return;
+        try { Integer.parseInt(val.trim()); } 
+        catch (Exception e) { throw new com.picopossum.domain.exceptions.ValidationException("Invalid " + fieldName + " format"); }
     }
 
     private void loadCategories() {

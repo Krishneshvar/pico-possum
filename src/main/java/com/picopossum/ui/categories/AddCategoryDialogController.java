@@ -11,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.util.StringConverter;
 import com.picopossum.ui.common.dialogs.DialogStyler;
 
+import com.picopossum.ui.common.ErrorHandler;
 import java.util.List;
 import java.util.Map;
 
@@ -108,7 +109,7 @@ public class AddCategoryDialogController implements Parameterizable {
             nameField.getScene().getWindow().hide();
         } catch (Exception e) {
             String action = editingCategory == null ? "create" : "update";
-            showAlert("Error", "Failed to " + action + " category: " + e.getMessage());
+            showAlert("Error", "Failed to " + action + " category: " + ErrorHandler.toUserMessage(e));
         }
     }
 

@@ -103,10 +103,18 @@ public abstract class BaseSqliteRepository {
     }
 
     private void recordPerformance(String sql, long startTime, boolean success) {
-        if (performanceMonitor == null) return;
+        if (performanceMonitor == null || sql == null) return;
         
         long duration = System.currentTimeMillis() - startTime;
-        String opName = getClass().getSimpleName() + ":" + sql.split(" ")[0].toUpperCase();
+        
+        // Extract first word (SQL command) safely
+        String command = "UNKNOWN";
+        String trimmed = sql.trim();
+        if (!trimmed.isEmpty()) {
+            command = trimmed.split("\\s+")[0].toUpperCase();
+        }
+        
+        String opName = getClass().getSimpleName() + ":" + command;
         performanceMonitor.recordOperation(opName, duration);
         if (success) performanceMonitor.recordSuccess(opName);
         else performanceMonitor.recordFailure(opName);
