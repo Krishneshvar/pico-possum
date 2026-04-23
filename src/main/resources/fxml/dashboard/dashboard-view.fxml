@@ -11,7 +11,7 @@
           fx:controller="com.picopossum.ui.dashboard.DashboardController"
           fitToWidth="true"
           styleClass="workspace-scroll-pane, dashboard-container"
-          stylesheets="@../../styles/views/dashboard.css, @../../styles/views/reports.css">
+          stylesheets="@../../styles/tokens.css, @../../styles/views/insights.css, @../../styles/views/dashboard.css, @../../styles/views/reports.css">
     
     <VBox spacing="30" alignment="TOP_LEFT" style="-fx-padding: 30;">
         <padding>
@@ -19,14 +19,14 @@
         </padding>
 
         <!-- Header -->
-        <HBox spacing="10" alignment="CENTER_LEFT" styleClass="dashboard-header">
-            <VBox spacing="5">
+        <HBox spacing="20" alignment="CENTER_LEFT" styleClass="view-header">
+            <VBox spacing="4">
                 <Label text="Dashboard Overview" styleClass="view-title"/>
                 <Label text="Monitor your business performance in real-time" styleClass="view-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS" />
             <HBox spacing="16" alignment="CENTER_RIGHT">
-                <Button onAction="#handleRefresh" styleClass="action-button, refresh-btn" text="Refresh">
+                <Button onAction="#handleRefresh" styleClass="action-button" text="Refresh">
                     <graphic>
                         <FontIcon iconLiteral="bx-sync" iconSize="16"/>
                     </graphic>
@@ -35,6 +35,7 @@
                      <FontIcon iconLiteral="bx-check-shield" iconSize="14" styleClass="status-icon"/>
                      <Label fx:id="backupStatusLabel" text="System Protected" styleClass="status-text"/>
                 </HBox>
+                <FontIcon iconLiteral="bx-grid-alt" iconSize="32" iconColor="#6366F1" opacity="0.3"/>
             </HBox>
         </HBox>
         
@@ -48,59 +49,39 @@
             </columnConstraints>
             
             <!-- Daily Sales -->
-            <VBox GridPane.columnIndex="0" fx:id="salesStatCard" styleClass="stat-card, card-sales">
-                <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container">
-                        <FontIcon iconLiteral="bx-dollar-circle" iconSize="28"/>
-                    </StackPane>
-                    <VBox spacing="2">
-                        <Label text="TOTAL SALES" styleClass="stat-label"/>
-                        <Label text="Today" styleClass="stat-subtext"/>
-                    </VBox>
+            <VBox GridPane.columnIndex="0" fx:id="salesStatCard" styleClass="insight-card">
+                <Label text="TOTAL SALES" styleClass="insight-card-label"/>
+                <HBox spacing="10" alignment="BOTTOM_LEFT">
+                    <Label fx:id="dailySalesLabel" text="0.00" styleClass="insight-card-value"/>
                 </HBox>
-                <Label fx:id="dailySalesLabel" text="0.00" styleClass="stat-value"/>
+                <Label text="Today" styleClass="insight-card-subtitle"/>
             </VBox>
             
             <!-- Transactions -->
-            <VBox GridPane.columnIndex="1" fx:id="transStatCard" styleClass="stat-card, card-transactions">
-                 <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container">
-                        <FontIcon iconLiteral="bx-receipt" iconSize="28"/>
-                    </StackPane>
-                    <VBox spacing="2">
-                        <Label text="TRANSACTIONS" styleClass="stat-label"/>
-                        <Label text="Active session" styleClass="stat-subtext"/>
-                    </VBox>
-                </HBox>
-                <Label fx:id="transactionsLabel" text="0" styleClass="stat-value"/>
+            <VBox GridPane.columnIndex="1" fx:id="transStatCard" styleClass="insight-card">
+                 <Label text="TRANSACTIONS" styleClass="insight-card-label"/>
+                 <HBox spacing="10" alignment="BOTTOM_LEFT">
+                     <Label fx:id="transactionsLabel" text="0" styleClass="insight-card-value"/>
+                 </HBox>
+                 <Label text="Active session" styleClass="insight-card-subtitle"/>
             </VBox>
 
             <!-- Average Sale -->
-            <VBox GridPane.columnIndex="2" fx:id="atvStatCard" styleClass="stat-card, card-atv">
-                <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container">
-                        <FontIcon iconLiteral="bx-trending-up" iconSize="28"/>
-                    </StackPane>
-                    <VBox spacing="2">
-                        <Label text="AVG SALE" styleClass="stat-label"/>
-                        <Label text="Per bill today" styleClass="stat-subtext"/>
-                    </VBox>
+            <VBox GridPane.columnIndex="2" fx:id="atvStatCard" styleClass="insight-card">
+                <Label text="AVG SALE" styleClass="insight-card-label"/>
+                <HBox spacing="10" alignment="BOTTOM_LEFT">
+                    <Label fx:id="atvLabel" text="0.00" styleClass="insight-card-value"/>
                 </HBox>
-                <Label fx:id="atvLabel" text="0.00" styleClass="stat-value"/>
+                <Label text="Per bill today" styleClass="insight-card-subtitle"/>
             </VBox>
             
             <!-- Low Stock -->
-            <VBox GridPane.columnIndex="3" fx:id="stockStatCard" styleClass="stat-card, card-alerts">
-                <HBox alignment="CENTER_LEFT" spacing="15">
-                    <StackPane styleClass="stat-icon-container">
-                        <FontIcon iconLiteral="bx-error" iconSize="28"/>
-                    </StackPane>
-                    <VBox spacing="2">
-                        <Label text="STOCK ALERTS" styleClass="stat-label"/>
-                        <Label text="Action required" styleClass="stat-subtext"/>
-                    </VBox>
+            <VBox GridPane.columnIndex="3" fx:id="stockStatCard" styleClass="insight-card">
+                <Label text="STOCK ALERTS" styleClass="insight-card-label"/>
+                <HBox spacing="10" alignment="BOTTOM_LEFT">
+                    <Label fx:id="lowStockLabel" text="0" styleClass="insight-card-value"/>
                 </HBox>
-                <Label fx:id="lowStockLabel" text="0" styleClass="stat-value"/>
+                <Label text="Action required" styleClass="insight-card-subtitle"/>
             </VBox>
         </GridPane>
 

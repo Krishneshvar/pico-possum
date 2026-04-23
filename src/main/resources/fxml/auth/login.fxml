@@ -6,109 +6,135 @@
 <?import javafx.scene.text.Text?>
 <?import javafx.scene.shape.Circle?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import java.net.URL?>
+<?import java.lang.String?>
 
 <StackPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
            fx:controller="com.picopossum.ui.auth.LoginController"
-           prefWidth="1000.0" prefHeight="700.0" 
-           style="-fx-background-color: linear-gradient(to bottom right, #f1f5f9, #cbd5e1);">
+           prefWidth="1100.0" prefHeight="750.0" 
+           styleClass="auth-container">
     
-    <VBox alignment="CENTER" spacing="0" maxWidth="500">
-        <!-- Main Card -->
-        <VBox style="-fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 15);">
-            <children>
-                <!-- Header Section -->
-                <VBox alignment="CENTER" spacing="15" style="-fx-background-color: #1e293b; -fx-background-radius: 24 24 0 0;">
-                    <padding>
-                        <Insets top="40" right="40" bottom="40" left="40"/>
-                    </padding>
-                    <StackPane>
-                        <Circle radius="40" fill="#3b82f6"/>
-                        <FontIcon iconLiteral="bx-store-alt" iconSize="40" iconColor="white"/>
-                    </StackPane>
-                    <Label fx:id="titleLabel" text="Pico Possum" style="-fx-font-size: 28; -fx-font-weight: bold; -fx-text-fill: white;"/>
-                    <Label text="Point of Sale Simplified" style="-fx-font-size: 14; -fx-text-fill: #94a3b8;"/>
+    <stylesheets>
+        <URL value="@../../styles/tokens.css" />
+        <URL value="@../../styles/base.css" />
+        <URL value="@../../styles/components.css" />
+        <URL value="@../../styles/views/auth.css" />
+    </stylesheets>
+
+    <!-- Main Content Wrapper -->
+    <HBox alignment="CENTER" maxWidth="1000" maxHeight="650" styleClass="auth-card-container">
+        <!-- Brand Panel (Left) -->
+        <VBox fx:id="brandPanel" styleClass="brand-panel" HBox.hgrow="ALWAYS" prefWidth="450" spacing="40" alignment="CENTER_LEFT">
+            <VBox spacing="10">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <FontIcon iconLiteral="bx-store-alt" iconSize="48" styleClass="brand-logo-icon"/>
+                    <VBox>
+                        <Label text="PICO" styleClass="brand-title" style="-fx-font-size: 32; -fx-opacity: 0.7;"/>
+                        <Label text="POSSUM" styleClass="brand-title">
+                            <styleClass>
+                                <String fx:value="brand-title-accent"/>
+                            </styleClass>
+                        </Label>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="25">
+                <VBox spacing="8">
+                    <Label text="Modern Retail Management" styleClass="brand-subtitle"/>
+                    <Label text="Experience the power of a simplified Point of Sale system built for speed and efficiency." 
+                           wrapText="true" styleClass="brand-feature-text" maxWidth="350"/>
                 </VBox>
 
-                <VBox spacing="24">
-                    <padding>
-                        <Insets top="40" right="50" bottom="50" left="50"/>
-                    </padding>
+                <VBox spacing="15">
+                    <HBox styleClass="brand-feature">
+                        <FontIcon iconLiteral="bx-bolt-circle" styleClass="brand-feature-icon"/>
+                        <Label text="Real-time Analytics" styleClass="brand-feature-text"/>
+                    </HBox>
+                    <HBox styleClass="brand-feature">
+                        <FontIcon iconLiteral="bx-shield-quarter" styleClass="brand-feature-icon"/>
+                        <Label text="Secure Data Management" styleClass="brand-feature-text"/>
+                    </HBox>
+                    <HBox styleClass="brand-feature">
+                        <FontIcon iconLiteral="bx-layout" styleClass="brand-feature-icon"/>
+                        <Label text="Intuitive User Interface" styleClass="brand-feature-text"/>
+                    </HBox>
+                </VBox>
+            </VBox>
 
-                    <!-- Login Form -->
-                    <VBox fx:id="loginForm" spacing="20" visible="false" managed="false">
-                        <VBox spacing="8">
-                            <Label text="Username" style="-fx-font-weight: bold; -fx-text-fill: #475569;"/>
-                            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #f1f5f9; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 4 12;">
-                                <FontIcon iconLiteral="bx-user" iconSize="20" iconColor="#64748b"/>
-                                <TextField fx:id="usernameField" promptText="Your username" HBox.hgrow="ALWAYS"
-                                           style="-fx-background-color: transparent; -fx-padding: 8;"/>
-                            </HBox>
+            <Region VBox.vgrow="ALWAYS"/>
+            
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Pico Possum. All rights reserved." styleClass="footer-text" style="-fx-text-fill: white; -fx-opacity: 0.5;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="v1.0" styleClass="footer-text" style="-fx-text-fill: white; -fx-opacity: 0.3;"/>
+            </HBox>
+        </VBox>
+
+        <!-- Form Panel (Right) -->
+        <VBox styleClass="form-panel" HBox.hgrow="ALWAYS" prefWidth="550" spacing="35" alignment="CENTER_LEFT">
+            <VBox spacing="8" styleClass="form-header-container">
+                <Label fx:id="formTitle" text="Welcome Back" styleClass="form-title"/>
+                <Label fx:id="formSubtitle" text="Please enter your details to sign in." styleClass="form-subtitle"/>
+            </VBox>
+
+            <!-- Forms Container -->
+            <StackPane alignment="TOP_LEFT">
+                <!-- Login Form -->
+                <VBox fx:id="loginForm" spacing="25" visible="true">
+                    <VBox spacing="20">
+                        <VBox styleClass="field-group">
+                            <Label text="USERNAME" styleClass="field-label"/>
+                            <TextField fx:id="usernameField" promptText="Enter your username" styleClass="text-field"/>
                         </VBox>
 
-                        <VBox spacing="8">
-                            <Label text="Password" style="-fx-font-weight: bold; -fx-text-fill: #475569;"/>
-                            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #f1f5f9; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 4 12;">
-                                <FontIcon iconLiteral="bx-lock-alt" iconSize="20" iconColor="#64748b"/>
-                                <PasswordField fx:id="passwordField" promptText="Your password" HBox.hgrow="ALWAYS"
-                                               style="-fx-background-color: transparent; -fx-padding: 8;"/>
-                            </HBox>
+                        <VBox styleClass="field-group">
+                            <Label text="PASSWORD" styleClass="field-label"/>
+                            <PasswordField fx:id="passwordField" promptText="••••••••" styleClass="password-field"/>
                         </VBox>
-
-                        <Button fx:id="loginButton" text="Sign In" maxWidth="Infinity"
-                                style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 10; -fx-cursor: hand; -fx-font-size: 15;"/>
                     </VBox>
 
-                    <!-- Setup/Register Form -->
-                    <VBox fx:id="setupForm" spacing="22" visible="false" managed="false">
-                        <VBox spacing="5" alignment="CENTER">
-                            <Label text="Create Owner Account" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
-                            <Label text="Since this is your first run, let's set up your admin access." style="-fx-text-fill: #64748b; -fx-font-size: 13;"/>
-                        </VBox>
-                        
-                        <VBox spacing="8">
-                            <Label text="Full Name" style="-fx-font-weight: bold; -fx-text-fill: #475569;"/>
-                            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #f1f5f9; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 4 12;">
-                                <FontIcon iconLiteral="bx-id-card" iconSize="20" iconColor="#64748b"/>
-                                <TextField fx:id="setupNameField" promptText="e.g. John Doe" HBox.hgrow="ALWAYS"
-                                           style="-fx-background-color: transparent; -fx-padding: 8;"/>
-                            </HBox>
+                    <Button fx:id="loginButton" text="Sign in" maxWidth="Infinity" styleClass="auth-submit-button"/>
+                </VBox>
+
+                <!-- Setup/Register Form (Initial State) -->
+                <VBox fx:id="setupForm" spacing="25" visible="false" managed="false">
+                    <VBox spacing="15">
+                        <VBox styleClass="field-group">
+                            <Label text="BUSINESS OWNER NAME" styleClass="field-label"/>
+                            <TextField fx:id="setupNameField" promptText="e.g. John Doe" styleClass="text-field"/>
                         </VBox>
 
-                        <VBox spacing="8">
-                            <Label text="Login Username" style="-fx-font-weight: bold; -fx-text-fill: #475569;"/>
-                            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #f1f5f9; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 4 12;">
-                                <FontIcon iconLiteral="bx-at" iconSize="20" iconColor="#64748b"/>
-                                <TextField fx:id="setupUsernameField" promptText="Choose a username" HBox.hgrow="ALWAYS"
-                                           style="-fx-background-color: transparent; -fx-padding: 8;"/>
-                            </HBox>
+                        <VBox styleClass="field-group">
+                            <Label text="ADMIN USERNAME" styleClass="field-label"/>
+                            <TextField fx:id="setupUsernameField" promptText="Choose a username" styleClass="text-field"/>
                         </VBox>
 
                         <HBox spacing="15">
-                            <VBox spacing="8" HBox.hgrow="ALWAYS">
-                                <Label text="Password" style="-fx-font-weight: bold; -fx-text-fill: #475569;"/>
-                                <HBox alignment="CENTER_LEFT" spacing="5" style="-fx-background-color: #f1f5f9; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 4 12;">
-                                    <FontIcon iconLiteral="bx-lock-open-alt" iconSize="18" iconColor="#64748b"/>
-                                    <PasswordField fx:id="setupPasswordField" promptText="••••••••" HBox.hgrow="ALWAYS"
-                                                   style="-fx-background-color: transparent; -fx-padding: 8;"/>
-                                </HBox>
+                            <VBox styleClass="field-group" HBox.hgrow="ALWAYS">
+                                <Label text="PASSWORD" styleClass="field-label"/>
+                                <PasswordField fx:id="setupPasswordField" promptText="••••••••" styleClass="password-field"/>
                             </VBox>
-                            <VBox spacing="8" HBox.hgrow="ALWAYS">
-                                <Label text="Confirm" style="-fx-font-weight: bold; -fx-text-fill: #475569;"/>
-                                <HBox alignment="CENTER_LEFT" spacing="5" style="-fx-background-color: #f1f5f9; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 4 12;">
-                                    <FontIcon iconLiteral="bx-check-double" iconSize="18" iconColor="#64748b"/>
-                                    <PasswordField fx:id="setupConfirmPasswordField" promptText="••••••••" HBox.hgrow="ALWAYS"
-                                                   style="-fx-background-color: transparent; -fx-padding: 8;"/>
-                                </HBox>
+                            <VBox styleClass="field-group" HBox.hgrow="ALWAYS">
+                                <Label text="CONFIRM" styleClass="field-label"/>
+                                <PasswordField fx:id="setupConfirmPasswordField" promptText="••••••••" styleClass="password-field"/>
                             </VBox>
                         </HBox>
-
-                        <Button fx:id="setupButton" text="Complete Setup →" maxWidth="Infinity"
-                                style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 10; -fx-cursor: hand; -fx-font-size: 15;"/>
                     </VBox>
+
+                    <Button fx:id="setupButton" text="Initialize System" maxWidth="Infinity" styleClass="auth-submit-button"/>
                 </VBox>
-            </children>
+            </StackPane>
+
+            <VBox alignment="CENTER" spacing="10">
+                <Separator/>
+            </VBox>
         </VBox>
-        
-        <Label text="Pico Possum v1.0.0 Beta" style="-fx-text-fill: #64748b; -fx-font-size: 11; -fx-padding: 20 0 0 0;"/>
-    </VBox>
+    </HBox>
+
+    <!-- Overlay Decorations (Optional) -->
+    <Region style="-fx-background-color: -color-primary; -fx-opacity: 0.03; -fx-shape: 'M 0 0 L 100 0 L 100 100 Z';" 
+            maxWidth="300" maxHeight="300" StackPane.alignment="TOP_RIGHT"/>
+    <Region style="-fx-background-color: -color-primary; -fx-opacity: 0.03; -fx-shape: 'M 0 100 L 100 100 L 0 0 Z';" 
+            maxWidth="200" maxHeight="200" StackPane.alignment="BOTTOM_LEFT"/>
 </StackPane>

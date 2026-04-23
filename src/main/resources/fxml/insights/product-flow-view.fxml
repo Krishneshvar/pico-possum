@@ -18,6 +18,8 @@
       styleClass="workspace-view">
     
     <stylesheets>
+        <URL value="@../../styles/tokens.css"/>
+        <URL value="@../../styles/views/insights.css"/>
         <URL value="@../../styles/inventory.css"/>
         <URL value="@../../styles/views/pos.css"/>
     </stylesheets>
@@ -33,43 +35,49 @@
     </fx:define>
     
     <!-- Header Area -->
-    <HBox styleClass="view-header" alignment="CENTER_LEFT">
-        <VBox>
+    <HBox styleClass="view-header" alignment="CENTER_LEFT" spacing="20">
+        <VBox spacing="4">
             <Label text="Product Flow Analysis" styleClass="view-title"/>
             <Label text="Gain insights into stock movement, sales velocity, and inventory turnover." styleClass="view-subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <HBox spacing="10" alignment="CENTER_RIGHT">
+        <HBox spacing="16" alignment="CENTER_RIGHT">
             <Button text="Refresh" onAction="#handleRefresh" styleClass="action-button" accessibleText="Refresh product flow data">
                 <graphic><FontIcon iconLiteral="bx-sync" iconSize="16"/></graphic>
                 <tooltip>
                     <Tooltip text="Refresh the product flow data"/>
                 </tooltip>
             </Button>
+            <FontIcon iconLiteral="bx-trending-up" iconSize="32" iconColor="#3B82F6" opacity="0.3"/>
         </HBox>
     </HBox>
     
     <!-- Summary Stats Bar -->
-    <HBox fx:id="summaryBar" spacing="16" style="-fx-padding: 0 0 16 0;">
-        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
-            <Label text="Net Movement" styleClass="kpi-label-mini"/>
-            <Label fx:id="netMovementLabel" text="0" styleClass="kpi-value-mini"/>
+    <HBox fx:id="summaryBar" spacing="20" style="-fx-padding: 0 0 16 0;">
+        <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+            <Label text="NET MOVEMENT" styleClass="insight-card-label"/>
+            <Label fx:id="netMovementLabel" text="0" styleClass="insight-card-value"/>
+            <Label text="overall stock change" styleClass="insight-card-subtitle"/>
         </VBox>
-        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
-            <Label text="Total Sold" styleClass="kpi-label-mini"/>
-            <Label fx:id="totalSoldLabel" text="0" styleClass="kpi-value-mini"/>
+        <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+            <Label text="TOTAL SOLD" styleClass="insight-card-label"/>
+            <Label fx:id="totalSoldLabel" text="0" styleClass="insight-card-value"/>
+            <Label text="items dispatched" styleClass="insight-card-subtitle"/>
         </VBox>
-        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
-            <Label text="Total Returned" styleClass="kpi-label-mini"/>
-            <Label fx:id="totalReturnedLabel" text="0" styleClass="kpi-value-mini"/>
+        <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+            <Label text="TOTAL RETURNED" styleClass="insight-card-label"/>
+            <Label fx:id="totalReturnedLabel" text="0" styleClass="insight-card-value"/>
+            <Label text="items brought back" styleClass="insight-card-subtitle"/>
         </VBox>
-        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
-            <Label text="Total Gained" styleClass="kpi-label-mini"/>
-            <Label fx:id="totalGainedLabel" text="0" styleClass="kpi-value-mini"/>
+        <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+            <Label text="TOTAL GAINED" styleClass="insight-card-label"/>
+            <Label fx:id="totalGainedLabel" text="0" styleClass="insight-card-value"/>
+            <Label text="restocks and corrections" styleClass="insight-card-subtitle"/>
         </VBox>
-        <VBox styleClass="kpi-card-mini" HBox.hgrow="ALWAYS">
-            <Label text="Total Lost" styleClass="kpi-label-mini"/>
-            <Label fx:id="totalLostLabel" text="0" styleClass="kpi-value-mini"/>
+        <VBox styleClass="insight-card" HBox.hgrow="ALWAYS">
+            <Label text="TOTAL LOST" styleClass="insight-card-label"/>
+            <Label fx:id="totalLostLabel" text="0" styleClass="insight-card-value"/>
+            <Label text="spoilage and theft" styleClass="insight-card-subtitle"/>
         </VBox>
     </HBox>
 

@@ -30,7 +30,8 @@ public class LoginController {
     @FXML private PasswordField setupConfirmPasswordField;
     @FXML private Button setupButton;
 
-    @FXML private Label titleLabel;
+    @FXML private Label formTitle;
+    @FXML private Label formSubtitle;
 
     private final AuthService authService;
     private final UserService userService;
@@ -65,7 +66,8 @@ public class LoginController {
         loginForm.setManaged(true);
         setupForm.setVisible(false);
         setupForm.setManaged(false);
-        titleLabel.setText("Login to Pico Possum");
+        formTitle.setText("Welcome Back");
+        formSubtitle.setText("Please enter your details to sign in.");
     }
 
     private void showSetupForm() {
@@ -73,7 +75,8 @@ public class LoginController {
         loginForm.setManaged(false);
         setupForm.setVisible(true);
         setupForm.setManaged(true);
-        titleLabel.setText("First Time Setup");
+        formTitle.setText("System Setup");
+        formSubtitle.setText("Let's create your administrator account.");
     }
 
     private void handleLogin() {

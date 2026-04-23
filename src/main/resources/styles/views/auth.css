@@ -3,13 +3,22 @@
 /* Authentication View Styles */
 
 .auth-container {
-    -fx-background-color: radial-gradient(focus-angle 0deg, focus-distance 0%, center 50% 50%, radius 100%, -color-bg-canvas 0%, #E2E8F0 100%);
+    -fx-background-color: -color-bg-canvas;
+}
+
+.auth-card-container {
+    -fx-background-color: -color-surface;
+    -fx-effect: -shadow-lg;
+    -fx-background-radius: 24;
+    -fx-border-radius: 24;
+    -fx-overflow: hidden; /* Clips children to rounded corners */
 }
 
 /* Brand Panel (Left Side) */
 .brand-panel {
-    -fx-background-color: -color-brand-dark;
+    -fx-background-color: linear-gradient(to bottom right, -color-brand-dark, #1a2228);
     -fx-padding: 60;
+    -fx-background-radius: 24 0 0 24;
 }
 
 .brand-logo-container {
@@ -18,10 +27,14 @@
 }
 
 .brand-title {
-    -fx-font-size: 56px;
-    -fx-font-weight: 800;
+    -fx-font-size: 48px;
+    -fx-font-weight: 900;
+    -fx-text-fill: white;
+    -fx-letter-spacing: -1px;
+}
+
+.brand-title-accent {
     -fx-text-fill: -color-primary;
-    -fx-letter-spacing: 2px;
 }
 
 .brand-logo-icon {
@@ -55,7 +68,8 @@
 /* Form Panel (Right Side) */
 .form-panel {
     -fx-background-color: -color-surface;
-    -fx-padding: 60 100;
+    -fx-padding: 60 80;
+    -fx-background-radius: 0 24 24 0;
 }
 
 .form-header-container {
@@ -117,12 +131,14 @@
 .auth-submit-button {
     -fx-background-color: -color-primary-gradient;
     -fx-text-fill: white;
-    -fx-font-size: 16px;
-    -fx-font-weight: 800;
-    -fx-padding: 14 0;
-    -fx-background-radius: 10;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-padding: 12 24;
+    -fx-min-height: 48;
+    -fx-background-radius: 12;
     -fx-cursor: hand;
     -fx-effect: -shadow-primary-btn;
+    -fx-alignment: CENTER;
 }
 
 .auth-submit-button:hover {
@@ -136,6 +152,24 @@
 
 .footer-text {
     -fx-font-size: 12px;
-    -fx-text-fill: -color-text-disabled;
+    -fx-text-fill: -color-text-muted;
     -fx-font-weight: 500;
+    -fx-opacity: 0.6;
+}
+
+.brand-decoration {
+    -fx-opacity: 0.05;
+    -fx-icon-color: white;
+}
+
+.glass-badge {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-background-radius: 100;
+    -fx-padding: 8 16;
+}
+
+.glass-badge-text {
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
 }
