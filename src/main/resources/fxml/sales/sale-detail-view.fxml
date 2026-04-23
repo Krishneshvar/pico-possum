@@ -25,6 +25,12 @@
         </VBox>
         
         <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button fx:id="fulfillButton" text="Settle &amp; Fulfill" onAction="#handleFulfill" styleClass="action-button, primary-button" visible="false" managed="false">
+                <graphic><FontIcon iconLiteral="fas-check-double" iconSize="16" iconColor="white"/></graphic>
+                <tooltip>
+                    <Tooltip text="Receive balance payment and mark as fully paid"/>
+                </tooltip>
+            </Button>
             <Button text="Print Receipt" accessibleText="Print Receipt" onAction="#handlePrint" styleClass="action-button">
                 <graphic><FontIcon iconLiteral="fas-print" iconSize="16"/></graphic>
                 <tooltip>

@@ -203,6 +203,31 @@ public class SalesModificationService {
         });
     }
 
+    public void settlePartiallyPaidSale(long saleId) {
+        transactionManager.runInTransaction(() -> {
+            Sale sale = salesRepository.findSaleById(saleId)
+                    .orElseThrow(() -> new NotFoundException("Sale not found: " + saleId));
+
+            if (!"partially_paid".equals(sale.status())) {
+                throw new ValidationException("Only partially paid sales can be settled via this action.");
+            }
+
+            BigDecimal totalDue = sale.totalAmount();
+            BigDecimal alreadyPaid = sale.paidAmount();
+            
+            salesRepository.updateSaleStatus(saleId, "paid");
+            salesRepository.updateSalePaidAmount(saleId, totalDue);
+            salesRepository.updateFulfillmentStatus(saleId, "fulfilled");
+
+            auditService.recordEvent("UPDATE", "sales", saleId, 
+                    Map.of("status", "partially_paid", "paid", alreadyPaid),
+                    Map.of("status", "paid", "paid", totalDue),
+                    "Final payment received", "success");
+
+            return null;
+        });
+    }
+
     public void changeSalePaymentMethod(long saleId, long newPaymentMethodId) {
         transactionManager.runInTransaction(() -> {
             Sale sale = salesRepository.findSaleById(saleId)

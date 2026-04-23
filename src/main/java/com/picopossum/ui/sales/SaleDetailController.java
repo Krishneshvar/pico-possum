@@ -49,6 +49,7 @@ public class SaleDetailController implements Parameterizable {
     @FXML private Label balanceAmountLabel;
     @FXML private javafx.scene.control.Button editButton;
     @FXML private javafx.scene.control.Button createReturnButton;
+    @FXML private javafx.scene.control.Button fulfillButton;
 
     @FXML private javafx.scene.layout.HBox editActionsDock;
     @FXML private javafx.scene.layout.VBox customerViewBox;
@@ -184,6 +185,12 @@ public class SaleDetailController implements Parameterizable {
             invoiceLabel.setText("#" + displayId);
             statusBadge.setText(currentSale.status().replace("_", " ").toUpperCase());
             applyStatusStyle(currentSale.status());
+            
+            boolean isPartiallyPaid = "partially_paid".equalsIgnoreCase(currentSale.status());
+            if (fulfillButton != null) {
+                fulfillButton.setVisible(isPartiallyPaid);
+                fulfillButton.setManaged(isPartiallyPaid);
+            }
             
             dateLabel.setText("Processed on " + TimeUtil.formatStandard(TimeUtil.toLocal(currentSale.saleDate())));
             customerNameLabel.setText(currentSale.customerName() != null ? currentSale.customerName() : "Walk-in Customer");
@@ -410,5 +417,27 @@ public class SaleDetailController implements Parameterizable {
         Map<String, Object> params = Map.of("invoiceNumber", currentSale.invoiceNumber());
         workspaceManager.openDialog("Process Return", "/fxml/returns/create-return-dialog.fxml", params);
         loadSaleDetails();
+    }
+
+    @FXML
+    private void handleFulfill() {
+        if (currentSale == null) return;
+        
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION);
+        com.picopossum.ui.common.dialogs.DialogStyler.apply(alert);
+        alert.setTitle("Settle & Fulfill Bill");
+        alert.setHeaderText("Finalize Payment for Invoice #" + currentSale.invoiceNumber());
+        alert.setContentText("Are you sure you want to mark this bill as fully paid? This will set the paid amount to match the total amount.");
+
+        if (alert.showAndWait().orElse(javafx.scene.control.ButtonType.CANCEL) == javafx.scene.control.ButtonType.OK) {
+            try {
+                salesService.settlePartiallyPaidSale(currentSale.id());
+                NotificationService.success("Bill settled and fulfilled successfully.");
+                loadSaleDetails();
+            } catch (Exception e) {
+                LoggingConfig.getLogger().error("Failed to fulfill sale: {}", e.getMessage(), e);
+                NotificationService.error("Fulfillment failed: " + com.picopossum.ui.common.ErrorHandler.toUserMessage(e));
+            }
+        }
     }
 }

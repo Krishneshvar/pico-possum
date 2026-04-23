@@ -78,6 +78,10 @@ public class SalesService {
     public void completeSale(long saleId) {
         modificationService.completeSale(saleId);
     }
+    public void settlePartiallyPaidSale(long saleId) {
+        modificationService.settlePartiallyPaidSale(saleId);
+    }
+
 
     public List<PaymentMethod> getPaymentMethods() {
         return paymentService.getActivePaymentMethods();

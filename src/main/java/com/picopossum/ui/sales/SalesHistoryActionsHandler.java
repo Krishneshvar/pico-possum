@@ -70,6 +70,16 @@ public class SalesHistoryActionsHandler {
             MenuItem editItem = new MenuItem("✏️ Edit Bill");
             editItem.setOnAction(e -> handleEdit(sale));
 
+            if ("partially_paid".equals(sale.status())) {
+                MenuItem fulfillItem = new MenuItem("Fulfill & Complete");
+                org.kordamp.ikonli.javafx.FontIcon fulfillIcon = new org.kordamp.ikonli.javafx.FontIcon("fas-check-double");
+                fulfillIcon.setIconSize(14);
+                fulfillIcon.setIconColor(javafx.scene.paint.Color.web("#10B981"));
+                fulfillItem.setGraphic(fulfillIcon);
+                fulfillItem.setOnAction(e -> handleFulfill(sale));
+                items.add(fulfillItem);
+            }
+
             MenuItem cancelItem = new MenuItem("❌ Cancel Sale");
             cancelItem.getStyleClass().add("logout-menu-item");
             cancelItem.setOnAction(e -> handleCancel(sale));
@@ -181,6 +191,31 @@ public class SalesHistoryActionsHandler {
                     error.setContentText("Failed to cancel sale: " + ErrorHandler.toUserMessage(ex));
                     error.show();
                 });
+                return null;
+            });
+        }
+    }
+
+    public void handleFulfill(Sale sale) {
+        if (sale == null) return;
+        
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        DialogStyler.apply(alert);
+        alert.setTitle("Fulfill & Complete Sale");
+        alert.setHeaderText("Finalize Payment for Invoice #" + sale.invoiceNumber());
+        alert.setContentText("Mark this sale as fully paid and fulfilled?");
+
+        if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            CompletableFuture.runAsync(() -> {
+                salesService.settlePartiallyPaidSale(sale.id());
+            })
+            .thenRun(() -> Platform.runLater(() -> {
+                NotificationService.success("Sale fulfilled successfully");
+                onDataChanged.run();
+            }))
+            .exceptionally(ex -> {
+                LoggingConfig.getLogger().error("Failed to fulfill sale: {}", ex.getMessage(), ex);
+                Platform.runLater(() -> NotificationService.error("Fulfillment failed: " + ErrorHandler.toUserMessage(ex)));
                 return null;
             });
         }
