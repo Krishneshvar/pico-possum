@@ -43,31 +43,68 @@ public class SaleDetailTableManager {
                 data.getValue().quantity() - (data.getValue().returnedQuantity() != null ? data.getValue().returnedQuantity() : 0)
         ).asObject());
         qtyCol.setCellFactory(col -> new TableCell<>() {
-            @Override protected void updateItem(Integer qty, boolean empty) {
-                super.updateItem(qty, empty);
-                if (empty || qty == null) {
+            private final javafx.scene.control.Spinner<Integer> spinner = new javafx.scene.control.Spinner<>();
+            private boolean updating = false;
+
+            {
+                spinner.setEditable(true);
+                spinner.setPrefWidth(80);
+                spinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+                    if (updating || newVal == null) return;
+                    
+                    int index = getIndex();
+                    if (index >= 0 && index < getTableView().getItems().size()) {
+                        SaleItem current = getTableView().getItems().get(index);
+                        int returnedQty = current.returnedQuantity() != null ? current.returnedQuantity() : 0;
+                        int newGrossQty = newVal + returnedQty;
+                        
+                        // Safety check: SaleItem must have quantity > 0
+                        if (newGrossQty > 0 && newGrossQty != current.quantity()) {
+                            updating = true;
+                            try {
+                                getTableView().getItems().set(index, new SaleItem(
+                                        current.id(), current.saleId(), current.productId(),
+                                        current.sku(), current.productName(), newGrossQty, current.pricePerUnit(),
+                                        current.costPerUnit(), current.discountAmount(), current.taxRate(), current.taxAmount(), current.returnedQuantity()
+                                ));
+                                onDataChanged.run();
+                            } finally {
+                                updating = false;
+                            }
+                        }
+                    }
+                });
+            }
+
+            @Override protected void updateItem(Integer netQty, boolean empty) {
+                super.updateItem(netQty, empty);
+                if (empty || netQty == null) {
                     setGraphic(null);
                     setText(null);
                 } else if (isEditingMode) {
-                    javafx.scene.control.Spinner<Integer> spinner = new javafx.scene.control.Spinner<>(0, 1000, qty);
-                    spinner.setEditable(true);
-                    spinner.setPrefWidth(80);
-                    spinner.valueProperty().addListener((obs, oldVal, newVal) -> {
-                        int index = getIndex();
-                        if (index >= 0 && index < getTableView().getItems().size()) {
-                            SaleItem current = getTableView().getItems().get(index);
-                            getTableView().getItems().set(index, new SaleItem(
-                                    current.id(), current.saleId(), current.productId(),
-                                    current.sku(), current.productName(), newVal, current.pricePerUnit(),
-                                    current.costPerUnit(), current.discountAmount(), current.taxRate(), current.taxAmount(), current.returnedQuantity()
-                            ));
-                            onDataChanged.run();
+                    updating = true;
+                    try {
+                        SaleItem current = getTableView().getItems().get(getIndex());
+                        int returnedQty = current.returnedQuantity() != null ? current.returnedQuantity() : 0;
+                        // Min net quantity should ensure gross quantity is at least 1
+                        int minNet = Math.max(0, 1 - returnedQty);
+                        
+                        javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory factory = 
+                            (javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory) spinner.getValueFactory();
+                        
+                        if (factory == null) {
+                            spinner.setValueFactory(new javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory(minNet, 10000, netQty));
+                        } else {
+                            factory.setMin(minNet);
+                            factory.setValue(netQty);
                         }
-                    });
+                    } finally {
+                        updating = false;
+                    }
                     setGraphic(spinner);
                     setText(null);
                 } else {
-                    setText(String.valueOf(qty));
+                    setText(String.valueOf(netQty));
                     setGraphic(null);
                 }
             }

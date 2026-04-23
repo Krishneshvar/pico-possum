@@ -40,12 +40,12 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
                 s.status AS status,
                 s.fulfillment_status AS fulfillment_status,
                 s.customer_id AS customer_id,
-                c.name AS customer_name,
-                c.phone AS customer_phone,
+                COALESCE(c.name, s.customer_name) AS customer_name,
+                COALESCE(c.phone, s.customer_phone) AS customer_phone,
                 c.email AS customer_email,
-                'System Admin' AS biller_name,
+                COALESCE(s.biller_name, 'System Admin') AS biller_name,
                 s.payment_method_id,
-                pm.name AS payment_method_name,
+                COALESCE(pm.name, s.payment_method_name) AS payment_method_name,
                 s.invoice_id
               FROM sales s
               LEFT JOIN customers c ON s.customer_id = c.id
@@ -134,13 +134,17 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         return queryOne(
                 """
                 SELECT
-                  s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, 'System Admin' AS biller_name,
-                  pm.name AS payment_method_name
+                  s.id, s.invoice_number, s.sale_date, s.total_amount, s.paid_amount, s.tax_amount, s.discount,
+                  s.status, s.fulfillment_status, s.customer_id, s.payment_method_id, s.invoice_id,
+                  COALESCE(c.name, s.customer_name) AS customer_name,
+                  COALESCE(c.phone, s.customer_phone) AS customer_phone,
+                  c.email AS customer_email,
+                  COALESCE(s.biller_name, 'System Admin') AS biller_name,
+                  COALESCE(pm.name, s.payment_method_name) AS payment_method_name
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE s.id = ?
-                GROUP BY s.id
                 """,
                 saleMapper,
                 id
@@ -151,13 +155,17 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
     public Optional<Sale> findSaleByInvoiceNumber(String invoiceNumber) {
         String query = """
                 SELECT
-                  s.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, 'System Admin' AS biller_name,
-                  pm.name AS payment_method_name
+                  s.id, s.invoice_number, s.sale_date, s.total_amount, s.paid_amount, s.tax_amount, s.discount,
+                  s.status, s.fulfillment_status, s.customer_id, s.payment_method_id, s.invoice_id,
+                  COALESCE(c.name, s.customer_name) AS customer_name,
+                  COALESCE(c.phone, s.customer_phone) AS customer_phone,
+                  c.email AS customer_email,
+                  COALESCE(s.biller_name, 'System Admin') AS biller_name,
+                  COALESCE(pm.name, s.payment_method_name) AS payment_method_name
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 LEFT JOIN payment_methods pm ON s.payment_method_id = pm.id
                 WHERE s.invoice_number = ?
-                GROUP BY s.id
                 """;
         
         Optional<Sale> result = queryOne(query, saleMapper, invoiceNumber);

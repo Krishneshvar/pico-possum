@@ -13,6 +13,7 @@ import com.picopossum.ui.common.dialogs.DialogStyler;
 
 import com.picopossum.ui.common.ErrorHandler;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class AddCategoryDialogController implements Parameterizable {
@@ -54,6 +55,7 @@ public class AddCategoryDialogController implements Parameterizable {
         if (params != null && params.containsKey("category")) {
             this.editingCategory = (Category) params.get("category");
             updateUIForEdit();
+            loadCategories();
         }
     }
 
@@ -73,19 +75,23 @@ public class AddCategoryDialogController implements Parameterizable {
     }
 
     private void loadCategories() {
-        List<Category> allCategories = categoryService.getAllCategories();
+        List<Category> allCategories = new ArrayList<>(categoryService.getAllCategories());
+        
         // Remove the current category and its descendants from the parent possibilities if editing
-        if (editingCategory != null) {
+        if (editingCategory != null && allCategories != null) {
             java.util.Set<Long> descendants = categoryService.getDescendantIds(editingCategory.id());
-            allCategories.removeIf(c -> c.id().equals(editingCategory.id()) || descendants.contains(c.id()));
+            allCategories.removeIf(c -> c == null || c.id() == null || c.id().equals(editingCategory.id()) || (descendants != null && descendants.contains(c.id())));
         }
-        parentCategoryComboBox.setItems(FXCollections.observableArrayList(allCategories));
+        
+        if (parentCategoryComboBox != null) {
+            parentCategoryComboBox.setItems(FXCollections.observableArrayList(allCategories));
 
-        if (editingCategory != null && editingCategory.parentId() != null) {
-            allCategories.stream()
-                    .filter(c -> c.id().equals(editingCategory.parentId()))
-                    .findFirst()
-                    .ifPresent(parentCategoryComboBox::setValue);
+            if (editingCategory != null && editingCategory.parentId() != null) {
+                allCategories.stream()
+                        .filter(c -> c != null && c.id() != null && c.id().equals(editingCategory.parentId()))
+                        .findFirst()
+                        .ifPresent(parentCategoryComboBox::setValue);
+            }
         }
     }
 

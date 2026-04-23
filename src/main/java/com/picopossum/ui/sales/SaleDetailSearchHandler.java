@@ -35,6 +35,10 @@ public class SaleDetailSearchHandler {
     }
 
     public void setup() {
+        String css = getClass().getResource("/styles/pos.css").toExternalForm();
+        if (!searchResultsView.getStylesheets().contains(css)) {
+            searchResultsView.getStylesheets().add(css);
+        }
         searchResultsView.getStyleClass().add("search-results-list");
         searchPopup.getContent().add(searchResultsView);
         searchPopup.setAutoHide(true);
@@ -45,11 +49,15 @@ public class SaleDetailSearchHandler {
                 if (empty || item == null) { setText(null); setGraphic(null); }
                 else {
                     VBox b = new VBox(2);
-                    b.setPrefHeight(45);
+                    b.getStyleClass().add("search-item-box");
+                    
                     Label n = new Label(item.name());
-                    n.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-                    Label d = new Label(item.sku() + " • " + CurrencyUtil.format(item.mrp()));
-                    d.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
+                    n.getStyleClass().add("search-item-name");
+                    
+                    String stockStr = item.stock() != null ? String.valueOf(item.stock()) : "∞";
+                    Label d = new Label(item.sku() + " • " + CurrencyUtil.format(item.mrp()) + " • Stock: " + stockStr);
+                    d.getStyleClass().add("search-item-details");
+                    
                     b.getChildren().addAll(n, d);
                     setGraphic(b);
                 }

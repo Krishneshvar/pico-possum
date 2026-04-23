@@ -56,8 +56,11 @@ public class CategoryService {
             }
         }
 
-        boolean parentIdProvided = parentId != null;
-        int changes = categoryRepository.updateCategoryById(id, name, parentIdProvided, parentId);
+        // Fix: parentIdProvided should be true even if parentId is null, 
+        // because we want to allow moving a sub-category to the root.
+        // We only skip if the name is the only thing changing, but here we assume 
+        // the caller wants to update the parent relationship as well.
+        int changes = categoryRepository.updateCategoryById(id, name, true, parentId);
         if (changes == 0) {
             throw new NotFoundException("Category not found");
         }
@@ -76,11 +79,13 @@ public class CategoryService {
     }
 
     private Long findParentId(List<Category> all, long id) {
-        return all.stream()
-                .filter(c -> c.id().equals(id))
-                .map(Category::parentId)
-                .findFirst()
-                .orElse(null);
+        if (all == null) return null;
+        for (Category c : all) {
+            if (c != null && c.id() != null && c.id() == id) {
+                return c.parentId();
+            }
+        }
+        return null;
     }
 
     public void deleteCategory(long id) {
@@ -104,12 +109,15 @@ public class CategoryService {
     }
 
     private void collectDescendants(long parentId, List<Category> all, java.util.Set<Long> descendants) {
-        all.stream()
-                .filter(c -> parentId == (c.parentId() != null ? c.parentId() : -1))
-                .forEach(c -> {
+        if (all == null) return;
+        for (Category c : all) {
+            if (c != null && c.parentId() != null && c.parentId() == parentId) {
+                if (c.id() != null) {
                     descendants.add(c.id());
                     collectDescendants(c.id(), all, descendants);
-                });
+                }
+            }
+        }
     }
 
     private List<CategoryTreeNode> buildCategoryTree(List<Category> categories, Long parentId) {
