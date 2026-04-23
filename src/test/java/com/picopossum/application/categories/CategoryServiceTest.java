@@ -98,7 +98,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("Should throw NotFound during update if id doesn't exist")
     void updateCategory_notFound_fail() {
-        when(categoryRepository.updateCategoryById(99L, "Name", false, null)).thenReturn(0);
+        when(categoryRepository.updateCategoryById(99L, "Name", true, null)).thenReturn(0);
         assertThrows(NotFoundException.class, () -> categoryService.updateCategory(99L, "Name", null));
     }
 
