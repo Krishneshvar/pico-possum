@@ -150,6 +150,53 @@ public final class ReportsService {
         return new ComparisonReport(label, current, previous);
     }
 
+    public MultiYearComparisonReport getMultiYearComparison(LocalDate start, LocalDate end, int previousYears, String interval) {
+        java.util.List<MultiYearComparisonReport.YearSeries> seriesList = new java.util.ArrayList<>();
+        
+        for (int i = 0; i <= previousYears; i++) {
+            LocalDate s = start.minusYears(i);
+            LocalDate e = end.minusYears(i);
+            String yearLabel = (i == 0) ? "Current" : s.getYear() + "";
+            
+            List<Map<String, Object>> breakdown;
+            String key;
+            java.util.function.Function<String, String> formatter;
+            
+            switch (interval.toLowerCase()) {
+                case "weekly" -> {
+                    breakdown = reportsRepository.getWeeklyBreakdown(s.toString(), e.toString(), null);
+                    key = "week";
+                    formatter = w -> w; 
+                }
+                case "monthly" -> {
+                    breakdown = reportsRepository.getMonthlyBreakdown(s.toString(), e.toString(), null);
+                    key = "month";
+                    formatter = this::formatMonth;
+                }
+                case "yearly" -> {
+                    breakdown = reportsRepository.getYearlyBreakdown(s.toString(), e.toString(), null);
+                    key = "year";
+                    formatter = y -> y;
+                }
+                default -> { // daily
+                    breakdown = reportsRepository.getDailyBreakdown(s.toString(), e.toString(), null);
+                    key = "date";
+                    formatter = this::formatDate;
+                }
+            }
+            
+            List<MultiYearComparisonReport.DataPoint> points = breakdown.stream()
+                    .map(item -> new MultiYearComparisonReport.DataPoint(
+                            formatter.apply((String) item.get(key)),
+                            asBigDecimal(item.get("total_sales"))
+                    )).toList();
+            
+            seriesList.add(new MultiYearComparisonReport.YearSeries(yearLabel, points));
+        }
+        
+        return new MultiYearComparisonReport(start, end, interval, seriesList);
+    }
+
     private SalesReportSummary mapToSummary(Map<String, Object> data) {
         int totalTransactions = (int) data.getOrDefault("total_transactions", 0);
         BigDecimal totalSales = (BigDecimal) data.getOrDefault("total_sales", BigDecimal.ZERO);
@@ -239,5 +286,11 @@ public final class ReportsService {
     private String formatMonth(String monthStr) {
         LocalDate date = LocalDate.parse(monthStr + "-01");
         return date.format(MONTH_FORMATTER);
+    }
+
+    private BigDecimal asBigDecimal(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        if (value instanceof BigDecimal bd) return bd;
+        return new BigDecimal(value.toString());
     }
 }

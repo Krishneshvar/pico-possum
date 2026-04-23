@@ -98,6 +98,11 @@ public final class SqliteReportsRepository extends BaseSqliteRepository implemen
     }
 
     @Override
+    public List<Map<String, Object>> getWeeklyBreakdown(String startDate, String endDate, List<Long> paymentMethodIds) {
+        return groupedBreakdown("strftime(u0027%Y-W%Wu0027, sale_date)", "week", startDate, endDate, paymentMethodIds);
+    }
+
+    @Override
     public List<Map<String, Object>> getYearlyBreakdown(String startDate, String endDate, List<Long> paymentMethodIds) {
         return groupedBreakdown("strftime('%Y', sale_date)", "year", startDate, endDate, paymentMethodIds);
     }

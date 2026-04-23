@@ -10,6 +10,8 @@ public interface ReportsRepository {
 
     List<Map<String, Object>> getMonthlyBreakdown(String startDate, String endDate, List<Long> paymentMethodIds);
 
+    List<Map<String, Object>> getWeeklyBreakdown(String startDate, String endDate, List<Long> paymentMethodIds);
+
     List<Map<String, Object>> getYearlyBreakdown(String startDate, String endDate, List<Long> paymentMethodIds);
 
     List<Map<String, Object>> getTopSellingProducts(String startDate, String endDate, int limit, List<Long> paymentMethodIds);

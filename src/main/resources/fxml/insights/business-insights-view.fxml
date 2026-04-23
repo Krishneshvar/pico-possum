@@ -97,5 +97,31 @@
             </VBox>
         </HBox>
 
+        <!-- Multi-Year Comparison Section -->
+        <VBox styleClass="insight-section-card" VBox.vgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" spacing="20">
+                <VBox HBox.hgrow="ALWAYS">
+                    <Label styleClass="section-title" text="Multi-Year Performance Comparison" />
+                    <Label style="-fx-font-size: 12px; -fx-text-fill: -color-text-muted;" text="Compare current sales trends against previous years" />
+                </VBox>
+                <HBox spacing="15" alignment="CENTER_RIGHT">
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Compare back:" style="-fx-font-size: 13px; -fx-text-fill: -color-text-muted;" />
+                        <Spinner fx:id="previousYearsSpinner" prefWidth="80" />
+                        <Label text="years" style="-fx-font-size: 13px; -fx-text-fill: -color-text-muted;" />
+                    </HBox>
+                    <Separator orientation="VERTICAL" prefHeight="20" />
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Interval:" style="-fx-font-size: 13px; -fx-text-fill: -color-text-muted;" />
+                        <ComboBox fx:id="periodIntervalCombo" prefWidth="120" />
+                    </HBox>
+                </HBox>
+            </HBox>
+            <LineChart fx:id="multiYearComparisonChart" animated="false" legendVisible="true" VBox.vgrow="ALWAYS" style="-fx-padding: 20 0 0 0;">
+                <xAxis><CategoryAxis side="BOTTOM" label="Timeline" /></xAxis>
+                <yAxis><NumberAxis side="LEFT" label="Revenue" /></yAxis>
+            </LineChart>
+        </VBox>
+
     </VBox>
 </ScrollPane>

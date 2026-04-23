@@ -9,12 +9,17 @@ import com.picopossum.ui.common.controls.NotificationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.chart.BarChart;
+import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.DatePicker;
-import javafx.scene.control.Label;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import org.kordamp.ikonli.javafx.FontIcon;
+import com.picopossum.application.reports.dto.MultiYearComparisonReport;
+import java.util.ArrayList;
+import javafx.application.Platform;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,6 +50,10 @@ public class BusinessInsightsController {
     @FXML private BarChart<String, Number> profitabilityChart;
     @FXML private BarChart<String, Number> comparisonChart;
 
+    @FXML private LineChart<String, Number> multiYearComparisonChart;
+    @FXML private Spinner<Integer> previousYearsSpinner;
+    @FXML private ComboBox<String> periodIntervalCombo;
+
     private final ReportsService reportsService;
 
     public BusinessInsightsController(ReportsService reportsService) {
@@ -55,7 +64,17 @@ public class BusinessInsightsController {
     public void initialize() {
         setupComparisonTypes();
         setupDefaultDates();
+        setupMultiYearControls();
         loadInsights();
+    }
+
+    private void setupMultiYearControls() {
+        previousYearsSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 10, 3));
+        previousYearsSpinner.valueProperty().addListener((obs, oldVal, newVal) -> loadMultiYearData());
+
+        periodIntervalCombo.setItems(FXCollections.observableArrayList("Daily", "Weekly", "Monthly", "Yearly"));
+        periodIntervalCombo.setValue("Weekly");
+        periodIntervalCombo.setOnAction(e -> loadMultiYearData());
     }
 
     private void setupComparisonTypes() {
@@ -148,6 +167,33 @@ public class BusinessInsightsController {
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
+
+        loadMultiYearData();
+    }
+
+    private void loadMultiYearData() {
+        LocalDate start = currentStartDate.getValue();
+        LocalDate end = currentEndDate.getValue();
+        if (start == null || end == null) return;
+
+        int prevYears = previousYearsSpinner.getValue();
+        String interval = periodIntervalCombo.getValue();
+
+        javafx.concurrent.Task<MultiYearComparisonReport> multiYearTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected MultiYearComparisonReport call() throws Exception {
+                return reportsService.getMultiYearComparison(start, end, prevYears, interval);
+            }
+        };
+
+        multiYearTask.setOnSucceeded(e -> updateMultiYearChart(multiYearTask.getValue()));
+        multiYearTask.setOnFailed(e -> {
+            com.picopossum.infrastructure.logging.LoggingConfig.getLogger().error("Failed to load multi-year data", multiYearTask.getException());
+        });
+
+        Thread t = new Thread(multiYearTask);
+        t.setDaemon(true);
+        t.start();
     }
 
     private void updateUI(ComparisonReport report) {
@@ -230,5 +276,51 @@ public class BusinessInsightsController {
 
         if (currentSeries.getNode() != null) currentSeries.getNode().getStyleClass().add("comparison-current-series");
         if (previousSeries.getNode() != null) previousSeries.getNode().getStyleClass().add("comparison-previous-series");
+    }
+
+    private static final String[] CHART_COLORS = {
+        "#3B82F6", // Blue (Current)
+        "#10B981", // Emerald
+        "#F59E0B", // Amber
+        "#EF4444", // Red
+        "#8B5CF6", // Violet
+        "#EC4899", // Pink
+        "#06B6D4", // Cyan
+        "#F97316", // Orange
+        "#6366F1", // Indigo
+        "#84CC16", // Lime
+        "#14B8A6"  // Teal
+    };
+
+    private void updateMultiYearChart(MultiYearComparisonReport report) {
+        multiYearComparisonChart.getData().clear();
+        
+        for (int i = 0; i < report.series().size(); i++) {
+            MultiYearComparisonReport.YearSeries yearSeries = report.series().get(i);
+            XYChart.Series<String, Number> series = new XYChart.Series<>();
+            series.setName(yearSeries.yearLabel());
+            
+            for (MultiYearComparisonReport.DataPoint dp : yearSeries.dataPoints()) {
+                series.getData().add(new XYChart.Data<>(dp.label(), dp.value()));
+            }
+            
+            multiYearComparisonChart.getData().add(series);
+            
+            // Apply distinct colors
+            final String color = CHART_COLORS[i % CHART_COLORS.length];
+            if (series.getNode() != null) {
+                series.getNode().setStyle("-fx-stroke: " + color + "; -fx-stroke-width: 2.5px;");
+            }
+            
+            // Apply color to legend symbols if they exist yet
+            Platform.runLater(() -> {
+                for (javafx.scene.Node n : multiYearComparisonChart.lookupAll(".chart-legend-item-symbol")) {
+                    // This is a bit hacky in JavaFX but works for styling legend
+                    if (n.getParent() instanceof Label label && label.getText().equals(yearSeries.yearLabel())) {
+                        n.setStyle("-fx-background-color: " + color + ";");
+                    }
+                }
+            });
+        }
     }
 }
