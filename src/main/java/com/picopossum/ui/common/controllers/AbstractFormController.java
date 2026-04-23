@@ -32,6 +32,9 @@ public abstract class AbstractFormController<T> implements Parameterizable {
     
     protected Long entityId = null;
     protected FormMode mode = FormMode.CREATE;
+    private final java.util.Map<javafx.scene.control.Control, javafx.scene.control.Label> replacements = new java.util.HashMap<>();
+    private final java.util.Map<javafx.scene.control.Control, Integer> replacementIndices = new java.util.HashMap<>();
+    private final java.util.Map<javafx.scene.control.Control, javafx.scene.Parent> replacementParents = new java.util.HashMap<>();
 
     /**
      * Form modes: CREATE, EDIT, VIEW
@@ -152,6 +155,7 @@ public abstract class AbstractFormController<T> implements Parameterizable {
      * Setup form for edit mode
      */
     protected void setupEditMode() {
+        restoreOriginalControls();
         mode = FormMode.EDIT;
         
         if (titleLabel != null) {
@@ -309,17 +313,41 @@ public abstract class AbstractFormController<T> implements Parameterizable {
         label.setWrapText(true);
         
         javafx.scene.Parent parent = control.getParent();
-        if (parent instanceof VBox box) {
-            int index = box.getChildren().indexOf(control);
+        int index = -1;
+        if (parent instanceof javafx.scene.layout.Pane pane) {
+            index = pane.getChildren().indexOf(control);
             if (index != -1) {
-                box.getChildren().set(index, label);
-            }
-        } else if (parent instanceof HBox box) {
-            int index = box.getChildren().indexOf(control);
-            if (index != -1) {
-                box.getChildren().set(index, label);
+                replacements.put(control, label);
+                replacementIndices.put(control, index);
+                replacementParents.put(control, parent);
+                pane.getChildren().set(index, label);
             }
         }
+    }
+
+    /**
+     * Restore original controls that were replaced by labels in view mode
+     */
+    protected void restoreOriginalControls() {
+        for (java.util.Map.Entry<Control, Label> entry : replacements.entrySet()) {
+            Control control = entry.getKey();
+            Label label = entry.getValue();
+            javafx.scene.Parent parent = replacementParents.get(control);
+            int index = replacementIndices.get(control);
+
+            if (parent instanceof javafx.scene.layout.Pane pane) {
+                int labelIndex = pane.getChildren().indexOf(label);
+                if (labelIndex != -1) {
+                    pane.getChildren().set(labelIndex, control);
+                } else if (index != -1 && index <= pane.getChildren().size()) {
+                    // Fallback to original index if label not found for some reason
+                    pane.getChildren().add(index, control);
+                }
+            }
+        }
+        replacements.clear();
+        replacementIndices.clear();
+        replacementParents.clear();
     }
 
     /**
