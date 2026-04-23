@@ -48,8 +48,8 @@ class SqliteProductRepositoryTest {
                 description TEXT,
                 category_id INTEGER,
                 tax_rate REAL,
-                sku TEXT,
-                barcode TEXT,
+                sku TEXT UNIQUE,
+                barcode TEXT UNIQUE,
                 mrp REAL,
                 cost_price REAL,
                 stock_alert_cap INTEGER DEFAULT 10,
@@ -119,6 +119,33 @@ class SqliteProductRepositoryTest {
         long id = repository.insertProduct(product);
 
         assertTrue(id > 0);
+    }
+
+    @Test
+    void insert_multipleProductsWithEmptyBarcode_fails() {
+        // First product with empty string barcode
+        Product p1 = new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", "", new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
+        repository.insertProduct(p1);
+
+        // Second product with empty string barcode
+        Product p2 = new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", "", new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
+        
+        // This fails at repository level because "" is a value
+        assertThrows(RuntimeException.class, () -> repository.insertProduct(p2));
+    }
+
+    @Test
+    void insert_multipleProductsWithNullBarcode_succeeds() {
+        // First product with null barcode
+        Product p1 = new Product(null, "P1", null, null, null, BigDecimal.ZERO, "S1", null, new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
+        repository.insertProduct(p1);
+
+        // Second product with null barcode
+        Product p2 = new Product(null, "P2", null, null, null, BigDecimal.ZERO, "S2", null, new BigDecimal("10"), new BigDecimal("5"), 10, ProductStatus.ACTIVE, null, 0, null, null, null);
+        
+        // This should succeed because SQLite allows multiple NULLs in UNIQUE column
+        long id2 = repository.insertProduct(p2);
+        assertTrue(id2 > 0);
     }
 
     @Test

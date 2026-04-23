@@ -79,6 +79,8 @@ public class ProductService {
                 throw new ValidationException("Product with Barcode " + command.barcode() + " already exists");
             }
 
+            String effectiveBarcode = (command.barcode() == null || command.barcode().isBlank()) ? null : command.barcode();
+
             Product product = new Product(
                     null,
                     command.name(),
@@ -87,7 +89,7 @@ public class ProductService {
                     null,
                     command.taxRate() != null ? command.taxRate() : java.math.BigDecimal.ZERO,
                     effectiveSku,
-                    command.barcode(),
+                    effectiveBarcode,
                     command.mrp(),
                     command.costPrice(),
                     command.stockAlertCap() != null ? command.stockAlertCap() : 10,
@@ -147,6 +149,8 @@ public class ProductService {
 
             String imagePath = command.newImagePath() != null ? command.newImagePath() : oldProduct.imagePath();
 
+            String effectiveBarcode = (command.barcode() == null || command.barcode().isBlank()) ? null : command.barcode();
+
             Product updatedProduct = new Product(
                     productId,
                     command.name() != null ? command.name() : oldProduct.name(),
@@ -155,7 +159,7 @@ public class ProductService {
                     null,
                     command.taxRate() != null ? command.taxRate() : oldProduct.taxRate(),
                     command.sku() != null ? command.sku() : oldProduct.sku(),
-                    command.barcode() != null ? command.barcode() : oldProduct.barcode(),
+                    effectiveBarcode,
                     command.mrp() != null ? command.mrp() : oldProduct.mrp(),
                     command.costPrice() != null ? command.costPrice() : oldProduct.costPrice(),
                     command.stockAlertCap() != null ? command.stockAlertCap() : oldProduct.stockAlertCap(),

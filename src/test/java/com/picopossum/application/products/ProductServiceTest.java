@@ -71,6 +71,23 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("Should create product successfully with empty barcode (sanitized to null)")
+    void createProduct_emptyBarcode_sanitized() {
+        ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
+                "iPhone", "Apple phone", 1L, "SKU1",
+                new BigDecimal("100"), new BigDecimal("80"), 10, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 0,
+                BigDecimal.ZERO, ""
+        );
+
+        when(productRepository.existsBySku("SKU1")).thenReturn(false);
+        when(productRepository.insertProduct(any(Product.class))).thenReturn(101L);
+
+        productService.createProduct(cmd);
+
+        verify(productRepository).insertProduct(argThat(p -> p.barcode() == null));
+    }
+
+    @Test
     @DisplayName("Should block duplicate SKU during creation")
     void createProduct_duplicateSku_fail() {
         ProductService.CreateProductCommand cmd = new ProductService.CreateProductCommand(
@@ -112,6 +129,25 @@ class ProductServiceTest {
         verify(productRepository).softDeleteProduct(1L);
         verify(storageService).delete("/path/image.jpg");
         verify(inventoryRepository).insertStockMovement(argThat(sm -> sm.quantityChange() == -10));
+    }
+
+    @Test
+    @DisplayName("Should update product successfully with empty barcode (sanitized to null)")
+    void updateProduct_emptyBarcode_sanitized() {
+        Product oldP = new Product(1L, "Widget", "Desc", 1L, null, BigDecimal.ZERO, "SKU1", "BAR1", 
+                new BigDecimal("10"), new BigDecimal("5"), 0, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 10, null, null, null);
+        
+        when(productRepository.findProductById(1L)).thenReturn(Optional.of(oldP));
+
+        ProductService.UpdateProductCommand cmd = new ProductService.UpdateProductCommand(
+                "Widget Updated", "Desc", 1L, "SKU1",
+                new BigDecimal("12"), new BigDecimal("6"), 0, com.picopossum.domain.model.ProductStatus.ACTIVE, null, 10, "manual",
+                BigDecimal.ZERO, ""
+        );
+
+        productService.updateProduct(1L, cmd);
+
+        verify(productRepository).updateProductById(eq(1L), argThat(p -> p.barcode() == null));
     }
 
     @Test
