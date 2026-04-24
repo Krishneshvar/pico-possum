@@ -161,27 +161,38 @@ public final class ReportsService {
             List<Map<String, Object>> breakdown;
             String key;
             java.util.function.Function<String, String> formatter;
-            
+            final int yearsAgo = i;
             switch (interval.toLowerCase()) {
                 case "weekly" -> {
                     breakdown = reportsRepository.getWeeklyBreakdown(s.toString(), e.toString(), null);
                     key = "week";
-                    formatter = w -> w; 
+                    formatter = w -> {
+                        String[] parts = w.split("-W");
+                        return parts.length > 1 ? "Week " + parts[1] : w;
+                    }; 
                 }
                 case "monthly" -> {
                     breakdown = reportsRepository.getMonthlyBreakdown(s.toString(), e.toString(), null);
                     key = "month";
-                    formatter = this::formatMonth;
+                    formatter = m -> {
+                        try {
+                            return LocalDate.parse(m + "-01").format(DateTimeFormatter.ofPattern("MMM"));
+                        } catch(Exception ex) { return m; }
+                    };
                 }
                 case "yearly" -> {
                     breakdown = reportsRepository.getYearlyBreakdown(s.toString(), e.toString(), null);
                     key = "year";
-                    formatter = y -> y;
+                    formatter = y -> "Year Total";
                 }
                 default -> { // daily
                     breakdown = reportsRepository.getDailyBreakdown(s.toString(), e.toString(), null);
                     key = "date";
-                    formatter = this::formatDate;
+                    formatter = d -> {
+                        try {
+                            return LocalDate.parse(d).plusYears(yearsAgo).format(DateTimeFormatter.ofPattern("MMM dd"));
+                        } catch(Exception ex) { return d; }
+                    };
                 }
             }
             

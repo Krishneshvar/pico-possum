@@ -139,3 +139,28 @@
 /* Comparison Series Colors */
 .comparison-current-series .chart-bar { -fx-bar-fill: -color-primary; }
 .comparison-previous-series .chart-bar { -fx-bar-fill: -color-border; }
+
+/* Floating Tooltip Card Styling */
+.chart-tooltip-card {
+    -fx-background-color: -color-surface;
+    -fx-padding: 10 14;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 15, 0, 0, 8);
+}
+
+.chart-tooltip-title {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-transform: uppercase;
+}
+
+.chart-tooltip-value {
+    -fx-text-fill: -color-primary;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+}
+

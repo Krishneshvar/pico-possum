@@ -86,7 +86,11 @@ public class SalesAnalyticsController implements Disposable {
     private void setupTooltip() {
         tooltip = new Popup();
         VBox card = new VBox(4);
-        card.getStyleClass().add("chart-tooltip-card");
+        card.getStyleClass().addAll("root", "chart-tooltip-card");
+        
+        // Add stylesheets explicitly as Popup content doesn't inherit them from the main scene
+        card.getStylesheets().add(getClass().getResource("/styles/tokens.css").toExternalForm());
+        card.getStylesheets().add(getClass().getResource("/styles/views/reports.css").toExternalForm());
         
         tooltipTitle = new Label();
         tooltipTitle.getStyleClass().add("chart-tooltip-title");

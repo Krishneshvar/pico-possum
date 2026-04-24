@@ -16,9 +16,13 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import org.kordamp.ikonli.javafx.FontIcon;
 import com.picopossum.application.reports.dto.MultiYearComparisonReport;
-import java.util.ArrayList;
+import javafx.scene.layout.VBox;
+import javafx.stage.Popup;
+import javafx.scene.Node;
+import com.picopossum.ui.common.lifecycle.Disposable;
 import javafx.application.Platform;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import java.math.BigDecimal;
@@ -26,7 +30,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
-public class BusinessInsightsController {
+public class BusinessInsightsController implements Disposable {
 
     @FXML private DatePicker currentStartDate;
     @FXML private DatePicker currentEndDate;
@@ -55,6 +59,11 @@ public class BusinessInsightsController {
     @FXML private ComboBox<String> periodIntervalCombo;
 
     private final ReportsService reportsService;
+    
+    // Tooltip elements
+    private Popup tooltip;
+    private Label tooltipTitle;
+    private Label tooltipValue;
 
     public BusinessInsightsController(ReportsService reportsService) {
         this.reportsService = reportsService;
@@ -65,6 +74,7 @@ public class BusinessInsightsController {
         setupComparisonTypes();
         setupDefaultDates();
         setupMultiYearControls();
+        setupTooltip();
         loadInsights();
     }
 
@@ -75,6 +85,26 @@ public class BusinessInsightsController {
         periodIntervalCombo.setItems(FXCollections.observableArrayList("Daily", "Weekly", "Monthly", "Yearly"));
         periodIntervalCombo.setValue("Weekly");
         periodIntervalCombo.setOnAction(e -> loadMultiYearData());
+    }
+
+    private void setupTooltip() {
+        tooltip = new Popup();
+        VBox card = new VBox(4);
+        card.getStyleClass().addAll("root", "chart-tooltip-card");
+        
+        // Add stylesheets explicitly as Popup content doesn't inherit them from the main scene
+        card.getStylesheets().add(getClass().getResource("/styles/tokens.css").toExternalForm());
+        card.getStylesheets().add(getClass().getResource("/styles/views/insights.css").toExternalForm());
+        
+        tooltipTitle = new Label();
+        tooltipTitle.getStyleClass().add("chart-tooltip-title");
+        
+        tooltipValue = new Label();
+        tooltipValue.getStyleClass().add("chart-tooltip-value");
+        
+        card.getChildren().addAll(tooltipTitle, tooltipValue);
+        tooltip.getContent().add(card);
+        tooltip.setAutoHide(false);
     }
 
     private void setupComparisonTypes() {
@@ -295,8 +325,17 @@ public class BusinessInsightsController {
     private void updateMultiYearChart(MultiYearComparisonReport report) {
         multiYearComparisonChart.getData().clear();
         
+        // Count how many series were actually added to keep color indexing consistent
+        int addedSeriesCount = 0;
+        
         for (int i = 0; i < report.series().size(); i++) {
             MultiYearComparisonReport.YearSeries yearSeries = report.series().get(i);
+            
+            // Skip years with no data points to avoid empty legend items
+            if (yearSeries.dataPoints().isEmpty()) {
+                continue;
+            }
+            
             XYChart.Series<String, Number> series = new XYChart.Series<>();
             series.setName(yearSeries.yearLabel());
             
@@ -306,21 +345,58 @@ public class BusinessInsightsController {
             
             multiYearComparisonChart.getData().add(series);
             
-            // Apply distinct colors
+            // Apply distinct stroke color to the line
+            // Use the original index i to keep the color tied to the specific year/offset
             final String color = CHART_COLORS[i % CHART_COLORS.length];
             if (series.getNode() != null) {
                 series.getNode().setStyle("-fx-stroke: " + color + "; -fx-stroke-width: 2.5px;");
             }
             
-            // Apply color to legend symbols if they exist yet
+            // Capture label and color for the runLater block
+            final String seriesLabel = yearSeries.yearLabel();
+            final String seriesColor = color;
+            
+            // Apply color to legend symbols and data points
             Platform.runLater(() -> {
-                for (javafx.scene.Node n : multiYearComparisonChart.lookupAll(".chart-legend-item-symbol")) {
-                    // This is a bit hacky in JavaFX but works for styling legend
-                    if (n.getParent() instanceof Label label && label.getText().equals(yearSeries.yearLabel())) {
-                        n.setStyle("-fx-background-color: " + color + ";");
+                // Style data points (dots)
+                for (XYChart.Data<String, Number> data : series.getData()) {
+                    Node node = data.getNode();
+                    if (node != null) {
+                        node.setStyle("-fx-background-color: " + seriesColor + ", white; -fx-background-insets: 0, 2;");
+                        
+                        node.setOnMouseEntered(e -> {
+                            tooltipTitle.setText(seriesLabel + " - " + data.getXValue());
+                            tooltipValue.setText(CurrencyUtil.format(new java.math.BigDecimal(data.getYValue().toString())));
+                            tooltipValue.setStyle("-fx-text-fill: " + seriesColor + ";");
+                            tooltip.show(node, e.getScreenX() + 15, e.getScreenY() - 40);
+                            node.setScaleX(1.5); node.setScaleY(1.5);
+                        });
+                        node.setOnMouseExited(e -> {
+                            tooltip.hide();
+                            node.setScaleX(1.0); node.setScaleY(1.0);
+                        });
+                    }
+                }
+
+                // Style legend symbols
+                for (Node n : multiYearComparisonChart.lookupAll(".chart-legend-item")) {
+                    if (n instanceof Label label && label.getText().equals(seriesLabel)) {
+                        Node symbol = label.getGraphic();
+                        if (symbol != null) {
+                            symbol.setStyle("-fx-background-color: " + seriesColor + ", white; -fx-background-insets: 0, 2;");
+                        }
                     }
                 }
             });
+            
+            addedSeriesCount++;
+        }
+    }
+
+    @Override
+    public void dispose() {
+        if (tooltip != null) {
+            tooltip.hide();
         }
     }
 }
