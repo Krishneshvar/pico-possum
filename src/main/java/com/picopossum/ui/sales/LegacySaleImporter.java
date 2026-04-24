@@ -190,8 +190,9 @@ public class LegacySaleImporter {
         }
         char prefix = Character.toUpperCase(billNumber.trim().charAt(0));
         return switch (prefix) {
-            case 'C', 'X' -> "Cash";
-            case 'K' -> "Debit Card";
+            case 'C' -> "Cash";
+            case 'X' -> "Gift Card";
+            case 'K' -> "Card";
             default -> "Legacy Import";
         };
     }

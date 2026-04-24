@@ -86,7 +86,8 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
 
         TableColumn<Product, String> priceCol = new TableColumn<>("Price");
-        priceCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().mrp() != null ? com.picopossum.shared.util.CurrencyUtil.format(cellData.getValue().mrp()) : "-"));
+        priceCol.setCellValueFactory(cellData -> new SimpleStringProperty(
+                com.picopossum.shared.util.CurrencyUtil.format(cellData.getValue().mrp())));
 
         TableColumn<Product, String> stockCol = new TableColumn<>("Stock");
         stockCol.setPrefWidth(120);
@@ -259,6 +260,10 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     @FXML
     protected void handleRefresh() {
+        // Refresh categories list in filter
+        List<Category> categories = categoryService.getAllCategories();
+        filterBar.updateMultiSelectFilterItems("categories", categories);
+
         loadData();
         com.picopossum.ui.common.controls.NotificationService.success("Products refreshed");
     }
@@ -341,7 +346,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
         @Override
         protected void onImportComplete() {
-            loadData();
+            handleRefresh();
         }
 
         private Long resolveOrCreateCategoryId(String categoryName, Map<String, Long> categoryMap) {

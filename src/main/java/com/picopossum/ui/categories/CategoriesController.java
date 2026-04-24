@@ -77,6 +77,7 @@ public class CategoriesController extends AbstractCrudController<Category, Void>
         dataTable.setEmptySubtitle("Add your first category to get started.");
         
         idCol = new TableColumn<>("ID");
+        idCol.setSortable(false);
         nameCol = new TableColumn<>("Name");
         parentCol = new TableColumn<>("Parent Category");
         actionsCol = new TableColumn<>("Actions");

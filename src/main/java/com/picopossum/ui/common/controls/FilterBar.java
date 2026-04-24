@@ -129,6 +129,14 @@ public class FilterBar extends VBox {
         return multiSelect;
     }
 
+    @SuppressWarnings("unchecked")
+    public <T> void updateMultiSelectFilterItems(String key, java.util.List<T> items) {
+        MultiSelectFilter<T> multiSelect = (MultiSelectFilter<T>) multiSelectFilters.get(key);
+        if (multiSelect != null) {
+            multiSelect.setItems(items);
+        }
+    }
+
     public DatePicker addDateFilter(String key, String prompt) {
         DatePicker picker = new DatePicker();
         picker.setPromptText(prompt);

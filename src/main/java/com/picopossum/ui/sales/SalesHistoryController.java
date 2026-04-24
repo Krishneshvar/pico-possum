@@ -47,7 +47,7 @@ public class SalesHistoryController {
     private final WorkspaceManager workspaceManager;
     private final ObservableList<Sale> salesList = FXCollections.observableArrayList();
 
-    private int currentPage = 1;
+    private int currentPage = 0;
     private int pageSize = 15;
     private String currentSearch = "";
     private List<String> currentStatus = null;
