@@ -12,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableColumn;
 import com.picopossum.ui.common.dialogs.DialogStyler;
 import com.picopossum.infrastructure.system.AppExecutor;
 import org.slf4j.Logger;
@@ -49,6 +50,13 @@ public abstract class AbstractCrudController<T, F> {
         initUIComponents();
         setupTable();
         setupFilters();
+        
+        if (dataTable != null && dataTable.getTableView() != null) {
+            dataTable.getTableView().setOnSort(event -> {
+                loadData();
+            });
+        }
+        
         loadData();
     }
 
@@ -227,5 +235,35 @@ public abstract class AbstractCrudController<T, F> {
      */
     protected String getSearchOrNull() {
         return hasSearch() ? currentSearch : null;
+    }
+
+    /**
+     * Get current sort column ID or name
+     */
+    protected String getSortBy() {
+        if (dataTable != null && dataTable.getTableView() != null) {
+            List<TableColumn<T, ?>> sortOrder = dataTable.getTableView().getSortOrder();
+            if (sortOrder != null && !sortOrder.isEmpty()) {
+                TableColumn<T, ?> col = sortOrder.get(0);
+                String id = col.getId();
+                if (id != null && !id.isEmpty()) return id;
+                return col.getText().toLowerCase().replace(" ", "_");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get current sort direction
+     */
+    protected String getSortDirection() {
+        if (dataTable != null && dataTable.getTableView() != null) {
+            List<TableColumn<T, ?>> sortOrder = dataTable.getTableView().getSortOrder();
+            if (sortOrder != null && !sortOrder.isEmpty()) {
+                TableColumn<T, ?> col = sortOrder.get(0);
+                return col.getSortType() == TableColumn.SortType.DESCENDING ? "DESC" : "ASC";
+            }
+        }
+        return "ASC";
     }
 }

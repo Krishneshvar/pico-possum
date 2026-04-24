@@ -25,8 +25,10 @@ import java.util.Map;
 
 public class ProductsController extends AbstractCrudController<Product, ProductFilter> {
 
-    @FXML private Button addButton;
-    @FXML private Button refreshButton;
+    @FXML
+    private Button addButton;
+    @FXML
+    private Button refreshButton;
 
     private final ProductService productService;
     private final CategoryService categoryService;
@@ -39,9 +41,9 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     private BigDecimal currentMaxPrice = null;
 
     public ProductsController(ProductService productService,
-                              CategoryService categoryService,
-                              WorkspaceManager workspaceManager,
-                              AppExecutor executor) {
+            CategoryService categoryService,
+            WorkspaceManager workspaceManager,
+            AppExecutor executor) {
         super(workspaceManager, executor);
         this.productService = productService;
         this.categoryService = categoryService;
@@ -75,26 +77,41 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
     @Override
     protected void setupTable() {
-        dataTable.getTableView().setPlaceholder(new Label("No products found. Adjust filters or click + Add Product to create one."));
+        dataTable.getTableView()
+                .setPlaceholder(new Label("No products found. Adjust filters or click + Add Product to create one."));
         dataTable.setEmptyMessage("No products found");
         dataTable.setEmptySubtitle("Try changing filters or create your first product.");
 
         TableColumn<Product, String> skuCol = new TableColumn<>("SKU");
+        skuCol.setId("sku");
         skuCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().sku()));
 
         TableColumn<Product, String> nameCol = new TableColumn<>("Name");
+        nameCol.setId("name");
         nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().name()));
 
-        TableColumn<Product, String> priceCol = new TableColumn<>("Price");
-        priceCol.setCellValueFactory(cellData -> new SimpleStringProperty(
-                com.picopossum.shared.util.CurrencyUtil.format(cellData.getValue().mrp())));
+        TableColumn<Product, BigDecimal> priceCol = new TableColumn<>("Price");
+        priceCol.setId("price");
+        priceCol.setCellValueFactory(cellData -> new javafx.beans.property.SimpleObjectProperty<>(cellData.getValue().mrp()));
+        priceCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(BigDecimal item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(com.picopossum.shared.util.CurrencyUtil.format(item));
+                }
+            }
+        });
 
-        TableColumn<Product, String> stockCol = new TableColumn<>("Stock");
+        TableColumn<Product, Integer> stockCol = new TableColumn<>("Stock");
+        stockCol.setId("stock");
         stockCol.setPrefWidth(120);
-        stockCol.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().stock())));
+        stockCol.setCellValueFactory(cellData -> new javafx.beans.property.SimpleObjectProperty<>(cellData.getValue().stock()));
         stockCol.setCellFactory(col -> new TableCell<>() {
             @Override
-            protected void updateItem(String item, boolean empty) {
+            protected void updateItem(Integer item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setGraphic(null);
@@ -102,10 +119,11 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
                 } else {
                     Product p = getTableRow().getItem();
                     if (p != null) {
-                        setGraphic(com.picopossum.ui.common.components.BadgeFactory.createStockBadge(p.stock(), p.stockAlertCap()));
+                        setGraphic(com.picopossum.ui.common.components.BadgeFactory.createStockBadge(p.stock(),
+                                p.stockAlertCap()));
                         setText(null);
                     } else {
-                        setText(item);
+                        setText(String.valueOf(item));
                         setGraphic(null);
                     }
                 }
@@ -113,11 +131,13 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         });
 
         TableColumn<Product, String> categoryCol = new TableColumn<>("Category");
+        categoryCol.setId("category_name");
         categoryCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().categoryName()));
 
         TableColumn<Product, String> statusCol = new TableColumn<>("Status");
         statusCol.setSortable(false);
-        statusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status().name().toLowerCase()));
+        statusCol.setCellValueFactory(
+                cellData -> new SimpleStringProperty(cellData.getValue().status().name().toLowerCase()));
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String status, boolean empty) {
@@ -140,14 +160,14 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     protected void setupFilters() {
         List<Category> categories = categoryService.getAllCategories();
 
-        filterBar.addMultiSelectFilter("status", "Status", List.of("active", "inactive", "discontinued"), 
-            item -> item.substring(0, 1).toUpperCase() + item.substring(1), false);
-        
+        filterBar.addMultiSelectFilter("status", "Status", List.of("active", "inactive", "discontinued"),
+                item -> item.substring(0, 1).toUpperCase() + item.substring(1), false);
+
         filterBar.addMultiSelectFilter("stockStatus", "Stock Status", List.of("in-stock", "low-stock", "out-of-stock"),
-            item -> com.picopossum.shared.util.TextFormatter.toTitleCase(item.replace("-", " ")), false);
+                item -> com.picopossum.shared.util.TextFormatter.toTitleCase(item.replace("-", " ")), false);
 
         filterBar.addMultiSelectFilter("categories", "Categories", categories, Category::name);
-        
+
         filterBar.addTextFilter("minPrice", "Min Price");
         filterBar.addTextFilter("maxPrice", "Max Price");
 
@@ -158,7 +178,8 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
             @SuppressWarnings("unchecked")
             List<String> stockStatusFilter = (List<String>) filters.get("stockStatus");
-            currentStockStatusFilters = stockStatusFilter != null ? stockStatusFilter : java.util.Collections.emptyList();
+            currentStockStatusFilters = stockStatusFilter != null ? stockStatusFilter
+                    : java.util.Collections.emptyList();
 
             @SuppressWarnings("unchecked")
             List<Category> cats = (List<Category>) filters.get("categories");
@@ -176,8 +197,10 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     }
 
     private BigDecimal parseBigDecimal(Object value) {
-        if (value == null) return null;
-        if (value instanceof BigDecimal) return (BigDecimal) value;
+        if (value == null)
+            return null;
+        if (value instanceof BigDecimal)
+            return (BigDecimal) value;
         try {
             String s = value.toString().replaceAll("[^0-9.\\-]", "");
             return s.isEmpty() ? null : new BigDecimal(s);
@@ -186,21 +209,19 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         }
     }
 
-
     @Override
     protected ProductFilter buildFilter() {
         return new ProductFilter(
-            getSearchOrNull(),
-            currentStatusFilters.isEmpty() ? null : currentStatusFilters,
-            currentCategoryFilters.isEmpty() ? null : currentCategoryFilters,
-            currentStockStatusFilters.isEmpty() ? null : currentStockStatusFilters,
-            currentMinPrice,
-            currentMaxPrice,
-            getCurrentPage(),
-            getPageSize(),
-            "name",
-            "ASC"
-        );
+                getSearchOrNull(),
+                currentStatusFilters.isEmpty() ? null : currentStatusFilters,
+                currentCategoryFilters.isEmpty() ? null : currentCategoryFilters,
+                currentStockStatusFilters.isEmpty() ? null : currentStockStatusFilters,
+                currentMinPrice,
+                currentMaxPrice,
+                getCurrentPage(),
+                getPageSize(),
+                getSortBy() != null ? getSortBy() : "name",
+                getSortDirection());
     }
 
     @Override
@@ -225,17 +246,17 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     @Override
     protected List<MenuItem> buildActionMenu(Product product) {
         return com.picopossum.ui.common.components.MenuBuilder.create()
-            .addViewAction("View Details", () -> workspaceManager.openWindow(
-                "View Product: " + product.name(), 
-                "/fxml/products/product-form-view.fxml", 
-                Map.of("productId", product.id(), "mode", "view")))
-            .addEditAction("Edit Product", () -> workspaceManager.openWindow(
-                "Edit Product: " + product.name(), 
-                "/fxml/products/product-form-view.fxml", 
-                Map.of("productId", product.id(), "mode", "edit")))
-            .addSeparator()
-            .addDeleteAction("Delete Product", () -> handleDelete(product))
-            .build();
+                .addViewAction("View Details", () -> workspaceManager.openWindow(
+                        "View Product: " + product.name(),
+                        "/fxml/products/product-form-view.fxml",
+                        Map.of("productId", product.id(), "mode", "view")))
+                .addEditAction("Edit Product", () -> workspaceManager.openWindow(
+                        "Edit Product: " + product.name(),
+                        "/fxml/products/product-form-view.fxml",
+                        Map.of("productId", product.id(), "mode", "edit")))
+                .addSeparator()
+                .addDeleteAction("Delete Product", () -> handleDelete(product))
+                .build();
     }
 
     @Override
@@ -275,7 +296,7 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
         @Override
         protected String[] getRequiredHeaders() {
-            return new String[]{"Product Name", "Name"};
+            return new String[] { "Product Name", "Name" };
         }
 
         @Override
@@ -287,31 +308,26 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
 
             String sku = CsvImportUtil.emptyToNull(CsvImportUtil.getValue(row, headers, "Product Code", "SKU"));
             String categoryName = CsvImportUtil.emptyToNull(CsvImportUtil.getValue(
-                row, headers, "Division Name", "Category Name", "Category"
-            ));
+                    row, headers, "Division Name", "Category Name", "Category"));
 
             Integer stockAlert = CsvImportUtil.parseInteger(
-                CsvImportUtil.getValue(row, headers, "Minimum Stock Level", "Stock Alert", "Stock Alert Cap"), 10
-            );
+                    CsvImportUtil.getValue(row, headers, "Minimum Stock Level", "Stock Alert", "Stock Alert Cap"), 10);
 
             BigDecimal price = CsvImportUtil.parseDecimal(
-                CsvImportUtil.getValue(row, headers, "MRP", "MRP/Price", "Price"), BigDecimal.ZERO
-            );
+                    CsvImportUtil.getValue(row, headers, "MRP", "MRP/Price", "Price"), BigDecimal.ZERO);
 
             BigDecimal costPrice = CsvImportUtil.parseDecimal(
-                CsvImportUtil.getValue(row, headers, "Avg Item Cost", "Cost Price", "Cost"), BigDecimal.ZERO
-            );
+                    CsvImportUtil.getValue(row, headers, "Avg Item Cost", "Cost Price", "Cost"), BigDecimal.ZERO);
 
             Integer initialStock = CsvImportUtil.parseInteger(
-                CsvImportUtil.getValue(row, headers, "Opening Stock", "Current Stock", "Stock"), 0
-            );
+                    CsvImportUtil.getValue(row, headers, "Opening Stock", "Current Stock", "Stock"), 0);
 
             BigDecimal taxRate = CsvImportUtil.parseDecimal(
-                CsvImportUtil.getValue(row, headers, "Tax Rate", "Tax%"), BigDecimal.ZERO
-            );
+                    CsvImportUtil.getValue(row, headers, "Tax Rate", "Tax%"), BigDecimal.ZERO);
             String barcode = CsvImportUtil.emptyToNull(CsvImportUtil.getValue(row, headers, "Barcode", "EAN"));
 
-            return new ProductImportRow(name, sku, categoryName, stockAlert, price, costPrice, initialStock, taxRate, barcode);
+            return new ProductImportRow(name, sku, categoryName, stockAlert, price, costPrice, initialStock, taxRate,
+                    barcode);
         }
 
         @Override
@@ -325,12 +341,10 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
             Long categoryId = resolveOrCreateCategoryId(record.categoryName(), categoryMap);
 
             productService.createProduct(
-                new ProductService.CreateProductCommand(
-                    record.name(), "", categoryId, record.sku(),
-                    record.price(), record.costPrice(), record.stockAlert(), ProductStatus.ACTIVE,
-                    null, record.initialStock(), record.taxRate(), record.barcode()
-                )
-            );
+                    new ProductService.CreateProductCommand(
+                            record.name(), "", categoryId, record.sku(),
+                            record.price(), record.costPrice(), record.stockAlert(), ProductStatus.ACTIVE,
+                            null, record.initialStock(), record.taxRate(), record.barcode()));
             return null;
         }
 
@@ -350,11 +364,13 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
         }
 
         private Long resolveOrCreateCategoryId(String categoryName, Map<String, Long> categoryMap) {
-            if (categoryName == null || categoryName.isBlank()) return null;
+            if (categoryName == null || categoryName.isBlank())
+                return null;
 
             String key = categoryName.trim().toLowerCase(Locale.ROOT);
             Long existingId = categoryMap.get(key);
-            if (existingId != null) return existingId;
+            if (existingId != null)
+                return existingId;
 
             Category created = categoryService.createCategory(categoryName.trim(), null);
             categoryMap.put(key, created.id());
@@ -363,8 +379,8 @@ public class ProductsController extends AbstractCrudController<Product, ProductF
     }
 
     private record ProductImportRow(
-        String name, String sku, String categoryName,
-        Integer stockAlert, BigDecimal price, BigDecimal costPrice,
-        Integer initialStock, BigDecimal taxRate, String barcode
-    ) {}
+            String name, String sku, String categoryName,
+            Integer stockAlert, BigDecimal price, BigDecimal costPrice,
+            Integer initialStock, BigDecimal taxRate, String barcode) {
+    }
 }

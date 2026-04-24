@@ -22,7 +22,8 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         super(connectionProvider);
     }
 
-    public SqliteProductRepository(ConnectionProvider connectionProvider, com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
+    public SqliteProductRepository(ConnectionProvider connectionProvider,
+            com.picopossum.infrastructure.monitoring.PerformanceMonitor performanceMonitor) {
         super(connectionProvider, performanceMonitor);
     }
 
@@ -30,9 +31,9 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public long insertProduct(Product product) {
         return executeInsert(
                 """
-                INSERT INTO products (name, description, category_id, tax_rate, sku, barcode, mrp, cost_price, stock_alert_cap, status, image_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+                        INSERT INTO products (name, description, category_id, tax_rate, sku, barcode, mrp, cost_price, stock_alert_cap, status, image_path)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
                 product.name(),
                 product.description(),
                 product.categoryId(),
@@ -42,30 +43,29 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
                 product.mrp(),
                 product.costPrice(),
                 product.stockAlertCap() == null ? 10 : product.stockAlertCap(),
-                product.status() == null ? com.picopossum.domain.model.ProductStatus.ACTIVE.toString() : product.status().toString(),
-                product.imagePath()
-        );
+                product.status() == null ? com.picopossum.domain.model.ProductStatus.ACTIVE.toString()
+                        : product.status().toString(),
+                product.imagePath());
     }
 
     @Override
     public Optional<Product> findProductById(long id) {
         return queryOne(
                 """
-                SELECT
-                  p.id, p.name, p.description, p.category_id, c.name AS category_name,
-                  p.tax_rate,
-                  p.sku, p.barcode, p.mrp, p.cost_price, p.stock_alert_cap,
-                  p.status, p.image_path,
-                  COALESCE(sc.current_stock, 0) AS stock,
-                  p.created_at, p.updated_at, p.deleted_at
-                FROM products p
-                LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
-                WHERE p.id = ? AND p.deleted_at IS NULL
-                """,
+                        SELECT
+                          p.id, p.name, p.description, p.category_id, c.name AS category_name,
+                          p.tax_rate,
+                          p.sku, p.barcode, p.mrp, p.cost_price, p.stock_alert_cap,
+                          p.status, p.image_path,
+                          COALESCE(sc.current_stock, 0) AS stock,
+                          p.created_at, p.updated_at, p.deleted_at
+                        FROM products p
+                        LEFT JOIN categories c ON p.category_id = c.id
+                        LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+                        WHERE p.id = ? AND p.deleted_at IS NULL
+                        """,
                 productMapper,
-                id
-        );
+                id);
     }
 
     @Override
@@ -77,17 +77,17 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public int updateProductById(long productId, Product product) {
         UpdateBuilder builder = new UpdateBuilder("products");
         builder.set("name", product.name())
-               .set("description", product.description())
-               .set("category_id", product.categoryId(), true)
-               .set("tax_rate", product.taxRate())
-               .set("sku", product.sku())
-               .set("barcode", product.barcode())
-               .set("mrp", product.mrp())
-               .set("cost_price", product.costPrice())
-               .set("stock_alert_cap", product.stockAlertCap())
-               .set("status", product.status() != null ? product.status().toString() : null)
-               .set("image_path", product.imagePath())
-               .where("id = ?", productId);
+                .set("description", product.description())
+                .set("category_id", product.categoryId(), true)
+                .set("tax_rate", product.taxRate())
+                .set("sku", product.sku())
+                .set("barcode", product.barcode())
+                .set("mrp", product.mrp())
+                .set("cost_price", product.costPrice())
+                .set("stock_alert_cap", product.stockAlertCap())
+                .set("status", product.status() != null ? product.status().toString() : null)
+                .set("image_path", product.imagePath())
+                .where("id = ?", productId);
 
         if (!builder.hasFields()) {
             return 0;
@@ -121,16 +121,16 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         }
 
         String baseSql = """
-            SELECT 
-                p.id, p.name, p.description, p.category_id, c.name AS category_name, 
-                p.tax_rate,
-                p.sku, p.barcode, p.mrp, p.cost_price, 
-                p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
-                COALESCE(sc.current_stock, 0) AS stock
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
-            """ + where.build();
+                SELECT
+                    p.id, p.name, p.description, p.category_id, c.name AS category_name,
+                    p.tax_rate,
+                    p.sku, p.barcode, p.mrp, p.cost_price,
+                    p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
+                    COALESCE(sc.current_stock, 0) AS stock
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+                """ + where.build();
 
         // Wrap for stock filtering
         String wrappedSql = "SELECT * FROM (" + baseSql + ") AS t";
@@ -145,10 +145,10 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
             }
         }
         String stockFilterMatch = stockJoiner.length() > 0 ? " WHERE " + stockJoiner.toString() : "";
-        
+
         String countSql = "SELECT COUNT(*) FROM (" + wrappedSql + stockFilterMatch + ")";
         int total = queryOne(countSql, rs -> rs.getInt(1), where.getParams().toArray()).orElse(0);
-        
+
         int page = Math.max(1, filter.currentPage() + 1);
         int limit = Math.max(1, filter.itemsPerPage());
         int offset = (page - 1) * limit;
@@ -161,32 +161,33 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         };
         String sortDir = "DESC".equalsIgnoreCase(filter.sortOrder()) ? "DESC" : "ASC";
 
-        String finalQuerySql = wrappedSql + stockFilterMatch + " ORDER BY " + sortCol + " " + sortDir + " LIMIT ? OFFSET ?";
+        String finalQuerySql = wrappedSql + stockFilterMatch + " ORDER BY " + sortCol + " " + sortDir
+                + " LIMIT ? OFFSET ?";
         List<Object> queryParams = new ArrayList<>(where.getParams());
         queryParams.add(limit);
         queryParams.add(offset);
-        
+
         List<Product> items = queryList(finalQuerySql, productMapper, queryParams.toArray());
         int totalPages = (int) Math.ceil((double) total / limit);
-        
+
         return new PagedResult<>(items, total, totalPages, page, limit);
     }
 
     @Override
     public List<Product> findAllActive() {
         String sql = """
-            SELECT 
-                p.id, p.name, p.description, p.category_id, c.name AS category_name, 
-                p.tax_rate,
-                p.sku, p.barcode, p.mrp, p.cost_price, 
-                p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
-                COALESCE(sc.current_stock, 0) AS stock
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
-            WHERE p.deleted_at IS NULL AND p.status = 'active'
-            ORDER BY p.name ASC
-            """;
+                SELECT
+                    p.id, p.name, p.description, p.category_id, c.name AS category_name,
+                    p.tax_rate,
+                    p.sku, p.barcode, p.mrp, p.cost_price,
+                    p.stock_alert_cap, p.status, p.image_path, p.created_at, p.updated_at, p.deleted_at,
+                    COALESCE(sc.current_stock, 0) AS stock
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+                WHERE p.deleted_at IS NULL AND p.status = 'active'
+                ORDER BY p.name ASC
+                """;
         return queryList(sql, productMapper);
     }
 
@@ -194,50 +195,57 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
     public Map<String, Object> getProductStats() {
         return queryOne(
                 """
-                SELECT
-                  COUNT(*) AS totalProducts,
-                  COUNT(CASE WHEN p.status = 'active' THEN 1 END) AS activeProducts,
-                  COUNT(CASE WHEN COALESCE(sc.current_stock, 0) <= COALESCE(p.stock_alert_cap, 10) THEN 1 END) AS lowStockProducts
-                FROM products p
-                LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
-                WHERE p.deleted_at IS NULL
-                """,
+                        SELECT
+                          COUNT(*) AS totalProducts,
+                          COUNT(CASE WHEN p.status = 'active' THEN 1 END) AS activeProducts,
+                          COUNT(CASE WHEN COALESCE(sc.current_stock, 0) <= COALESCE(p.stock_alert_cap, 10) THEN 1 END) AS lowStockProducts
+                        FROM products p
+                        LEFT JOIN product_stock_cache sc ON p.id = sc.product_id
+                        WHERE p.deleted_at IS NULL
+                        """,
                 rs -> {
                     java.util.Map<String, Object> map = new java.util.HashMap<>();
                     map.put("totalProducts", rs.getInt("totalProducts"));
                     map.put("activeProducts", rs.getInt("activeProducts"));
                     map.put("lowStockProducts", rs.getInt("lowStockProducts"));
                     return map;
-                }
-        ).orElse(Map.of("totalProducts", 0, "activeProducts", 0, "lowStockProducts", 0));
+                }).orElse(Map.of("totalProducts", 0, "activeProducts", 0, "lowStockProducts", 0));
     }
 
     @Override
     public boolean existsBySku(String sku) {
-        if (sku == null || sku.isBlank()) return false;
+        if (sku == null || sku.isBlank())
+            return false;
         return queryOne("SELECT 1 FROM products WHERE sku = ? AND deleted_at IS NULL", rs -> true, sku).orElse(false);
     }
 
     @Override
     public boolean existsBySkuExcludeId(String sku, long id) {
-        if (sku == null || sku.isBlank()) return false;
-        return queryOne("SELECT 1 FROM products WHERE sku = ? AND id != ? AND deleted_at IS NULL", rs -> true, sku, id).orElse(false);
+        if (sku == null || sku.isBlank())
+            return false;
+        return queryOne("SELECT 1 FROM products WHERE sku = ? AND id != ? AND deleted_at IS NULL", rs -> true, sku, id)
+                .orElse(false);
     }
 
     @Override
     public boolean existsByBarcode(String barcode) {
-        if (barcode == null || barcode.isBlank()) return false;
-        return queryOne("SELECT 1 FROM products WHERE barcode = ? AND deleted_at IS NULL", rs -> true, barcode).orElse(false);
+        if (barcode == null || barcode.isBlank())
+            return false;
+        return queryOne("SELECT 1 FROM products WHERE barcode = ? AND deleted_at IS NULL", rs -> true, barcode)
+                .orElse(false);
     }
 
     @Override
     public boolean existsByBarcodeExcludeId(String barcode, long id) {
-        if (barcode == null || barcode.isBlank()) return false;
-        return queryOne("SELECT 1 FROM products WHERE barcode = ? AND id != ? AND deleted_at IS NULL", rs -> true, barcode, id).orElse(false);
+        if (barcode == null || barcode.isBlank())
+            return false;
+        return queryOne("SELECT 1 FROM products WHERE barcode = ? AND id != ? AND deleted_at IS NULL", rs -> true,
+                barcode, id).orElse(false);
     }
 
     @Override
     public int getNextGeneratedNumericSku() {
-        return queryOne("SELECT MAX(CAST(sku AS INTEGER)) AS max_sku FROM products WHERE sku GLOB '[0-9]*'", rs -> rs.getInt("max_sku")).orElse(0) + 1;
+        return queryOne("SELECT MAX(CAST(sku AS INTEGER)) AS max_sku FROM products WHERE sku GLOB '[0-9]*'",
+                rs -> rs.getInt("max_sku")).orElse(0) + 1;
     }
 }
