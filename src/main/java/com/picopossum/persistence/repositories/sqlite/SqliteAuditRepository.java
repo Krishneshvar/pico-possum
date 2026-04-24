@@ -85,7 +85,7 @@ public final class SqliteAuditRepository extends BaseSqliteRepository implements
         String sortBy = filter.sortBy() == null ? "created_at" : filter.sortBy();
         String sortOrder = "ASC".equalsIgnoreCase(filter.sortOrder()) ? "ASC" : "DESC";
 
-        int page = Math.max(1, filter.currentPage() + 1);
+        int page = Math.max(1, filter.currentPage());
         int limit = Math.max(1, filter.itemsPerPage());
         int offset = (page - 1) * limit;
 

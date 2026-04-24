@@ -149,7 +149,7 @@ public final class SqliteProductRepository extends BaseSqliteRepository implemen
         String countSql = "SELECT COUNT(*) FROM (" + wrappedSql + stockFilterMatch + ")";
         int total = queryOne(countSql, rs -> rs.getInt(1), where.getParams().toArray()).orElse(0);
 
-        int page = Math.max(1, filter.currentPage() + 1);
+        int page = Math.max(1, filter.currentPage());
         int limit = Math.max(1, filter.itemsPerPage());
         int offset = (page - 1) * limit;
 

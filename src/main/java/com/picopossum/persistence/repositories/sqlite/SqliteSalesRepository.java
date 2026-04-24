@@ -216,7 +216,7 @@ public final class SqliteSalesRepository extends BaseSqliteRepository implements
         String sortExpr = "customer_name".equals(sortBy) ? "us.customer_name" : "us." + sortBy;
         String sortOrder = "ASC".equalsIgnoreCase(filter.sortOrder()) ? "ASC" : "DESC";
 
-        int page = Math.max(1, filter.currentPage() + 1);
+        int page = Math.max(1, filter.currentPage());
         int limit = Math.max(1, filter.itemsPerPage());
         int offset = (page - 1) * limit;
 
