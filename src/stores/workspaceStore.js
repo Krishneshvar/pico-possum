@@ -16,23 +16,28 @@ export const useWorkspaceStore = create((set, get) => ({
   activeTabId: null,
 
   /**
-   * Open a tab for the given viewId, or focus it if already open.
+   * Open a tab for the given viewId (or custom tabKey), or focus it if already open.
    */
-  openOrFocus(title, viewId, props = {}) {
-    const existing = get().tabs.find((t) => t.viewId === viewId);
+  openOrFocus(title, viewId, props = {}, tabKey = null) {
+    const key = tabKey || viewId;
+    const existing = get().tabs.find((t) => (t.tabKey || t.viewId) === key);
     if (existing) {
-      set({ activeTabId: existing.id });
+      set({
+        activeTabId: existing.id,
+        tabs: get().tabs.map((t) => (t.id === existing.id ? { ...t, title, props: { ...t.props, ...props } } : t)),
+      });
       return;
     }
 
     const { tabs } = get();
     if (tabs.length >= 10) {
-      // Callers can watch this; for now just silently focus last
+      // Focus the last tab if max limit reached
+      if (tabs.length > 0) set({ activeTabId: tabs[tabs.length - 1].id });
       return;
     }
 
     const id = _nextId++;
-    const newTab = { id, title, viewId, props, closeable: true };
+    const newTab = { id, title, viewId, tabKey: key, props, closeable: true };
     set((s) => ({ tabs: [...s.tabs, newTab], activeTabId: id }));
   },
 

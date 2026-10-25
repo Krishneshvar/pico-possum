@@ -17,11 +17,13 @@ import SalesReportsView from './features/insights/sales-reports/SalesReportsView
 import ProductFlowView from './features/insights/product-flow/ProductFlowView';
 import AuditLogView from './features/insights/audit-log/AuditLogView';
 import SettingsView from './features/settings/SettingsView';
+import BillDetailView from './features/commercial/bills/BillDetailView';
 
 /** Registry: viewId → component */
 const VIEW_REGISTRY = {
   pos:            PosView,
   bills:          BillsHistoryView,
+  'bill-detail':  BillDetailView,
   products:       ProductsView,
   categories:     CategoriesView,
   'stock-ledger': StockLedgerView,

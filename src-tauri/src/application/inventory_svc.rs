@@ -5,7 +5,7 @@ use crate::domain::models::{
     BillSettings, Category, CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
     Customer, GeneralSettings, Product, ProductFlowItem, SalesBreakdownItem, SalesReportSummary,
     StockAdjustmentPayload, StockMovement, TopSellingProduct, UpdateCategoryPayload,
-    UpdateProductPayload,
+    UpdateCustomerPayload, UpdateProductPayload,
 };
 use crate::errors::AppError;
 
@@ -344,6 +344,58 @@ impl InventoryService {
         .await?;
 
         Ok(cust)
+    }
+
+    pub async fn update_customer(
+        pool: &SqlitePool,
+        id: &str,
+        payload: UpdateCustomerPayload,
+    ) -> Result<Customer, AppError> {
+        let rows_affected = sqlx::query(
+            "UPDATE customers
+             SET name = ?, phone = ?, address = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND is_deleted = 0"
+        )
+        .bind(&payload.name)
+        .bind(&payload.phone)
+        .bind(&payload.address)
+        .bind(id)
+        .execute(pool)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(AppError::NotFound(format!("Customer {id} not found")));
+        }
+
+        let cust = sqlx::query_as::<_, Customer>(
+            "SELECT id, name, phone, address, is_deleted, created_at, updated_at
+             FROM customers WHERE id = ?"
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await?;
+
+        Ok(cust)
+    }
+
+    pub async fn delete_customer(
+        pool: &SqlitePool,
+        id: &str,
+    ) -> Result<(), AppError> {
+        let rows_affected = sqlx::query(
+            "UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        )
+        .bind(id)
+        .execute(pool)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(AppError::NotFound(format!("Customer {id} not found")));
+        }
+
+        Ok(())
     }
 
     // ── Stock Movements ──────────────────────────────────────────────────────

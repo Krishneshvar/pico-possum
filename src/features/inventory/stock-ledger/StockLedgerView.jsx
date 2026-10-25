@@ -146,8 +146,9 @@ export default function StockLedgerView() {
           searchKeys={['product_name', 'movement_type', 'note', 'reference_id']}
           filters={[
             {
+              type: 'multiselect',
               key: 'movement_type',
-              label: 'All Movement Types',
+              label: 'Movement Types',
               options: [
                 { value: 'SALE', label: 'Sale' },
                 { value: 'PURCHASE', label: 'Purchase' },

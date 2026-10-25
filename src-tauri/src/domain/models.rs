@@ -84,6 +84,13 @@ pub struct CreateCustomerPayload {
     pub address: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCustomerPayload {
+    pub name: String,
+    pub phone: Option<String>,
+    pub address: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Sale {
     pub id: String,

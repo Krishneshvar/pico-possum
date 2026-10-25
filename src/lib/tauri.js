@@ -29,6 +29,8 @@ export const tauriApi = {
   // Customers
   getCustomers: (search = null) => invoke('get_customers', { search }),
   createCustomer: (payload) => invoke('create_customer', { payload }),
+  updateCustomer: (id, payload) => invoke('update_customer', { id, payload }),
+  deleteCustomer: (id) => invoke('delete_customer', { id }),
 
   // Reports
   getSalesReportSummary: (fromDate = null, toDate = null) =>

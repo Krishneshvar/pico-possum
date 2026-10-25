@@ -207,18 +207,27 @@ export default function ProductsView() {
           searchKeys={['name', 'sku', 'category_name']}
           filters={[
             {
+              type: 'multiselect',
               key: 'category_id',
-              label: 'All Categories',
+              label: 'Categories',
               options: categoryFilterOptions,
             },
             {
+              type: 'multiselect',
               key: 'status',
-              label: 'All Statuses',
+              label: 'Status',
               options: [
                 { value: 'active', label: 'Active' },
                 { value: 'inactive', label: 'Inactive' },
                 { value: 'discontinued', label: 'Discontinued' },
               ],
+            },
+            {
+              type: 'range',
+              key: 'mrp_paise',
+              label: 'Price',
+              unit: '₹',
+              transform: (v) => Math.round(parseFloat(v) * 100),
             },
           ]}
           isLoading={isLoading}
