@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, TrendingUp, IndianRupee, CreditCard, Banknote, QrCode, ShieldCheck, Flame } from 'lucide-react';
+import { BarChart3, TrendingUp, IndianRupee, CreditCard, Banknote, QrCode, Flame } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDateTime } from '../../../lib/formatters';
+import DataTable from '../../../components/common/DataTable';
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'audit'
@@ -31,10 +32,17 @@ export default function ReportsView() {
   const totalCount = summary?.total_sales_count || 0;
   const avgBill = totalCount > 0 ? Math.round(totalRev / totalCount) : 0;
 
+  const auditColumns = [
+    { key: 'created_at', label: 'Timestamp', className: 'font-mono text-slate-400 text-[11px] whitespace-nowrap', render: (r) => formatDateTime(r.created_at) },
+    { key: 'event_type', label: 'Event', className: 'font-mono font-bold text-emerald-400' },
+    { key: 'entity_type', label: 'Entity', className: 'text-slate-300' },
+    { key: 'description', label: 'Description', className: 'text-slate-300' },
+  ];
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="h-16 px-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
             <BarChart3 className="w-5 h-5" />
@@ -214,27 +222,28 @@ export default function ReportsView() {
         </div>
       ) : (
         /* Audit Trail View */
-        <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
-              <tr>
-                <th className="py-3 px-4 w-44">Timestamp</th>
-                <th className="py-3 px-4 w-36">Event</th>
-                <th className="py-3 px-4 w-28">Entity</th>
-                <th className="py-3 px-4">Description</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-              {auditLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-2.5 px-4 text-slate-400">{formatDateTime(log.created_at)}</td>
-                  <td className="py-2.5 px-4 font-bold text-emerald-400">{log.event_type}</td>
-                  <td className="py-2.5 px-4 text-slate-300">{log.entity_type}</td>
-                  <td className="py-2.5 px-4 text-slate-300 font-sans">{log.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex-1 overflow-hidden">
+          <DataTable
+            columns={auditColumns}
+            data={auditLogs}
+            keyFn={(r) => r.id}
+            searchKeys={['event_type', 'entity_type', 'description']}
+            filters={[
+              {
+                key: 'event_type',
+                label: 'All Events',
+                options: [
+                  { value: 'CREATE', label: 'Create' },
+                  { value: 'UPDATE', label: 'Update' },
+                  { value: 'DELETE', label: 'Delete' },
+                  { value: 'SALE', label: 'Sale' },
+                  { value: 'STOCK_ADJUSTMENT', label: 'Stock Adjustment' },
+                ],
+              },
+            ]}
+            isLoading={loadingAudit}
+            emptyMessage="No audit log entries."
+          />
         </div>
       )}
     </div>

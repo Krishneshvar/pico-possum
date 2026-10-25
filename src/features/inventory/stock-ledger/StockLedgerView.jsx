@@ -1,80 +1,105 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRightLeft, ArrowDownRight, ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { ArrowRightLeft, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime } from '../../../lib/formatters';
+import DataTable from '../../../components/common/DataTable';
+
+const TYPE_COLORS = {
+  SALE:              'bg-rose-500/15 text-rose-400',
+  PURCHASE:          'bg-emerald-500/15 text-emerald-400',
+  MANUAL_ADJUSTMENT: 'bg-blue-500/15 text-blue-400',
+  RETURN:            'bg-amber-500/15 text-amber-400',
+};
 
 export default function StockLedgerView() {
   const { data: movements = [], isLoading } = useQuery({
     queryKey: ['stock_movements'],
-    queryFn: () => tauriApi.getStockMovements(null, 100),
+    queryFn: () => tauriApi.getStockMovements(null, 500),
   });
+
+  const columns = [
+    {
+      key: 'created_at', label: 'Date & Time',
+      className: 'font-mono text-slate-400 text-[11px] whitespace-nowrap',
+      render: (r) => formatDateTime(r.created_at),
+    },
+    {
+      key: 'product_name', label: 'Product',
+      className: 'font-semibold text-slate-200',
+      render: (r) => r.product_name || <span className="text-slate-500 italic">Unknown</span>,
+    },
+    {
+      key: 'movement_type', label: 'Type',
+      headerClassName: 'text-center',
+      className: 'text-center',
+      render: (r) => (
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_COLORS[r.movement_type] ?? 'bg-slate-800 text-slate-300'}`}>
+          {r.movement_type}
+        </span>
+      ),
+    },
+    {
+      key: 'quantity_change', label: 'Qty Change',
+      headerClassName: 'text-center',
+      className: 'text-center font-mono font-bold',
+      render: (r) => {
+        const pos = r.quantity_change > 0;
+        return (
+          <span className={`inline-flex items-center gap-1 ${pos ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {pos ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {pos ? `+${r.quantity_change}` : r.quantity_change}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'reference_id', label: 'Reference',
+      className: 'font-mono text-slate-500 text-[11px]',
+      render: (r) => r.reference_id || <span className="text-slate-700">—</span>,
+    },
+    {
+      key: 'note', label: 'Notes',
+      className: 'text-slate-400',
+      render: (r) => r.note || <span className="text-slate-700">—</span>,
+    },
+  ];
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="h-16 px-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-            <ArrowRightLeft className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <ArrowRightLeft className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Stock Activity Ledger</h2>
-            <p className="text-xs text-slate-400">Immutable ledger trail of all inventory events and adjustments</p>
+            <h2 className="text-sm font-bold text-slate-100">Stock Activity Ledger</h2>
+            <p className="text-[11px] text-slate-500">Immutable trail of all inventory events and adjustments</p>
           </div>
         </div>
       </div>
 
-      {/* Ledger Table */}
-      <div className="flex-1 overflow-y-auto">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-900/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800 z-10">
-            <tr>
-              <th className="py-3 px-4">Date & Time</th>
-              <th className="py-3 px-4">Product</th>
-              <th className="py-3 px-4 text-center">Type</th>
-              <th className="py-3 px-4 text-center">Change</th>
-              <th className="py-3 px-4">Reference</th>
-              <th className="py-3 px-4">Notes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/50 text-xs font-mono">
-            {movements.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="py-12 text-center text-slate-500 font-sans">
-                  No stock movements recorded yet.
-                </td>
-              </tr>
-            ) : (
-              movements.map((m) => {
-                const isPositive = m.quantity_change > 0;
-                return (
-                  <tr key={m.id} className="hover:bg-slate-900/40 transition-colors">
-                    <td className="py-3 px-4 text-slate-400">{formatDateTime(m.created_at)}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-200 font-sans">{m.product_name || 'Product'}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                        {m.movement_type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 font-bold ${
-                          isPositive ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        {isPositive ? `+${m.quantity_change}` : m.quantity_change}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-400 truncate max-w-[120px]">{m.reference_id || '-'}</td>
-                    <td className="py-3 px-4 text-slate-400 font-sans">{m.note || '-'}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+      <div className="flex-1 overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={movements}
+          keyFn={(r) => r.id}
+          searchKeys={['product_name', 'movement_type', 'note', 'reference_id']}
+          filters={[
+            {
+              key: 'movement_type',
+              label: 'All Types',
+              options: [
+                { value: 'SALE', label: 'Sale' },
+                { value: 'PURCHASE', label: 'Purchase' },
+                { value: 'MANUAL_ADJUSTMENT', label: 'Manual Adjustment' },
+                { value: 'RETURN', label: 'Return' },
+              ],
+            },
+          ]}
+          isLoading={isLoading}
+          emptyMessage="No stock movements recorded yet."
+        />
       </div>
     </div>
   );

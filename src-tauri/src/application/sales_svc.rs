@@ -19,7 +19,23 @@ impl SalesService {
         let mut tx = pool.begin().await?;
 
         // 1. Resolve or create customer if needed
-        let mut resolved_customer_id = payload.customer_id.clone();
+        let mut resolved_customer_id = None;
+        if let Some(ref cust_id) = payload.customer_id {
+            if !cust_id.trim().is_empty() {
+                let exists: bool = sqlx::query_scalar(
+                    "SELECT EXISTS(SELECT 1 FROM customers WHERE id = ? AND is_deleted = 0)"
+                )
+                .bind(cust_id.trim())
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap_or(false);
+
+                if exists {
+                    resolved_customer_id = Some(cust_id.trim().to_string());
+                }
+            }
+        }
+
         if resolved_customer_id.is_none() {
             if let Some(ref name) = payload.customer_name {
                 if !name.trim().is_empty() {
@@ -55,7 +71,7 @@ impl SalesService {
         let last_seq: i64 = seq_row.get(0);
         let invoice_number = BusinessRules::generate_invoice_number(&payload.payment_method, last_seq);
 
-        // 3. Calculate line items and verify stock
+        // 3. Calculate line items, deduct stock and prepare SaleItem models
         let sale_id = Uuid::new_v4().to_string();
         let mut subtotal_paise: i64 = 0;
         let mut total_tax_paise: i64 = 0;
@@ -125,26 +141,6 @@ impl SalesService {
             .execute(&mut *tx)
             .await?;
 
-            // Insert sale item
-            sqlx::query(
-                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            )
-            .bind(&sale_item.id)
-            .bind(&sale_item.sale_id)
-            .bind(&sale_item.product_id)
-            .bind(&sale_item.product_name)
-            .bind(&sale_item.product_sku)
-            .bind(sale_item.quantity)
-            .bind(sale_item.unit_price_paise)
-            .bind(sale_item.cost_price_paise)
-            .bind(sale_item.discount_paise)
-            .bind(sale_item.tax_rate)
-            .bind(sale_item.tax_paise)
-            .bind(sale_item.total_paise)
-            .execute(&mut *tx)
-            .await?;
-
             sale_items.push(sale_item);
         }
 
@@ -179,6 +175,7 @@ impl SalesService {
             created_at: now_str,
         };
 
+        // 4. Insert sales row FIRST so foreign key references to sales(id) succeed
         sqlx::query(
             "INSERT INTO sales (id, invoice_number, customer_id, customer_name, customer_phone, biller_name, subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise, payment_method, status, fulfillment_status, notes, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -202,7 +199,29 @@ impl SalesService {
         .execute(&mut *tx)
         .await?;
 
-        // Audit log
+        // 5. Insert sale_items (referencing sales(id))
+        for sale_item in &sale_items {
+            sqlx::query(
+                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&sale_item.id)
+            .bind(&sale_item.sale_id)
+            .bind(&sale_item.product_id)
+            .bind(&sale_item.product_name)
+            .bind(&sale_item.product_sku)
+            .bind(sale_item.quantity)
+            .bind(sale_item.unit_price_paise)
+            .bind(sale_item.cost_price_paise)
+            .bind(sale_item.discount_paise)
+            .bind(sale_item.tax_rate)
+            .bind(sale_item.tax_paise)
+            .bind(sale_item.total_paise)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        // 6. Audit log
         let audit_id = Uuid::new_v4().to_string();
         let desc = format!("Completed sale {} for total {} paise", invoice_number, total_paise);
         sqlx::query(

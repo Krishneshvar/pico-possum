@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FolderTree, Plus, Trash2, Edit2, X } from 'lucide-react';
+import { FolderTree, Plus, Trash2, Edit2, X, Tag } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
+import DataTable from '../../../components/common/DataTable';
 
 export default function CategoriesView() {
   const queryClient = useQueryClient();
@@ -13,6 +14,22 @@ export default function CategoriesView() {
     queryKey: ['categories'],
     queryFn: () => tauriApi.getCategories(),
   });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => tauriApi.getProducts({ limit: 1000 }),
+  });
+
+  // Calculate product counts per category
+  const productCounts = useMemo(() => {
+    const counts = {};
+    for (const p of products) {
+      if (p.category_id) {
+        counts[p.category_id] = (counts[p.category_id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [products]);
 
   const createMutation = useMutation({
     mutationFn: (payload) => tauriApi.createCategory(payload),
@@ -70,65 +87,102 @@ export default function CategoriesView() {
     }
   };
 
+  const columns = [
+    {
+      key: 'name',
+      label: 'Category Name',
+      className: 'font-semibold text-slate-200',
+      render: (r) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
+            <FolderTree className="w-3.5 h-3.5" />
+          </div>
+          <span>{r.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'product_count',
+      label: 'Products',
+      className: 'text-slate-400 font-mono text-xs',
+      render: (r) => {
+        const count = productCounts[r.id] || 0;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700/60">
+            <Tag className="w-2.5 h-2.5 text-slate-500" />
+            {count} {count === 1 ? 'product' : 'products'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      className: 'text-xs',
+      render: () => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Active
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="h-16 px-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-            <FolderTree className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <FolderTree className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Product Categories</h2>
-            <p className="text-xs text-slate-400">Organize your store catalog into sections</p>
+            <h2 className="text-sm font-bold text-slate-100">Product Categories</h2>
+            <p className="text-[11px] text-slate-500">Organize your store catalog into sections</p>
           </div>
         </div>
 
         <button
           onClick={handleOpenCreate}
-          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+          className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           <span>Add Category</span>
         </button>
       </div>
 
-      {/* Categories Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {categories.map((c) => (
-            <div
-              key={c.id}
-              className="glass-card p-4 rounded-xl border border-slate-800 flex items-center justify-between group hover:border-slate-700 transition-all"
-            >
-              <div>
-                <h4 className="text-sm font-semibold text-slate-200 group-hover:text-emerald-400 transition-colors">
-                  {c.name}
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">Active</p>
-              </div>
-
-              <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
-                <button
-                  onClick={() => handleOpenEdit(c)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm(`Delete category '${c.name}'?`)) {
-                      deleteMutation.mutate(c.id);
-                    }
-                  }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+      {/* Categories DataTable */}
+      <div className="flex-1 overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={categories}
+          keyFn={(r) => r.id}
+          searchKeys={['name']}
+          pageSize={20}
+          emptyMessage="No categories created yet."
+          isLoading={isLoading}
+          actions={(c) => (
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={() => handleOpenEdit(c)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
+                title="Edit Category"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm(`Delete category '${c.name}'?`)) {
+                    deleteMutation.mutate(c.id);
+                  }
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                title="Delete Category"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        />
       </div>
 
       {/* Modal */}
