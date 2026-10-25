@@ -1,0 +1,7 @@
+pub mod categories;
+pub mod customers;
+pub mod migration;
+pub mod products;
+pub mod reports;
+pub mod sales;
+pub mod settings;
