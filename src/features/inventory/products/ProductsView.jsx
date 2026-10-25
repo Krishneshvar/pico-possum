@@ -12,7 +12,8 @@ export default function ProductsView() {
 
   const [formData, setFormData] = useState({
     name: '', sku: '', category_id: '', mrp_rupees: '',
-    cost_price_rupees: '', tax_rate: '0', initial_stock: '0', status: 'active',
+    cost_price_rupees: '', tax_rate: '0', initial_stock: '0',
+    status: 'active', min_stock_alert: '5',
   });
   const [stockAdjustment, setStockAdjustment] = useState({ quantity_change: 0, note: '' });
 
@@ -47,16 +48,25 @@ export default function ProductsView() {
   });
 
   const handleOpenCreate = () => {
-    setFormData({ name: '', sku: '', category_id: '', mrp_rupees: '', cost_price_rupees: '', tax_rate: '0', initial_stock: '0', status: 'active' });
+    setFormData({
+      name: '', sku: '', category_id: '', mrp_rupees: '',
+      cost_price_rupees: '', tax_rate: '0', initial_stock: '0',
+      status: 'active', min_stock_alert: '5',
+    });
     setModalMode('create');
   };
   const handleOpenEdit = (p) => {
     setSelectedProduct(p);
     setFormData({
-      name: p.name, sku: p.sku || '', category_id: p.category_id || '',
+      name: p.name,
+      sku: p.sku || '',
+      category_id: p.category_id || '',
       mrp_rupees: (p.mrp_paise / 100).toFixed(2),
       cost_price_rupees: (p.cost_price_paise / 100).toFixed(2),
-      tax_rate: p.tax_rate.toString(), initial_stock: p.current_stock.toString(), status: p.status,
+      tax_rate: p.tax_rate.toString(),
+      initial_stock: p.current_stock.toString(),
+      status: p.status || 'active',
+      min_stock_alert: (p.min_stock_alert !== undefined && p.min_stock_alert !== null ? p.min_stock_alert : 5).toString(),
     });
     setModalMode('edit');
   };
@@ -68,15 +78,22 @@ export default function ProductsView() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name.trim()) { alert('Product name is required'); return; }
+    const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
     const payload = {
-      name: formData.name.trim(), sku: formData.sku.trim() || null,
+      name: formData.name.trim(),
+      sku: formData.sku.trim() || null,
       category_id: formData.category_id || null,
       mrp_paise: rupeesToPaise(formData.mrp_rupees),
       cost_price_paise: rupeesToPaise(formData.cost_price_rupees),
-      tax_rate: parseFloat(formData.tax_rate) || 0, status: formData.status,
+      tax_rate: parseFloat(formData.tax_rate) || 0,
+      status: formData.status || 'active',
+      min_stock_alert: !isNaN(minStockAlertVal) && minStockAlertVal >= 0 ? minStockAlertVal : 5,
     };
-    if (modalMode === 'create') createMutation.mutate({ ...payload, initial_stock: parseInt(formData.initial_stock, 10) || 0 });
-    else updateMutation.mutate({ id: selectedProduct.id, payload });
+    if (modalMode === 'create') {
+      createMutation.mutate({ ...payload, initial_stock: parseInt(formData.initial_stock, 10) || 0 });
+    } else {
+      updateMutation.mutate({ id: selectedProduct.id, payload });
+    }
   };
 
   // ── DataTable column definitions ─────────────────────────────────────────
@@ -118,13 +135,20 @@ export default function ProductsView() {
       className: 'text-center',
       render: (r) => {
         const s = r.current_stock;
-        const cls = s <= 0
+        const alertThreshold = r.min_stock_alert ?? 5;
+        const isOut = s <= 0;
+        const isLow = s <= alertThreshold && !isOut;
+        const cls = isOut
           ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-          : s <= 5
+          : isLow
           ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
           : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
         return (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}>
+          <span
+            title={isLow ? `Low stock alert (threshold: ${alertThreshold})` : isOut ? 'Out of stock' : `Stock: ${s} (Alert at ≤ ${alertThreshold})`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}
+          >
+            {isLow && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
             {s}
           </span>
         );
@@ -133,7 +157,20 @@ export default function ProductsView() {
     {
       key: 'status', label: 'Status',
       headerClassName: 'text-center',
-      className: 'text-center capitalize text-slate-400',
+      className: 'text-center',
+      render: (r) => {
+        const status = r.status || 'active';
+        const styles = {
+          active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+          inactive: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+          discontinued: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+        };
+        return (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${styles[status] || styles.active}`}>
+            {status}
+          </span>
+        );
+      },
     },
   ];
 
@@ -149,7 +186,7 @@ export default function ProductsView() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-100">Product Catalog</h2>
-            <p className="text-[11px] text-slate-500">Manage catalog, pricing, tax rates, and stock</p>
+            <p className="text-[11px] text-slate-500">Manage catalog, pricing, tax rates, alerts, and stock</p>
           </div>
         </div>
         <button
@@ -177,7 +214,11 @@ export default function ProductsView() {
             {
               key: 'status',
               label: 'All Statuses',
-              options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }],
+              options: [
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'discontinued', label: 'Discontinued' },
+              ],
             },
           ]}
           isLoading={isLoading}
@@ -217,46 +258,134 @@ export default function ProductsView() {
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1">Product Name *</label>
-                <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Parle-G Biscuit 250g" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none" />
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Parle-G Biscuit 250g"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                />
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-400 block mb-1">SKU / Barcode</label>
-                  <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="e.g. 890123456789" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono" />
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    placeholder="e.g. 890123456789"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                  />
                 </div>
                 <div>
                   <label className="text-slate-400 block mb-1">Category</label>
-                  <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none">
+                  <select
+                    value={formData.category_id}
+                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  >
                     <option value="">No Category</option>
                     {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-400 block mb-1">MRP (₹) *</label>
-                  <input type="number" step="0.01" required value={formData.mrp_rupees} onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })} placeholder="100.00" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={formData.mrp_rupees}
+                    onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })}
+                    placeholder="100.00"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                  />
                 </div>
                 <div>
                   <label className="text-slate-400 block mb-1">Cost Price (₹)</label>
-                  <input type="number" step="0.01" value={formData.cost_price_rupees} onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })} placeholder="75.00" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.cost_price_rupees}
+                    onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })}
+                    placeholder="75.00"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                  />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-400 block mb-1">Tax Rate (%)</label>
-                  <input type="number" step="0.1" value={formData.tax_rate} onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono" />
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.tax_rate}
+                    onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
+                    placeholder="0"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                  />
                 </div>
-                {modalMode === 'create' && (
+                <div>
+                  <label className="text-slate-400 block mb-1">
+                    Stock Alert Threshold <span className="text-slate-500 text-[10px]">(notify when stock ≤)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.min_stock_alert}
+                    onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
+                    placeholder="5"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 block mb-1">Product Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  >
+                    <option value="active">Active (Available for sale)</option>
+                    <option value="inactive">Inactive (Hidden from POS)</option>
+                    <option value="discontinued">Discontinued (End of life)</option>
+                  </select>
+                </div>
+                {modalMode === 'create' ? (
                   <div>
-                    <label className="text-slate-400 block mb-1">Initial Stock</label>
-                    <input type="number" value={formData.initial_stock} onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })} placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono" />
+                    <label className="text-slate-400 block mb-1">Initial Stock (units)</label>
+                    <input
+                      type="number"
+                      value={formData.initial_stock}
+                      onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })}
+                      placeholder="0"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-slate-400 block mb-1">Current Stock (units)</label>
+                    <div className="w-full bg-slate-950/50 border border-slate-800/80 rounded-lg p-2 text-slate-400 font-mono">
+                      {selectedProduct?.current_stock ?? 0}
+                    </div>
                   </div>
                 )}
               </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button type="button" onClick={() => setModalMode(null)} className="px-4 py-2 rounded-lg font-semibold text-slate-400 hover:bg-slate-800">Cancel</button>
-                <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-5 py-2 rounded-lg font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-60">
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="px-5 py-2 rounded-lg font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-60"
+                >
                   {modalMode === 'create' ? 'Create Product' : 'Save Changes'}
                 </button>
               </div>

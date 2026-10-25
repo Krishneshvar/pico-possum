@@ -41,6 +41,8 @@ pub fn run() {
             commands::customers::create_customer,
             // Reports & Insights
             commands::reports::get_sales_report_summary,
+            commands::reports::get_sales_breakdown,
+            commands::reports::get_product_flow,
             commands::reports::get_top_selling_products,
             commands::reports::get_stock_movements,
             commands::reports::get_audit_logs,

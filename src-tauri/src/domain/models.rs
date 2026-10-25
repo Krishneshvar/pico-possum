@@ -5,6 +5,7 @@ pub struct Category {
     pub id: String,
     pub name: String,
     pub parent_id: Option<String>,
+    pub parent_name: Option<String>,
     pub is_deleted: bool,
     pub created_at: String,
     pub updated_at: String,
@@ -33,6 +34,7 @@ pub struct Product {
     pub cost_price_paise: i64,
     pub tax_rate: f64,
     pub current_stock: i64,
+    pub min_stock_alert: i64,
     pub status: String,
     pub is_deleted: bool,
     pub created_at: String,
@@ -48,6 +50,7 @@ pub struct CreateProductPayload {
     pub cost_price_paise: Option<i64>,
     pub tax_rate: Option<f64>,
     pub initial_stock: Option<i64>,
+    pub min_stock_alert: Option<i64>,
     pub status: Option<String>,
 }
 
@@ -59,6 +62,7 @@ pub struct UpdateProductPayload {
     pub mrp_paise: i64,
     pub cost_price_paise: i64,
     pub tax_rate: f64,
+    pub min_stock_alert: Option<i64>,
     pub status: String,
 }
 
@@ -229,3 +233,32 @@ pub struct TopSellingProduct {
     pub total_quantity: i64,
     pub total_revenue_paise: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct SalesBreakdownItem {
+    pub period: String,
+    pub total_transactions: i64,
+    pub total_sales_paise: i64,
+    pub total_discount_paise: i64,
+    pub cash_paise: i64,
+    pub upi_paise: i64,
+    pub card_paise: i64,
+    pub other_paise: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ProductFlowItem {
+    pub id: String,
+    pub product_id: String,
+    pub product_name: String,
+    pub product_sku: Option<String>,
+    pub invoice_number: Option<String>,
+    pub customer_name: Option<String>,
+    pub payment_method: Option<String>,
+    pub event_type: String,
+    pub quantity: i64,
+    pub unit_price_paise: i64,
+    pub total_paise: i64,
+    pub created_at: String,
+}
+

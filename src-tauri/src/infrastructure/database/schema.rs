@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS products (
     cost_price_paise INTEGER NOT NULL DEFAULT 0 CHECK(cost_price_paise >= 0),
     tax_rate REAL NOT NULL DEFAULT 0.0,
     current_stock INTEGER NOT NULL DEFAULT 0,
+    min_stock_alert INTEGER NOT NULL DEFAULT 5,
     status TEXT NOT NULL CHECK(status IN ('active', 'inactive', 'discontinued')) DEFAULT 'active',
     is_deleted BOOLEAN NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

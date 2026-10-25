@@ -51,6 +51,7 @@ async fn test_full_pos_lifecycle() {
             mrp_paise: 9500,              // ₹95.00
             tax_rate: Some(18.0),
             initial_stock: Some(50),
+            min_stock_alert: Some(5),
             status: Some("active".to_string()),
         },
     )
@@ -61,7 +62,7 @@ async fn test_full_pos_lifecycle() {
     assert_eq!(prod.mrp_paise, 9500);
 
     // Verify stock ledger has initial count
-    let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), 10)
+    let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
         .await
         .expect("Failed to get stock movements");
     assert_eq!(movements.len(), 1);
@@ -115,7 +116,7 @@ async fn test_full_pos_lifecycle() {
     assert_eq!(updated_prod.current_stock, 48);
 
     // 6. Verify stock ledger recorded -2 SALE movement
-    let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), 10)
+    let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
         .await
         .expect("Failed to get stock movements");
     assert_eq!(movements.len(), 2);
@@ -140,7 +141,7 @@ async fn test_full_pos_lifecycle() {
     assert_eq!(restored_prod.current_stock, 50);
 
     // Verify stock ledger has +2 RETURN movement
-    let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), 10)
+    let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
         .await
         .expect("Failed to get stock movements");
     assert_eq!(movements.len(), 3);

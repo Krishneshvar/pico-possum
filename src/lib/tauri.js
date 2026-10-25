@@ -33,10 +33,14 @@ export const tauriApi = {
   // Reports
   getSalesReportSummary: (fromDate = null, toDate = null) =>
     invoke('get_sales_report_summary', { fromDate, toDate }),
+  getSalesBreakdown: (periodType = 'daily', fromDate = null, toDate = null) =>
+    invoke('get_sales_breakdown', { periodType, fromDate, toDate }),
+  getProductFlow: (productId = null, fromDate = null, toDate = null, limit = 200) =>
+    invoke('get_product_flow', { productId, fromDate, toDate, limit }),
   getTopSellingProducts: (limit = 10) =>
     invoke('get_top_selling_products', { limit }),
-  getStockMovements: (productId = null, limit = 100) =>
-    invoke('get_stock_movements', { productId, limit }),
+  getStockMovements: (productId = null, fromDate = null, toDate = null, limit = 200) =>
+    invoke('get_stock_movements', { productId, fromDate, toDate, limit }),
   getAuditLogs: (limit = 100) => invoke('get_audit_logs', { limit }),
 
   // Settings

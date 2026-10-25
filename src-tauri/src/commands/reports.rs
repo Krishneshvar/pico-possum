@@ -2,7 +2,10 @@ use sqlx::SqlitePool;
 use tauri::State;
 
 use crate::application::InventoryService;
-use crate::domain::models::{AuditLog, SalesReportSummary, StockMovement, TopSellingProduct};
+use crate::domain::models::{
+    AuditLog, ProductFlowItem, SalesBreakdownItem, SalesReportSummary, StockMovement,
+    TopSellingProduct,
+};
 use crate::errors::AppError;
 
 #[tauri::command]
@@ -12,6 +15,28 @@ pub async fn get_sales_report_summary(
     to_date: Option<String>,
 ) -> Result<SalesReportSummary, AppError> {
     InventoryService::get_sales_report_summary(&pool, from_date, to_date).await
+}
+
+#[tauri::command]
+pub async fn get_sales_breakdown(
+    pool: State<'_, SqlitePool>,
+    period_type: String,
+    from_date: Option<String>,
+    to_date: Option<String>,
+) -> Result<Vec<SalesBreakdownItem>, AppError> {
+    InventoryService::get_sales_breakdown(&pool, &period_type, from_date, to_date).await
+}
+
+#[tauri::command]
+pub async fn get_product_flow(
+    pool: State<'_, SqlitePool>,
+    product_id: Option<String>,
+    from_date: Option<String>,
+    to_date: Option<String>,
+    limit: Option<i64>,
+) -> Result<Vec<ProductFlowItem>, AppError> {
+    let lim = limit.unwrap_or(200);
+    InventoryService::get_product_flow(&pool, product_id, from_date, to_date, lim).await
 }
 
 #[tauri::command]
@@ -27,10 +52,12 @@ pub async fn get_top_selling_products(
 pub async fn get_stock_movements(
     pool: State<'_, SqlitePool>,
     product_id: Option<String>,
+    from_date: Option<String>,
+    to_date: Option<String>,
     limit: Option<i64>,
 ) -> Result<Vec<StockMovement>, AppError> {
-    let lim = limit.unwrap_or(100);
-    InventoryService::get_stock_movements(&pool, product_id, lim).await
+    let lim = limit.unwrap_or(200);
+    InventoryService::get_stock_movements(&pool, product_id, from_date, to_date, lim).await
 }
 
 #[tauri::command]
@@ -38,7 +65,7 @@ pub async fn get_audit_logs(
     pool: State<'_, SqlitePool>,
     limit: Option<i64>,
 ) -> Result<Vec<AuditLog>, AppError> {
-    let lim = limit.unwrap_or(100);
+    let lim = limit.unwrap_or(200);
     let logs = sqlx::query_as::<_, AuditLog>(
         "SELECT id, event_type, entity_type, entity_id, description, created_at
          FROM audit_logs

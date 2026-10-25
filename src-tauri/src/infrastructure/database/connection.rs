@@ -23,6 +23,11 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
     // Execute schema migrations
     sqlx::raw_sql(INIT_SCHEMA).execute(&pool).await?;
 
+    // Migration helper: add min_stock_alert column to products if missing
+    let _ = sqlx::query("ALTER TABLE products ADD COLUMN min_stock_alert INTEGER NOT NULL DEFAULT 5")
+        .execute(&pool)
+        .await;
+
     // Seed default settings if missing
     seed_defaults(&pool).await?;
 

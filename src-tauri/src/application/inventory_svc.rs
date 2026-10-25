@@ -3,8 +3,9 @@ use uuid::Uuid;
 
 use crate::domain::models::{
     BillSettings, Category, CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
-    Customer, GeneralSettings, Product, SalesReportSummary, StockAdjustmentPayload,
-    StockMovement, TopSellingProduct, UpdateCategoryPayload, UpdateProductPayload,
+    Customer, GeneralSettings, Product, ProductFlowItem, SalesBreakdownItem, SalesReportSummary,
+    StockAdjustmentPayload, StockMovement, TopSellingProduct, UpdateCategoryPayload,
+    UpdateProductPayload,
 };
 use crate::errors::AppError;
 
@@ -23,7 +24,7 @@ impl InventoryService {
         let products = sqlx::query_as::<_, Product>(
             "SELECT p.id, p.name, p.sku, p.category_id, c.name as category_name,
                     p.mrp_paise, p.cost_price_paise, CAST(p.tax_rate AS REAL) as tax_rate, p.current_stock,
-                    p.status, p.is_deleted,
+                    p.min_stock_alert, p.status, p.is_deleted,
                     p.created_at, p.updated_at
              FROM products p
              LEFT JOIN categories c ON c.id = p.category_id
@@ -47,7 +48,7 @@ impl InventoryService {
         let product = sqlx::query_as::<_, Product>(
             "SELECT p.id, p.name, p.sku, p.category_id, c.name as category_name,
                     p.mrp_paise, p.cost_price_paise, CAST(p.tax_rate AS REAL) as tax_rate, p.current_stock,
-                    p.status, p.is_deleted,
+                    p.min_stock_alert, p.status, p.is_deleted,
                     p.created_at, p.updated_at
              FROM products p
              LEFT JOIN categories c ON c.id = p.category_id
@@ -69,13 +70,14 @@ impl InventoryService {
 
         let id = Uuid::new_v4().to_string();
         let initial_stock = payload.initial_stock.unwrap_or(0);
+        let min_stock_alert = payload.min_stock_alert.unwrap_or(5);
         let status = payload.status.unwrap_or_else(|| "active".to_string());
         let cost_price = payload.cost_price_paise.unwrap_or(0);
         let tax_rate = payload.tax_rate.unwrap_or(0.0);
 
         sqlx::query(
-            "INSERT INTO products (id, name, sku, category_id, mrp_paise, cost_price_paise, tax_rate, current_stock, status, is_deleted)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+            "INSERT INTO products (id, name, sku, category_id, mrp_paise, cost_price_paise, tax_rate, current_stock, min_stock_alert, status, is_deleted)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
         )
         .bind(&id)
         .bind(&payload.name)
@@ -85,6 +87,7 @@ impl InventoryService {
         .bind(cost_price)
         .bind(tax_rate)
         .bind(initial_stock)
+        .bind(min_stock_alert)
         .bind(&status)
         .execute(&mut *tx)
         .await?;
@@ -125,6 +128,7 @@ impl InventoryService {
         id: &str,
         payload: UpdateProductPayload,
     ) -> Result<Product, AppError> {
+        let min_stock_alert = payload.min_stock_alert.unwrap_or(5);
         sqlx::query(
             "UPDATE products SET
                 name = ?,
@@ -133,6 +137,7 @@ impl InventoryService {
                 mrp_paise = ?,
                 cost_price_paise = ?,
                 tax_rate = ?,
+                min_stock_alert = ?,
                 status = ?,
                 updated_at = CURRENT_TIMESTAMP
              WHERE id = ?"
@@ -143,6 +148,7 @@ impl InventoryService {
         .bind(payload.mrp_paise)
         .bind(payload.cost_price_paise)
         .bind(payload.tax_rate)
+        .bind(min_stock_alert)
         .bind(&payload.status)
         .bind(id)
         .execute(pool)
@@ -213,10 +219,11 @@ impl InventoryService {
 
     pub async fn get_categories(pool: &SqlitePool) -> Result<Vec<Category>, AppError> {
         let categories = sqlx::query_as::<_, Category>(
-            "SELECT id, name, parent_id, is_deleted, created_at, updated_at
-             FROM categories
-             WHERE is_deleted = 0
-             ORDER BY name ASC"
+            "SELECT c.id, c.name, c.parent_id, p.name as parent_name, c.is_deleted, c.created_at, c.updated_at
+             FROM categories c
+             LEFT JOIN categories p ON p.id = c.parent_id
+             WHERE c.is_deleted = 0
+             ORDER BY c.name ASC"
         )
         .fetch_all(pool)
         .await?;
@@ -240,8 +247,10 @@ impl InventoryService {
         .await?;
 
         let cat = sqlx::query_as::<_, Category>(
-            "SELECT id, name, parent_id, is_deleted, created_at, updated_at
-             FROM categories WHERE id = ?"
+            "SELECT c.id, c.name, c.parent_id, p.name as parent_name, c.is_deleted, c.created_at, c.updated_at
+             FROM categories c
+             LEFT JOIN categories p ON p.id = c.parent_id
+             WHERE c.id = ?"
         )
         .bind(&id)
         .fetch_one(pool)
@@ -265,8 +274,10 @@ impl InventoryService {
         .await?;
 
         let cat = sqlx::query_as::<_, Category>(
-            "SELECT id, name, parent_id, is_deleted, created_at, updated_at
-             FROM categories WHERE id = ?"
+            "SELECT c.id, c.name, c.parent_id, p.name as parent_name, c.is_deleted, c.created_at, c.updated_at
+             FROM categories c
+             LEFT JOIN categories p ON p.id = c.parent_id
+             WHERE c.id = ?"
         )
         .bind(id)
         .fetch_one(pool)
@@ -340,17 +351,26 @@ impl InventoryService {
     pub async fn get_stock_movements(
         pool: &SqlitePool,
         product_id: Option<String>,
+        from_date: Option<String>,
+        to_date: Option<String>,
         limit: i64,
     ) -> Result<Vec<StockMovement>, AppError> {
+        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
+        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+
         let movements = sqlx::query_as::<_, StockMovement>(
             "SELECT sm.id, sm.product_id, p.name as product_name, sm.quantity_change,
                     sm.movement_type, sm.reference_id, sm.note, sm.created_at
              FROM stock_movements sm
              LEFT JOIN products p ON p.id = sm.product_id
              WHERE (?1 IS NULL OR sm.product_id = ?1)
-             ORDER BY sm.created_at DESC LIMIT ?2"
+               AND strftime('%Y-%m-%d', sm.created_at) >= ?2
+               AND strftime('%Y-%m-%d', sm.created_at) <= ?3
+             ORDER BY sm.created_at DESC LIMIT ?4"
         )
         .bind(product_id)
+        .bind(from)
+        .bind(to)
         .bind(limit)
         .fetch_all(pool)
         .await?;
@@ -435,6 +455,133 @@ impl InventoryService {
         }).collect();
 
         Ok(items)
+    }
+
+    pub async fn get_sales_breakdown(
+        pool: &SqlitePool,
+        period_type: &str,
+        from_date: Option<String>,
+        to_date: Option<String>,
+    ) -> Result<Vec<SalesBreakdownItem>, AppError> {
+        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
+        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+
+        let items = match period_type.to_lowercase().as_str() {
+            "monthly" => {
+                sqlx::query_as::<_, SalesBreakdownItem>(
+                    "SELECT
+                        strftime('%Y-%m', created_at) as period,
+                        COUNT(DISTINCT id) as total_transactions,
+                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
+                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_paise,
+                        COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'UPI', 'CARD') THEN total_paise ELSE 0 END), 0) as other_paise
+                     FROM sales
+                     WHERE status = 'PAID'
+                       AND strftime('%Y-%m-%d', created_at) >= ?
+                       AND strftime('%Y-%m-%d', created_at) <= ?
+                     GROUP BY period
+                     ORDER BY period DESC"
+                )
+                .bind(&from)
+                .bind(&to)
+                .fetch_all(pool)
+                .await?
+            }
+            "yearly" => {
+                sqlx::query_as::<_, SalesBreakdownItem>(
+                    "SELECT
+                        strftime('%Y', created_at) as period,
+                        COUNT(DISTINCT id) as total_transactions,
+                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
+                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_paise,
+                        COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'UPI', 'CARD') THEN total_paise ELSE 0 END), 0) as other_paise
+                     FROM sales
+                     WHERE status = 'PAID'
+                       AND strftime('%Y-%m-%d', created_at) >= ?
+                       AND strftime('%Y-%m-%d', created_at) <= ?
+                     GROUP BY period
+                     ORDER BY period DESC"
+                )
+                .bind(&from)
+                .bind(&to)
+                .fetch_all(pool)
+                .await?
+            }
+            _ => {
+                sqlx::query_as::<_, SalesBreakdownItem>(
+                    "SELECT
+                        strftime('%Y-%m-%d', created_at) as period,
+                        COUNT(DISTINCT id) as total_transactions,
+                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
+                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_paise,
+                        COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_paise,
+                        COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'UPI', 'CARD') THEN total_paise ELSE 0 END), 0) as other_paise
+                     FROM sales
+                     WHERE status = 'PAID'
+                       AND strftime('%Y-%m-%d', created_at) >= ?
+                       AND strftime('%Y-%m-%d', created_at) <= ?
+                     GROUP BY period
+                     ORDER BY period DESC"
+                )
+                .bind(&from)
+                .bind(&to)
+                .fetch_all(pool)
+                .await?
+            }
+        };
+
+        Ok(items)
+    }
+
+    pub async fn get_product_flow(
+        pool: &SqlitePool,
+        product_id: Option<String>,
+        from_date: Option<String>,
+        to_date: Option<String>,
+        limit: i64,
+    ) -> Result<Vec<ProductFlowItem>, AppError> {
+        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
+        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+
+        let rows = sqlx::query_as::<_, ProductFlowItem>(
+            "SELECT
+                si.id as id,
+                si.product_id as product_id,
+                si.product_name as product_name,
+                si.product_sku as product_sku,
+                s.invoice_number as invoice_number,
+                COALESCE(s.customer_name, 'Walk-in Customer') as customer_name,
+                s.payment_method as payment_method,
+                'SALE' as event_type,
+                -si.quantity as quantity,
+                si.unit_price_paise as unit_price_paise,
+                si.total_paise as total_paise,
+                s.created_at as created_at
+             FROM sale_items si
+             JOIN sales s ON s.id = si.sale_id
+             WHERE s.status = 'PAID'
+               AND (?1 IS NULL OR si.product_id = ?1)
+               AND strftime('%Y-%m-%d', s.created_at) >= ?2
+               AND strftime('%Y-%m-%d', s.created_at) <= ?3
+             ORDER BY s.created_at DESC
+             LIMIT ?4"
+        )
+        .bind(product_id)
+        .bind(from)
+        .bind(to)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
     }
 
     // ── Settings ─────────────────────────────────────────────────────────────

@@ -27,7 +27,10 @@ const NAV_MENUS = [
     label: 'Insights',
     icon: BarChart3,
     items: [
-      { label: 'Analytics & Reports', viewId: 'reports' },
+      { label: 'Sales Reports',   viewId: 'sales-reports' },
+      { label: 'Sales Analytics', viewId: 'reports' },
+      { label: 'Product Flow',    viewId: 'product-flow' },
+      { label: 'Audit Log',       viewId: 'audit-log' },
     ],
   },
 ];

@@ -13,18 +13,24 @@ import CategoriesView from './features/inventory/categories/CategoriesView';
 import StockLedgerView from './features/inventory/stock-ledger/StockLedgerView';
 import CustomersView from './features/commercial/customers/CustomersView';
 import ReportsView from './features/insights/reports/ReportsView';
+import SalesReportsView from './features/insights/sales-reports/SalesReportsView';
+import ProductFlowView from './features/insights/product-flow/ProductFlowView';
+import AuditLogView from './features/insights/audit-log/AuditLogView';
 import SettingsView from './features/settings/SettingsView';
 
 /** Registry: viewId → component */
 const VIEW_REGISTRY = {
-  pos:          PosView,
-  bills:        BillsHistoryView,
-  products:     ProductsView,
-  categories:   CategoriesView,
+  pos:            PosView,
+  bills:          BillsHistoryView,
+  products:       ProductsView,
+  categories:     CategoriesView,
   'stock-ledger': StockLedgerView,
-  customers:    CustomersView,
-  reports:      ReportsView,
-  settings:     SettingsView,
+  customers:      CustomersView,
+  'sales-reports': SalesReportsView,
+  reports:        ReportsView,
+  'product-flow': ProductFlowView,
+  'audit-log':    AuditLogView,
+  settings:       SettingsView,
 };
 
 function WorkspaceContent() {
