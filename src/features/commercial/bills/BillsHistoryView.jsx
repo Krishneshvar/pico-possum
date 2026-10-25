@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { History, Search, Eye, Printer, RotateCcw, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
