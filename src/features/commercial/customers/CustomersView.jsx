@@ -5,7 +5,9 @@ import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
+import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+
 
 export default function CustomersView() {
   const queryClient = useQueryClient();
@@ -150,14 +152,23 @@ export default function CustomersView() {
             <p className="text-[11px] text-slate-500">Manage customer contacts, profiles, and order history</p>
           </div>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <ImportCsvButton
+            entity="customers"
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ['customers'] });
+            }}
+          />
+          <button
+            onClick={handleOpenCreate}
+            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Customer
+          </button>
+        </div>
       </div>
+
 
       {/* Data Table */}
       <div className="flex-1 overflow-hidden">

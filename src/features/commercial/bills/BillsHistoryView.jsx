@@ -6,7 +6,9 @@ import { formatPaise, formatDateTime } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
+import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+
 
 export default function BillsHistoryView() {
   const queryClient = useQueryClient();
@@ -110,7 +112,7 @@ export default function BillsHistoryView() {
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center flex-shrink-0">
+      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
             <History className="w-4 h-4" />
@@ -119,6 +121,17 @@ export default function BillsHistoryView() {
             <h2 className="text-sm font-bold text-slate-100">Bill History & Sales Ledger</h2>
             <p className="text-[11px] text-slate-500">View past sales, reprint receipts, and process returns</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <ImportCsvButton
+            entity="bills"
+            label="Import Legacy CSV"
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ['sales'] });
+              queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
+              queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
+            }}
+          />
         </div>
       </div>
 

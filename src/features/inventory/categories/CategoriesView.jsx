@@ -18,6 +18,8 @@ import {
 import { tauriApi } from '../../../lib/tauri';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
+import ImportCsvButton from '../../../components/common/ImportCsvButton';
+
 
 // Recursive Tree Node Component
 function TreeNode({
@@ -373,15 +375,23 @@ export default function CategoriesView() {
             </button>
           </div>
 
+          <ImportCsvButton
+            entity="categories"
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ['categories'] });
+            }}
+          />
+
           <button
             onClick={() => handleOpenCreate()}
-            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
+            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Category</span>
           </button>
         </div>
       </div>
+
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">

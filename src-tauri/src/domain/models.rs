@@ -292,3 +292,12 @@ pub struct ProductFlowItem {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsvImportResult {
+    pub total_rows: usize,
+    pub imported: usize,
+    pub skipped: usize,
+    pub errors: Vec<String>,
+}
+
+

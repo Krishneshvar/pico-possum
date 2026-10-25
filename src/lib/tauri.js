@@ -57,4 +57,15 @@ export const tauriApi = {
   detectLegacyDatabase: () => invoke('detect_legacy_database'),
   importLegacyDatabase: (filePath = null) =>
     invoke('import_legacy_database', { filePath }),
+
+  // CSV Imports
+  importCsvCategories: ({ csvContent, filePath }) =>
+    invoke('import_csv_categories', { csvContent, filePath }),
+  importCsvProducts: ({ csvContent, filePath }) =>
+    invoke('import_csv_products', { csvContent, filePath }),
+  importCsvCustomers: ({ csvContent, filePath }) =>
+    invoke('import_csv_customers', { csvContent, filePath }),
+  importCsvBills: ({ csvContent, filePath, fileName }) =>
+    invoke('import_csv_bills', { csvContent, filePath, fileName }),
 };
+

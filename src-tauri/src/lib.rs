@@ -58,7 +58,13 @@ pub fn run() {
             // Legacy Migration
             commands::migration::detect_legacy_database,
             commands::migration::import_legacy_database,
+            // CSV Imports
+            commands::csv_import::import_csv_categories,
+            commands::csv_import::import_csv_products,
+            commands::csv_import::import_csv_customers,
+            commands::csv_import::import_csv_bills,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+
 }

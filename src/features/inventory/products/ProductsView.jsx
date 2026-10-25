@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Plus, Edit2, Trash2, X, ArrowUpDown } from 'lucide-react';
 import DropdownActions from '../../../components/common/DropdownActions';
+import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { tauriApi } from '../../../lib/tauri';
+
 import { formatPaise, rupeesToPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 
@@ -207,14 +209,25 @@ export default function ProductsView() {
             <p className="text-[11px] text-slate-500">Manage catalog, pricing, tax rates, alerts, and stock</p>
           </div>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <ImportCsvButton
+            entity="products"
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ['products'] });
+              queryClient.invalidateQueries({ queryKey: ['categories'] });
+              queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+            }}
+          />
+          <button
+            onClick={handleOpenCreate}
+            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Product
+          </button>
+        </div>
       </div>
+
 
       {/* Data Table */}
       <div className="flex-1 overflow-hidden">
