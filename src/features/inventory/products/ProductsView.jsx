@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Plus, Edit2, Trash2, X, ArrowUpDown } from 'lucide-react';
+import DropdownActions from '../../../components/common/DropdownActions';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, rupeesToPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
@@ -263,23 +264,12 @@ export default function ProductsView() {
           isLoading={isLoading}
           emptyMessage="No products found."
           actions={(row) => (
-            <div className="flex items-center justify-end gap-1">
-              <button
-                onClick={() => handleOpenStock(row)}
-                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium transition-colors"
-              >
-                <ArrowUpDown className="w-3 h-3 inline mr-1" />Stock
-              </button>
-              <button onClick={() => handleOpenEdit(row)} className="p-1.5 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors">
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => { if (confirm(`Delete "${row.name}"?`)) deleteMutation.mutate(row.id); }}
-                className="p-1.5 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <DropdownActions items={[
+              { label: 'Adjust Stock', icon: <ArrowUpDown className="w-3.5 h-3.5" />, onClick: () => handleOpenStock(row) },
+              { label: 'Edit Product', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(row) },
+              'divider',
+              { label: 'Delete Product', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => { if (confirm(`Delete "${row.name}"?`)) deleteMutation.mutate(row.id); } },
+            ]} />
           )}
         />
       </div>

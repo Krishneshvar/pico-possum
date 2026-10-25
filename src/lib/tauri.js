@@ -22,6 +22,7 @@ export const tauriApi = {
     invoke('get_sales', { limit, offset, query }),
   getSaleDetails: (saleId) => invoke('get_sale_details', { saleId }),
   cancelSale: (saleId, reason) => invoke('cancel_sale', { saleId, reason }),
+  updateSale: (payload) => invoke('update_sale', { payload }),
   saveOpenBill: (billIndex, payload) => invoke('save_open_bill', { billIndex, payload }),
   loadOpenBills: () => invoke('load_open_bills'),
   deleteOpenBill: (billIndex) => invoke('delete_open_bill', { billIndex }),

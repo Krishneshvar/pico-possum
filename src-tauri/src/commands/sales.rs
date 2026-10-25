@@ -2,7 +2,7 @@ use sqlx::{Row, SqlitePool};
 use tauri::State;
 
 use crate::application::SalesService;
-use crate::domain::models::{CreateSalePayload, Sale, SaleResponse};
+use crate::domain::models::{CreateSalePayload, Sale, SaleResponse, UpdateSalePayload};
 use crate::errors::AppError;
 
 #[tauri::command]
@@ -11,6 +11,14 @@ pub async fn process_sale(
     payload: CreateSalePayload,
 ) -> Result<SaleResponse, AppError> {
     SalesService::process_sale(&pool, payload).await
+}
+
+#[tauri::command]
+pub async fn update_sale(
+    pool: State<'_, SqlitePool>,
+    payload: UpdateSalePayload,
+) -> Result<SaleResponse, AppError> {
+    SalesService::update_sale(&pool, payload).await
 }
 
 #[tauri::command]

@@ -30,6 +30,12 @@ export default function StockLedgerView() {
       render: (r) => formatDateTime(r.created_at),
     },
     {
+      key: 'product_sku',
+      label: 'SKU',
+      className: 'font-mono text-slate-500 text-[11px]',
+      render: (r) => r.product_sku || <span className="text-slate-700">—</span>,
+    },
+    {
       key: 'product_name',
       label: 'Product',
       className: 'font-semibold text-slate-200',

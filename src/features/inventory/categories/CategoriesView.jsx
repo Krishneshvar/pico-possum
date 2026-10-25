@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import DataTable from '../../../components/common/DataTable';
+import DropdownActions from '../../../components/common/DropdownActions';
 
 // Recursive Tree Node Component
 function TreeNode({
@@ -321,16 +322,6 @@ export default function CategoriesView() {
         );
       },
     },
-    {
-      key: 'status',
-      label: 'Status',
-      className: 'text-xs',
-      render: () => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          Active
-        </span>
-      ),
-    },
   ];
 
   return (
@@ -488,29 +479,12 @@ export default function CategoriesView() {
                 emptyMessage="No categories found."
                 isLoading={isLoading}
                 actions={(c) => (
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      onClick={() => handleOpenCreate(c)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
-                      title="Add child subcategory"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenEdit(c)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
-                      title="Edit Category"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(c)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-                      title="Delete Category"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <DropdownActions items={[
+                    { label: 'Add Subcategory', icon: <Plus className="w-3.5 h-3.5" />, onClick: () => handleOpenCreate(c) },
+                    { label: 'Edit Category', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(c) },
+                    'divider',
+                    { label: 'Delete Category', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => handleDelete(c) },
+                  ]} />
                 )}
               />
             </div>

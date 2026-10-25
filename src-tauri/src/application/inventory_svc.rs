@@ -411,7 +411,7 @@ impl InventoryService {
         let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
 
         let movements = sqlx::query_as::<_, StockMovement>(
-            "SELECT sm.id, sm.product_id, p.name as product_name, sm.quantity_change,
+            "SELECT sm.id, sm.product_id, p.name as product_name, p.sku as product_sku, sm.quantity_change,
                     sm.movement_type, sm.reference_id, sm.note, sm.created_at
              FROM stock_movements sm
              LEFT JOIN products p ON p.id = sm.product_id

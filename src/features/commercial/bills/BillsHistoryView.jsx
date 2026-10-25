@@ -5,6 +5,7 @@ import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDateTime } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
+import DropdownActions from '../../../components/common/DropdownActions';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function BillsHistoryView() {
@@ -166,13 +167,24 @@ export default function BillsHistoryView() {
           emptyMessage="No sales recorded."
           onRowDoubleClick={handleOpenDetail}
           actions={(row) => (
-            <button
-              onClick={() => handleOpenDetail(row)}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
-            >
-              <Eye className="w-3.5 h-3.5 text-emerald-400" />
-              View
-            </button>
+            <DropdownActions items={[
+              { label: 'View Details', icon: <Eye className="w-3.5 h-3.5" />, onClick: () => handleOpenDetail(row) },
+              { label: 'Quick Reprint', icon: <Printer className="w-3.5 h-3.5" />, onClick: () => {
+                  setSelectedSaleId(row.id);
+                  setTimeout(() => {
+                    tauriApi.getSaleDetails(row.id).then(d => handleReprint(d));
+                  }, 100);
+                }
+              },
+              ...(row.status !== 'CANCELLED' ? [
+                'divider',
+                { label: 'Cancel & Return', icon: <RotateCcw className="w-3.5 h-3.5" />, danger: true, onClick: () => {
+                    setSelectedSaleId(row.id);
+                    setCancelModalOpen(true);
+                  }
+                },
+              ] : []),
+            ]} />
           )}
         />
       </div>

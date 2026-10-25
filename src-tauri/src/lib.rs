@@ -30,6 +30,7 @@ pub fn run() {
             commands::categories::delete_category,
             // Sales & POS
             commands::sales::process_sale,
+            commands::sales::update_sale,
             commands::sales::get_sales,
             commands::sales::get_sale_details,
             commands::sales::cancel_sale,

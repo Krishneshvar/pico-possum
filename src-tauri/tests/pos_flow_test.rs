@@ -3,6 +3,7 @@ use std::str::FromStr;
 use pico_possum_lib::domain::models::{
     CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
     CreateSaleItemPayload, CreateSalePayload, StockAdjustmentPayload,
+    UpdateSalePayload, UpdateSaleItemPayload,
 };
 use pico_possum_lib::application::{InventoryService, SalesService};
 
@@ -161,4 +162,133 @@ async fn test_full_pos_lifecycle() {
     .await
     .expect("Failed to adjust stock");
     assert_eq!(adjusted_prod.current_stock, 60);
+}
+
+#[tokio::test]
+async fn test_bill_edit_lifecycle() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
+    let db_file = temp_dir.path().join("test-bill-edit.db");
+
+    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", db_file.to_string_lossy()))
+        .unwrap()
+        .create_if_missing(true)
+        .foreign_keys(true);
+
+    let pool = SqlitePoolOptions::new()
+        .connect_with(options)
+        .await
+        .expect("Failed to connect");
+
+    sqlx::raw_sql(pico_possum_lib::infrastructure::database::schema::INIT_SCHEMA)
+        .execute(&pool)
+        .await
+        .expect("Schema init failed");
+
+    // Setup: category + 2 products
+    let cat = InventoryService::create_category(
+        &pool,
+        CreateCategoryPayload { name: "Edit Test Cat".into(), parent_id: None },
+    ).await.unwrap();
+
+    let prod_a = InventoryService::create_product(
+        &pool,
+        CreateProductPayload {
+            name: "Product A".into(), sku: Some("PA-1".into()),
+            category_id: Some(cat.id.clone()),
+            cost_price_paise: Some(500), mrp_paise: 1000,
+            tax_rate: Some(0.0), initial_stock: Some(100),
+            min_stock_alert: Some(5), status: Some("active".into()),
+        },
+    ).await.unwrap();
+
+    let prod_b = InventoryService::create_product(
+        &pool,
+        CreateProductPayload {
+            name: "Product B".into(), sku: Some("PB-1".into()),
+            category_id: Some(cat.id.clone()),
+            cost_price_paise: Some(800), mrp_paise: 1500,
+            tax_rate: Some(0.0), initial_stock: Some(50),
+            min_stock_alert: Some(5), status: Some("active".into()),
+        },
+    ).await.unwrap();
+
+    // Original sale: 3x Product A @ 1000
+    let sale_res = SalesService::process_sale(
+        &pool,
+        CreateSalePayload {
+            customer_id: None,
+            customer_name: Some("Test Customer".into()),
+            customer_phone: None,
+            customer_address: None,
+            items: vec![CreateSaleItemPayload {
+                product_id: prod_a.id.clone(),
+                quantity: 3,
+                unit_price_paise: 1000,
+                discount_paise: Some(0),
+            }],
+            discount_paise: Some(0),
+            payment_method: "CASH".into(),
+            paid_paise: 3000,
+            notes: None,
+        },
+    ).await.expect("Original sale failed");
+
+    assert_eq!(sale_res.sale.total_paise, 3000);
+
+    // Verify stock: A went 100 → 97
+    let a_after_sale = InventoryService::get_product_by_id(&pool, &prod_a.id).await.unwrap();
+    assert_eq!(a_after_sale.current_stock, 97);
+
+    // Edit: change to 1x Product A + 2x Product B
+    let updated = SalesService::update_sale(
+        &pool,
+        UpdateSalePayload {
+            sale_id: sale_res.sale.id.clone(),
+            customer_id: None,
+            customer_name: Some("Updated Customer".into()),
+            customer_phone: Some("9999999999".into()),
+            customer_address: None,
+            items: vec![
+                UpdateSaleItemPayload {
+                    product_id: prod_a.id.clone(),
+                    quantity: 1,
+                    unit_price_paise: 1000,
+                    discount_paise: Some(0),
+                },
+                UpdateSaleItemPayload {
+                    product_id: prod_b.id.clone(),
+                    quantity: 2,
+                    unit_price_paise: 1500,
+                    discount_paise: Some(0),
+                },
+            ],
+            discount_paise: Some(0),
+            payment_method: "UPI".into(),
+            paid_paise: 4000,
+            notes: Some("Corrected bill".into()),
+        },
+    ).await.expect("Bill edit failed");
+
+    assert_eq!(updated.sale.total_paise, 4000); // 1*1000 + 2*1500
+    assert_eq!(updated.sale.customer_name, Some("Updated Customer".into()));
+    assert_eq!(updated.sale.payment_method, "UPI".to_string());
+    assert_eq!(updated.items.len(), 2);
+
+    // Stock A: was 97 → reduced from 3 to 1 → restored 2 → 97 + 2 = 99
+    let a_after_edit = InventoryService::get_product_by_id(&pool, &prod_a.id).await.unwrap();
+    assert_eq!(a_after_edit.current_stock, 99, "Prod A stock should be 99 after reducing from 3 to 1");
+
+    // Stock B: was 50 → 2 deducted → 48
+    let b_after_edit = InventoryService::get_product_by_id(&pool, &prod_b.id).await.unwrap();
+    assert_eq!(b_after_edit.current_stock, 48, "Prod B stock should be 48 after adding 2");
+
+    // Verify stock movement audit for B contains a SALE movement
+    let b_movements = InventoryService::get_stock_movements(&pool, Some(prod_b.id.clone()), None, None, 10).await.unwrap();
+    let b_sale = b_movements.iter().find(|m| m.movement_type == "SALE").expect("B should have a SALE movement");
+    assert_eq!(b_sale.quantity_change, -2);
+
+    // Verify stock movement for A contains a RETURN for 2 units
+    let a_movements = InventoryService::get_stock_movements(&pool, Some(prod_a.id.clone()), None, None, 10).await.unwrap();
+    let a_return = a_movements.iter().find(|m| m.movement_type == "RETURN").expect("A should have a RETURN movement");
+    assert_eq!(a_return.quantity_change, 2);
 }

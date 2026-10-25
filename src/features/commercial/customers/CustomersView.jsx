@@ -4,6 +4,7 @@ import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, Shop
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import DropdownActions from '../../../components/common/DropdownActions';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function CustomersView() {
@@ -169,39 +170,12 @@ export default function CustomersView() {
           emptyMessage="No customers found."
           onRowClick={(row) => setViewingCustomer(row)}
           actions={(row) => (
-            <div className="flex items-center justify-end gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setViewingCustomer(row);
-                }}
-                title="View Purchase History"
-                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 text-[11px] font-medium inline-flex items-center gap-1 transition-colors"
-              >
-                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
-                History
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOpenEdit(row);
-                }}
-                title="Edit Customer"
-                className="p-1.5 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteTarget(row);
-                }}
-                title="Delete Customer"
-                className="p-1.5 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <DropdownActions items={[
+              { label: 'Purchase History', icon: <Receipt className="w-3.5 h-3.5" />, onClick: () => setViewingCustomer(row) },
+              { label: 'Edit Customer', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(row) },
+              'divider',
+              { label: 'Delete Customer', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => setDeleteTarget(row) },
+            ]} />
           )}
         />
       </div>

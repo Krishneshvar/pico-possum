@@ -149,6 +149,28 @@ pub struct CreateSalePayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSaleItemPayload {
+    pub product_id: String,
+    pub quantity: i64,
+    pub unit_price_paise: i64,
+    pub discount_paise: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSalePayload {
+    pub sale_id: String,
+    pub customer_id: Option<String>,
+    pub customer_name: Option<String>,
+    pub customer_phone: Option<String>,
+    pub customer_address: Option<String>,
+    pub items: Vec<UpdateSaleItemPayload>,
+    pub discount_paise: Option<i64>,
+    pub payment_method: String,
+    pub paid_paise: i64,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaleResponse {
     pub sale: Sale,
     pub items: Vec<SaleItem>,
@@ -160,6 +182,7 @@ pub struct StockMovement {
     pub id: String,
     pub product_id: String,
     pub product_name: Option<String>,
+    pub product_sku: Option<String>,
     pub quantity_change: i64,
     pub movement_type: String,
     pub reference_id: Option<String>,
