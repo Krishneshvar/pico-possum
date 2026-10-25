@@ -1,21 +1,43 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Plus, Phone, MapPin, X, Edit2, Trash2 } from 'lucide-react';
+import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, ShoppingBag, Clock } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatDateTime } from '../../../lib/formatters';
+import { formatDateTime, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function CustomersView() {
   const queryClient = useQueryClient();
+  const { openOrFocus } = useWorkspaceStore();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewingCustomer, setViewingCustomer] = useState(null);
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: () => tauriApi.getCustomers(null),
   });
+
+  const { data: customerSales = [], isLoading: loadingCustomerSales } = useQuery({
+    queryKey: ['customer_sales', viewingCustomer?.id],
+    queryFn: () => tauriApi.getCustomerSales(viewingCustomer.id),
+    enabled: !!viewingCustomer?.id,
+  });
+
+  const customerStats = useMemo(() => {
+    if (!customerSales || customerSales.length === 0) {
+      return { totalOrders: 0, totalSpent: 0, avgBill: 0, lastOrder: null };
+    }
+    const validSales = customerSales.filter((s) => s.status !== 'CANCELLED');
+    const totalSpent = validSales.reduce((acc, s) => acc + (s.total_paise || 0), 0);
+    const totalOrders = customerSales.length;
+    const avgBill = validSales.length > 0 ? Math.round(totalSpent / validSales.length) : 0;
+    const lastOrder = customerSales[0]?.created_at || null;
+    return { totalOrders, totalSpent, avgBill, lastOrder };
+  }, [customerSales]);
 
   const createMutation = useMutation({
     mutationFn: (payload) => tauriApi.createCustomer(payload),
@@ -79,6 +101,15 @@ export default function CustomersView() {
     }
   };
 
+  const handleOpenBillDetail = (sale) => {
+    openOrFocus(
+      `Bill #${sale.invoice_number}`,
+      'bill-detail',
+      { saleId: sale.id, invoiceNumber: sale.invoice_number },
+      `bill-${sale.id}`
+    );
+  };
+
   const columns = [
     {
       key: 'name', label: 'Name',
@@ -136,17 +167,35 @@ export default function CustomersView() {
           searchKeys={['name', 'phone', 'address']}
           isLoading={isLoading}
           emptyMessage="No customers found."
+          onRowClick={(row) => setViewingCustomer(row)}
           actions={(row) => (
             <div className="flex items-center justify-end gap-1">
               <button
-                onClick={() => handleOpenEdit(row)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewingCustomer(row);
+                }}
+                title="View Purchase History"
+                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 text-[11px] font-medium inline-flex items-center gap-1 transition-colors"
+              >
+                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                History
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenEdit(row);
+                }}
                 title="Edit Customer"
                 className="p-1.5 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => setDeleteTarget(row)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(row);
+                }}
                 title="Delete Customer"
                 className="p-1.5 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
               >
@@ -156,6 +205,127 @@ export default function CustomersView() {
           )}
         />
       </div>
+
+      {/* ── Customer Purchase History Modal ── */}
+      {viewingCustomer && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
+                    {viewingCustomer.name}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                    {viewingCustomer.phone && <span>Ph: <strong className="font-mono text-slate-300">{viewingCustomer.phone}</strong></span>}
+                    {viewingCustomer.address && <span>• {viewingCustomer.address}</span>}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setViewingCustomer(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Lifetime Stats */}
+            <div className="grid grid-cols-4 gap-3 text-xs flex-shrink-0">
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-center">
+                <span className="text-slate-500 block">Total Orders</span>
+                <span className="text-lg font-bold text-slate-100 font-mono mt-0.5 block">{customerStats.totalOrders}</span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-center">
+                <span className="text-slate-500 block">Total Spent</span>
+                <span className="text-lg font-bold text-emerald-400 font-mono mt-0.5 block">{formatPaise(customerStats.totalSpent)}</span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-center">
+                <span className="text-slate-500 block">Average Order</span>
+                <span className="text-lg font-bold text-slate-100 font-mono mt-0.5 block">{formatPaise(customerStats.avgBill)}</span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-center">
+                <span className="text-slate-500 block">Last Purchase</span>
+                <span className="text-xs font-bold text-slate-300 font-mono mt-1 block truncate">
+                  {customerStats.lastOrder ? formatDateTime(customerStats.lastOrder).split(',')[0] : 'None'}
+                </span>
+              </div>
+            </div>
+
+            {/* Invoices List */}
+            <div className="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/40">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-900/90 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-4">Invoice #</th>
+                    <th className="py-2.5 px-4">Date</th>
+                    <th className="py-2.5 px-4">Payment</th>
+                    <th className="py-2.5 px-4 text-center">Status</th>
+                    <th className="py-2.5 px-4 text-right">Amount</th>
+                    <th className="py-2.5 px-4 text-right w-20">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono">
+                  {loadingCustomerSales ? (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-slate-500">
+                        <div className="inline-block w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                      </td>
+                    </tr>
+                  ) : customerSales.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-slate-500 font-sans">
+                        No purchase history found for this customer.
+                      </td>
+                    </tr>
+                  ) : (
+                    customerSales.map((sale) => (
+                      <tr key={sale.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="py-2.5 px-4 font-bold text-slate-200">{sale.invoice_number}</td>
+                        <td className="py-2.5 px-4 text-slate-400 text-[11px]">{formatDateTime(sale.created_at)}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] uppercase font-sans">
+                            {sale.payment_method}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-center">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            sale.status === 'CANCELLED' ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/15 text-emerald-400'
+                          }`}>
+                            {sale.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-bold text-slate-100">{formatPaise(sale.total_paise)}</td>
+                        <td className="py-2.5 px-4 text-right">
+                          <button
+                            onClick={() => {
+                              handleOpenBillDetail(sale);
+                              setViewingCustomer(null);
+                            }}
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-sans inline-flex items-center gap-1 transition-colors"
+                          >
+                            <span>View</span>
+                            <ArrowRight className="w-3 h-3 text-emerald-400" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-800 flex-shrink-0">
+              <button
+                onClick={() => setViewingCustomer(null)}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Customer Modal */}
       {modalOpen && (

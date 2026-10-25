@@ -30,6 +30,8 @@ export default function PosView() {
     activeBillIndex,
     bills,
     switchBill,
+    nextEmptyBill,
+    hydrateOpenBills,
     getCurrentBill,
     addItem,
     updateItemQty,
@@ -43,6 +45,10 @@ export default function PosView() {
     setAmountTendered,
     clearCurrentBill,
   } = usePosStore();
+
+  useEffect(() => {
+    hydrateOpenBills();
+  }, [hydrateOpenBills]);
 
   const currentBill = getCurrentBill();
   const totals = computeBillTotals(currentBill);
@@ -116,6 +122,13 @@ export default function PosView() {
         e.preventDefault();
         const targetIndex = parseInt(e.key, 10) - 1;
         switchBill(targetIndex);
+        return;
+      }
+
+      // Ctrl + N -> Next/new empty bill tab
+      if (isCmd && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        nextEmptyBill();
         return;
       }
 
@@ -231,9 +244,15 @@ export default function PosView() {
                 onFocus={() => setSearchFocused(true)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && filteredSearchProducts.length > 0) {
-                    addItem(filteredSearchProducts[0]);
+                    const exactMatch = filteredSearchProducts.find(
+                      (p) =>
+                        (p.sku && p.sku.toLowerCase() === searchQuery.trim().toLowerCase()) ||
+                        p.name.toLowerCase() === searchQuery.trim().toLowerCase()
+                    );
+                    addItem(exactMatch || filteredSearchProducts[0]);
                     setSearchQuery('');
                     setSearchFocused(false);
+                    setTimeout(() => searchInputRef.current?.focus(), 50);
                   }
                 }}
                 className="w-full pl-10 pr-24 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-inner"
@@ -569,6 +588,34 @@ export default function PosView() {
                   currentBill.isFullPayment ? 'opacity-80' : ''
                 }`}
               />
+
+              {currentBill.paymentMethod === 'CASH' && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFullPayment(true);
+                      setAmountTendered(totals.totalPaise);
+                    }}
+                    className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-mono font-bold transition-colors"
+                  >
+                    Exact
+                  </button>
+                  {[50, 100, 200, 500, 1000, 2000].map((denom) => (
+                    <button
+                      key={denom}
+                      type="button"
+                      onClick={() => {
+                        setFullPayment(false);
+                        setAmountTendered(denom * 100);
+                      }}
+                      className="px-2 py-1 rounded bg-slate-800/80 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 text-[10px] font-mono transition-colors border border-slate-700/60"
+                    >
+                      ₹{denom}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

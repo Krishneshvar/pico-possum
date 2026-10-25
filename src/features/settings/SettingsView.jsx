@@ -340,13 +340,23 @@ export default function SettingsView() {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={updateBillMutation.isPending}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all mt-2"
-              >
-                Save Receipt Design
-              </button>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={updateBillMutation.isPending}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all"
+                >
+                  Save Receipt Design
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-colors flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                  Test Print
+                </button>
+              </div>
             </form>
 
             {/* Live Preview Column */}

@@ -41,6 +41,7 @@ pub fn run() {
             commands::customers::create_customer,
             commands::customers::update_customer,
             commands::customers::delete_customer,
+            commands::customers::get_customer_sales,
             // Reports & Insights
             commands::reports::get_sales_report_summary,
             commands::reports::get_sales_breakdown,

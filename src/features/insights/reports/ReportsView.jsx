@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, TrendingUp, IndianRupee, CreditCard, Banknote, QrCode, Flame } from 'lucide-react';
+import { BarChart3, TrendingUp, IndianRupee, CreditCard, Banknote, QrCode, Flame, Calendar, RefreshCw } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'audit'
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
-  const { data: summary, isLoading: loadingSummary } = useQuery({
-    queryKey: ['sales_report_summary'],
-    queryFn: () => tauriApi.getSalesReportSummary(),
+  const { data: summary, isLoading: loadingSummary, refetch } = useQuery({
+    queryKey: ['sales_report_summary', fromDate, toDate],
+    queryFn: () => tauriApi.getSalesReportSummary(fromDate || null, toDate || null),
   });
 
   const { data: topProducts = [], isLoading: loadingTop } = useQuery({
@@ -32,10 +34,34 @@ export default function ReportsView() {
   const totalCount = summary?.total_sales_count || 0;
   const avgBill = totalCount > 0 ? Math.round(totalRev / totalCount) : 0;
 
+  const cashPct = totalRev > 0 ? (cashRev / totalRev) * 100 : 0;
+  const upiPct = totalRev > 0 ? (upiRev / totalRev) * 100 : 0;
+  const cardPct = totalRev > 0 ? (cardRev / totalRev) * 100 : 0;
+  const otherPct = totalRev > 0 ? (otherRev / totalRev) * 100 : 0;
+
+  const setRangeToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setFromDate(today);
+    setToDate(today);
+  };
+
+  const setRangeMonth = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const today = now.toISOString().split('T')[0];
+    setFromDate(firstDay);
+    setToDate(today);
+  };
+
+  const setRangeAll = () => {
+    setFromDate('');
+    setToDate('');
+  };
+
   const auditColumns = [
     { key: 'created_at', label: 'Timestamp', className: 'font-mono text-slate-400 text-[11px] whitespace-nowrap', render: (r) => formatDateTime(r.created_at) },
     { key: 'event_type', label: 'Event', className: 'font-mono font-bold text-emerald-400' },
-    { key: 'entity_type', label: 'Entity', className: 'text-slate-300' },
+    { key: 'entity_type', label: 'Module', className: 'text-slate-300 uppercase text-[11px] font-mono' },
     { key: 'description', label: 'Description', className: 'text-slate-300' },
   ];
 
@@ -76,6 +102,54 @@ export default function ReportsView() {
 
       {activeTab === 'summary' ? (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Date Filter Toolbar */}
+          <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex-wrap gap-3">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Calendar className="w-4 h-4 text-emerald-400" />
+              <span>Reporting Range:</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs font-mono focus:border-emerald-500 focus:outline-none"
+              />
+              <span>to</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs font-mono focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <button
+                onClick={setRangeToday}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+              >
+                Today
+              </button>
+              <button
+                onClick={setRangeMonth}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+              >
+                This Month
+              </button>
+              <button
+                onClick={setRangeAll}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+              >
+                All Time
+              </button>
+              <button
+                onClick={() => refetch()}
+                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                title="Refresh"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
           {/* Top Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-2">
@@ -131,10 +205,55 @@ export default function ReportsView() {
             </div>
           </div>
 
-          {/* Payment Method Breakdown Grid */}
+          {/* Payment Method Breakdown Grid & Distribution Bar */}
           <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-slate-100">Revenue by Payment Method</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-100">Revenue by Payment Method</h3>
+              <span className="text-xs text-slate-400 font-mono">Total: {formatPaise(totalRev)}</span>
+            </div>
+
+            {/* Visual Stacked Distribution Bar */}
+            {totalRev > 0 && (
+              <div className="space-y-1.5">
+                <div className="w-full h-3.5 bg-slate-900 rounded-full overflow-hidden flex border border-slate-800 shadow-inner">
+                  {cashPct > 0 && (
+                    <div
+                      style={{ width: `${cashPct}%` }}
+                      className="bg-emerald-500 h-full transition-all hover:opacity-90"
+                      title={`Cash: ${cashPct.toFixed(1)}%`}
+                    />
+                  )}
+                  {upiPct > 0 && (
+                    <div
+                      style={{ width: `${upiPct}%` }}
+                      className="bg-cyan-500 h-full transition-all hover:opacity-90"
+                      title={`UPI: ${upiPct.toFixed(1)}%`}
+                    />
+                  )}
+                  {cardPct > 0 && (
+                    <div
+                      style={{ width: `${cardPct}%` }}
+                      className="bg-blue-500 h-full transition-all hover:opacity-90"
+                      title={`Card: ${cardPct.toFixed(1)}%`}
+                    />
+                  )}
+                  {otherPct > 0 && (
+                    <div
+                      style={{ width: `${otherPct}%` }}
+                      className="bg-purple-500 h-full transition-all hover:opacity-90"
+                      title={`Other: ${otherPct.toFixed(1)}%`}
+                    />
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-4 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Cash ({cashPct.toFixed(1)}%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500" /> UPI ({upiPct.toFixed(1)}%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Card ({cardPct.toFixed(1)}%)</span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
               <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
                   <Banknote className="w-4 h-4 text-emerald-400" /> Cash
@@ -143,7 +262,7 @@ export default function ReportsView() {
                   {formatPaise(cashRev)}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {totalRev > 0 ? ((cashRev / totalRev) * 100).toFixed(1) : 0}% of revenue
+                  {cashPct.toFixed(1)}% of revenue
                 </div>
               </div>
 
@@ -155,7 +274,7 @@ export default function ReportsView() {
                   {formatPaise(upiRev)}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {totalRev > 0 ? ((upiRev / totalRev) * 100).toFixed(1) : 0}% of revenue
+                  {upiPct.toFixed(1)}% of revenue
                 </div>
               </div>
 
@@ -167,7 +286,7 @@ export default function ReportsView() {
                   {formatPaise(cardRev)}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {totalRev > 0 ? ((cardRev / totalRev) * 100).toFixed(1) : 0}% of revenue
+                  {cardPct.toFixed(1)}% of revenue
                 </div>
               </div>
             </div>
@@ -194,12 +313,12 @@ export default function ReportsView() {
                   {topProducts.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="py-8 text-center text-slate-500">
-                        No sales data available.
+                        No sales data available for top products.
                       </td>
                     </tr>
                   ) : (
                     topProducts.map((p, idx) => (
-                      <tr key={p.product_id} className="hover:bg-slate-900/40 transition-colors">
+                      <tr key={p.product_id || idx} className="hover:bg-slate-900/40 transition-colors">
                         <td className="py-2.5 px-4 text-center text-slate-500 font-mono font-bold">
                           {idx + 1}
                         </td>
@@ -230,19 +349,19 @@ export default function ReportsView() {
             searchKeys={['event_type', 'entity_type', 'description']}
             filters={[
               {
+                type: 'multiselect',
                 key: 'event_type',
-                label: 'All Events',
+                label: 'Actions',
                 options: [
-                  { value: 'CREATE', label: 'Create' },
-                  { value: 'UPDATE', label: 'Update' },
-                  { value: 'DELETE', label: 'Delete' },
-                  { value: 'SALE', label: 'Sale' },
+                  { value: 'SALE_COMPLETED', label: 'Sale Completed' },
+                  { value: 'SALE_CANCELLED', label: 'Sale Cancelled' },
                   { value: 'STOCK_ADJUSTMENT', label: 'Stock Adjustment' },
+                  { value: 'LEGACY_MIGRATION', label: 'Legacy Migration' },
                 ],
               },
             ]}
             isLoading={loadingAudit}
-            emptyMessage="No audit log entries."
+            emptyMessage="No audit log entries found."
           />
         </div>
       )}

@@ -15,7 +15,12 @@ export default function ProductsView() {
     cost_price_rupees: '', tax_rate: '0', initial_stock: '0',
     status: 'active', min_stock_alert: '5',
   });
-  const [stockAdjustment, setStockAdjustment] = useState({ quantity_change: 0, note: '' });
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [stockAdjustment, setStockAdjustment] = useState({
+    quantity_change: 0,
+    movement_type: 'RESTOCK',
+    note: '',
+  });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
@@ -43,7 +48,11 @@ export default function ProductsView() {
   });
   const adjustStockMutation = useMutation({
     mutationFn: (p) => tauriApi.adjustStock(p),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setModalMode(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      setModalMode(null);
+    },
     onError: (err) => alert(`Error: ${err}`),
   });
 
@@ -72,7 +81,11 @@ export default function ProductsView() {
   };
   const handleOpenStock = (p) => {
     setSelectedProduct(p);
-    setStockAdjustment({ quantity_change: 0, note: 'Restock / Inventory adjustment' });
+    setStockAdjustment({
+      quantity_change: 0,
+      movement_type: 'RESTOCK',
+      note: 'Supplier restock delivery',
+    });
     setModalMode('stock');
   };
   const handleSubmit = (e) => {
@@ -176,6 +189,10 @@ export default function ProductsView() {
 
   const categoryFilterOptions = categories.map((c) => ({ value: String(c.id), label: c.name }));
 
+  const displayProducts = showLowStockOnly
+    ? products.filter((p) => p.current_stock <= (p.min_stock_alert ?? 5))
+    : products;
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
@@ -202,9 +219,22 @@ export default function ProductsView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
-          data={products}
+          data={displayProducts}
           keyFn={(r) => r.id}
           searchKeys={['name', 'sku', 'category_name']}
+          headerRight={(
+            <button
+              onClick={() => setShowLowStockOnly((v) => !v)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+                showLowStockOnly
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${showLowStockOnly ? 'bg-amber-400 animate-pulse' : 'bg-slate-500'}`} />
+              Low Stock Only ({products.filter((p) => p.current_stock <= (p.min_stock_alert ?? 5)).length})
+            </button>
+          )}
           filters={[
             {
               type: 'multiselect',
@@ -420,12 +450,36 @@ export default function ProductsView() {
             </div>
             <div className="space-y-3 text-xs">
               <div>
+                <label className="text-slate-400 block mb-1">Adjustment Type</label>
+                <select
+                  value={stockAdjustment.movement_type}
+                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, movement_type: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="RESTOCK">Restock / Inventory Delivery</option>
+                  <option value="PURCHASE">Supplier Purchase</option>
+                  <option value="MANUAL_ADJUSTMENT">Manual Stock Adjustment / Correction</option>
+                  <option value="RETURN">Customer Return / Exchange</option>
+                </select>
+              </div>
+              <div>
                 <label className="text-slate-400 block mb-1">Quantity Change (+ to add, − to deduct)</label>
-                <input type="number" value={stockAdjustment.quantity_change} onChange={(e) => setStockAdjustment({ ...stockAdjustment, quantity_change: parseInt(e.target.value, 10) || 0 })} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono" />
+                <input
+                  type="number"
+                  value={stockAdjustment.quantity_change}
+                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, quantity_change: parseInt(e.target.value, 10) || 0 })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                />
               </div>
               <div>
                 <label className="text-slate-400 block mb-1">Reason / Note</label>
-                <input type="text" value={stockAdjustment.note} onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })} placeholder="e.g. Supplier delivery, damage" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none" />
+                <input
+                  type="text"
+                  value={stockAdjustment.note}
+                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
+                  placeholder="e.g. Supplier delivery, damage, recount"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -433,9 +487,15 @@ export default function ProductsView() {
               <button
                 onClick={() => {
                   if (stockAdjustment.quantity_change === 0) return;
-                  adjustStockMutation.mutate({ product_id: selectedProduct.id, quantity_change: stockAdjustment.quantity_change, reason: 'MANUAL_ADJUSTMENT', note: stockAdjustment.note || null });
+                  adjustStockMutation.mutate({
+                    product_id: selectedProduct.id,
+                    quantity_change: stockAdjustment.quantity_change,
+                    reason: stockAdjustment.movement_type || 'MANUAL_ADJUSTMENT',
+                    note: stockAdjustment.note || null,
+                  });
                 }}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/20"
+                disabled={adjustStockMutation.isPending || stockAdjustment.quantity_change === 0}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/20 disabled:opacity-50"
               >
                 Confirm Adjustment
               </button>
