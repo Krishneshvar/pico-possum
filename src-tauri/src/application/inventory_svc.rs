@@ -696,6 +696,7 @@ impl InventoryService {
                 gst: "".to_string(),
                 show_tax: false,
                 footer_text: "Thank you for shopping!".to_string(),
+                sections: None,
             })
         }
     }

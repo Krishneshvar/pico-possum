@@ -230,7 +230,26 @@ pub struct BillSettings {
     pub gst: String,
     pub show_tax: bool,
     pub footer_text: String,
+    #[serde(default)]
+    pub sections: Option<Vec<serde_json::Value>>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackupInfo {
+    pub filename: String,
+    pub file_path: String,
+    pub size_bytes: u64,
+    pub created_at: String,
+    pub backup_type: String, // "auto" | "manual" | "pre-restore"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackupStatus {
+    pub backup_location: String,
+    pub latest_backup: Option<BackupInfo>,
+    pub total_backups: usize,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LegacyMigrationSummary {

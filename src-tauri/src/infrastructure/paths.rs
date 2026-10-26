@@ -14,6 +14,13 @@ impl AppPaths {
         Self::get_app_dir().join("pico-possum-v2.db")
     }
 
+    pub fn get_backups_dir() -> PathBuf {
+        let dir = Self::get_app_dir().join("backups");
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
+
+
     pub fn detect_legacy_db_path() -> Option<PathBuf> {
         let base = dirs::data_dir()?;
         let candidate = base.join("pico-possum").join("database").join("pico-possum.db");

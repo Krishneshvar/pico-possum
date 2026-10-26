@@ -1,16 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Store, Printer, Database, CheckCircle2, AlertCircle, ArrowRight, RefreshCw, FileText } from 'lucide-react';
+import {
+  Settings,
+  Sliders,
+  Receipt,
+  Printer,
+  ShieldCheck,
+  Database,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  FolderOpen,
+  ArrowUp,
+  ArrowDown,
+  Lock,
+  HardDrive,
+  Info,
+  Check,
+  FileSpreadsheet,
+  Upload,
+} from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import ReceiptPrinter from '../../components/receipt/ReceiptPrinter';
 
 export default function SettingsView() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'bill' | 'migration'
+  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'bill' | 'hardware' | 'backup' | 'migration'
   const [migrationPath, setMigrationPath] = useState('');
   const [migrationResult, setMigrationResult] = useState(null);
+  const restoreFileInputRef = useRef(null);
 
-  // Form states
+  // ── General Settings State ──────────────────────────────────────────────────
   const [general, setGeneral] = useState({
     store_name: '',
     phone: '',
@@ -18,22 +38,92 @@ export default function SettingsView() {
     gstin: '',
     currency_symbol: '₹',
     currency_code: 'INR',
-    date_format: 'DD/MM/YYYY',
-    time_format: '12h',
+    date_format: 'DD-MM-YYYY',
+    time_format: '12 hour format',
     default_printer_name: '',
   });
 
+  // ── Password UI State ───────────────────────────────────────────────────────
+  const [passwordState, setPasswordState] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordFeedback, setPasswordFeedback] = useState(null);
+
+  // ── Bill Structure State ───────────────────────────────────────────────────
+  const defaultSections = [
+    {
+      id: 'storeHeader',
+      name: 'Store Header',
+      visible: true,
+      options: {
+        alignment: 'center',
+        fontSize: 'medium',
+        storeName: 'Pico POS Store',
+        storeDetails: '123 Main St, Tech City',
+        phone: '9876543210',
+        gst: '22AAAAA0000A1Z5',
+      },
+    },
+    {
+      id: 'billMetadata',
+      name: 'Bill Metadata',
+      visible: true,
+      options: {
+        alignment: 'left',
+        fontSize: 'small',
+      },
+    },
+    {
+      id: 'itemsTable',
+      name: 'Items Table',
+      visible: true,
+      options: {
+        fontSize: 'medium',
+        showTax: false,
+      },
+    },
+    {
+      id: 'totals',
+      name: 'Totals & Payments',
+      visible: true,
+      options: {
+        alignment: 'right',
+        fontSize: 'medium',
+      },
+    },
+    {
+      id: 'footer',
+      name: 'Footer Message',
+      visible: true,
+      options: {
+        alignment: 'center',
+        fontSize: 'small',
+        text: 'Thank you for your visit!',
+      },
+    },
+  ];
+
   const [bill, setBill] = useState({
     paper_width: '80mm',
-    store_name: '',
-    store_details: '',
-    phone: '',
-    gst: '',
+    store_name: 'Pico POS Store',
+    store_details: '123 Main St, Tech City',
+    phone: '9876543210',
+    gst: '22AAAAA0000A1Z5',
     show_tax: false,
-    footer_text: 'Thank you for shopping with us!',
+    footer_text: 'Thank you for your visit!',
+    sections: defaultSections,
   });
 
-  // Queries
+  // ── Feedback Toast / Banner ─────────────────────────────────────────────────
+  const [notification, setNotification] = useState(null);
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: generalData } = useQuery({
     queryKey: ['general_settings'],
     queryFn: () => tauriApi.getGeneralSettings(),
@@ -44,17 +134,48 @@ export default function SettingsView() {
     queryFn: () => tauriApi.getBillSettings(),
   });
 
+  const { data: printers = [], isLoading: scanningPrinters, refetch: refreshPrinters } = useQuery({
+    queryKey: ['system_printers'],
+    queryFn: () => tauriApi.listPrinters(),
+    enabled: activeTab === 'hardware',
+  });
+
+  const { data: backupStatus, refetch: refreshBackupStatus } = useQuery({
+    queryKey: ['backup_status'],
+    queryFn: () => tauriApi.getBackupStatus(),
+    enabled: activeTab === 'backup',
+  });
+
+  const { data: backupsList = [], refetch: refreshBackupsList } = useQuery({
+    queryKey: ['backups_list'],
+    queryFn: () => tauriApi.listBackups(),
+    enabled: activeTab === 'backup',
+  });
+
   const { data: detectedLegacyDb } = useQuery({
     queryKey: ['detected_legacy_db'],
     queryFn: () => tauriApi.detectLegacyDatabase(),
   });
 
   useEffect(() => {
-    if (generalData) setGeneral(generalData);
+    if (generalData) {
+      setGeneral((prev) => ({
+        ...prev,
+        ...generalData,
+        date_format: generalData.date_format?.replace(/\//g, '-') || 'DD-MM-YYYY',
+        time_format: generalData.time_format?.includes('24') ? '24 hour format' : '12 hour format',
+      }));
+    }
   }, [generalData]);
 
   useEffect(() => {
-    if (billData) setBill(billData);
+    if (billData) {
+      setBill((prev) => ({
+        ...prev,
+        ...billData,
+        sections: billData.sections && billData.sections.length > 0 ? billData.sections : prev.sections,
+      }));
+    }
   }, [billData]);
 
   useEffect(() => {
@@ -63,21 +184,61 @@ export default function SettingsView() {
     }
   }, [detectedLegacyDb]);
 
-  // Mutations
+  // ── Mutations ───────────────────────────────────────────────────────────────
   const updateGeneralMutation = useMutation({
     mutationFn: (data) => tauriApi.updateGeneralSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['general_settings'] });
-      alert('General settings saved!');
+      showNotification('General settings saved successfully');
     },
+    onError: (err) => showNotification(`Failed to save settings: ${err}`, 'error'),
   });
 
   const updateBillMutation = useMutation({
     mutationFn: (data) => tauriApi.updateBillSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bill_settings'] });
-      alert('Receipt settings saved!');
+      showNotification('Bill structure settings saved successfully');
     },
+    onError: (err) => showNotification(`Failed to save bill settings: ${err}`, 'error'),
+  });
+
+  const testPrintMutation = useMutation({
+    mutationFn: (printerName) => tauriApi.testPrint(printerName),
+    onSuccess: () => {
+      showNotification(`Test print sent successfully to ${general.default_printer_name || 'default printer'}`);
+    },
+    onError: (err) => {
+      // Fallback to window.print if direct thermal print is not configured
+      window.print();
+      showNotification('Opened system print dialog for test receipt', 'info');
+    },
+  });
+
+  const createBackupMutation = useMutation({
+    mutationFn: () => tauriApi.createManualBackup(),
+    onSuccess: (info) => {
+      refreshBackupStatus();
+      refreshBackupsList();
+      showNotification(`Backup created successfully: ${info.filename}`);
+    },
+    onError: (err) => showNotification(`Failed to create backup: ${err}`, 'error'),
+  });
+
+  const restoreBackupMutation = useMutation({
+    mutationFn: async (arg) => {
+      if (typeof arg === 'object' && arg.bytes) {
+        return tauriApi.restoreBackupFile(arg.filename, arg.bytes);
+      }
+      return tauriApi.restoreBackup(arg);
+    },
+    onSuccess: (msg) => {
+      refreshBackupStatus();
+      refreshBackupsList();
+      queryClient.invalidateQueries();
+      showNotification(msg, 'success');
+    },
+    onError: (err) => showNotification(`Restore failed: ${err}`, 'error'),
   });
 
   const migrationMutation = useMutation({
@@ -85,39 +246,110 @@ export default function SettingsView() {
     onSuccess: (summary) => {
       setMigrationResult(summary);
       queryClient.invalidateQueries();
+      showNotification('Legacy database migrated successfully');
     },
-    onError: (err) => alert(`Migration failed: ${err}`),
+    onError: (err) => showNotification(`Migration failed: ${err}`, 'error'),
   });
 
+  // ── Section Reordering & Options Handlers ───────────────────────────────────
+  const moveSection = (index, delta) => {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= bill.sections.length) return;
+    const updated = [...bill.sections];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setBill({ ...bill, sections: updated });
+  };
+
+  const toggleSectionVisible = (id) => {
+    const updated = bill.sections.map((sec) =>
+      sec.id === id ? { ...sec, visible: !sec.visible } : sec
+    );
+    setBill({ ...bill, sections: updated });
+  };
+
+  const updateSectionOption = (sectionId, optionKey, value) => {
+    const updated = bill.sections.map((sec) => {
+      if (sec.id === sectionId) {
+        return {
+          ...sec,
+          options: {
+            ...(sec.options || {}),
+            [optionKey]: value,
+          },
+        };
+      }
+      return sec;
+    });
+
+    // Also sync flat properties for backward compatibility
+    let extra = {};
+    if (sectionId === 'storeHeader') {
+      if (optionKey === 'storeName') extra.store_name = value;
+      if (optionKey === 'storeDetails') extra.store_details = value;
+      if (optionKey === 'phone') extra.phone = value;
+      if (optionKey === 'gst') extra.gst = value;
+    }
+    if (sectionId === 'itemsTable' && optionKey === 'showTax') {
+      extra.show_tax = value;
+    }
+    if (sectionId === 'footer' && optionKey === 'text') {
+      extra.footer_text = value;
+    }
+
+    setBill({ ...bill, ...extra, sections: updated });
+  };
+
+  // ── Password Form Submit (UI only as requested) ─────────────────────────────
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (!passwordState.currentPassword || !passwordState.newPassword || !passwordState.confirmPassword) {
+      setPasswordFeedback({ type: 'error', message: 'Please fill in all password fields.' });
+      return;
+    }
+    if (passwordState.newPassword !== passwordState.confirmPassword) {
+      setPasswordFeedback({ type: 'error', message: 'New passwords do not match.' });
+      return;
+    }
+    setPasswordFeedback({
+      type: 'info',
+      message: 'Password management backend will be connected in an upcoming security update.',
+    });
+    setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  };
+
+  // ── Sample data for Live Preview ───────────────────────────────────────────
   const sampleSale = {
     invoice_number: 'S26CH0000001',
     created_at: new Date().toISOString(),
-    customer_name: 'Demo Customer',
+    customer_name: 'Walk-in Customer',
     biller_name: 'Cashier',
     subtotal_paise: 25000,
     discount_paise: 2000,
     tax_paise: 1250,
-    total_paise: 23000,
+    total_paise: 24250,
     paid_paise: 25000,
     payment_method: 'CASH',
   };
 
   const sampleItems = [
-    { product_name: 'Sample Product 1', quantity: 2, unit_price_paise: 10000, discount_paise: 0 },
-    { product_name: 'Sample Item 2', quantity: 1, unit_price_paise: 5000, discount_paise: 2000 },
+    { product_name: 'Cadbury Silk 150g', quantity: 2, unit_price_paise: 10000, discount_paise: 0, tax_rate: 5.0 },
+    { product_name: 'Greeting Card Premium', quantity: 1, unit_price_paise: 5000, discount_paise: 2000, tax_rate: 18.0 },
   ];
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="h-16 px-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+      <div className="h-16 px-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-sm">
             <Settings className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Application Settings</h2>
-            <p className="text-xs text-slate-400">Configure store info, bill layout, and legacy database migration</p>
+            <h2 className="text-base font-bold text-slate-100">System Settings</h2>
+            <p className="text-xs text-slate-400">
+              Configure localization, bill layout, hardware printers, and database backups
+            </p>
           </div>
         </div>
 
@@ -125,359 +357,890 @@ export default function SettingsView() {
         <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs">
           <button
             onClick={() => setActiveTab('general')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'general' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+              activeTab === 'general' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Store className="w-3.5 h-3.5" />
-            <span>Store Profile</span>
+            <Sliders className="w-3.5 h-3.5" />
+            <span>General</span>
           </button>
           <button
             onClick={() => setActiveTab('bill')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'bill' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+              activeTab === 'bill' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            <span>Bill Structure</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('hardware')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+              activeTab === 'hardware' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Receipt Design</span>
+            <span>Hardware & Printing</span>
           </button>
           <button
-            onClick={() => setActiveTab('migration')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold transition-all relative ${
-              activeTab === 'migration' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+            onClick={() => setActiveTab('backup')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer relative ${
+              activeTab === 'backup' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Database className="w-3.5 h-3.5" />
-            <span>Data Migration</span>
-            {detectedLegacyDb && (
-              <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-1 right-1" />
-            )}
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Backup & Restore</span>
+            {detectedLegacyDb && <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-1 right-1" />}
           </button>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 max-w-4xl">
-        {/* ── Tab 1: General Settings ─────────────────────────────────── */}
-        {activeTab === 'general' && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              updateGeneralMutation.mutate(general);
-            }}
-            className="space-y-6"
-          >
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <Store className="w-4 h-4 text-emerald-400" /> Store Information
-              </h3>
+      {/* Notification Toast */}
+      {notification && (
+        <div
+          className={`mx-6 mt-4 p-3 rounded-xl text-xs flex items-center justify-between border transition-all animate-fade-in ${
+            notification.type === 'error'
+              ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+              : notification.type === 'info'
+              ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
+              : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-white text-xs px-2">
+            Dismiss
+          </button>
+        </div>
+      )}
 
-              <div className="grid grid-cols-2 gap-4 text-xs">
+      {/* Main Tab Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 1: GENERAL SETTINGS (Localization + Security / Password UI)
+           ══════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'general' && (
+          <div className="max-w-4xl space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Localization Card */}
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 shadow-sm">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Sliders className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">Localization</h3>
+                    <p className="text-[11px] text-slate-400">Currencies, dates, and timestamp formats</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="text-slate-300 font-medium block mb-1.5">Currency Symbol</label>
+                    <input
+                      type="text"
+                      value={general.currency_symbol}
+                      onChange={(e) => setGeneral({ ...general, currency_symbol: e.target.value })}
+                      placeholder="e.g. ₹, $, €"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none font-bold"
+                    />
+                    <span className="text-[11px] text-slate-500 mt-1 block">Displayed on POS bills and financial reports</span>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-medium block mb-1.5">Date Format</label>
+                    <select
+                      value={general.date_format}
+                      onChange={(e) => setGeneral({ ...general, date_format: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="DD-MM-YYYY">DD-MM-YYYY (e.g. 26-10-2026)</option>
+                      <option value="MM-DD-YYYY">MM-DD-YYYY (e.g. 10-26-2026)</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-10-26)</option>
+                      <option value="Month Date, Year">Month Date, Year (e.g. Oct 26, 2026)</option>
+                      <option value="Date Month, Year">Date Month, Year (e.g. 26 Oct, 2026)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-medium block mb-1.5">Time Format</label>
+                    <select
+                      value={general.time_format}
+                      onChange={(e) => setGeneral({ ...general, time_format: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="12 hour format">12 hour format (e.g. 02:45 PM)</option>
+                      <option value="24 hour format">24 hour format (e.g. 14:45)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Security & Access Card (Password UI) */}
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 shadow-sm">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">Security & Access</h3>
+                    <p className="text-[11px] text-slate-400">Admin password and access credentials</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePasswordSubmit} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="text-slate-300 font-medium block mb-1">Current Password</label>
+                    <input
+                      type="password"
+                      value={passwordState.currentPassword}
+                      onChange={(e) => setPasswordState({ ...passwordState, currentPassword: e.target.value })}
+                      placeholder="Enter current password"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-medium block mb-1">New Password</label>
+                    <input
+                      type="password"
+                      value={passwordState.newPassword}
+                      onChange={(e) => setPasswordState({ ...passwordState, newPassword: e.target.value })}
+                      placeholder="Enter new password"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-medium block mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={passwordState.confirmPassword}
+                      onChange={(e) => setPasswordState({ ...passwordState, confirmPassword: e.target.value })}
+                      placeholder="Confirm new password"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {passwordFeedback && (
+                    <div
+                      className={`p-2.5 rounded-lg text-[11px] ${
+                        passwordFeedback.type === 'error'
+                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                          : 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
+                      }`}
+                    >
+                      {passwordFeedback.message}
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Update Password</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* Store Information Card */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Settings className="w-4 h-4" />
+                </div>
                 <div>
-                  <label className="text-slate-400 block mb-1">Store Name</label>
+                  <h3 className="text-sm font-bold text-slate-100">Store Information</h3>
+                  <p className="text-[11px] text-slate-400">Master business profile data used across the system</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="text-slate-300 font-medium block mb-1">Store Name</label>
                   <input
                     type="text"
                     value={general.store_name}
                     onChange={(e) => setGeneral({ ...general, store_name: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1">Phone Number</label>
+                  <label className="text-slate-300 font-medium block mb-1">Phone Number</label>
                   <input
                     type="text"
                     value={general.phone}
                     onChange={(e) => setGeneral({ ...general, phone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="text-slate-400 block mb-1">Store Address / Details</label>
+                  <label className="text-slate-300 font-medium block mb-1">Address / Location</label>
                   <input
                     type="text"
                     value={general.address}
                     onChange={(e) => setGeneral({ ...general, address: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1">GSTIN / Tax ID</label>
+                  <label className="text-slate-300 font-medium block mb-1">GSTIN / Tax Registration</label>
                   <input
                     type="text"
                     value={general.gstin}
                     onChange={(e) => setGeneral({ ...general, gstin: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-400" /> Currency & Regional Formatting
-              </h3>
-
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <label className="text-slate-400 block mb-1">Currency Symbol</label>
-                  <input
-                    type="text"
-                    value={general.currency_symbol}
-                    onChange={(e) => setGeneral({ ...general, currency_symbol: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Date Format</label>
-                  <select
-                    value={general.date_format}
-                    onChange={(e) => setGeneral({ ...general, date_format: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="DD/MM/YYYY">DD/MM/YYYY (Standard)</option>
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                  </select>
-                </div>
-              </div>
+            {/* Save General Settings Button */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => updateGeneralMutation.mutate(general)}
+                disabled={updateGeneralMutation.isPending}
+                className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              >
+                {updateGeneralMutation.isPending ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>Save General Settings</span>
+              </button>
+              <span className="text-xs text-slate-400">Changes will take effect immediately</span>
             </div>
-
-            <button
-              type="submit"
-              disabled={updateGeneralMutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all"
-            >
-              Save Store Profile
-            </button>
-          </form>
+          </div>
         )}
 
-        {/* ── Tab 2: Bill & Receipt Settings ─────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 2: BILL STRUCTURE (Layout, Configurable Sections, Live Preview)
+           ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'bill' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateBillMutation.mutate(bill);
-              }}
-              className="space-y-4 glass-card p-6 rounded-2xl border border-slate-800 text-xs"
-            >
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2 mb-2">
-                <Printer className="w-4 h-4 text-emerald-400" /> Thermal Printer Layout
-              </h3>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Paper Width</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['80mm', '58mm'].map((w) => (
-                    <button
-                      key={w}
-                      type="button"
-                      onClick={() => setBill({ ...bill, paper_width: w })}
-                      className={`p-2 rounded-lg font-bold border transition-all ${
-                        bill.paper_width === w
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-                          : 'bg-slate-950 text-slate-400 border-slate-800'
-                      }`}
-                    >
-                      {w} Paper
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Receipt Header Title</label>
-                <input
-                  type="text"
-                  value={bill.store_name}
-                  onChange={(e) => setBill({ ...bill, store_name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Store Address / Details</label>
-                <textarea
-                  rows="2"
-                  value={bill.store_details}
-                  onChange={(e) => setBill({ ...bill, store_details: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: Settings & Sections Editor (7 cols) */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Paper Format Card */}
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
                 <div>
-                  <label className="text-slate-400 block mb-1">Phone</label>
-                  <input
-                    type="text"
-                    value={bill.phone}
-                    onChange={(e) => setBill({ ...bill, phone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                  />
+                  <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-emerald-400" /> Format Settings
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Configure thermal paper roll width and density</p>
                 </div>
+
+                <div className="text-xs">
+                  <label className="text-slate-300 font-medium block mb-2">Paper Width</label>
+                  <div className="grid grid-cols-2 gap-3 max-w-sm">
+                    {['80mm', '58mm'].map((w) => (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => setBill({ ...bill, paper_width: w })}
+                        className={`p-3 rounded-xl font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          bill.paper_width === w
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-sm'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+                        }`}
+                      >
+                        <Receipt className="w-4 h-4" />
+                        <span>{w === '80mm' ? '3 inch (80 mm)' : '2 inch (58 mm)'}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt Sections Card */}
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
                 <div>
-                  <label className="text-slate-400 block mb-1">GSTIN</label>
-                  <input
-                    type="text"
-                    value={bill.gst}
-                    onChange={(e) => setBill({ ...bill, gst: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                  />
+                  <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Receipt Sections
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Toggle visibility and reorder sections to customize your receipt layout. Use arrows to change positions.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {bill.sections.map((section, idx) => {
+                    const isFirst = idx === 0;
+                    const isLast = idx === bill.sections.length - 1;
+                    const opts = section.options || {};
+
+                    return (
+                      <div
+                        key={section.id}
+                        className={`p-4 rounded-xl border transition-all ${
+                          section.visible
+                            ? 'bg-slate-950/70 border-slate-800'
+                            : 'bg-slate-950/30 border-slate-850 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={section.visible}
+                              onChange={() => toggleSectionVisible(section.id)}
+                              className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer"
+                            />
+                            <span className="text-xs font-bold text-slate-200">{section.name || section.id}</span>
+                          </label>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveSection(idx, -1)}
+                              disabled={isFirst}
+                              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 cursor-pointer"
+                              title="Move section up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveSection(idx, 1)}
+                              disabled={isLast}
+                              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 cursor-pointer"
+                              title="Move section down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Section Options if visible */}
+                        {section.visible && (
+                          <div className="mt-3 pt-3 border-t border-slate-800/60 pl-6 space-y-3 text-xs">
+                            {/* Alignment & Font Size options */}
+                            <div className="flex flex-wrap gap-4 items-center">
+                              {opts.alignment !== undefined && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-400 text-[11px]">Alignment:</span>
+                                  <select
+                                    value={opts.alignment}
+                                    onChange={(e) => updateSectionOption(section.id, 'alignment', e.target.value)}
+                                    className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none"
+                                  >
+                                    <option value="left">Left</option>
+                                    <option value="center">Center</option>
+                                    <option value="right">Right</option>
+                                  </select>
+                                </div>
+                              )}
+
+                              {opts.fontSize !== undefined && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-400 text-[11px]">Font Size:</span>
+                                  <select
+                                    value={opts.fontSize}
+                                    onChange={(e) => updateSectionOption(section.id, 'fontSize', e.target.value)}
+                                    className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none"
+                                  >
+                                    <option value="small">Small</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="large">Large</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Section-specific detailed fields */}
+                            {section.id === 'storeHeader' && (
+                              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                <div>
+                                  <span className="text-slate-400 text-[11px] block mb-0.5">Header Name:</span>
+                                  <input
+                                    type="text"
+                                    value={opts.storeName ?? bill.store_name}
+                                    onChange={(e) => updateSectionOption('storeHeader', 'storeName', e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <span className="text-slate-400 text-[11px] block mb-0.5">Phone:</span>
+                                  <input
+                                    type="text"
+                                    value={opts.phone ?? bill.phone}
+                                    onChange={(e) => updateSectionOption('storeHeader', 'phone', e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs font-mono"
+                                  />
+                                </div>
+                                <div className="col-span-2">
+                                  <span className="text-slate-400 text-[11px] block mb-0.5">Address / Details:</span>
+                                  <textarea
+                                    rows="2"
+                                    value={opts.storeDetails ?? bill.store_details}
+                                    onChange={(e) => updateSectionOption('storeHeader', 'storeDetails', e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {section.id === 'itemsTable' && (
+                              <div className="pt-1">
+                                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                                  <input
+                                    type="checkbox"
+                                    checked={opts.showTax ?? bill.show_tax}
+                                    onChange={(e) => updateSectionOption('itemsTable', 'showTax', e.target.checked)}
+                                    className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-emerald-500 cursor-pointer"
+                                  />
+                                  <span className="text-[11px]">Show Tax% column on receipt items</span>
+                                </label>
+                              </div>
+                            )}
+
+                            {section.id === 'footer' && (
+                              <div className="pt-1">
+                                <span className="text-slate-400 text-[11px] block mb-0.5">Footer Message:</span>
+                                <input
+                                  type="text"
+                                  value={opts.text ?? bill.footer_text}
+                                  onChange={(e) => updateSectionOption('footer', 'text', e.target.value)}
+                                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div>
-                <label className="text-slate-400 block mb-1">Footer Message</label>
-                <input
-                  type="text"
-                  value={bill.footer_text}
-                  onChange={(e) => setBill({ ...bill, footer_text: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="submit"
-                  disabled={updateBillMutation.isPending}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all"
-                >
-                  Save Receipt Design
-                </button>
+              {/* Save Bill Settings Action */}
+              <div className="flex items-center gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-colors flex items-center gap-1.5"
+                  onClick={() => updateBillMutation.mutate(bill)}
+                  disabled={updateBillMutation.isPending}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
                 >
-                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
-                  Test Print
+                  {updateBillMutation.isPending ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>Save Bill Settings</span>
                 </button>
+                <span className="text-xs text-slate-400">Layout changes update live print output immediately</span>
               </div>
-            </form>
+            </div>
 
-            {/* Live Preview Column */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400 block text-center">Live Preview</span>
-              <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex justify-center shadow-inner">
-                <ReceiptPrinter
-                  sale={sampleSale}
-                  items={sampleItems}
-                  billSettings={bill}
-                  generalSettings={general}
-                />
+            {/* Right Column: Live Thermal Receipt Preview (5 cols) */}
+            <div className="lg:col-span-5 sticky top-6">
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <Printer className="w-4 h-4 text-emerald-400" /> Live Receipt Preview
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Simulating {bill.paper_width} thermal printer tape</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => testPrintMutation.mutate(general.default_printer_name || null)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Print Test</span>
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex justify-center overflow-x-auto">
+                  <ReceiptPrinter
+                    sale={sampleSale}
+                    items={sampleItems}
+                    billSettings={bill}
+                    generalSettings={general}
+                  />
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Tab 3: Legacy Data Migration ───────────────────────────── */}
-        {activeTab === 'migration' && (
-          <div className="space-y-6">
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                  <Database className="w-5 h-5" />
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 3: HARDWARE & PRINTING (Printer Scanning, Default Selection, Tips)
+           ══════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'hardware' && (
+          <div className="max-w-4xl space-y-6">
+            {/* Receipt Printer Card */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Printer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">Receipt Printer</h3>
+                    <p className="text-xs text-slate-400">Configure default printer for POS receipts and invoices</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => refreshPrinters()}
+                  disabled={scanningPrinters}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${scanningPrinters ? 'animate-spin text-emerald-400' : ''}`} />
+                  <span>Refresh Printers</span>
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs max-w-lg">
+                <div>
+                  <label className="text-slate-300 font-medium block mb-1.5">Default Printer</label>
+                  <select
+                    value={general.default_printer_name}
+                    onChange={(e) => {
+                      const updated = { ...general, default_printer_name: e.target.value };
+                      setGeneral(updated);
+                      updateGeneralMutation.mutate(updated);
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:border-emerald-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">System Default Printer</option>
+                    {printers.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    This printer will be selected for all direct print operations and bill printing
+                  </span>
+                </div>
+
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => testPrintMutation.mutate(general.default_printer_name || null)}
+                    disabled={testPrintMutation.isPending}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                  >
+                    {testPrintMutation.isPending ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Printer className="w-4 h-4" />
+                    )}
+                    <span>Send Test Print</span>
+                  </button>
+                  <span className="text-xs text-slate-400">Verify printer connection and output quality</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Hardware Information Card */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  <Info className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-100">Java PicoPOSSUM Data Migration</h3>
-                  <p className="text-xs text-slate-400">
-                    Seamlessly import all historical products, categories, stock, sales, and customers from the old app
-                  </p>
+                  <h3 className="text-sm font-bold text-slate-100">Hardware Information</h3>
+                  <p className="text-[11px] text-slate-400">Tips for connecting and configuring hardware devices</p>
                 </div>
               </div>
 
-              {detectedLegacyDb && (
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-xs text-emerald-300 flex items-start gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="space-y-3 text-xs text-slate-300">
+                <div className="flex items-start gap-3">
+                  <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 mt-0.5">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
                   <div>
-                    <strong className="font-bold block text-emerald-200">Existing Shop Database Detected!</strong>
-                    <p className="mt-0.5 font-mono text-[11px] text-emerald-400/90 break-all">{detectedLegacyDb}</p>
+                    <strong className="text-slate-200 block">Ensure printer is powered on and connected:</strong>
+                    <span className="text-slate-400">Check USB or network cable and paper roll feed.</span>
                   </div>
                 </div>
-              )}
 
-              <div className="space-y-2 text-xs">
-                <label className="text-slate-400 block">Legacy SQLite Database Path</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={migrationPath}
-                    onChange={(e) => setMigrationPath(e.target.value)}
-                    placeholder="/path/to/pico-possum.db"
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                  />
+                <div className="flex items-start gap-3">
+                  <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 mt-0.5">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-200 block">Install manufacturer thermal printer drivers:</strong>
+                    <span className="text-slate-400">
+                      Standard ESC/POS thermal printers (TVS, Epson, Xprinter, Citizen) require drivers with zero margin
+                      paper configurations for seamless cuts.
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-1 rounded bg-emerald-500/10 text-emerald-400 mt-0.5">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-200 block">Use the Refresh button if newly plugged in:</strong>
+                    <span className="text-slate-400">
+                      If you connect a printer while the application is open, click Refresh to detect it immediately.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 4: BACKUP & RESTORE (Daily Backups, Manual Backup, Folder, Restore)
+           ══════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'backup' && (
+          <div className="max-w-4xl space-y-6">
+            <input
+              ref={restoreFileInputRef}
+              type="file"
+              accept=".db"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  if (
+                    confirm(
+                      `Are you sure you want to restore from "${file.name}"?\n\n• Supports both native backups and Java app backups.\n• Database format is auto-detected and converted seamlessly.\n• An automated safety pre-restore backup will be created first.`
+                    )
+                  ) {
+                    if (file.path) {
+                      restoreBackupMutation.mutate(file.path);
+                    } else {
+                      try {
+                        const buffer = await file.arrayBuffer();
+                        const bytes = Array.from(new Uint8Array(buffer));
+                        restoreBackupMutation.mutate({ filename: file.name, bytes });
+                      } catch (err) {
+                        showNotification('Failed to read file: ' + err.message, 'error');
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+
+            {/* Previous Java POS Database Auto-Detected Banner */}
+            {detectedLegacyDb && (
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300">
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-amber-200">Previous Java POS Database Detected</h3>
+                      <p className="text-xs text-amber-300/80">
+                        Found local installation: <code className="font-mono text-[11px] bg-slate-950/60 px-1.5 py-0.5 rounded text-amber-100">{detectedLegacyDb}</code>
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => migrationMutation.mutate(migrationPath)}
-                    disabled={migrationMutation.isPending || !migrationPath}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all whitespace-nowrap"
+                    type="button"
+                    onClick={() => {
+                      if (confirm('Import all categories, products, customers, and sales history from your previous Java POS installation?')) {
+                        migrationMutation.mutate(detectedLegacyDb);
+                      }
+                    }}
+                    disabled={migrationMutation.isPending}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
                   >
-                    {migrationMutation.isPending ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Importing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="w-4 h-4" />
-                        <span>Start Migration</span>
-                      </>
-                    )}
+                    {migrationMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+                    <span>Import Previous POS Data</span>
                   </button>
                 </div>
+                {migrationResult && (
+                  <div className="pt-2 text-xs text-amber-200/90 font-medium border-t border-amber-500/20">
+                    ✓ Successfully imported {migrationResult.products_imported} products, {migrationResult.categories_imported} categories, {migrationResult.customers_imported} customers, and {migrationResult.sales_imported} sales invoices.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Automatic Daily Backups Card */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">Automatic Daily Backups</h3>
+                  <p className="text-xs text-slate-400">
+                    A mandatory backup is created once every day while the app is running
+                  </p>
+                </div>
               </div>
 
-              {/* Migration Result Report */}
-              {migrationResult && (
-                <div className="mt-4 p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3 animate-in fade-in">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>Migration Completed Successfully!</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-850">
+                  <span className="text-slate-400 text-[11px] font-medium block mb-1">Backup Location</span>
+                  <div className="font-mono text-slate-200 break-all select-all text-xs">
+                    {backupStatus?.backup_location || 'Loading location...'}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-400 block">Categories</span>
-                      <strong className="text-base text-slate-100 font-mono">
-                        {migrationResult.categories_imported}
-                      </strong>
-                    </div>
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-400 block">Products</span>
-                      <strong className="text-base text-slate-100 font-mono">
-                        {migrationResult.products_imported}
-                      </strong>
-                    </div>
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-400 block">Customers</span>
-                      <strong className="text-base text-slate-100 font-mono">
-                        {migrationResult.customers_imported}
-                      </strong>
-                    </div>
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-400 block">Sales Invoices</span>
-                      <strong className="text-base text-slate-100 font-mono">
-                        {migrationResult.sales_imported}
-                      </strong>
-                    </div>
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-400 block">Sale Line Items</span>
-                      <strong className="text-base text-slate-100 font-mono">
-                        {migrationResult.sale_items_imported}
-                      </strong>
-                    </div>
-                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-400 block">Stock Movements</span>
-                      <strong className="text-base text-slate-100 font-mono">
-                        {migrationResult.stock_movements_imported}
-                      </strong>
-                    </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-850">
+                  <span className="text-slate-400 text-[11px] font-medium block mb-1">Latest Backup</span>
+                  <div className="font-mono text-slate-200 text-xs">
+                    {backupStatus?.latest_backup ? (
+                      <span className="text-emerald-400 font-semibold">
+                        {backupStatus.latest_backup.filename} ({Math.round(backupStatus.latest_backup.size_bytes / 1024)} KB)
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">No backups created yet</span>
+                    )}
                   </div>
-                  <p className="text-[11px] text-emerald-300">
-                    All financial values were accurately converted to Paise, IDs were mapped to UUIDs, and stock ledger entries have been restored.
+                  {backupStatus?.latest_backup && (
+                    <span className="text-[11px] text-slate-500 block mt-0.5">
+                      {backupStatus.latest_backup.created_at}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Manual Backup & Actions Card */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <HardDrive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">Manual Backup & Restore</h3>
+                  <p className="text-xs text-slate-400">
+                    Create an on-demand snapshot or restore from any backup file (native or Java app)
                   </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => createBackupMutation.mutate()}
+                  disabled={createBackupMutation.isPending}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                >
+                  {createBackupMutation.isPending ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <HardDrive className="w-4 h-4" />
+                  )}
+                  <span>Create Backup Now</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => tauriApi.openBackupFolder()}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <FolderOpen className="w-4 h-4 text-emerald-400" />
+                  <span>Open Backup Folder</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (restoreFileInputRef.current) {
+                      restoreFileInputRef.current.value = '';
+                      restoreFileInputRef.current.click();
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-sky-400" />
+                  <span>Restore From Backup File</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Backups List Table */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  Available Backups ({backupsList.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    refreshBackupStatus();
+                    refreshBackupsList();
+                  }}
+                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Refresh List</span>
+                </button>
+              </div>
+
+              {backupsList.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-500">
+                  No backup files found in directory. Click "Create Backup Now" to create your first snapshot.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="pb-2 font-semibold">Filename</th>
+                        <th className="pb-2 font-semibold">Type</th>
+                        <th className="pb-2 font-semibold">Date & Time</th>
+                        <th className="pb-2 font-semibold text-right">Size</th>
+                        <th className="pb-2 font-semibold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono">
+                      {backupsList.map((bk) => {
+                        const isAuto = bk.backup_type === 'auto';
+                        const isPre = bk.backup_type === 'pre-restore';
+                        const badgeCls = isAuto
+                          ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                          : isPre
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+
+                        return (
+                          <tr key={bk.filename} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="py-2.5 text-slate-200 font-semibold truncate max-w-xs">{bk.filename}</td>
+                            <td className="py-2.5">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-sans font-bold border ${badgeCls}`}>
+                                {bk.backup_type}
+                              </span>
+                            </td>
+                            <td className="py-2.5 text-slate-400 text-[11px]">{bk.created_at}</td>
+                            <td className="py-2.5 text-right text-slate-300">{Math.round(bk.size_bytes / 1024)} KB</td>
+                            <td className="py-2.5 text-right font-sans">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Restore database from '${bk.filename}'? A safety pre-restore backup will be created.`)) {
+                                    restoreBackupMutation.mutate(bk.filename);
+                                  }
+                                }}
+                                disabled={restoreBackupMutation.isPending}
+                                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 transition-colors cursor-pointer"
+                              >
+                                Restore
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

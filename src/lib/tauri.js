@@ -53,6 +53,19 @@ export const tauriApi = {
   getBillSettings: () => invoke('get_bill_settings'),
   updateBillSettings: (settings) => invoke('update_bill_settings', { settings }),
 
+  // Hardware & Printing
+  listPrinters: () => invoke('list_printers'),
+  testPrint: (printerName = null) => invoke('test_print', { printerName }),
+
+  // Backup & Restore
+  getBackupStatus: () => invoke('get_backup_status'),
+  listBackups: () => invoke('list_backups'),
+  createManualBackup: () => invoke('create_manual_backup'),
+  restoreBackup: (backupPath) => invoke('restore_backup', { backupPath }),
+  restoreBackupFile: (filename, bytes) => invoke('restore_backup_file', { filename, bytes }),
+  openBackupFolder: () => invoke('open_backup_folder'),
+
+
   // Migration
   detectLegacyDatabase: () => invoke('detect_legacy_database'),
   importLegacyDatabase: (filePath = null) =>

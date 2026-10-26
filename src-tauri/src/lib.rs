@@ -55,7 +55,16 @@ pub fn run() {
             commands::settings::update_general_settings,
             commands::settings::get_bill_settings,
             commands::settings::update_bill_settings,
+            commands::settings::list_printers,
+            commands::settings::test_print,
+            commands::settings::get_backup_status,
+            commands::settings::list_backups,
+            commands::settings::create_manual_backup,
+            commands::settings::restore_backup,
+            commands::settings::restore_backup_file,
+            commands::settings::open_backup_folder,
             // Legacy Migration
+
             commands::migration::detect_legacy_database,
             commands::migration::import_legacy_database,
             // CSV Imports
