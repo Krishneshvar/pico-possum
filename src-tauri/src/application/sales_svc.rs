@@ -130,7 +130,7 @@ impl SalesService {
             .bind(&movement_id)
             .bind(&prod_id)
             .bind(-item_req.quantity)
-            .bind(&sale_id)
+            .bind(&invoice_number)
             .bind(&invoice_number)
             .execute(&mut *tx)
             .await?;
@@ -330,7 +330,7 @@ impl SalesService {
                 .bind(&movement_id)
                 .bind(pid)
                 .bind(-delta_q)
-                .bind(&payload.sale_id)
+                .bind(&existing_sale.invoice_number)
                 .bind(&note)
                 .execute(&mut *tx)
                 .await?;
@@ -354,7 +354,7 @@ impl SalesService {
                 .bind(&movement_id)
                 .bind(pid)
                 .bind(returned_q)
-                .bind(&payload.sale_id)
+                .bind(&existing_sale.invoice_number)
                 .bind(&note)
                 .execute(&mut *tx)
                 .await?;
@@ -611,7 +611,7 @@ impl SalesService {
                     subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise,
                     payment_method, status, fulfillment_status, notes,
                     created_at
-             FROM sales WHERE id = ?"
+             FROM sales WHERE id = ?1 OR invoice_number = ?1"
         )
         .bind(sale_id)
         .fetch_optional(pool)
@@ -621,9 +621,9 @@ impl SalesService {
         let items = sqlx::query_as::<_, SaleItem>(
             "SELECT id, sale_id, product_id, product_name, product_sku, quantity,
                     unit_price_paise, cost_price_paise, discount_paise, CAST(tax_rate AS REAL) as tax_rate, tax_paise, total_paise
-             FROM sale_items WHERE sale_id = ?"
+             FROM sale_items WHERE sale_id = ?1"
         )
-        .bind(sale_id)
+        .bind(&sale.id)
         .fetch_all(pool)
         .await?;
 
@@ -680,7 +680,7 @@ impl SalesService {
             .bind(&movement_id)
             .bind(&product_id)
             .bind(quantity)
-            .bind(sale_id)
+            .bind(&sale.invoice_number)
             .bind(&note)
             .execute(&mut *tx)
             .await?;

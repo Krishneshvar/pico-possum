@@ -108,10 +108,14 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
   const [draftNotes, setDraftNotes] = useState('');
   const [addingProduct, setAddingProduct] = useState(false);
 
+  // Resolve the lookup key — prefer the UUID sale ID, fall back to invoice number
+  // (used when navigating from the Stock Ledger via an invoice reference link).
+  const lookupKey = saleId || invoiceNumber;
+
   const { data: saleDetails, isLoading, isError } = useQuery({
-    queryKey: ['sale_details', saleId],
-    queryFn: () => tauriApi.getSaleDetails(saleId),
-    enabled: !!saleId,
+    queryKey: ['sale_details', lookupKey],
+    queryFn: () => tauriApi.getSaleDetails(lookupKey),
+    enabled: !!lookupKey,
   });
 
   const { data: billSettings } = useQuery({

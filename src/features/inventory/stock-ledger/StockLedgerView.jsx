@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRightLeft, ArrowDownRight, ArrowUpRight, RefreshCw, Calendar } from 'lucide-react';
+import { ArrowRightLeft, ArrowDownRight, ArrowUpRight, RefreshCw, Calendar, Receipt, ExternalLink } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 const TYPE_COLORS = {
   SALE:              'bg-rose-500/15 text-rose-400 border border-rose-500/20',
@@ -16,6 +17,7 @@ const TYPE_COLORS = {
 export default function StockLedgerView() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const { openOrFocus } = useWorkspaceStore();
 
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ['stock_movements', fromDate, toDate],
@@ -70,8 +72,25 @@ export default function StockLedgerView() {
     {
       key: 'reference_id',
       label: 'Reference',
-      className: 'font-mono text-slate-400 text-[11px]',
-      render: (r) => r.reference_id || <span className="text-slate-600">—</span>,
+      className: 'font-mono text-xs',
+      render: (r) => {
+        const isInvoiceRef = r.reference_id && (r.movement_type === 'SALE' || r.movement_type === 'RETURN');
+        if (!r.reference_id) return <span className="text-slate-600">—</span>;
+        if (isInvoiceRef) {
+          return (
+            <button
+              onClick={() => openOrFocus(`Bill #${r.reference_id}`, 'bill-detail', { invoiceNumber: r.reference_id })}
+              className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 hover:underline transition-colors font-mono text-[11px] group"
+              title={`Open bill ${r.reference_id}`}
+            >
+              <Receipt className="w-3 h-3 shrink-0" />
+              {r.reference_id}
+              <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          );
+        }
+        return <span className="text-slate-400 text-[11px]">{r.reference_id}</span>;
+      },
     },
     {
       key: 'note',

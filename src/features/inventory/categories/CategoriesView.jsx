@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FolderTree,
@@ -147,6 +147,33 @@ export default function CategoriesView() {
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'table' | 'tree'
   const [selectedTreeId, setSelectedTreeId] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [splitWidth, setSplitWidth] = useState(288); // px — default ~w-72
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const handleDividerMouseDown = useCallback((e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = splitWidth;
+
+    const onMouseMove = (ev) => {
+      if (!isDragging.current) return;
+      const delta = ev.clientX - dragStartX.current;
+      const next = Math.min(560, Math.max(180, dragStartWidth.current + delta));
+      setSplitWidth(next);
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [splitWidth]);
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories'],
@@ -398,9 +425,10 @@ export default function CategoriesView() {
         {/* Category Tree Pane (Visible in 'split' or 'tree' mode) */}
         {(viewMode === 'split' || viewMode === 'tree') && (
           <div
-            className={`flex flex-col border-r border-slate-800/80 bg-slate-900/30 overflow-hidden ${
-              viewMode === 'tree' ? 'flex-1' : 'w-72 sm:w-80'
+          className={`flex flex-col border-r border-slate-800/80 bg-slate-900/30 overflow-hidden ${
+              viewMode === 'tree' ? 'flex-1' : ''
             }`}
+            style={viewMode === 'split' ? { width: splitWidth, flexShrink: 0 } : undefined}
           >
             <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -458,6 +486,17 @@ export default function CategoriesView() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Drag divider — only in split mode */}
+        {viewMode === 'split' && (
+          <div
+            onMouseDown={handleDividerMouseDown}
+            className="w-1 flex-shrink-0 bg-slate-800/80 hover:bg-emerald-500/60 active:bg-emerald-500 cursor-col-resize transition-colors group relative"
+            title="Drag to resize"
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1" />
           </div>
         )}
 

@@ -305,7 +305,7 @@ export default function ProductsView() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Parle-G Biscuit 250g"
+                  placeholder="e.g. Mineral Water 500ml"
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
@@ -317,7 +317,7 @@ export default function ProductsView() {
                     type="text"
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    placeholder="e.g. 890123456789"
+                    placeholder="e.g. 100201"
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
                   />
                 </div>

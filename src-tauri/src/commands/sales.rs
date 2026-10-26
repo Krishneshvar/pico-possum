@@ -1,23 +1,35 @@
 use sqlx::{Row, SqlitePool};
 use tauri::State;
 
-use crate::application::SalesService;
+use crate::application::{AuthSessionManager, SalesService};
 use crate::domain::models::{CreateSalePayload, Sale, SaleResponse, UpdateSalePayload};
 use crate::errors::AppError;
+
+/// Guard helper — returns Err(Unauthorized) if no active session.
+async fn require_auth(session_mgr: &AuthSessionManager) -> Result<(), AppError> {
+    if !session_mgr.is_authenticated().await {
+        return Err(AppError::Unauthorized("Authentication required".to_string()));
+    }
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn process_sale(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     payload: CreateSalePayload,
 ) -> Result<SaleResponse, AppError> {
+    require_auth(&session_mgr).await?;
     SalesService::process_sale(&pool, payload).await
 }
 
 #[tauri::command]
 pub async fn update_sale(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     payload: UpdateSalePayload,
 ) -> Result<SaleResponse, AppError> {
+    require_auth(&session_mgr).await?;
     SalesService::update_sale(&pool, payload).await
 }
 
@@ -44,18 +56,22 @@ pub async fn get_sale_details(
 #[tauri::command]
 pub async fn cancel_sale(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     sale_id: String,
     reason: String,
 ) -> Result<Sale, AppError> {
+    require_auth(&session_mgr).await?;
     SalesService::cancel_sale(&pool, &sale_id, &reason).await
 }
 
 #[tauri::command]
 pub async fn save_open_bill(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     bill_index: i64,
     payload: String,
 ) -> Result<(), AppError> {
+    require_auth(&session_mgr).await?;
     sqlx::query(
         "INSERT INTO pos_open_bills (bill_index, payload, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
          ON CONFLICT(bill_index) DO UPDATE SET payload = excluded.payload, updated_at = CURRENT_TIMESTAMP"
@@ -83,8 +99,10 @@ pub async fn load_open_bills(
 #[tauri::command]
 pub async fn delete_open_bill(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     bill_index: i64,
 ) -> Result<(), AppError> {
+    require_auth(&session_mgr).await?;
     sqlx::query("DELETE FROM pos_open_bills WHERE bill_index = ?")
         .bind(bill_index)
         .execute(&*pool)

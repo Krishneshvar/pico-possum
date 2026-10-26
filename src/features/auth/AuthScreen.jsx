@@ -316,11 +316,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
           </button>
         </form>
 
-        {/* Security Footer Notice */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 flex items-center justify-center gap-2 text-[11px] text-slate-500 text-center">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500/70" />
-          <span>BCrypt salted password encryption & zero unauthorized access</span>
-        </div>
+
       </div>
     </div>
   );

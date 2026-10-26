@@ -1,9 +1,16 @@
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::application::InventoryService;
+use crate::application::{AuthSessionManager, InventoryService};
 use crate::domain::models::{CreateCustomerPayload, Customer, Sale, UpdateCustomerPayload};
 use crate::errors::AppError;
+
+async fn require_auth(session_mgr: &AuthSessionManager) -> Result<(), AppError> {
+    if !session_mgr.is_authenticated().await {
+        return Err(AppError::Unauthorized("Authentication required".to_string()));
+    }
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn get_customers(
@@ -16,25 +23,31 @@ pub async fn get_customers(
 #[tauri::command]
 pub async fn create_customer(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     payload: CreateCustomerPayload,
 ) -> Result<Customer, AppError> {
+    require_auth(&session_mgr).await?;
     InventoryService::create_customer(&pool, payload).await
 }
 
 #[tauri::command]
 pub async fn update_customer(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     id: String,
     payload: UpdateCustomerPayload,
 ) -> Result<Customer, AppError> {
+    require_auth(&session_mgr).await?;
     InventoryService::update_customer(&pool, &id, payload).await
 }
 
 #[tauri::command]
 pub async fn delete_customer(
     pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
     id: String,
 ) -> Result<(), AppError> {
+    require_auth(&session_mgr).await?;
     InventoryService::delete_customer(&pool, &id).await
 }
 
