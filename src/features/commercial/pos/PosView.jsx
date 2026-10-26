@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
@@ -88,6 +88,20 @@ export default function PosView() {
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
+  // Unfiltered catalog used for authoritative stock lookups in the cart.
+  const { data: stockProducts = [] } = useQuery({
+    queryKey: ['products', 'stock-catalog'],
+    queryFn: () => tauriApi.getProducts(null, null),
+  });
+
+  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
+
+  const productStockById = useMemo(() => {
+    const map = new Map();
+    for (const p of stockProducts) map.set(p.id, p);
+    return map;
+  }, [stockProducts]);
+
   // Complete Sale Mutation
   const saleMutation = useMutation({
     mutationFn: (payload) => tauriApi.processSale(payload),
@@ -157,6 +171,18 @@ export default function PosView() {
       return;
     }
 
+    if (!allowNegativeStock) {
+      for (const item of currentBill.items) {
+        const available = productStockById.get(item.productId)?.current_stock;
+        if (available != null && item.quantity > available) {
+          alert(
+            `Cannot complete sale: "${item.name}" has only ${available} unit${available === 1 ? '' : 's'} in stock (cart: ${item.quantity}).`
+          );
+          return;
+        }
+      }
+    }
+
     const payload = {
       customer_id: currentBill.customer?.id || null,
       customer_name: currentBill.customer?.name || null,
@@ -175,6 +201,45 @@ export default function PosView() {
     };
 
     saleMutation.mutate(payload);
+  };
+
+  const addProductToCart = (product) => {
+    if (!allowNegativeStock) {
+      const available =
+        productStockById.get(product.id)?.current_stock ?? product.current_stock ?? 0;
+      const inCart = currentBill.items.find((it) => it.productId === product.id)?.quantity || 0;
+
+      if (available <= 0) {
+        alert(`"${product.name}" is out of stock.`);
+        return;
+      }
+      if (inCart + 1 > available) {
+        alert(
+          `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`
+        );
+        return;
+      }
+    }
+    addItem(product);
+  };
+
+  const changeItemQty = (item, nextQty) => {
+    if (nextQty <= 0) {
+      updateItemQty(item.productId, 0);
+      return;
+    }
+
+    if (!allowNegativeStock) {
+      const available = productStockById.get(item.productId)?.current_stock;
+      if (available != null && nextQty > available) {
+        alert(
+          `Only ${available} unit${available === 1 ? '' : 's'} of "${item.name}" available in stock.`
+        );
+        return;
+      }
+    }
+
+    updateItemQty(item.productId, nextQty);
   };
 
   const handlePrintReceipt = () => {
@@ -249,7 +314,7 @@ export default function PosView() {
                         (p.sku && p.sku.toLowerCase() === searchQuery.trim().toLowerCase()) ||
                         p.name.toLowerCase() === searchQuery.trim().toLowerCase()
                     );
-                    addItem(exactMatch || filteredSearchProducts[0]);
+                    addProductToCart(exactMatch || filteredSearchProducts[0]);
                     setSearchQuery('');
                     setSearchFocused(false);
                     setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -266,15 +331,22 @@ export default function PosView() {
             {searchFocused && searchQuery && (
               <div className="absolute left-3 right-3 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800/60">
                 {filteredSearchProducts.length > 0 ? (
-                  filteredSearchProducts.map((p) => (
+                  filteredSearchProducts.map((p) => {
+                    const isOut = !allowNegativeStock && p.current_stock <= 0;
+                    const isLow =
+                      !allowNegativeStock && !isOut && p.current_stock <= (p.min_stock_alert ?? 5);
+
+                    return (
                     <button
                       key={p.id}
                       onClick={() => {
-                        addItem(p);
+                        addProductToCart(p);
                         setSearchQuery('');
                         setSearchFocused(false);
                       }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-500/10 transition-colors group"
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-500/10 transition-colors group ${
+                        isOut ? 'opacity-60' : ''
+                      }`}
                     >
                       <div>
                         <div className="text-sm font-semibold text-slate-200 group-hover:text-emerald-400">
@@ -283,14 +355,25 @@ export default function PosView() {
                         <div className="text-xs text-slate-400 flex items-center gap-2">
                           <span>SKU: {p.sku || '-'}</span>
                           <span>•</span>
-                          <span>Stock: {p.current_stock}</span>
+                          <span
+                            className={
+                              isOut
+                                ? 'text-rose-400 font-semibold'
+                                : isLow
+                                ? 'text-amber-400 font-semibold'
+                                : ''
+                            }
+                          >
+                            {isOut ? 'Out of stock' : `Stock: ${p.current_stock}`}
+                          </span>
                         </div>
                       </div>
                       <div className="text-sm font-bold text-emerald-400 font-mono">
                         {formatPaise(p.mrp_paise)}
                       </div>
                     </button>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="p-4 text-center text-sm text-slate-500">
                     No products matching "{searchQuery}"
@@ -355,8 +438,12 @@ export default function PosView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 text-sm">
-                  {currentBill.items.map((item, index) => {
+                   {currentBill.items.map((item, index) => {
                     const lineTotal = (item.unitPricePaise * item.quantity) - (item.discountPaise || 0);
+                    const availableStock = productStockById.get(item.productId)?.current_stock;
+                    const exceedsStock =
+                      !allowNegativeStock && availableStock != null && item.quantity > availableStock;
+
                     return (
                       <tr key={item.productId} className="hover:bg-slate-900/40 transition-colors group">
                         <td className="py-2 px-3 text-center text-xs text-slate-500 font-mono">
@@ -367,11 +454,16 @@ export default function PosView() {
                         </td>
                         <td className="py-2 px-3 font-medium text-slate-200">
                           {item.name}
+                          {exceedsStock && (
+                            <div className="text-[10px] text-rose-400 font-semibold">
+                              Only {availableStock} in stock
+                            </div>
+                          )}
                         </td>
                         <td className="py-2 px-3">
                           <div className="flex items-center justify-center gap-1 bg-slate-900 border border-slate-700/80 rounded-lg p-0.5">
                             <button
-                              onClick={() => updateItemQty(item.productId, item.quantity - 1)}
+                              onClick={() => changeItemQty(item, item.quantity - 1)}
                               className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                             >
                               <Minus className="w-3 h-3" />
@@ -380,11 +472,11 @@ export default function PosView() {
                               type="number"
                               min="1"
                               value={item.quantity}
-                              onChange={(e) => updateItemQty(item.productId, parseInt(e.target.value, 10) || 1)}
+                              onChange={(e) => changeItemQty(item, parseInt(e.target.value, 10) || 1)}
                               className="w-9 text-center bg-transparent font-semibold text-xs text-slate-200 focus:outline-none"
                             />
                             <button
-                              onClick={() => updateItemQty(item.productId, item.quantity + 1)}
+                              onClick={() => changeItemQty(item, item.quantity + 1)}
                               className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                             >
                               <Plus className="w-3 h-3" />

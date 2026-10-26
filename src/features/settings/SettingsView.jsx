@@ -19,6 +19,7 @@ import {
   Check,
   FileSpreadsheet,
   Upload,
+  Package,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import ReceiptPrinter from '../../components/receipt/ReceiptPrinter';
@@ -41,6 +42,8 @@ export default function SettingsView() {
     date_format: 'DD-MM-YYYY',
     time_format: '12 hour format',
     default_printer_name: '',
+    auto_numeric_sku: true,
+    allow_negative_stock: false,
   });
 
   // ── Password UI State ───────────────────────────────────────────────────────
@@ -164,6 +167,8 @@ export default function SettingsView() {
         ...generalData,
         date_format: generalData.date_format?.replace(/\//g, '-') || 'DD-MM-YYYY',
         time_format: generalData.time_format?.includes('24') ? '24 hour format' : '12 hour format',
+        auto_numeric_sku: generalData.auto_numeric_sku ?? true,
+        allow_negative_stock: generalData.allow_negative_stock ?? false,
       }));
     }
   }, [generalData]);
@@ -189,6 +194,8 @@ export default function SettingsView() {
     mutationFn: (data) => tauriApi.updateGeneralSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['general_settings'] });
+      queryClient.invalidateQueries({ queryKey: ['next_sku'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       showNotification('General settings saved successfully');
     },
     onError: (err) => showNotification(`Failed to save settings: ${err}`, 'error'),
@@ -631,6 +638,67 @@ export default function SettingsView() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Inventory & Stock Behavior Card */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">Inventory & Stock Behavior</h3>
+                  <p className="text-[11px] text-slate-400">SKU generation and stock guard rails</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <label
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
+                    general.auto_numeric_sku
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={general.auto_numeric_sku}
+                    onChange={(e) => setGeneral({ ...general, auto_numeric_sku: e.target.checked })}
+                    className="w-4 h-4 mt-0.5 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer"
+                  />
+                  <div className="space-y-1">
+                    <span className="font-bold text-slate-200 block">Automatic Numerical SKU</span>
+                    <span className="text-[11px] text-slate-400 block">
+                      New products receive the next available numerical SKU automatically. The SKU field is
+                      read-only. After importing legacy data, numbering continues from the highest existing SKU.
+                    </span>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
+                    general.allow_negative_stock
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={general.allow_negative_stock}
+                    onChange={(e) => setGeneral({ ...general, allow_negative_stock: e.target.checked })}
+                    className="w-4 h-4 mt-0.5 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 cursor-pointer"
+                  />
+                  <div className="space-y-1">
+                    <span className="font-bold text-slate-200 block">
+                      Allow Negative Stock (Ignore Stock Alerts)
+                    </span>
+                    <span className="text-[11px] text-slate-400 block">
+                      Disables stock alerts, warnings and billing restrictions. Bills can be completed even
+                      when stock reaches zero or below. Leave unchecked to enforce stock limits during billing.
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
 

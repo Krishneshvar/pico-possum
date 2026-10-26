@@ -208,6 +208,10 @@ pub struct AuditLog {
     pub created_at: String,
 }
 
+fn default_auto_numeric_sku() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneralSettings {
     pub store_name: String,
@@ -219,6 +223,15 @@ pub struct GeneralSettings {
     pub date_format: String,
     pub time_format: String,
     pub default_printer_name: String,
+    /// When enabled, newly created products receive the next available numerical
+    /// SKU automatically. Defaults to true for existing installations that do
+    /// not have this field persisted yet.
+    #[serde(default = "default_auto_numeric_sku")]
+    pub auto_numeric_sku: bool,
+    /// When enabled, stock alerts, warnings and billing restrictions are bypassed
+    /// and stock is allowed to go negative.
+    #[serde(default)]
+    pub allow_negative_stock: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

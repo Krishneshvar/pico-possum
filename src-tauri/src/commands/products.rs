@@ -30,6 +30,15 @@ pub async fn get_product_by_id(
 }
 
 #[tauri::command]
+pub async fn get_next_sku(
+    pool: State<'_, SqlitePool>,
+    session_mgr: State<'_, AuthSessionManager>,
+) -> Result<String, AppError> {
+    require_auth(&session_mgr).await?;
+    InventoryService::get_next_numeric_sku(&pool).await
+}
+
+#[tauri::command]
 pub async fn create_product(
     pool: State<'_, SqlitePool>,
     session_mgr: State<'_, AuthSessionManager>,

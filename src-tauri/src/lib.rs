@@ -29,6 +29,7 @@ pub fn run() {
             // Products
             commands::products::get_products,
             commands::products::get_product_by_id,
+            commands::products::get_next_sku,
             commands::products::create_product,
             commands::products::update_product,
             commands::products::delete_product,

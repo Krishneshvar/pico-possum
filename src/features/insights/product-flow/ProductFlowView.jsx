@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowDownRight, ArrowUpRight, Search, RefreshCw, Layers, Tag, User, Receipt } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
@@ -18,32 +18,13 @@ export default function ProductFlowView() {
     queryFn: () => tauriApi.getProducts(null, null),
   });
 
+  const hasSelectedProduct = Boolean(selectedProductId);
+
   const { data: flowItems = [], isLoading, refetch } = useQuery({
     queryKey: ['product_flow', selectedProductId, fromDate, toDate],
     queryFn: () => tauriApi.getProductFlow(selectedProductId || null, fromDate || null, toDate || null, 500),
+    enabled: hasSelectedProduct,
   });
-
-  const selectedProduct = useMemo(() => {
-    return products.find((p) => p.id === selectedProductId) || null;
-  }, [products, selectedProductId]);
-
-  // Aggregate stats for current view
-  const stats = useMemo(() => {
-    let unitsSold = 0;
-    let revenuePaise = 0;
-    for (const item of flowItems) {
-      if (item.quantity < 0) {
-        unitsSold += Math.abs(item.quantity);
-        revenuePaise += item.total_paise;
-      }
-    }
-    return {
-      unitsSold,
-      revenuePaise,
-      currentStock: selectedProduct ? selectedProduct.current_stock : null,
-      avgPrice: unitsSold > 0 ? Math.round(revenuePaise / unitsSold) : 0,
-    };
-  }, [flowItems, selectedProduct]);
 
   const columns = [
     {
@@ -158,7 +139,8 @@ export default function ProductFlowView() {
 
         <button
           onClick={() => refetch()}
-          className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          disabled={!hasSelectedProduct}
+          className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:pointer-events-none"
           title="Refresh Flow Data"
         >
           <RefreshCw className="w-4 h-4" />
@@ -175,7 +157,7 @@ export default function ProductFlowView() {
             onChange={(e) => setSelectedProductId(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-emerald-500 focus:outline-none truncate"
           >
-            <option value="">All Products</option>
+            <option value="">Select a product</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} {p.sku ? `(${p.sku})` : ''}
@@ -219,40 +201,20 @@ export default function ProductFlowView() {
         )}
       </div>
 
-      {/* Product Flow Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-900/40 border-b border-slate-800/80 flex-shrink-0">
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider block">Units Sold</span>
-          <span className="text-base font-bold font-mono text-slate-100">{stats.unitsSold}</span>
+      {/* Main Flow Table — only shown once a product is selected */}
+      {hasSelectedProduct && (
+        <div className="flex-1 overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={flowItems}
+            keyFn={(r) => r.id}
+            searchKeys={['product_name', 'product_sku', 'invoice_number', 'customer_name']}
+            pageSize={25}
+            emptyMessage="No product flow events found for the selected filter."
+            isLoading={isLoading}
+          />
         </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-emerald-500/80 font-medium uppercase tracking-wider block">Total Sales Value</span>
-          <span className="text-base font-bold font-mono text-emerald-400">{formatPaise(stats.revenuePaise)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-sky-500/80 font-medium uppercase tracking-wider block">Average Unit Price</span>
-          <span className="text-base font-bold font-mono text-sky-400">{formatPaise(stats.avgPrice)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">Current Stock</span>
-          <span className="text-base font-bold font-mono text-slate-200">
-            {stats.currentStock != null ? `${stats.currentStock} in stock` : `${products.length} products total`}
-          </span>
-        </div>
-      </div>
-
-      {/* Main Flow Table */}
-      <div className="flex-1 overflow-hidden">
-        <DataTable
-          columns={columns}
-          data={flowItems}
-          keyFn={(r) => r.id}
-          searchKeys={['product_name', 'product_sku', 'invoice_number', 'customer_name']}
-          pageSize={25}
-          emptyMessage="No product flow events found for the selected filter."
-          isLoading={isLoading}
-        />
-      </div>
+      )}
     </div>
   );
 }

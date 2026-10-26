@@ -5,6 +5,7 @@ export const tauriApi = {
   getProducts: (categoryId = null, search = null) =>
     invoke('get_products', { categoryId, search }),
   getProductById: (id) => invoke('get_product_by_id', { id }),
+  getNextSku: () => invoke('get_next_sku'),
   createProduct: (payload) => invoke('create_product', { payload }),
   updateProduct: (id, payload) => invoke('update_product', { id, payload }),
   deleteProduct: (id) => invoke('delete_product', { id }),

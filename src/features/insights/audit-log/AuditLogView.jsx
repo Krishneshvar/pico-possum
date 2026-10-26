@@ -101,6 +101,7 @@ export default function AuditLogView() {
           searchKeys={['description', 'entity_id', 'event_type', 'entity_type']}
           filters={[
             {
+              type: 'multiselect',
               key: 'event_type',
               label: 'All Actions',
               options: eventTypeOptions,

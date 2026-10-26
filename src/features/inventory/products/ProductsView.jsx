@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Plus, Edit2, Trash2, X, ArrowUpDown } from 'lucide-react';
 import DropdownActions from '../../../components/common/DropdownActions';
@@ -33,10 +33,35 @@ export default function ProductsView() {
     queryKey: ['categories'],
     queryFn: () => tauriApi.getCategories(),
   });
+  const { data: generalSettings } = useQuery({
+    queryKey: ['general_settings'],
+    queryFn: () => tauriApi.getGeneralSettings(),
+  });
+
+  const autoNumericSku = generalSettings?.auto_numeric_sku ?? true;
+  const settingsLoaded = generalSettings !== undefined;
+  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
+
+  // Preview of the SKU that will be assigned on create (backend is authoritative).
+  const { data: nextSku } = useQuery({
+    queryKey: ['next_sku'],
+    queryFn: () => tauriApi.getNextSku(),
+    enabled: settingsLoaded && autoNumericSku && modalMode === 'create',
+  });
+
+  useEffect(() => {
+    if (settingsLoaded && modalMode === 'create' && autoNumericSku && nextSku) {
+      setFormData((prev) => (prev.sku === nextSku ? prev : { ...prev, sku: nextSku }));
+    }
+  }, [settingsLoaded, modalMode, autoNumericSku, nextSku]);
 
   const createMutation = useMutation({
     mutationFn: (p) => tauriApi.createProduct(p),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setModalMode(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['next_sku'] });
+      setModalMode(null);
+    },
     onError: (err) => alert(`Error: ${err}`),
   });
   const updateMutation = useMutation({
@@ -152,6 +177,20 @@ export default function ProductsView() {
       render: (r) => {
         const s = r.current_stock;
         const alertThreshold = r.min_stock_alert ?? 5;
+
+        // Stock alerts are intentionally muted when the user has allowed
+        // negative stock / ignore stock alerts in General Settings.
+        if (allowNegativeStock) {
+          return (
+            <span
+              title={`Stock: ${s}`}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border bg-slate-800/70 text-slate-300 border-slate-700/60"
+            >
+              {s}
+            </span>
+          );
+        }
+
         const isOut = s <= 0;
         const isLow = s <= alertThreshold && !isOut;
         const cls = isOut
@@ -192,7 +231,7 @@ export default function ProductsView() {
 
   const categoryFilterOptions = categories.map((c) => ({ value: String(c.id), label: c.name }));
 
-  const displayProducts = showLowStockOnly
+  const displayProducts = showLowStockOnly && !allowNegativeStock
     ? products.filter((p) => p.current_stock <= (p.min_stock_alert ?? 5))
     : products;
 
@@ -216,6 +255,7 @@ export default function ProductsView() {
               queryClient.invalidateQueries({ queryKey: ['products'] });
               queryClient.invalidateQueries({ queryKey: ['categories'] });
               queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+              queryClient.invalidateQueries({ queryKey: ['next_sku'] });
             }}
           />
           <button
@@ -236,7 +276,7 @@ export default function ProductsView() {
           data={displayProducts}
           keyFn={(r) => r.id}
           searchKeys={['name', 'sku', 'category_name']}
-          headerRight={(
+          headerRight={!allowNegativeStock ? (
             <button
               onClick={() => setShowLowStockOnly((v) => !v)}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
@@ -248,7 +288,7 @@ export default function ProductsView() {
               <span className={`w-2 h-2 rounded-full ${showLowStockOnly ? 'bg-amber-400 animate-pulse' : 'bg-slate-500'}`} />
               Low Stock Only ({products.filter((p) => p.current_stock <= (p.min_stock_alert ?? 5)).length})
             </button>
-          )}
+          ) : undefined}
           filters={[
             {
               type: 'multiselect',
@@ -312,14 +352,31 @@ export default function ProductsView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-400 block mb-1">SKU / Barcode</label>
+                  <label className="text-slate-400 block mb-1">
+                    SKU / Barcode
+                    {autoNumericSku && (
+                      <span className="ml-1.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                        Auto
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="text"
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    placeholder="e.g. 100201"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                    disabled={autoNumericSku}
+                    placeholder={autoNumericSku ? 'Generating…' : 'e.g. 100201'}
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono ${
+                      autoNumericSku ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
                   />
+                  {autoNumericSku && (
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      {modalMode === 'create'
+                        ? 'Assigned automatically from the latest numerical SKU.'
+                        : 'SKU is locked while automatic numerical SKUs are enabled.'}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <label className="text-slate-400 block mb-1">Category</label>
@@ -374,15 +431,21 @@ export default function ProductsView() {
                 </div>
                 <div>
                   <label className="text-slate-400 block mb-1">
-                    Stock Alert Threshold <span className="text-slate-500 text-[10px]">(notify when stock ≤)</span>
+                    Stock Alert Threshold{' '}
+                    <span className="text-slate-500 text-[10px]">
+                      {allowNegativeStock ? '(ignored while stock alerts are off)' : '(notify when stock ≤)'}
+                    </span>
                   </label>
                   <input
                     type="number"
                     min="0"
                     value={formData.min_stock_alert}
                     onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
+                    disabled={allowNegativeStock}
                     placeholder="5"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono ${
+                      allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
               </div>

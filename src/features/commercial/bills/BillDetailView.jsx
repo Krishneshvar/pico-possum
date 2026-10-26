@@ -29,7 +29,7 @@ const paise = (v) => Math.round(parseFloat(v || 0) * 100);
 const rupees = (v) => ((v || 0) / 100).toFixed(2);
 
 // ── Product Search / Add Row ──────────────────────────────────────────────────
-function ProductSearchInput({ onSelect }) {
+function ProductSearchInput({ onSelect, allowNegativeStock = false }) {
   const [query, setQuery] = useState('');
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
@@ -59,14 +59,22 @@ function ProductSearchInput({ onSelect }) {
       </div>
       {filtered.length > 0 && (
         <div className="absolute top-full mt-1 left-0 right-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden max-h-52 overflow-y-auto">
-          {filtered.map((p) => (
+          {filtered.map((p) => {
+            const isOut = !allowNegativeStock && p.current_stock <= 0;
+            return (
             <button
               key={p.id}
               onClick={() => {
+                if (isOut) {
+                  alert(`"${p.name}" is out of stock.`);
+                  return;
+                }
                 onSelect(p);
                 setQuery('');
               }}
-              className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-800 text-left group transition-colors"
+              className={`w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-800 text-left group transition-colors ${
+                isOut ? 'opacity-60' : ''
+              }`}
             >
               <div>
                 <div className="text-xs font-semibold text-slate-200 group-hover:text-white">{p.name}</div>
@@ -74,10 +82,13 @@ function ProductSearchInput({ onSelect }) {
               </div>
               <div className="text-right shrink-0 ml-3">
                 <div className="text-xs font-mono font-bold text-emerald-400">{formatPaise(p.mrp_paise)}</div>
-                <div className="text-[10px] text-slate-500">Stock: {p.current_stock}</div>
+                <div className={`text-[10px] ${isOut ? 'text-rose-400 font-semibold' : 'text-slate-500'}`}>
+                  {isOut ? 'Out of stock' : `Stock: ${p.current_stock}`}
+                </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -127,6 +138,18 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
     queryKey: ['general_settings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
+
+  const { data: catalogProducts = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => tauriApi.getProducts(null, null),
+    staleTime: 30_000,
+  });
+
+  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
+  const productById = useCallback(
+    (productId) => catalogProducts.find((p) => p.id === productId),
+    [catalogProducts]
+  );
 
   // ── Seed draft from loaded data ──
   const seedDraft = useCallback((details) => {
@@ -184,6 +207,11 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
   };
 
   const addProductToDraft = (product) => {
+    if (!allowNegativeStock && product.current_stock <= 0) {
+      alert(`"${product.name}" is out of stock.`);
+      return;
+    }
+
     const existing = draftItems.find((it) => it.product_id === product.id);
     if (existing) {
       setDraftItems((prev) =>
@@ -243,6 +271,38 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
     if (invalidItem) {
       setEditError('All items must have a quantity ≥ 1 and a valid price.');
       return;
+    }
+
+    if (!allowNegativeStock && saleDetails) {
+      const oldQtyByProduct = new Map();
+      for (const it of saleDetails.items) {
+        oldQtyByProduct.set(
+          it.product_id,
+          (oldQtyByProduct.get(it.product_id) || 0) + it.quantity
+        );
+      }
+
+      const newQtyByProduct = new Map();
+      for (const it of draftItems) {
+        newQtyByProduct.set(
+          it.product_id,
+          (newQtyByProduct.get(it.product_id) || 0) + Number(it.quantity)
+        );
+      }
+
+      for (const [productId, newQty] of newQtyByProduct) {
+        const oldQty = oldQtyByProduct.get(productId) || 0;
+        const delta = newQty - oldQty;
+        if (delta <= 0) continue;
+
+        const product = productById(productId);
+        if (product && delta > product.current_stock) {
+          setEditError(
+            `Insufficient stock for "${product.name}": available ${product.current_stock}, requested ${delta}.`
+          );
+          return;
+        }
+      }
     }
 
     const payload = {
@@ -629,7 +689,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
               {/* Product Search Input */}
               {addingProduct && (
                 <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/60">
-                  <ProductSearchInput onSelect={addProductToDraft} />
+                  <ProductSearchInput onSelect={addProductToDraft} allowNegativeStock={allowNegativeStock} />
                 </div>
               )}
 

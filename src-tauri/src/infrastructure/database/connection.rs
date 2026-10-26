@@ -44,7 +44,9 @@ async fn seed_defaults(pool: &SqlitePool) -> Result<(), AppError> {
         "currency_code": "INR",
         "date_format": "DD/MM/YYYY",
         "time_format": "12h",
-        "default_printer_name": ""
+        "default_printer_name": "",
+        "auto_numeric_sku": true,
+        "allow_negative_stock": false
     });
 
     let default_bill = serde_json::json!({

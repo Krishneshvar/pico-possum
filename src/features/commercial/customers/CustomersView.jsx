@@ -332,7 +332,7 @@ export default function CustomersView() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Anand Sharma"
+                  placeholder="John Doe"
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
                 />
               </div>

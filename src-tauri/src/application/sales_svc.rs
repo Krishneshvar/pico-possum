@@ -1,8 +1,9 @@
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
+use crate::application::InventoryService;
 use crate::domain::models::{
-    CreateSalePayload, Sale, SaleItem, SaleResponse, UpdateSalePayload,
+    CreateSaleItemPayload, CreateSalePayload, Sale, SaleItem, SaleResponse, UpdateSalePayload,
 };
 use crate::domain::rules::BusinessRules;
 use crate::errors::AppError;
@@ -10,12 +11,82 @@ use crate::errors::AppError;
 pub struct SalesService;
 
 impl SalesService {
+    /// Validate requested quantities against current stock when negative stock
+    /// is disabled in General Settings. Returns an `InsufficientStock` error
+    /// naming the first product that would go below zero.
+    async fn validate_requested_stock(
+        pool: &SqlitePool,
+        items: &[CreateSaleItemPayload],
+    ) -> Result<(), AppError> {
+        let mut totals: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        for item in items {
+            if item.quantity <= 0 {
+                return Err(AppError::Validation(
+                    "Item quantity must be greater than 0".to_string(),
+                ));
+            }
+            *totals.entry(item.product_id.clone()).or_insert(0) += item.quantity;
+        }
+
+        for (product_id, requested) in totals {
+            let row = sqlx::query(
+                "SELECT name, current_stock FROM products WHERE id = ? AND is_deleted = 0",
+            )
+            .bind(&product_id)
+            .fetch_optional(pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Product {} not found", product_id)))?;
+
+            let available: i64 = row.get("current_stock");
+            if requested > available {
+                return Err(AppError::InsufficientStock {
+                    product: row.get("name"),
+                    available,
+                    requested,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn validate_update_stock(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        product_id: &str,
+        requested: i64,
+    ) -> Result<(), AppError> {
+        let row = sqlx::query("SELECT name, current_stock FROM products WHERE id = ?")
+            .bind(product_id)
+            .fetch_optional(&mut **tx)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Product {} not found", product_id)))?;
+
+        let available: i64 = row.get("current_stock");
+        if requested > available {
+            return Err(AppError::InsufficientStock {
+                product: row.get("name"),
+                available,
+                requested,
+            });
+        }
+
+        Ok(())
+    }
+
     pub async fn process_sale(
         pool: &SqlitePool,
         payload: CreateSalePayload,
     ) -> Result<SaleResponse, AppError> {
         if payload.items.is_empty() {
             return Err(AppError::Validation("Cart cannot be empty".to_string()));
+        }
+
+        let allow_negative_stock = InventoryService::get_general_settings(pool)
+            .await?
+            .allow_negative_stock;
+
+        if !allow_negative_stock {
+            Self::validate_requested_stock(pool, &payload.items).await?;
         }
 
         let mut tx = pool.begin().await?;
@@ -253,6 +324,10 @@ impl SalesService {
             return Err(AppError::Validation("A bill must contain at least one item".to_string()));
         }
 
+        let allow_negative_stock = InventoryService::get_general_settings(pool)
+            .await?
+            .allow_negative_stock;
+
         let mut tx = pool.begin().await?;
 
         // 1. Fetch current sale
@@ -313,6 +388,10 @@ impl SalesService {
 
             if delta_q > 0 {
                 // More items sold in updated bill: decrease stock, record SALE movement
+                if !allow_negative_stock {
+                    Self::validate_update_stock(&mut tx, pid, delta_q).await?;
+                }
+
                 sqlx::query(
                     "UPDATE products SET current_stock = current_stock - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
                 )
