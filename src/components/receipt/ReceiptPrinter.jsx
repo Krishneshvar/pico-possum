@@ -86,7 +86,7 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
                 const lineTotal = (it.unit_price_paise * it.quantity) - (it.discount_paise || 0);
                 return (
                   <tr key={idx} className="border-b border-dotted border-gray-400">
-                    <td className="py-1 pr-1 truncate max-w-[120px]">{it.product_name}</td>
+                    <td className="py-1 pr-1 break-words whitespace-normal leading-tight">{it.product_name}</td>
                     <td className="text-center py-1">{it.quantity}</td>
                     <td className="text-right py-1">{(it.unit_price_paise / 100).toFixed(2)}</td>
                     {showTax && <td className="text-right py-1 font-mono">{it.tax_rate ?? 0}%</td>}
@@ -125,18 +125,6 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
               <span>Total:</span>
               <span>{formatPaise(sale.total_paise)}</span>
             </div>
-
-            <div className="flex justify-between text-[11px] pt-1 border-t border-dotted border-gray-400">
-              <span>Paid ({sale.payment_method}):</span>
-              <span>{formatPaise(sale.paid_paise)}</span>
-            </div>
-
-            {sale.paid_paise > sale.total_paise && (
-              <div className="flex justify-between text-[11px] font-bold">
-                <span>Change Returned:</span>
-                <span>{formatPaise(sale.paid_paise - sale.total_paise)}</span>
-              </div>
-            )}
           </div>
         );
       }

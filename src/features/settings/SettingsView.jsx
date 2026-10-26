@@ -837,11 +837,12 @@ export default function SettingsView() {
                             {section.id === 'footer' && (
                               <div className="pt-1">
                                 <span className="text-slate-400 text-[11px] block mb-0.5">Footer Message:</span>
-                                <input
-                                  type="text"
+                                <textarea
+                                  rows="3"
                                   value={opts.text ?? bill.footer_text}
                                   onChange={(e) => updateSectionOption('footer', 'text', e.target.value)}
-                                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs"
+                                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs focus:border-emerald-500 focus:outline-none resize-y"
+                                  placeholder="e.g. Thank you for your visit!&#10;Terms & conditions apply"
                                 />
                               </div>
                             )}
