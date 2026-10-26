@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod categories;
 pub mod csv_import;
 pub mod customers;

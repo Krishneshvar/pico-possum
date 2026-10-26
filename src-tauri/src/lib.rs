@@ -12,10 +12,20 @@ pub fn run() {
             .expect("Failed to initialize SQLite database pool")
     });
 
+    let session_mgr = application::AuthSessionManager::new();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(pool)
+        .manage(session_mgr)
         .invoke_handler(tauri::generate_handler![
+            // Authentication & Identity
+            commands::auth::get_auth_state,
+            commands::auth::get_admin_username,
+            commands::auth::register_admin,
+            commands::auth::login,
+            commands::auth::logout,
+            commands::auth::update_password,
             // Products
             commands::products::get_products,
             commands::products::get_product_by_id,

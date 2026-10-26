@@ -319,4 +319,41 @@ pub struct CsvImportResult {
     pub errors: Vec<String>,
 }
 
+// ── Identity & Authentication ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthUser {
+    pub id: String,
+    pub name: String,
+    pub username: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthStateResponse {
+    pub requires_setup: bool,
+    pub is_authenticated: bool,
+    pub user: Option<AuthUser>,
+    pub session_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RegisterAdminRequest {
+    pub name: String,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UpdatePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+
 

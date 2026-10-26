@@ -30,6 +30,12 @@ pub enum AppError {
 
     #[error("Printer error: {0}")]
     Printer(String),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl Serialize for AppError {

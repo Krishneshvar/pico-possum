@@ -1,6 +1,17 @@
 pub const INIT_SCHEMA: &str = r#"
 PRAGMA foreign_keys = ON;
 
+-- 0. Identity & Authentication
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 1. Categories
 CREATE TABLE IF NOT EXISTS categories (
     id TEXT PRIMARY KEY,

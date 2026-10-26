@@ -262,6 +262,7 @@ impl BackupService {
             let _ = sqlx::query("DELETE FROM products").execute(&mut *tx).await;
             let _ = sqlx::query("DELETE FROM customers").execute(&mut *tx).await;
             let _ = sqlx::query("DELETE FROM categories").execute(&mut *tx).await;
+            let _ = sqlx::query("DELETE FROM users").execute(&mut *tx).await;
             tx.commit().await?;
 
             // Migrate from legacy DB

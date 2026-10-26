@@ -81,7 +81,10 @@ function WorkspaceContent() {
   );
 }
 
-function MainLayout() {
+import { RefreshCw } from 'lucide-react';
+import AuthScreen from './features/auth/AuthScreen';
+
+function MainLayout({ authUser }) {
   const { data: legacyPath } = useQuery({
     queryKey: ['detected_legacy_db'],
     queryFn: () => tauriApi.detectLegacyDatabase(),
@@ -90,7 +93,7 @@ function MainLayout() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased">
       {/* Top navigation menu bar */}
-      <NavBar legacyDetected={!!legacyPath} />
+      <NavBar legacyDetected={!!legacyPath} authUser={authUser} />
 
       {/* Browser-style tab strip */}
       <TabBar />
@@ -101,10 +104,42 @@ function MainLayout() {
   );
 }
 
+function AppRoot() {
+  const { data: authState, isLoading } = useQuery({
+    queryKey: ['auth_state'],
+    queryFn: () => tauriApi.getAuthState(),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3 select-none">
+        <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+          <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+        </div>
+        <span className="text-xs font-medium text-slate-500">Initializing Pico POS...</span>
+      </div>
+    );
+  }
+
+  // If not authenticated or requires initial admin registration, show AuthScreen
+  if (!authState?.is_authenticated) {
+    return (
+      <AuthScreen
+        authState={authState}
+        onAuthenticated={(res) => {
+          queryClient.setQueryData(['auth_state'], res);
+        }}
+      />
+    );
+  }
+
+  return <MainLayout authUser={authState.user} />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout />
+      <AppRoot />
     </QueryClientProvider>
   );
 }

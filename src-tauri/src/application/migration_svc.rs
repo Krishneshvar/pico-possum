@@ -38,6 +38,32 @@ impl MigrationService {
 
         let mut tx = target_pool.begin().await?;
 
+        // 0. Users & Credentials
+        let user_rows: Vec<SqliteRow> = sqlx::query("SELECT id, username, password_hash, name FROM users")
+            .fetch_all(&legacy_pool)
+            .await
+            .unwrap_or_default();
+
+        for row in &user_rows {
+            let uname: String = row.get("username");
+            let phash: String = row.get("password_hash");
+            let name_opt: Option<String> = row.get("name");
+            let display_name = name_opt.unwrap_or_else(|| uname.clone());
+            let user_uuid = Uuid::new_v4().to_string();
+
+            sqlx::query(
+                "INSERT INTO users (id, username, password_hash, name, is_active)
+                 VALUES (?, ?, ?, ?, 1)
+                 ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, name = excluded.name"
+            )
+            .bind(&user_uuid)
+            .bind(&uname)
+            .bind(&phash)
+            .bind(&display_name)
+            .execute(&mut *tx)
+            .await?;
+        }
+
         // 1. Categories
         let mut category_map: HashMap<i64, String> = HashMap::new();
         let cat_rows: Vec<SqliteRow> = sqlx::query("SELECT id, name, parent_id, deleted_at, created_at, updated_at FROM categories")

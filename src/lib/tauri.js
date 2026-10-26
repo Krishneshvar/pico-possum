@@ -80,5 +80,21 @@ export const tauriApi = {
     invoke('import_csv_customers', { csvContent, filePath }),
   importCsvBills: ({ csvContent, filePath, fileName }) =>
     invoke('import_csv_bills', { csvContent, filePath, fileName }),
+
+  // Auth & Identity
+  getAuthState: () => invoke('get_auth_state'),
+  getAdminUsername: () => invoke('get_admin_username'),
+  registerAdmin: ({ name, username, password }) =>
+    invoke('register_admin', { req: { name, username, password } }),
+  login: ({ username, password }) =>
+    invoke('login', { req: { username, password } }),
+  logout: () => invoke('logout'),
+  updatePassword: ({ currentPassword, newPassword }) =>
+    invoke('update_password', {
+      req: {
+        current_password: currentPassword,
+        new_password: newPassword,
+      },
+    }),
 };
 

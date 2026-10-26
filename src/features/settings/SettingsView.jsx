@@ -300,22 +300,44 @@ export default function SettingsView() {
     setBill({ ...bill, ...extra, sections: updated });
   };
 
-  // ── Password Form Submit (UI only as requested) ─────────────────────────────
+  // ── Password Form Submit & Mutation ────────────────────────────────────────
+  const updatePasswordMutation = useMutation({
+    mutationFn: ({ currentPassword, newPassword }) =>
+      tauriApi.updatePassword({ currentPassword, newPassword }),
+    onSuccess: (msg) => {
+      setPasswordFeedback({ type: 'success', message: msg || 'Password updated successfully!' });
+      setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      showNotification('Password updated successfully');
+    },
+    onError: (err) => {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update password';
+      setPasswordFeedback({
+        type: 'error',
+        message: msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''),
+      });
+    },
+  });
+
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
+    setPasswordFeedback(null);
     if (!passwordState.currentPassword || !passwordState.newPassword || !passwordState.confirmPassword) {
       setPasswordFeedback({ type: 'error', message: 'Please fill in all password fields.' });
+      return;
+    }
+    if (passwordState.newPassword.length < 4) {
+      setPasswordFeedback({ type: 'error', message: 'New password must be at least 4 characters long.' });
       return;
     }
     if (passwordState.newPassword !== passwordState.confirmPassword) {
       setPasswordFeedback({ type: 'error', message: 'New passwords do not match.' });
       return;
     }
-    setPasswordFeedback({
-      type: 'info',
-      message: 'Password management backend will be connected in an upcoming security update.',
+
+    updatePasswordMutation.mutate({
+      currentPassword: passwordState.currentPassword,
+      newPassword: passwordState.newPassword,
     });
-    setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
   // ── Sample data for Live Preview ───────────────────────────────────────────
@@ -533,6 +555,8 @@ export default function SettingsView() {
                       className={`p-2.5 rounded-lg text-[11px] ${
                         passwordFeedback.type === 'error'
                           ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                          : passwordFeedback.type === 'success'
+                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                           : 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
                       }`}
                     >
@@ -543,9 +567,14 @@ export default function SettingsView() {
                   <div className="pt-2 flex justify-end">
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      disabled={updatePasswordMutation.isPending}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      {updatePasswordMutation.isPending ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      )}
                       <span>Update Password</span>
                     </button>
                   </div>
