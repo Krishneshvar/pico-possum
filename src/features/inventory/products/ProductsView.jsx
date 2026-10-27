@@ -4,6 +4,7 @@ import { Package, Plus, Edit2, Trash2, X, ArrowUpDown } from 'lucide-react';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
@@ -58,31 +59,45 @@ export default function ProductsView() {
 
   const createMutation = useMutation({
     mutationFn: (p) => tauriApi.createProduct(p),
-    onSuccess: () => {
+    onSuccess: (_data, product) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['next_sku'] });
       setModalMode(null);
+      toast.success(`Product "${product.name}" created successfully`);
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to create product: ${err}`, { title: 'Create failed' }),
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => tauriApi.updateProduct(id, payload),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setModalMode(null); },
-    onError: (err) => alert(`Error: ${err}`),
+    onSuccess: (_data, { payload }) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setModalMode(null);
+      toast.success(`Product "${payload.name}" updated successfully`);
+    },
+    onError: (err) => toast.error(`Failed to update product: ${err}`, { title: 'Update failed' }),
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => tauriApi.deleteProduct(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
-    onError: (err) => alert(`Error: ${err}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Product deleted successfully');
+    },
+    onError: (err) => toast.error(`Failed to delete product: ${err}`, { title: 'Delete failed' }),
   });
   const adjustStockMutation = useMutation({
     mutationFn: (p) => tauriApi.adjustStock(p),
-    onSuccess: () => {
+    onSuccess: (_data, adjustment) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       setModalMode(null);
+      const delta = adjustment.quantity_change;
+      toast.success(
+        `${delta > 0 ? 'Added' : 'Removed'} ${Math.abs(delta)} unit${Math.abs(delta) === 1 ? '' : 's'} ${
+          delta > 0 ? 'to' : 'from'
+        } "${selectedProduct?.name ?? 'product'}"`
+      );
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to adjust stock: ${err}`, { title: 'Stock update failed' }),
   });
 
   const handleOpenCreate = () => {
@@ -119,7 +134,7 @@ export default function ProductsView() {
   };
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) { alert('Product name is required'); return; }
+    if (!formData.name.trim()) { toast.warning('Product name is required'); return; }
     const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
     const payload = {
       name: formData.name.trim(),
@@ -554,7 +569,10 @@ export default function ProductsView() {
               <button onClick={() => setModalMode(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800">Cancel</button>
               <button
                 onClick={() => {
-                  if (stockAdjustment.quantity_change === 0) return;
+                  if (stockAdjustment.quantity_change === 0) {
+                    toast.warning('Enter a non-zero quantity to adjust stock');
+                    return;
+                  }
                   adjustStockMutation.mutate({
                     product_id: selectedProduct.id,
                     quantity_change: stockAdjustment.quantity_change,

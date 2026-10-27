@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, CheckCircle2, AlertTriangle, XCircle, Loader2, X, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
+import { toast } from '../../stores/toast.store';
 
 export default function ImportCsvButton({
   entity = 'products', // 'products' | 'categories' | 'customers' | 'bills'
@@ -73,9 +74,27 @@ export default function ImportCsvButton({
       if (onComplete) {
         onComplete(res);
       }
+
+      const imported = res?.imported ?? 0;
+      const skipped = res?.skipped ?? 0;
+      if (skipped > 0) {
+        toast.warning(
+          `Imported ${imported} record${imported === 1 ? '' : 's'}; ${skipped} row${
+            skipped === 1 ? '' : 's'
+          } skipped.`,
+          { title: 'Import completed with warnings' }
+        );
+      } else {
+        toast.success(
+          `Imported ${imported} record${imported === 1 ? '' : 's'} from ${file.name}`,
+          { title: 'Import completed' }
+        );
+      }
     } catch (err) {
       console.error('CSV import error:', err);
-      setError(typeof err === 'string' ? err : err?.message || 'Failed to import CSV file');
+      const message = typeof err === 'string' ? err : err?.message || 'Failed to import CSV file';
+      setError(message);
+      toast.error(message, { title: 'Import failed' });
     } finally {
       setIsProcessing(false);
     }

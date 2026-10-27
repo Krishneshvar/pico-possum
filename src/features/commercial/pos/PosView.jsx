@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { usePosStore, computeBillTotals } from '../../../stores/pos.store';
+import { toast } from '../../../stores/toast.store';
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 
@@ -113,9 +114,12 @@ export default function PosView() {
       setCompletedSale(response);
       setShowPrintModal(true);
       clearCurrentBill();
+      toast.success(`Invoice ${response.sale.invoice_number} completed successfully`, {
+        title: 'Sale completed',
+      });
     },
     onError: (err) => {
-      alert(`Sale failed: ${err}`);
+      toast.error(`Sale failed: ${err}`, { title: 'Checkout failed' });
     },
   });
 
@@ -168,7 +172,7 @@ export default function PosView() {
 
   const handleCompleteSale = () => {
     if (!currentBill.items.length) {
-      alert('Please add items to cart before completing checkout.');
+      toast.warning('Please add items to cart before completing checkout.');
       return;
     }
 
@@ -176,8 +180,9 @@ export default function PosView() {
       for (const item of currentBill.items) {
         const available = productStockById.get(item.productId)?.current_stock;
         if (available != null && item.quantity > available) {
-          alert(
-            `Cannot complete sale: "${item.name}" has only ${available} unit${available === 1 ? '' : 's'} in stock (cart: ${item.quantity}).`
+          toast.warning(
+            `Cannot complete sale: "${item.name}" has only ${available} unit${available === 1 ? '' : 's'} in stock (cart: ${item.quantity}).`,
+            { title: 'Insufficient stock' }
           );
           return;
         }
@@ -211,12 +216,13 @@ export default function PosView() {
       const inCart = currentBill.items.find((it) => it.productId === product.id)?.quantity || 0;
 
       if (available <= 0) {
-        alert(`"${product.name}" is out of stock.`);
+        toast.warning(`"${product.name}" is out of stock.`);
         return;
       }
       if (inCart + 1 > available) {
-        alert(
-          `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`
+        toast.warning(
+          `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`,
+          { title: 'Stock limit reached' }
         );
         return;
       }
@@ -233,8 +239,9 @@ export default function PosView() {
     if (!allowNegativeStock) {
       const available = productStockById.get(item.productId)?.current_stock;
       if (available != null && nextQty > available) {
-        alert(
-          `Only ${available} unit${available === 1 ? '' : 's'} of "${item.name}" available in stock.`
+        toast.warning(
+          `Only ${available} unit${available === 1 ? '' : 's'} of "${item.name}" available in stock.`,
+          { title: 'Stock limit reached' }
         );
         return;
       }
@@ -244,7 +251,17 @@ export default function PosView() {
   };
 
   const handlePrintReceipt = () => {
+    toast.info('Opening the system print dialog');
     window.print();
+  };
+
+  const handleClearCart = () => {
+    if (currentBill.items.length === 0) {
+      toast.info(`Bill ${activeBillIndex + 1} is already empty`);
+      return;
+    }
+    clearCurrentBill();
+    toast.info(`Bill ${activeBillIndex + 1} cleared`);
   };
 
   const filteredSearchProducts = products.slice(0, 8);
@@ -285,7 +302,7 @@ export default function PosView() {
         <div className="text-xs text-slate-400 flex items-center gap-2">
           <span>Active Tab: <strong className="text-emerald-400">Bill {activeBillIndex + 1}</strong></span>
           <button
-            onClick={clearCurrentBill}
+            onClick={handleClearCart}
             className="text-[11px] text-slate-400 hover:text-rose-400 px-2 py-1 rounded bg-slate-800/60 hover:bg-slate-800 transition-colors"
           >
             Clear Cart
@@ -875,15 +892,19 @@ export default function PosView() {
               </button>
               <button
                 onClick={async () => {
-                  if (!newCustomer.name.trim()) return;
+                  if (!newCustomer.name.trim()) {
+                    toast.warning('Customer name is required');
+                    return;
+                  }
                   try {
                     const saved = await tauriApi.createCustomer(newCustomer);
                     queryClient.invalidateQueries({ queryKey: ['customers'] });
                     setCustomer(saved);
                     setCustomerModalOpen(false);
                     setNewCustomer({ name: '', phone: '', address: '' });
+                    toast.success(`Customer "${saved.name}" added and attached to this bill`);
                   } catch (err) {
-                    alert(`Failed to add customer: ${err}`);
+                    toast.error(`Failed to add customer: ${err}`, { title: 'Save failed' });
                   }
                 }}
                 className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400"

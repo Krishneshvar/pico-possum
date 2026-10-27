@@ -15,6 +15,7 @@ import {
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { toast } from '../../../stores/toast.store';
 import DataTable from '../../../components/common/DataTable';
 
 export default function SalesReportsView() {
@@ -241,7 +242,10 @@ export default function SalesReportsView() {
 
   // CSV Export (Selected columns only)
   const handleExportCsv = () => {
-    if (!filteredData.length || !visibleColumns.length) return;
+    if (!filteredData.length || !visibleColumns.length) {
+      toast.warning('There is no report data to export');
+      return;
+    }
 
     const escapeCsv = (val) => {
       const str = String(val ?? '');
@@ -266,11 +270,15 @@ export default function SalesReportsView() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredData.length} row${filteredData.length === 1 ? '' : 's'} to CSV`);
   };
 
   // XLSX Export (Selected columns only)
   const handleExportXlsx = () => {
-    if (!filteredData.length || !visibleColumns.length) return;
+    if (!filteredData.length || !visibleColumns.length) {
+      toast.warning('There is no report data to export');
+      return;
+    }
 
     const headers = visibleColumns.map((c) => c.label);
     const rows = filteredData.map((row) =>
@@ -292,6 +300,7 @@ export default function SalesReportsView() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
     XLSX.writeFile(wb, `sales_report_${reportType}_${fromDate}_to_${toDate}.xlsx`);
+    toast.success(`Exported ${filteredData.length} row${filteredData.length === 1 ? '' : 's'} to Excel`);
   };
 
   return (

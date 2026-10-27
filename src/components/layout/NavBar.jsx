@@ -3,6 +3,7 @@ import { Package, ShoppingCart, BarChart3, Settings, ChevronDown, LogOut, User }
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { tauriApi } from '../../lib/tauri';
+import { toast } from '../../stores/toast.store';
 import iconShell from '../../assets/icon-shell.png';
 
 /** Navigation structure – mirrors Java NavBarBuilder */
@@ -102,7 +103,9 @@ export default function NavBar({ authUser }) {
         session_token: null,
       });
       queryClient.invalidateQueries({ queryKey: ['auth_state'] });
+      toast.info('Terminal locked. Sign in to continue.');
     },
+    onError: (err) => toast.error(`Failed to lock terminal: ${err}`, { title: 'Sign out failed' }),
   });
 
   return (

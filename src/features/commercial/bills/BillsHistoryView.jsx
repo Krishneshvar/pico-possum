@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { History, Eye, Printer, RotateCcw, X, AlertTriangle } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
@@ -42,8 +43,9 @@ export default function BillsHistoryView() {
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       setCancelModalOpen(false);
       setSelectedSaleId(null);
+      toast.success('Sale cancelled and all items returned to stock');
     },
-    onError: (err) => alert(`Failed to cancel: ${err}`),
+    onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
   });
 
   const handleOpenDetail = (row) => {
@@ -57,6 +59,7 @@ export default function BillsHistoryView() {
 
   const handleReprint = (details) => {
     setReprintSale(details);
+    toast.info('Preparing receipt for printing');
     setTimeout(() => window.print(), 100);
   };
 
@@ -187,7 +190,12 @@ export default function BillsHistoryView() {
               { label: 'Quick Reprint', icon: <Printer className="w-3.5 h-3.5" />, onClick: () => {
                   setSelectedSaleId(row.id);
                   setTimeout(() => {
-                    tauriApi.getSaleDetails(row.id).then(d => handleReprint(d));
+                    tauriApi
+                      .getSaleDetails(row.id)
+                      .then((d) => handleReprint(d))
+                      .catch((err) =>
+                        toast.error(`Could not load receipt: ${err}`, { title: 'Reprint failed' })
+                      );
                   }, 100);
                 }
               },

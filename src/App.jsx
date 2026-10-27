@@ -2,6 +2,7 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import NavBar from './components/layout/NavBar';
 import TabBar from './components/layout/TabBar';
+import ToastContainer from './components/common/ToastContainer';
 import { useWorkspaceStore } from './stores/workspaceStore';
 import { tauriApi } from './lib/tauri';
 import { applyGeneralSettings } from './lib/formatters';
@@ -138,6 +139,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppRoot />
+      <ToastContainer />
     </QueryClientProvider>
   );
 }

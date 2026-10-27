@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, ShoppingBag, Clock } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 import { formatDateTime, formatDate, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import SortableTh from '../../../components/common/SortableTh';
@@ -52,32 +53,36 @@ export default function CustomersView() {
 
   const createMutation = useMutation({
     mutationFn: (payload) => tauriApi.createCustomer(payload),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setModalOpen(false);
       setFormData({ name: '', phone: '', address: '' });
+      toast.success(`Customer "${payload.name}" added successfully`);
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to add customer: ${err}`, { title: 'Save failed' }),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => tauriApi.updateCustomer(id, payload),
-    onSuccess: () => {
+    onSuccess: (_data, { payload }) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setModalOpen(false);
       setEditingCustomer(null);
       setFormData({ name: '', phone: '', address: '' });
+      toast.success(`Customer "${payload.name}" updated successfully`);
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to update customer: ${err}`, { title: 'Update failed' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => tauriApi.deleteCustomer(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
+      const deleted = customers.find((c) => c.id === id);
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setDeleteTarget(null);
+      toast.success(deleted ? `Customer "${deleted.name}" deleted successfully` : 'Customer deleted');
     },
-    onError: (err) => alert(`Error deleting customer: ${err}`),
+    onError: (err) => toast.error(`Failed to delete customer: ${err}`, { title: 'Delete failed' }),
   });
 
   const handleOpenCreate = () => {
@@ -98,7 +103,10 @@ export default function CustomersView() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      toast.warning('Customer name is required');
+      return;
+    }
     const payload = {
       name: formData.name.trim(),
       phone: formData.phone.trim() || null,

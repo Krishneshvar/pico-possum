@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Lock,
@@ -8,16 +8,17 @@ import {
   EyeOff,
   ShieldCheck,
   Sparkles,
-  AlertCircle,
   CheckCircle2,
   ArrowRight,
   RefreshCw,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
+import { toast } from '../../stores/toast.store';
 
 export default function AuthScreen({ authState, onAuthenticated }) {
   const queryClient = useQueryClient();
   const requiresSetup = authState?.requires_setup ?? false;
+  const passwordInputRef = useRef(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -25,7 +26,15 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+
+  // On app launch the cursor belongs in the password field – the username is
+  // usually pre-filled with the administrator account.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      passwordInputRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [requiresSetup]);
 
   // Fetch admin username if signing in
   const { data: adminUsername } = useQuery({
@@ -44,13 +53,20 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const loginMutation = useMutation({
     mutationFn: (credentials) => tauriApi.login(credentials),
     onSuccess: (res) => {
-      setErrorMsg('');
+      toast.success(
+        res?.user?.name
+          ? `Welcome back, ${res.user.name}`
+          : 'Signed in successfully',
+        { title: 'Signed in' }
+      );
       queryClient.setQueryData(['auth_state'], res);
       if (onAuthenticated) onAuthenticated(res);
     },
     onError: (err) => {
       const msg = typeof err === 'string' ? err : err?.message || 'Invalid username or password';
-      setErrorMsg(msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''));
+      toast.error(msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''), {
+        title: 'Sign in failed',
+      });
     },
   });
 
@@ -58,39 +74,42 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const registerMutation = useMutation({
     mutationFn: (payload) => tauriApi.registerAdmin(payload),
     onSuccess: (res) => {
-      setErrorMsg('');
+      toast.success('Administrator account created. Terminal unlocked.', {
+        title: 'Setup complete',
+      });
       queryClient.setQueryData(['auth_state'], res);
       if (onAuthenticated) onAuthenticated(res);
     },
     onError: (err) => {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to complete registration';
-      setErrorMsg(msg.replace(/^Validation error:\s*|^Forbidden:\s*/, ''));
+      toast.error(msg.replace(/^Validation error:\s*|^Forbidden:\s*/, ''), {
+        title: 'Setup failed',
+      });
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setErrorMsg('');
 
     if (requiresSetup) {
       if (!name.trim()) {
-        setErrorMsg('Please enter your full name');
+        toast.warning('Please enter your full name');
         return;
       }
       if (!username.trim()) {
-        setErrorMsg('Please choose an administrator username');
+        toast.warning('Please choose an administrator username');
         return;
       }
       if (!password) {
-        setErrorMsg('Please enter a secure password');
+        toast.warning('Please enter a secure password');
         return;
       }
       if (password.length < 4) {
-        setErrorMsg('Password must be at least 4 characters long');
+        toast.warning('Password must be at least 4 characters long');
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMsg('Passwords do not match');
+        toast.warning('Passwords do not match');
         return;
       }
 
@@ -101,7 +120,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
       });
     } else {
       if (!username.trim() || !password) {
-        setErrorMsg('Please enter both username and password');
+        toast.warning('Please enter both username and password');
         return;
       }
 
@@ -169,14 +188,6 @@ export default function AuthScreen({ authState, onAuthenticated }) {
           </p>
         </div>
 
-        {/* Error Notification */}
-        {errorMsg && (
-          <div className="mb-5 p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-shake">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span className="flex-1 font-medium">{errorMsg}</span>
-          </div>
-        )}
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {requiresSetup && (
@@ -193,7 +204,6 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                   placeholder="e.g. John Doe / Store Manager"
                   disabled={isPending}
                   required
-                  autoFocus
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
@@ -213,7 +223,6 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                 placeholder="admin"
                 disabled={isPending}
                 required
-                autoFocus={!requiresSetup}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -226,12 +235,14 @@ export default function AuthScreen({ authState, onAuthenticated }) {
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
+                ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 disabled={isPending}
                 required
+                autoFocus
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
               />
               <button

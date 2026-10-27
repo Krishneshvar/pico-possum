@@ -7,8 +7,6 @@ import {
   Printer,
   ShieldCheck,
   Database,
-  CheckCircle2,
-  AlertCircle,
   RefreshCw,
   FolderOpen,
   ArrowUp,
@@ -22,6 +20,7 @@ import {
   Package,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
+import { toast } from '../../stores/toast.store';
 import { applyGeneralSettings, formatDateTime } from '../../lib/formatters';
 import { nextSortState, sortRows } from '../../lib/sort';
 import SortableTh from '../../components/common/SortableTh';
@@ -55,7 +54,6 @@ export default function SettingsView() {
     newPassword: '',
     confirmPassword: '',
   });
-  const [passwordFeedback, setPasswordFeedback] = useState(null);
 
   // ── Bill Structure State ───────────────────────────────────────────────────
   const defaultSections = [
@@ -122,11 +120,10 @@ export default function SettingsView() {
     sections: defaultSections,
   });
 
-  // ── Feedback Toast / Banner ─────────────────────────────────────────────────
-  const [notification, setNotification] = useState(null);
+  // ── Feedback Toasts ─────────────────────────────────────────────────────────
   const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    const notify = toast[type] || toast.info;
+    notify(message);
   };
 
   // ── Queries ─────────────────────────────────────────────────────────────────
@@ -323,32 +320,30 @@ export default function SettingsView() {
     mutationFn: ({ currentPassword, newPassword }) =>
       tauriApi.updatePassword({ currentPassword, newPassword }),
     onSuccess: (msg) => {
-      setPasswordFeedback({ type: 'success', message: msg || 'Password updated successfully!' });
       setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      showNotification('Password updated successfully');
+      showNotification(msg || 'Password updated successfully!');
     },
     onError: (err) => {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to update password';
-      setPasswordFeedback({
-        type: 'error',
-        message: msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''),
-      });
+      showNotification(
+        msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''),
+        'error'
+      );
     },
   });
 
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
-    setPasswordFeedback(null);
     if (!passwordState.currentPassword || !passwordState.newPassword || !passwordState.confirmPassword) {
-      setPasswordFeedback({ type: 'error', message: 'Please fill in all password fields.' });
+      showNotification('Please fill in all password fields.', 'warning');
       return;
     }
     if (passwordState.newPassword.length < 4) {
-      setPasswordFeedback({ type: 'error', message: 'New password must be at least 4 characters long.' });
+      showNotification('New password must be at least 4 characters long.', 'warning');
       return;
     }
     if (passwordState.newPassword !== passwordState.confirmPassword) {
-      setPasswordFeedback({ type: 'error', message: 'New passwords do not match.' });
+      showNotification('New passwords do not match.', 'warning');
       return;
     }
 
@@ -433,31 +428,6 @@ export default function SettingsView() {
           </button>
         </div>
       </div>
-
-      {/* Notification Toast */}
-      {notification && (
-        <div
-          className={`mx-6 mt-4 p-3 rounded-xl text-xs flex items-center justify-between border transition-all animate-fade-in ${
-            notification.type === 'error'
-              ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
-              : notification.type === 'info'
-              ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
-              : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {notification.type === 'error' ? (
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-            )}
-            <span>{notification.message}</span>
-          </div>
-          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-white text-xs px-2">
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* Main Tab Content */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -566,20 +536,6 @@ export default function SettingsView() {
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-amber-500 focus:outline-none"
                     />
                   </div>
-
-                  {passwordFeedback && (
-                    <div
-                      className={`p-2.5 rounded-lg text-[11px] ${
-                        passwordFeedback.type === 'error'
-                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                          : passwordFeedback.type === 'success'
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
-                      }`}
-                    >
-                      {passwordFeedback.message}
-                    </div>
-                  )}
 
                   <div className="pt-2 flex justify-end">
                     <button
@@ -1004,7 +960,16 @@ export default function SettingsView() {
 
                 <button
                   type="button"
-                  onClick={() => refreshPrinters()}
+                  onClick={async () => {
+                    try {
+                      await refreshPrinters();
+                      toast.success('Printer list refreshed');
+                    } catch (err) {
+                      toast.error(`Could not refresh printers: ${err}`, {
+                        title: 'Printer scan failed',
+                      });
+                    }
+                  }}
                   disabled={scanningPrinters}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
@@ -1254,7 +1219,16 @@ export default function SettingsView() {
 
                 <button
                   type="button"
-                  onClick={() => tauriApi.openBackupFolder()}
+                  onClick={async () => {
+                    try {
+                      await tauriApi.openBackupFolder();
+                      toast.success('Opened backup folder');
+                    } catch (err) {
+                      toast.error(`Could not open backup folder: ${err}`, {
+                        title: 'Folder unavailable',
+                      });
+                    }
+                  }}
                   className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <FolderOpen className="w-4 h-4 text-emerald-400" />
@@ -1285,9 +1259,15 @@ export default function SettingsView() {
                 </h4>
                 <button
                   type="button"
-                  onClick={() => {
-                    refreshBackupStatus();
-                    refreshBackupsList();
+                  onClick={async () => {
+                    try {
+                      await Promise.all([refreshBackupStatus(), refreshBackupsList()]);
+                      toast.info('Backup list refreshed');
+                    } catch (err) {
+                      toast.error(`Could not refresh backups: ${err}`, {
+                        title: 'Refresh failed',
+                      });
+                    }
                   }}
                   className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
                 >

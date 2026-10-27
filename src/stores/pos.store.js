@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { tauriApi } from '../lib/tauri';
+import { toast } from './toast.store';
 
 const createEmptyBill = (index) => ({
   index,
@@ -54,6 +55,9 @@ export const usePosStore = create((set, get) => ({
       }
     } catch (err) {
       console.warn('Could not hydrate open bills from database:', err);
+      toast.warning('Open bills could not be restored from the database', {
+        title: 'Session restore failed',
+      });
       set({ isHydrated: true });
     }
   },

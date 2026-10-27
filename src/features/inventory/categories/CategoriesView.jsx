@@ -16,6 +16,7 @@ import {
   ListTree,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
@@ -243,25 +244,27 @@ export default function CategoriesView() {
 
   const createMutation = useMutation({
     mutationFn: (payload) => tauriApi.createCategory(payload),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setModalOpen(false);
       setName('');
       setParentId('');
+      toast.success(`Category "${payload.name}" created successfully`);
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to create category: ${err}`, { title: 'Create failed' }),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => tauriApi.updateCategory(id, payload),
-    onSuccess: () => {
+    onSuccess: (_data, { payload }) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setModalOpen(false);
       setEditingCategory(null);
       setName('');
       setParentId('');
+      toast.success(`Category "${payload.name}" updated successfully`);
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to update category: ${err}`, { title: 'Update failed' }),
   });
 
   const deleteMutation = useMutation({
@@ -269,8 +272,9 @@ export default function CategoriesView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       if (selectedTreeId) setSelectedTreeId(null);
+      toast.success('Category deleted successfully');
     },
-    onError: (err) => alert(`Error: ${err}`),
+    onError: (err) => toast.error(`Failed to delete category: ${err}`, { title: 'Delete failed' }),
   });
 
   const handleOpenCreate = (parent = null) => {
@@ -295,7 +299,10 @@ export default function CategoriesView() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      toast.warning('Category name is required');
+      return;
+    }
 
     const payload = {
       name: name.trim(),

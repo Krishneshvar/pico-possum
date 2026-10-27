@@ -20,6 +20,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
@@ -68,7 +69,7 @@ function ProductSearchInput({ onSelect, allowNegativeStock = false }) {
               key={p.id}
               onClick={() => {
                 if (isOut) {
-                  alert(`"${p.name}" is out of stock.`);
+                  toast.warning(`"${p.name}" is out of stock.`);
                   return;
                 }
                 onSelect(p);
@@ -212,7 +213,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
 
   const addProductToDraft = (product) => {
     if (!allowNegativeStock && product.current_stock <= 0) {
-      alert(`"${product.name}" is out of stock.`);
+      toast.warning(`"${product.name}" is out of stock.`);
       return;
     }
 
@@ -248,32 +249,42 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       setCancelModalOpen(false);
+      toast.success('Sale cancelled and all items returned to stock');
     },
-    onError: (err) => alert(`Failed to cancel sale: ${err}`),
+    onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
   });
 
   const updateMutation = useMutation({
     mutationFn: (payload) => tauriApi.updateSale(payload),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sale_details', saleId] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       setEditing(false);
       setEditError('');
+      toast.success('Bill updated successfully');
     },
-    onError: (err) => setEditError(`Save failed: ${String(err)}`),
+    onError: (err) => {
+      const message = `Save failed: ${String(err)}`;
+      setEditError(message);
+      toast.error(message, { title: 'Update failed' });
+    },
   });
 
   const handleSaveEdit = () => {
     setEditError('');
     if (draftItems.length === 0) {
-      setEditError('A bill must have at least one item. To remove all items, cancel the bill instead.');
+      const message = 'A bill must have at least one item. To remove all items, cancel the bill instead.';
+      setEditError(message);
+      toast.warning(message);
       return;
     }
     const invalidItem = draftItems.find((it) => it.quantity <= 0 || it.unit_price_paise < 0);
     if (invalidItem) {
-      setEditError('All items must have a quantity ≥ 1 and a valid price.');
+      const message = 'All items must have a quantity ≥ 1 and a valid price.';
+      setEditError(message);
+      toast.warning(message);
       return;
     }
 
@@ -301,9 +312,9 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
 
         const product = productById(productId);
         if (product && delta > product.current_stock) {
-          setEditError(
-            `Insufficient stock for "${product.name}": available ${product.current_stock}, requested ${delta}.`
-          );
+          const message = `Insufficient stock for "${product.name}": available ${product.current_stock}, requested ${delta}.`;
+          setEditError(message);
+          toast.warning(message, { title: 'Insufficient stock' });
           return;
         }
       }
@@ -332,6 +343,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
   const handleReprint = () => {
     if (!saleDetails) return;
     setReprintSale(saleDetails);
+    toast.info('Preparing receipt for printing');
     setTimeout(() => window.print(), 100);
   };
 
