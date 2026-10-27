@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { History, Eye, Pencil, Printer, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -17,12 +17,13 @@ export default function BillsHistoryView() {
   const { openOrFocus } = useWorkspaceStore();
   const currencySymbol = getCurrencySymbol();
   const [reprintSale, setReprintSale] = useState(null);
-  const [filteredSales, setFilteredSales] = useState([]);
+  const [filteredSales, setFilteredSales] = useState(null);
 
-  const { data: sales = [], isLoading } = useQuery({
+  const { data: salesData, isLoading } = useQuery({
     queryKey: ['sales'],
     queryFn: () => tauriApi.getSales(500, 0, null),
   });
+  const sales = useMemo(() => salesData ?? [], [salesData]);
 
   const { data: billSettings } = useQuery({
     queryKey: ['bill_settings'],
@@ -99,7 +100,7 @@ export default function BillsHistoryView() {
 
   // ── CSV & XLSX Export Handlers ──────────────────────────────────────────────
   const getExportData = () => {
-    return filteredSales.length > 0 ? filteredSales : sales;
+    return filteredSales ?? sales;
   };
 
   const handleExportCsv = () => {
@@ -231,7 +232,7 @@ export default function BillsHistoryView() {
     toast.success(`Exported ${dataToExport.length} bills to Excel (XLSX)`);
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       key: 'invoice_number',
       label: 'Invoice #',
@@ -287,7 +288,47 @@ export default function BillsHistoryView() {
         </span>
       ),
     },
-  ];
+  ], [currencySymbol]);
+
+  const filters = useMemo(() => [
+    {
+      type: 'multiselect',
+      key: 'status',
+      label: 'Status',
+      options: [
+        { value: 'PAID', label: 'Paid' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+    },
+    {
+      type: 'multiselect',
+      key: 'payment_method',
+      label: 'Payment Method',
+      options: [
+        { value: 'CASH', label: 'Cash' },
+        { value: 'UPI', label: 'UPI' },
+        { value: 'CARD', label: 'Card' },
+      ],
+    },
+    {
+      type: 'daterange',
+      fromKey: 'created_at',
+      toKey: 'created_at',
+      label: 'Date',
+    },
+    {
+      type: 'range',
+      key: 'total_paise',
+      label: 'Total',
+      unit: currencySymbol,
+      transform: (v) => Math.round(parseFloat(v) * 100),
+    },
+  ], [currencySymbol]);
+
+  const searchKeys = useMemo(
+    () => ['invoice_number', 'customer_name', 'customer_phone', 'payment_method'],
+    []
+  );
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
@@ -344,41 +385,8 @@ export default function BillsHistoryView() {
           persistKey="bills"
           data={sales}
           keyFn={(r) => r.id}
-          searchKeys={['invoice_number', 'customer_name', 'customer_phone', 'payment_method']}
-          filters={[
-            {
-              type: 'multiselect',
-              key: 'status',
-              label: 'Status',
-              options: [
-                { value: 'PAID', label: 'Paid' },
-                { value: 'CANCELLED', label: 'Cancelled' },
-              ],
-            },
-            {
-              type: 'multiselect',
-              key: 'payment_method',
-              label: 'Payment Method',
-              options: [
-                { value: 'CASH', label: 'Cash' },
-                { value: 'UPI', label: 'UPI' },
-                { value: 'CARD', label: 'Card' },
-              ],
-            },
-            {
-              type: 'daterange',
-              fromKey: 'created_at',
-              toKey: 'created_at',
-              label: 'Date',
-            },
-            {
-              type: 'range',
-              key: 'total_paise',
-              label: 'Total',
-              unit: currencySymbol,
-              transform: (v) => Math.round(parseFloat(v) * 100),
-            },
-          ]}
+          searchKeys={searchKeys}
+          filters={filters}
           isLoading={isLoading}
           emptyMessage="No sales recorded."
           onFilteredChange={setFilteredSales}

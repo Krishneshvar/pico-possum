@@ -216,14 +216,17 @@ export default function PosView() {
     addItem(product);
   };
 
-  const changeItemQty = (item, nextQty) => {
+  const changeItemQty = (productId, nextQty) => {
+    const item = currentBill.items.find((it) => it.productId === productId);
+    if (!item) return;
+
     if (nextQty <= 0) {
-      updateItemQty(item.productId, 0);
+      updateItemQty(productId, 0);
       return;
     }
 
     if (!allowNegativeStock) {
-      const available = productStockById.get(item.productId)?.current_stock;
+      const available = productStockById.get(productId)?.current_stock;
       if (available != null && nextQty > available) {
         toast.warning(
           `Only ${available} unit${available === 1 ? '' : 's'} of "${item.name}" available in stock.`,
@@ -233,7 +236,7 @@ export default function PosView() {
       }
     }
 
-    updateItemQty(item.productId, nextQty);
+    updateItemQty(productId, nextQty);
   };
 
   const handlePrintReceipt = () => {

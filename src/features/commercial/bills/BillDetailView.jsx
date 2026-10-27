@@ -591,7 +591,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
               </button>
               <button
                 onClick={handleSaveEdit}
-                disabled={updateMutation.isPending}
+                disabled={updateMutation.isPending || !draftBill?.items.length}
                 className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-60 cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
