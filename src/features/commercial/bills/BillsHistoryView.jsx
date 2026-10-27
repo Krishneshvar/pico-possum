@@ -1,30 +1,37 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { History, Eye, Pencil, Printer, RotateCcw } from 'lucide-react';
+import { History, Eye, Pencil, Printer, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
+import { formatPaise, formatDate, formatTime, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
-
 export default function BillsHistoryView() {
   const queryClient = useQueryClient();
   const { openOrFocus } = useWorkspaceStore();
   const currencySymbol = getCurrencySymbol();
   const [reprintSale, setReprintSale] = useState(null);
+  const [filteredSales, setFilteredSales] = useState([]);
 
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ['sales'],
     queryFn: () => tauriApi.getSales(500, 0, null),
   });
 
-  const { data: billSettings } = useQuery({ queryKey: ['bill_settings'], queryFn: () => tauriApi.getBillSettings() });
-  const { data: generalSettings } = useQuery({ queryKey: ['general_settings'], queryFn: () => tauriApi.getGeneralSettings() });
+  const { data: billSettings } = useQuery({
+    queryKey: ['bill_settings'],
+    queryFn: () => tauriApi.getBillSettings(),
+  });
+  const { data: generalSettings } = useQuery({
+    queryKey: ['general_settings'],
+    queryFn: () => tauriApi.getGeneralSettings(),
+  });
 
   const cancelMutation = useMutation({
     mutationFn: ({ id, reason }) => tauriApi.cancelSale(id, reason),
@@ -90,18 +97,155 @@ export default function BillsHistoryView() {
     }
   };
 
+  // ── CSV & XLSX Export Handlers ──────────────────────────────────────────────
+  const getExportData = () => {
+    return filteredSales.length > 0 ? filteredSales : sales;
+  };
+
+  const handleExportCsv = () => {
+    const dataToExport = getExportData();
+    if (!dataToExport.length) {
+      toast.warning('No bills to export');
+      return;
+    }
+
+    const escapeCsv = (val) => {
+      const str = String(val ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      'Invoice #',
+      'Date',
+      'Time',
+      'Customer Name',
+      'Customer Phone',
+      'Biller',
+      'Payment Method',
+      'Subtotal (Rs)',
+      'Discount (Rs)',
+      'Tax (Rs)',
+      'Net Total (Rs)',
+      'Paid (Rs)',
+      'Status',
+      'Notes',
+    ];
+
+    const rows = dataToExport.map((s) => [
+      escapeCsv(s.invoice_number || ''),
+      escapeCsv(formatDate(s.created_at)),
+      escapeCsv(formatTime(s.created_at)),
+      escapeCsv(s.customer_name || 'Walk-in Customer'),
+      escapeCsv(s.customer_phone || ''),
+      escapeCsv(s.biller_name || ''),
+      escapeCsv(s.payment_method || ''),
+      escapeCsv((s.subtotal_paise / 100).toFixed(2)),
+      escapeCsv((s.discount_paise / 100).toFixed(2)),
+      escapeCsv((s.tax_paise / 100).toFixed(2)),
+      escapeCsv((s.total_paise / 100).toFixed(2)),
+      escapeCsv((s.paid_paise / 100).toFixed(2)),
+      escapeCsv(s.status || ''),
+      escapeCsv(s.notes || ''),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `bill_history_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${dataToExport.length} bills to CSV`);
+  };
+
+  const handleExportXlsx = () => {
+    const dataToExport = getExportData();
+    if (!dataToExport.length) {
+      toast.warning('No bills to export');
+      return;
+    }
+
+    const headers = [
+      'Invoice #',
+      'Date',
+      'Time',
+      'Customer Name',
+      'Customer Phone',
+      'Biller',
+      'Payment Method',
+      'Subtotal (Rs)',
+      'Discount (Rs)',
+      'Tax (Rs)',
+      'Net Total (Rs)',
+      'Paid (Rs)',
+      'Status',
+      'Notes',
+    ];
+
+    const rows = dataToExport.map((s) => [
+      s.invoice_number || '',
+      formatDate(s.created_at),
+      formatTime(s.created_at),
+      s.customer_name || 'Walk-in Customer',
+      s.customer_phone || '',
+      s.biller_name || '',
+      s.payment_method || '',
+      Number((s.subtotal_paise / 100).toFixed(2)),
+      Number((s.discount_paise / 100).toFixed(2)),
+      Number((s.tax_paise / 100).toFixed(2)),
+      Number((s.total_paise / 100).toFixed(2)),
+      Number((s.paid_paise / 100).toFixed(2)),
+      s.status || '',
+      s.notes || '',
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 16 }, // Invoice
+      { wch: 12 }, // Date
+      { wch: 10 }, // Time
+      { wch: 22 }, // Customer Name
+      { wch: 15 }, // Customer Phone
+      { wch: 14 }, // Biller
+      { wch: 14 }, // Payment Method
+      { wch: 14 }, // Subtotal
+      { wch: 14 }, // Discount
+      { wch: 12 }, // Tax
+      { wch: 14 }, // Net Total
+      { wch: 14 }, // Paid
+      { wch: 12 }, // Status
+      { wch: 25 }, // Notes
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bills');
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `bill_history_${dateStr}.xlsx`);
+    toast.success(`Exported ${dataToExport.length} bills to Excel (XLSX)`);
+  };
+
   const columns = [
     {
-      key: 'invoice_number', label: 'Invoice #',
+      key: 'invoice_number',
+      label: 'Invoice #',
       className: 'font-mono font-bold text-slate-100',
     },
     {
-      key: 'created_at', label: 'Date & Time',
+      key: 'created_at',
+      label: 'Date & Time',
       className: 'font-mono text-slate-400 text-[11px]',
       render: (r) => formatDateTime(r.created_at),
     },
     {
-      key: 'customer_name', label: 'Customer',
+      key: 'customer_name',
+      label: 'Customer',
       className: 'text-slate-300',
       render: (r) => (
         <div>
@@ -111,7 +255,8 @@ export default function BillsHistoryView() {
       ),
     },
     {
-      key: 'payment_method', label: 'Payment',
+      key: 'payment_method',
+      label: 'Payment',
       render: (r) => (
         <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
           {r.payment_method}
@@ -119,21 +264,25 @@ export default function BillsHistoryView() {
       ),
     },
     {
-      key: 'total_paise', label: 'Total',
+      key: 'total_paise',
+      label: 'Total',
       headerClassName: 'text-right',
       className: 'text-right font-mono font-bold text-slate-100',
       render: (r) => formatPaise(r.total_paise),
     },
     {
-      key: 'status', label: 'Status',
+      key: 'status',
+      label: 'Status',
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => (
-        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-          r.status === 'CANCELLED'
-            ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-            : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-        }`}>
+        <span
+          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            r.status === 'CANCELLED'
+              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+              : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+          }`}
+        >
           {r.status}
         </span>
       ),
@@ -154,6 +303,28 @@ export default function BillsHistoryView() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Export CSV */}
+          <button
+            onClick={handleExportCsv}
+            disabled={!sales.length}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 border border-slate-700/60 transition-all disabled:opacity-40 cursor-pointer"
+            title="Export bills as CSV"
+          >
+            <FileText className="w-3.5 h-3.5 text-sky-400" />
+            <span>CSV</span>
+          </button>
+
+          {/* Export XLSX */}
+          <button
+            onClick={handleExportXlsx}
+            disabled={!sales.length}
+            className="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 border border-emerald-500/40 shadow-sm transition-all disabled:opacity-40 cursor-pointer"
+            title="Export bills as Excel XLSX"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Excel (XLSX)</span>
+          </button>
+
           <ImportCsvButton
             entity="bills"
             label="Import Legacy CSV"
@@ -210,39 +381,66 @@ export default function BillsHistoryView() {
           ]}
           isLoading={isLoading}
           emptyMessage="No sales recorded."
+          onFilteredChange={setFilteredSales}
           onRowDoubleClick={handleOpenDetail}
           actions={(row) => (
-            <DropdownActions items={[
-              { label: 'View Details', icon: <Eye className="w-3.5 h-3.5" />, onClick: () => handleOpenDetail(row) },
-              ...(row.status !== 'CANCELLED' ? [
-                { label: 'Edit Bill', icon: <Pencil className="w-3.5 h-3.5" />, onClick: () => handleEditBill(row) },
-              ] : []),
-              { label: 'Quick Reprint', icon: <Printer className="w-3.5 h-3.5" />, onClick: () => {
-                  setTimeout(() => {
-                    tauriApi
-                      .getSaleDetails(row.id)
-                      .then((d) => handleReprint(d))
-                      .catch((err) =>
-                        toast.error(`Could not load receipt: ${err}`, { title: 'Reprint failed' })
-                      );
-                  }, 100);
-                }
-              },
-              ...(row.status !== 'CANCELLED' ? [
-                'divider',
-                { label: 'Cancel & Return', icon: <RotateCcw className="w-3.5 h-3.5" />, danger: true, onClick: () => {
-                    handleCancelSale(row.id, row.invoice_number);
-                  }
+            <DropdownActions
+              items={[
+                {
+                  label: 'View Details',
+                  icon: <Eye className="w-3.5 h-3.5" />,
+                  onClick: () => handleOpenDetail(row),
                 },
-              ] : []),
-            ]} />
+                ...(row.status !== 'CANCELLED'
+                  ? [
+                      {
+                        label: 'Edit Bill',
+                        icon: <Pencil className="w-3.5 h-3.5" />,
+                        onClick: () => handleEditBill(row),
+                      },
+                    ]
+                  : []),
+                {
+                  label: 'Quick Reprint',
+                  icon: <Printer className="w-3.5 h-3.5" />,
+                  onClick: () => {
+                    setTimeout(() => {
+                      tauriApi
+                        .getSaleDetails(row.id)
+                        .then((d) => handleReprint(d))
+                        .catch((err) =>
+                          toast.error(`Could not load receipt: ${err}`, { title: 'Reprint failed' })
+                        );
+                    }, 100);
+                  },
+                },
+                ...(row.status !== 'CANCELLED'
+                  ? [
+                      'divider',
+                      {
+                        label: 'Cancel & Return',
+                        icon: <RotateCcw className="w-3.5 h-3.5" />,
+                        danger: true,
+                        onClick: () => {
+                          handleCancelSale(row.id, row.invoice_number);
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           )}
         />
       </div>
 
       {reprintSale && (
         <div className="hidden">
-          <ReceiptPrinter sale={reprintSale.sale} items={reprintSale.items} billSettings={billSettings} generalSettings={generalSettings} />
+          <ReceiptPrinter
+            sale={reprintSale.sale}
+            items={reprintSale.items}
+            billSettings={billSettings}
+            generalSettings={generalSettings}
+          />
         </div>
       )}
     </div>

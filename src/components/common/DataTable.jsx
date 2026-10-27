@@ -205,6 +205,7 @@ export default function DataTable({
   onRowClick,
   onRowDoubleClick,
   persistKey,
+  onFilteredChange,
 }) {
   const [search, setSearch] = useState('');
   const [selectValues, setSelectValues] = useState({});
@@ -422,6 +423,10 @@ export default function DataTable({
     setPage(1);
   };
 
+  useEffect(() => {
+    onFilteredChange?.(filtered);
+  }, [filtered, onFilteredChange]);
+
   // ── Pagination ───────────────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -546,7 +551,7 @@ export default function DataTable({
         )}
 
         <div className="flex-1" />
-        {headerRight}
+        {typeof headerRight === 'function' ? headerRight({ filtered }) : headerRight}
 
         <span className="text-[11px] text-slate-500 whitespace-nowrap">
           {filtered.length} row{filtered.length !== 1 ? 's' : ''}

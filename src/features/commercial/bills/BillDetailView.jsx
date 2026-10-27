@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -12,12 +12,8 @@ import {
   CheckCircle2,
   XCircle,
   Pencil,
-  Plus,
-  Trash2,
   X,
-  Search,
   Save,
-  ChevronDown,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
@@ -26,80 +22,11 @@ import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/for
 import { nextSortState, sortRows } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
+import { computeBillTotals } from '../../../stores/pos.store';
+import PosBillEditor from '../pos/PosBillEditor';
+import AddCustomerModal from '../pos/AddCustomerModal';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
-// ── Utility ──────────────────────────────────────────────────────────────────
-const paise = (v) => Math.round(parseFloat(v || 0) * 100);
-const rupees = (v) => ((v || 0) / 100).toFixed(2);
-
-// ── Product Search / Add Row ──────────────────────────────────────────────────
-function ProductSearchInput({ onSelect, allowNegativeStock = false }) {
-  const [query, setQuery] = useState('');
-  const { data: products = [] } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => tauriApi.getProducts(),
-    staleTime: 30_000,
-  });
-
-  const filtered = query.trim().length >= 1
-    ? products.filter((p) =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku && p.sku.toLowerCase().includes(query.toLowerCase()))
-      ).slice(0, 8)
-    : [];
-
-  return (
-    <div className="relative">
-      <div className="flex items-center gap-2 bg-slate-950 border border-emerald-500/50 rounded-lg px-2 py-1.5 focus-within:border-emerald-400">
-        <Search className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-        <input
-          autoFocus
-          type="text"
-          placeholder="Search product by name or SKU…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="bg-transparent text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none w-full"
-        />
-      </div>
-      {filtered.length > 0 && (
-        <div className="absolute top-full mt-1 left-0 right-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden max-h-52 overflow-y-auto">
-          {filtered.map((p) => {
-            const isOut = !allowNegativeStock && p.current_stock <= 0;
-            return (
-            <button
-              key={p.id}
-              onClick={() => {
-                if (isOut) {
-                  toast.warning(`"${p.name}" is out of stock.`);
-                  return;
-                }
-                onSelect(p);
-                setQuery('');
-              }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-800 text-left group transition-colors ${
-                isOut ? 'opacity-60' : ''
-              }`}
-            >
-              <div>
-                <div className="text-xs font-semibold text-slate-200 group-hover:text-white">{p.name}</div>
-                {p.sku && <div className="text-[10px] text-slate-500 font-mono">{p.sku}</div>}
-              </div>
-              <div className="text-right shrink-0 ml-3">
-                <div className="text-xs font-mono font-bold text-emerald-400">{formatPaise(p.mrp_paise)}</div>
-                <div className={`text-[10px] ${isOut ? 'text-rose-400 font-semibold' : 'text-slate-500'}`}>
-                  {isOut ? 'Out of stock' : `Stock: ${p.current_stock}`}
-                </div>
-              </div>
-            </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Main View ─────────────────────────────────────────────────────────────────
 export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const currencySymbol = getCurrencySymbol();
   const queryClient = useQueryClient();
@@ -108,24 +35,18 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const [reprintSale, setReprintSale] = useState(null);
   const [lineSort, setLineSort] = useState({ key: null, dir: null });
   const handledEditRequest = useRef(null);
+  const searchInputRef = useRef(null);
 
   // ── Edit mode state ──
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState('');
+  const [draftBill, setDraftBill] = useState(null);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [editSearchQuery, setEditSearchQuery] = useState('');
+  const [editSelectedCategory, setEditSelectedCategory] = useState(null);
+  const [editSearchFocused, setEditSearchFocused] = useState(false);
 
-  // Draft fields
-  const [draftItems, setDraftItems] = useState([]);
-  const [draftCustomerName, setDraftCustomerName] = useState('');
-  const [draftCustomerPhone, setDraftCustomerPhone] = useState('');
-  const [draftCustomerId, setDraftCustomerId] = useState(null);
-  const [draftPaymentMethod, setDraftPaymentMethod] = useState('CASH');
-  const [draftPaidRupees, setDraftPaidRupees] = useState('0');
-  const [draftDiscountRupees, setDraftDiscountRupees] = useState('0');
-  const [draftNotes, setDraftNotes] = useState('');
-  const [addingProduct, setAddingProduct] = useState(false);
-
-  // Resolve the lookup key — prefer the UUID sale ID, fall back to invoice number
-  // (used when navigating from the Stock Ledger via an invoice reference link).
+  // Lookup key — prefer UUID sale ID, fallback to invoice number
   const lookupKey = saleId || invoiceNumber;
 
   const { data: saleDetails, isLoading, isError } = useQuery({
@@ -150,43 +71,94 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     staleTime: 30_000,
   });
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => tauriApi.getCategories(),
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => tauriApi.getCustomers(),
+  });
+
   const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
-  const productById = useCallback(
-    (productId) => catalogProducts.find((p) => p.id === productId),
+
+  const productStockById = useMemo(() => {
+    const map = new Map();
+    for (const p of catalogProducts) map.set(p.id, p);
+    return map;
+  }, [catalogProducts]);
+
+  // Quantities already sold on this bill are still available to this bill edit session.
+  const stockAllowanceByProduct = useMemo(() => {
+    const map = new Map();
+    for (const it of saleDetails?.items || []) {
+      map.set(it.product_id, (map.get(it.product_id) || 0) + it.quantity);
+    }
+    return map;
+  }, [saleDetails]);
+
+  const editProducts = useMemo(() => {
+    const q = editSearchQuery.trim().toLowerCase();
+    return catalogProducts.filter((p) => {
+      if (editSelectedCategory && p.category_id !== editSelectedCategory) return false;
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.sku && p.sku.toLowerCase().includes(q))
+      );
+    });
+  }, [catalogProducts, editSelectedCategory, editSearchQuery]);
+
+  // ── Seed POS draft from loaded bill ──
+  const seedDraft = useCallback(
+    (details) => {
+      if (!details) return;
+      const { sale, items } = details;
+      setDraftBill({
+        items: items.map((it) => {
+          const product = catalogProducts.find((p) => p.id === it.product_id);
+          return {
+            productId: it.product_id,
+            name: it.product_name,
+            sku: it.product_sku || product?.sku || '',
+            unitPricePaise: it.unit_price_paise,
+            mrpPaise: product?.mrp_paise ?? it.unit_price_paise,
+            costPricePaise: product?.cost_price_paise ?? it.cost_price_paise ?? 0,
+            taxRate: it.tax_rate || 0,
+            quantity: it.quantity,
+            discountPaise: it.discount_paise || 0,
+          };
+        }),
+        customer:
+          sale.customer_id || sale.customer_name
+            ? {
+                id: sale.customer_id || null,
+                name: sale.customer_name || '',
+                phone: sale.customer_phone || '',
+                address: sale.customer_address || '',
+              }
+            : null,
+        discountType: 'FIXED',
+        discountValue: (sale.discount_paise || 0) / 100,
+        paymentMethod: sale.payment_method || 'CASH',
+        isFullPayment: sale.paid_paise === sale.total_paise,
+        amountTenderedPaise: sale.paid_paise || 0,
+        notes: sale.notes || '',
+      });
+    },
     [catalogProducts]
   );
-
-  // ── Seed draft from loaded data ──
-  const seedDraft = useCallback((details) => {
-    if (!details) return;
-    const { sale, items } = details;
-    setDraftItems(items.map((it) => ({
-      _tempId: it.id,
-      product_id: it.product_id,
-      product_name: it.product_name,
-      product_sku: it.product_sku,
-      quantity: it.quantity,
-      unit_price_paise: it.unit_price_paise,
-      discount_paise: it.discount_paise || 0,
-      tax_rate: it.tax_rate || 0,
-    })));
-    setDraftCustomerName(sale.customer_name || '');
-    setDraftCustomerPhone(sale.customer_phone || '');
-    setDraftCustomerId(sale.customer_id || null);
-    setDraftPaymentMethod(sale.payment_method || 'CASH');
-    setDraftPaidRupees(rupees(sale.paid_paise));
-    setDraftDiscountRupees(rupees(sale.discount_paise));
-    setDraftNotes(sale.notes || '');
-  }, []);
 
   const enterEdit = () => {
     seedDraft(saleDetails);
     setEditError('');
+    setEditSearchQuery('');
+    setEditSelectedCategory(null);
     setEditing(true);
   };
 
-  // Enter edit mode when opened from the "Edit Bill" row action, including
-  // when the tab was already open on this bill.
+  // Enter edit mode when opened via "Edit Bill" row action
   useEffect(() => {
     if (!editRequest || !saleDetails) return;
     if (handledEditRequest.current === editRequest) return;
@@ -194,63 +166,186 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     handledEditRequest.current = editRequest;
     seedDraft(saleDetails);
     setEditError('');
-    setAddingProduct(false);
+    setEditSearchQuery('');
+    setEditSelectedCategory(null);
     setEditing(true);
   }, [editRequest, saleDetails, seedDraft]);
+
+  // Ctrl+K to focus search input in edit mode
+  useEffect(() => {
+    if (!editing) return;
+    const handleKeyDown = (e) => {
+      const isCmd = e.ctrlKey || e.metaKey;
+      if (isCmd && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editing]);
 
   const cancelEdit = () => {
     setEditing(false);
     setEditError('');
-    setAddingProduct(false);
+    setDraftBill(null);
+    setCustomerModalOpen(false);
+    setEditSearchQuery('');
+    setEditSelectedCategory(null);
   };
 
   // ── Draft calculations ──
-  const draftSubtotal = draftItems.reduce((sum, it) => {
-    return sum + (it.unit_price_paise * it.quantity) - (it.discount_paise || 0);
-  }, 0);
-  const draftTotalDiscount = paise(draftDiscountRupees);
-  const draftTotal = Math.max(0, draftSubtotal - draftTotalDiscount);
-  const draftPaid = paise(draftPaidRupees);
-  const draftChange = Math.max(0, draftPaid - draftTotal);
+  const draftTotals = useMemo(() => computeBillTotals(draftBill), [draftBill]);
 
-  // ── Draft item helpers ──
-  const updateDraftItem = (tempId, field, value) => {
-    setDraftItems((prev) =>
-      prev.map((it) => it._tempId === tempId ? { ...it, [field]: value } : it)
-    );
-  };
-
-  const removeDraftItem = (tempId) => {
-    setDraftItems((prev) => prev.filter((it) => it._tempId !== tempId));
-  };
-
+  // ── Draft item mutations (matches POS store behavior) ──
   const addProductToDraft = (product) => {
-    if (!allowNegativeStock && product.current_stock <= 0) {
-      toast.warning(`"${product.name}" is out of stock.`);
+    if (!allowNegativeStock) {
+      const available =
+        (productStockById.get(product.id)?.current_stock ?? product.current_stock ?? 0) +
+        (stockAllowanceByProduct.get(product.id) || 0);
+      const inCart = draftBill?.items.find((it) => it.productId === product.id)?.quantity || 0;
+
+      if (available <= 0) {
+        toast.warning(`"${product.name}" is out of stock.`);
+        return;
+      }
+      if (inCart + 1 > available) {
+        toast.warning(
+          `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`,
+          { title: 'Stock limit reached' }
+        );
+        return;
+      }
+    }
+
+    setDraftBill((prev) => {
+      if (!prev) return prev;
+      const existing = prev.items.find((it) => it.productId === product.id);
+      const items = existing
+        ? prev.items.map((it) =>
+            it.productId === product.id ? { ...it, quantity: it.quantity + 1 } : it
+          )
+        : [
+            ...prev.items,
+            {
+              productId: product.id,
+              name: product.name,
+              sku: product.sku || '',
+              unitPricePaise: product.mrp_paise || 0,
+              mrpPaise: product.mrp_paise || 0,
+              costPricePaise: product.cost_price_paise || 0,
+              taxRate: product.tax_rate || 0,
+              quantity: 1,
+              discountPaise: 0,
+            },
+          ];
+      return { ...prev, items };
+    });
+  };
+
+  const updateDraftItemQty = (productId, quantity) => {
+    if (quantity <= 0) {
+      setDraftBill((prev) =>
+        prev ? { ...prev, items: prev.items.filter((it) => it.productId !== productId) } : prev
+      );
       return;
     }
 
-    const existing = draftItems.find((it) => it.product_id === product.id);
-    if (existing) {
-      setDraftItems((prev) =>
-        prev.map((it) => it.product_id === product.id
-          ? { ...it, quantity: it.quantity + 1 }
-          : it
-        )
-      );
-    } else {
-      setDraftItems((prev) => [...prev, {
-        _tempId: `new-${Date.now()}-${product.id}`,
-        product_id: product.id,
-        product_name: product.name,
-        product_sku: product.sku,
-        quantity: 1,
-        unit_price_paise: product.mrp_paise,
-        discount_paise: 0,
-        tax_rate: product.tax_rate || 0,
-      }]);
+    if (!allowNegativeStock) {
+      const available =
+        (productStockById.get(productId)?.current_stock || 0) +
+        (stockAllowanceByProduct.get(productId) || 0);
+      if (quantity > available) {
+        const name = draftBill?.items.find((it) => it.productId === productId)?.name || 'item';
+        toast.warning(
+          `Only ${available} unit${available === 1 ? '' : 's'} of "${name}" available in stock.`,
+          { title: 'Stock limit reached' }
+        );
+        return;
+      }
     }
-    setAddingProduct(false);
+
+    setDraftBill((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.map((it) =>
+              it.productId === productId ? { ...it, quantity } : it
+            ),
+          }
+        : prev
+    );
+  };
+
+  const updateDraftItemPrice = (productId, unitPricePaise) => {
+    setDraftBill((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.map((it) =>
+              it.productId === productId
+                ? { ...it, unitPricePaise: Math.max(0, unitPricePaise || 0) }
+                : it
+            ),
+          }
+        : prev
+    );
+  };
+
+  const updateDraftItemDiscount = (productId, discountPaise) => {
+    setDraftBill((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.map((it) =>
+              it.productId === productId
+                ? { ...it, discountPaise: Math.max(0, discountPaise || 0) }
+                : it
+            ),
+          }
+        : prev
+    );
+  };
+
+  const removeDraftItem = (productId) => {
+    setDraftBill((prev) =>
+      prev ? { ...prev, items: prev.items.filter((it) => it.productId !== productId) } : prev
+    );
+  };
+
+  const setDraftCustomer = (customer) => {
+    setDraftBill((prev) => (prev ? { ...prev, customer } : prev));
+  };
+
+  const setDraftDiscount = (discountType, discountValue) => {
+    setDraftBill((prev) =>
+      prev
+        ? {
+            ...prev,
+            discountType,
+            discountValue: Math.max(0, Number(discountValue) || 0),
+          }
+        : prev
+    );
+  };
+
+  const setDraftPaymentMethod = (paymentMethod) => {
+    setDraftBill((prev) => (prev ? { ...prev, paymentMethod } : prev));
+  };
+
+  const setDraftFullPayment = (isFullPayment) => {
+    setDraftBill((prev) => (prev ? { ...prev, isFullPayment } : prev));
+  };
+
+  const setDraftAmountTendered = (amountTenderedPaise) => {
+    setDraftBill((prev) =>
+      prev ? { ...prev, amountTenderedPaise: Math.max(0, amountTenderedPaise || 0) } : prev
+    );
+  };
+
+  const setDraftNotes = (notes) => {
+    setDraftBill((prev) => (prev ? { ...prev, notes } : prev));
   };
 
   // ── Mutations ──
@@ -258,7 +353,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     mutationFn: ({ id, reason }) => tauriApi.cancelSale(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sale_details', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sale_details'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       toast.success('Sale cancelled and all items returned to stock');
@@ -270,11 +365,15 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     mutationFn: (payload) => tauriApi.updateSale(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sale_details', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sale_details', lookupKey] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       setEditing(false);
       setEditError('');
+      setDraftBill(null);
+      setCustomerModalOpen(false);
+      setEditSearchQuery('');
+      setEditSelectedCategory(null);
       toast.success('Bill updated successfully');
     },
     onError: (err) => {
@@ -286,13 +385,15 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
   const handleSaveEdit = () => {
     setEditError('');
-    if (draftItems.length === 0) {
+    if (!draftBill || draftBill.items.length === 0) {
       const message = 'A bill must have at least one item. To remove all items, cancel the bill instead.';
       setEditError(message);
       toast.warning(message);
       return;
     }
-    const invalidItem = draftItems.find((it) => it.quantity <= 0 || it.unit_price_paise < 0);
+    const invalidItem = draftBill.items.find(
+      (it) => it.quantity <= 0 || it.unitPricePaise < 0
+    );
     if (invalidItem) {
       const message = 'All items must have a quantity ≥ 1 and a valid price.';
       setEditError(message);
@@ -310,10 +411,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       }
 
       const newQtyByProduct = new Map();
-      for (const it of draftItems) {
+      for (const it of draftBill.items) {
         newQtyByProduct.set(
-          it.product_id,
-          (newQtyByProduct.get(it.product_id) || 0) + Number(it.quantity)
+          it.productId,
+          (newQtyByProduct.get(it.productId) || 0) + Number(it.quantity)
         );
       }
 
@@ -322,7 +423,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         const delta = newQty - oldQty;
         if (delta <= 0) continue;
 
-        const product = productById(productId);
+        const product = productStockById.get(productId);
         if (product && delta > product.current_stock) {
           const message = `Insufficient stock for "${product.name}": available ${product.current_stock}, requested ${delta}.`;
           setEditError(message);
@@ -333,21 +434,21 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     }
 
     const payload = {
-      sale_id: saleId,
-      customer_id: draftCustomerId,
-      customer_name: draftCustomerName.trim() || null,
-      customer_phone: draftCustomerPhone.trim() || null,
-      customer_address: null,
-      items: draftItems.map((it) => ({
-        product_id: it.product_id,
+      sale_id: saleDetails?.sale?.id || saleId,
+      customer_id: draftBill.customer?.id || null,
+      customer_name: draftBill.customer?.name?.trim() || null,
+      customer_phone: draftBill.customer?.phone?.trim() || null,
+      customer_address: draftBill.customer?.address?.trim() || null,
+      items: draftBill.items.map((it) => ({
+        product_id: it.productId,
         quantity: Number(it.quantity),
-        unit_price_paise: Number(it.unit_price_paise),
-        discount_paise: Number(it.discount_paise || 0),
+        unit_price_paise: Number(it.unitPricePaise),
+        discount_paise: Number(it.discountPaise || 0),
       })),
-      discount_paise: draftTotalDiscount,
-      payment_method: draftPaymentMethod,
-      paid_paise: draftPaid,
-      notes: draftNotes.trim() || null,
+      discount_paise: draftTotals.discountPaise,
+      payment_method: draftBill.paymentMethod,
+      paid_paise: draftTotals.tenderedPaise,
+      notes: (draftBill.notes || '').trim() || null,
     };
     updateMutation.mutate(payload);
   };
@@ -381,7 +482,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
         <Receipt className="w-10 h-10 text-slate-600" />
         <p className="text-sm">Could not find bill details for ID: {saleId}</p>
-        <button onClick={handleBack} className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold">
+        <button
+          onClick={handleBack}
+          className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+        >
           Return to Bill History
         </button>
       </div>
@@ -395,9 +499,9 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const handleCancelSale = async () => {
     const { confirmed, value } = await confirmDialog({
       title: 'Cancel & Return Sale',
-      message: `This will mark Bill #${sale.invoice_number} as CANCELLED and immediately restore all item quantities back to inventory.`,
+      message: `Are you sure you want to cancel Bill #${sale.invoice_number}? All items will be returned to inventory.`,
       input: {
-        label: 'Reason for Return',
+        label: 'Cancellation Reason',
         defaultValue: 'Customer return / refund',
         placeholder: 'Reason for return',
       },
@@ -405,9 +509,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       cancelLabel: 'Back',
       icon: RotateCcw,
     });
+
     if (confirmed) {
       cancelMutation.mutate({
-        id: saleId,
+        id: sale.id,
         reason: value || 'Customer return / refund',
       });
     }
@@ -420,7 +525,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         <div className="flex items-center gap-4">
           <button
             onClick={editing ? cancelEdit : handleBack}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
             title={editing ? 'Discard edit' : 'Back to Bill History'}
           >
             {editing ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
@@ -436,14 +541,16 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 </h2>
                 {editing ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-500/15 text-amber-400 border-amber-500/30">
-                    <Pencil className="w-3 h-3" /> Editing
+                    <Pencil className="w-3 h-3" /> Editing in POS Mode
                   </span>
                 ) : (
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                    isCancelled
-                      ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      isCancelled
+                        ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                        : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                    }`}
+                  >
                     {isCancelled ? <XCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
                     {sale.status}
                   </span>
@@ -459,34 +566,44 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             <>
               <button
                 onClick={enterEdit}
-                className="px-3.5 py-1.5 rounded-lg text-amber-400 hover:bg-amber-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-amber-500/20 hover:border-amber-500/40"
+                className="px-3.5 py-1.5 rounded-lg text-amber-400 hover:bg-amber-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-amber-500/20 hover:border-amber-500/40 cursor-pointer"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 Edit Bill
               </button>
               <button
                 onClick={handleCancelSale}
-                className="px-3.5 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-rose-500/20 hover:border-rose-500/40"
+                className="px-3.5 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-rose-500/20 hover:border-rose-500/40 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Cancel / Return Sale
               </button>
             </>
           )}
+
           {editing && (
-            <button
-              onClick={handleSaveEdit}
-              disabled={updateMutation.isPending}
-              className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-60"
-            >
-              <Save className="w-3.5 h-3.5" />
-              {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
-            </button>
+            <>
+              <button
+                onClick={cancelEdit}
+                className="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-medium border border-slate-700/60 transition-colors cursor-pointer"
+              >
+                Discard Changes
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={updateMutation.isPending}
+                className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-60 cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+            </>
           )}
+
           {!editing && (
             <button
               onClick={handleReprint}
-              className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+              className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               Reprint Receipt
@@ -495,409 +612,329 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         </div>
       </div>
 
-      {/* ── Main Content ── */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Error banner for edit */}
-        {editError && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            {editError}
-          </div>
-        )}
-
-        {/* Cancelled Banner */}
-        {isCancelled && !editing && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div className="text-xs">
-              <h4 className="font-bold text-rose-300">This sale has been voided / cancelled</h4>
-              <p className="text-rose-400/80 mt-0.5">
-                All inventory quantities have been restored to stock, and the invoice has been recorded as returned.
-              </p>
+      {/* ── Content: POS Editor in Edit Mode vs Two-Column Layout in Read Mode ── */}
+      {editing && draftBill ? (
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {editError && (
+            <div className="p-3 mx-4 mt-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300 flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span>{editError}</span>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── READ MODE ── */}
-        {!editing && (
-          <>
-            {/* Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <User className="w-4 h-4 text-emerald-400" />
-                  Customer Information
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-slate-200">{sale.customer_name || 'Walk-in Customer'}</div>
-                  {sale.customer_phone
-                    ? <div className="text-xs text-slate-400 font-mono mt-0.5">{sale.customer_phone}</div>
-                    : <div className="text-xs text-slate-600 italic mt-0.5">No contact number provided</div>
-                  }
+          <PosBillEditor
+            bill={draftBill}
+            totals={draftTotals}
+            products={editProducts}
+            categories={categories}
+            customers={customers}
+            stockProducts={catalogProducts}
+            allowNegativeStock={allowNegativeStock}
+            stockAllowanceByProduct={stockAllowanceByProduct}
+            currencySymbol={currencySymbol}
+            searchQuery={editSearchQuery}
+            onSearchQueryChange={setEditSearchQuery}
+            selectedCategory={editSelectedCategory}
+            onSelectedCategoryChange={setEditSelectedCategory}
+            searchFocused={editSearchFocused}
+            onSearchFocusedChange={setEditSearchFocused}
+            searchInputRef={searchInputRef}
+            onAddItem={addProductToDraft}
+            onUpdateItemQty={updateDraftItemQty}
+            onUpdateItemPrice={updateDraftItemPrice}
+            onUpdateItemDiscount={updateDraftItemDiscount}
+            onRemoveItem={removeDraftItem}
+            onSetCustomer={setDraftCustomer}
+            onSetDiscount={setDraftDiscount}
+            onSetPaymentMethod={setDraftPaymentMethod}
+            onSetFullPayment={setDraftFullPayment}
+            onSetAmountTendered={setDraftAmountTendered}
+            onRequestAddCustomer={() => setCustomerModalOpen(true)}
+            showNotes={true}
+            notes={draftBill.notes || ''}
+            onNotesChange={setDraftNotes}
+            primaryAction={{
+              label: 'Save & Update Bill',
+              pendingLabel: 'Saving Changes…',
+              pending: updateMutation.isPending,
+              disabled: updateMutation.isPending || draftBill.items.length === 0,
+              icon: Save,
+              onClick: handleSaveEdit,
+            }}
+          />
+
+          <AddCustomerModal
+            open={customerModalOpen}
+            onClose={() => setCustomerModalOpen(false)}
+            onCreated={(customer) => {
+              setDraftCustomer(customer);
+              setCustomerModalOpen(false);
+            }}
+          />
+        </div>
+      ) : (
+        /* ── READ MODE: Two-Column Workspace (Items Table on Left, Metadata & Summary on Right) ── */
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Column: Itemized Line Items Table */}
+          <div className="flex-1 flex flex-col p-6 overflow-y-auto space-y-4 min-w-0">
+            {/* Cancelled Banner */}
+            {isCancelled && (
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <h4 className="font-bold text-rose-300">This sale has been voided / cancelled</h4>
+                  <p className="text-rose-400/80 mt-0.5">
+                    All inventory quantities have been restored to stock, and the invoice has been recorded as returned.
+                  </p>
                 </div>
               </div>
+            )}
 
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <CreditCard className="w-4 h-4 text-cyan-400" />
-                  Payment Details
+            {/* Line Items Table Card */}
+            <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900/40 shadow-sm flex-1 flex flex-col">
+              <div className="px-5 py-3.5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Itemized Bill</span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                    {items.length} line{items.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-200 uppercase">{sale.payment_method}</span>
-                    <span className="text-xs text-slate-400">Paid: <strong className="text-slate-200 font-mono">{formatPaise(sale.paid_paise)}</strong></span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-1">
-                    Biller: <span className="text-slate-400">{sale.biller_name || 'Counter Terminal'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <Calendar className="w-4 h-4 text-amber-400" />
-                  Transaction Timestamp
-                </div>
-                <div>
-                  <div className="text-xs font-mono font-bold text-slate-200">{formatDateTime(sale.created_at)}</div>
-                  <div className="text-[11px] text-slate-500 mt-1 font-mono">
-                    Total Items: <span className="text-slate-300 font-bold">{items.length} item line{items.length !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Line Items Table */}
-            <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/40">
-              <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Itemized Line Items</h3>
-                <span className="text-[11px] text-slate-500 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {items.reduce((acc, it) => acc + (it.quantity || 0), 0)} total units
                 </span>
               </div>
 
-              <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-slate-900/60 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="py-2.5 px-4 w-12 text-slate-500">#</th>
-                    <SortableTh sortKey="product_name" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} className="py-2.5 px-4">Product Name</SortableTh>
-                    <SortableTh sortKey="unit_price_paise" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Unit Price</SortableTh>
-                    <SortableTh sortKey="quantity" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="center" className="py-2.5 px-4">Qty</SortableTh>
-                    <SortableTh sortKey="discount_paise" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Discount</SortableTh>
-                    <SortableTh sortKey="tax_rate" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Tax Rate</SortableTh>
-                    <SortableTh sortKey="total_paise" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Total</SortableTh>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {sortedItems.map((it, idx) => (
-                    <tr key={it.id || idx} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3 px-4 text-slate-500 font-mono">{idx + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-200">{it.product_name}</div>
-                        {it.product_sku && <div className="text-[10px] text-slate-500 font-mono">{it.product_sku}</div>}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-300">{formatPaise(it.unit_price_paise)}</td>
-                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-200">{it.quantity}</td>
-                      <td className="py-3 px-4 text-right font-mono text-amber-400">
-                        {it.discount_paise > 0 ? `-${formatPaise(it.discount_paise)}` : '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-400">
-                        {it.tax_rate != null ? `${it.tax_rate}%` : '0%'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-100">{formatPaise(it.total_paise)}</td>
+              <div className="flex-1 overflow-x-auto overflow-y-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-900/90 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800 z-10">
+                    <tr>
+                      <th className="py-2.5 px-4 w-12 text-slate-500 text-center">#</th>
+                      <SortableTh
+                        sortKey="product_name"
+                        sort={lineSort}
+                        onSort={(key) => setLineSort((p) => nextSortState(p, key))}
+                        className="py-2.5 px-4"
+                      >
+                        Product Name
+                      </SortableTh>
+                      <SortableTh
+                        sortKey="unit_price_paise"
+                        sort={lineSort}
+                        onSort={(key) => setLineSort((p) => nextSortState(p, key))}
+                        align="right"
+                        className="py-2.5 px-4"
+                      >
+                        Unit Price
+                      </SortableTh>
+                      <SortableTh
+                        sortKey="quantity"
+                        sort={lineSort}
+                        onSort={(key) => setLineSort((p) => nextSortState(p, key))}
+                        align="center"
+                        className="py-2.5 px-4"
+                      >
+                        Qty
+                      </SortableTh>
+                      <SortableTh
+                        sortKey="discount_paise"
+                        sort={lineSort}
+                        onSort={(key) => setLineSort((p) => nextSortState(p, key))}
+                        align="right"
+                        className="py-2.5 px-4"
+                      >
+                        Discount
+                      </SortableTh>
+                      <SortableTh
+                        sortKey="tax_rate"
+                        sort={lineSort}
+                        onSort={(key) => setLineSort((p) => nextSortState(p, key))}
+                        align="right"
+                        className="py-2.5 px-4"
+                      >
+                        Tax Rate
+                      </SortableTh>
+                      <SortableTh
+                        sortKey="total_paise"
+                        sort={lineSort}
+                        onSort={(key) => setLineSort((p) => nextSortState(p, key))}
+                        align="right"
+                        className="py-2.5 px-4"
+                      >
+                        Total
+                      </SortableTh>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {sortedItems.map((it, idx) => (
+                      <tr key={it.id || idx} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="py-3 px-4 text-slate-500 font-mono text-center">{idx + 1}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-slate-200">{it.product_name}</div>
+                          {it.product_sku && (
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">{it.product_sku}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-300">
+                          {formatPaise(it.unit_price_paise)}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-200">
+                          {it.quantity}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-amber-400">
+                          {it.discount_paise > 0 ? `-${formatPaise(it.discount_paise)}` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-400">
+                          {it.tax_rate != null ? `${it.tax_rate}%` : '0%'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-100">
+                          {formatPaise(it.total_paise)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
 
-              <div className="p-4 bg-slate-900/90 border-t border-slate-800 flex justify-end">
-                <div className="w-72 space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Subtotal</span>
+          {/* Right Column: Metadata & Order Summary Sidebar (mirrors Java app sale-detail-view) */}
+          <div className="w-80 lg:w-96 border-l border-slate-800/80 bg-slate-900/60 flex flex-col overflow-y-auto p-5 space-y-4 flex-shrink-0">
+            {/* Customer Details Card */}
+            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                <User className="w-4 h-4 text-emerald-400" />
+                <span className="uppercase tracking-wider text-[11px]">Customer Details</span>
+              </div>
+              <div className="pt-2 border-t border-slate-800/60 space-y-1">
+                <div className="text-sm font-bold text-slate-100">
+                  {sale.customer_name || 'Walk-in Customer'}
+                </div>
+                {sale.customer_phone ? (
+                  <div className="text-xs text-slate-400 font-mono">{sale.customer_phone}</div>
+                ) : (
+                  <div className="text-xs text-slate-600 italic">No phone number provided</div>
+                )}
+                {sale.customer_address && (
+                  <div className="text-xs text-slate-400 mt-1">{sale.customer_address}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Payment & Transaction Card */}
+            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                <CreditCard className="w-4 h-4 text-cyan-400" />
+                <span className="uppercase tracking-wider text-[11px]">Payment & Transaction</span>
+              </div>
+              <div className="pt-2 border-t border-slate-800/60 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Payment Method</span>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-slate-800 text-slate-200 uppercase tracking-wide">
+                    {sale.payment_method}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Biller</span>
+                  <span className="text-xs font-medium text-slate-300">
+                    {sale.biller_name || 'Counter Terminal'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-800/40">
+                  <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-amber-400" /> Date & Time
+                  </span>
+                  <span className="text-xs font-mono text-slate-300">
+                    {formatDateTime(sale.created_at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Summary Card */}
+            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3.5 shadow-sm flex-1 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                  <Receipt className="w-4 h-4 text-emerald-400" />
+                  <span className="uppercase tracking-wider text-[11px]">Order Summary</span>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-800/60 text-xs text-slate-300">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Subtotal</span>
                     <span className="font-mono text-slate-200">{formatPaise(sale.subtotal_paise)}</span>
                   </div>
+
                   {sale.discount_paise > 0 && (
-                    <div className="flex justify-between text-amber-400 font-semibold">
-                      <span>Overall Discount</span>
+                    <div className="flex justify-between text-amber-400">
+                      <span>Discount</span>
                       <span className="font-mono">-{formatPaise(sale.discount_paise)}</span>
                     </div>
                   )}
+
                   {sale.tax_paise > 0 && (
                     <div className="flex justify-between text-slate-400">
-                      <span>Total Tax</span>
+                      <span>Tax Amount</span>
                       <span className="font-mono text-slate-200">{formatPaise(sale.tax_paise)}</span>
                     </div>
                   )}
+
                   <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
-                    <span className="text-sm font-bold text-slate-100">Final Bill Total</span>
-                    <span className="text-lg font-mono font-bold text-emerald-400">{formatPaise(sale.total_paise)}</span>
+                    <span className="text-sm font-bold text-slate-100 uppercase tracking-wide">Total Due</span>
+                    <span className="text-xl font-mono font-black text-emerald-400">
+                      {formatPaise(sale.total_paise)}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-slate-500 pt-1">
-                    <span>Amount Paid ({sale.payment_method})</span>
-                    <span className="font-mono text-slate-400">{formatPaise(sale.paid_paise)}</span>
+                </div>
+
+                {/* Paid & Balance/Change Box */}
+                <div className="bg-slate-900/90 rounded-lg p-3 border border-slate-800/80 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Paid Amount ({sale.payment_method})</span>
+                    <span className="font-mono text-slate-200 font-semibold">{formatPaise(sale.paid_paise)}</span>
                   </div>
-                  {sale.notes && (
-                    <div className="pt-2 border-t border-slate-800 text-slate-500 italic">
-                      Notes: {sale.notes}
+                  {sale.paid_paise > sale.total_paise ? (
+                    <div className="flex justify-between text-emerald-400 font-semibold">
+                      <span>Change Returned</span>
+                      <span className="font-mono">{formatPaise(sale.paid_paise - sale.total_paise)}</span>
+                    </div>
+                  ) : sale.paid_paise < sale.total_paise ? (
+                    <div className="flex justify-between text-rose-400 font-semibold">
+                      <span>Balance Due</span>
+                      <span className="font-mono">{formatPaise(sale.total_paise - sale.paid_paise)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-slate-500 text-[11px]">
+                      <span>Balance</span>
+                      <span className="font-mono">Exact payment settled</span>
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          </>
-        )}
 
-        {/* ── EDIT MODE ── */}
-        {editing && (
-          <div className="space-y-5">
-            {/* Customer & Payment */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Customer */}
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-amber-500/20 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
-                  <User className="w-4 h-4" />
-                  Customer (optional)
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={draftCustomerName}
-                    onChange={(e) => { setDraftCustomerName(e.target.value); setDraftCustomerId(null); }}
-                    placeholder="Customer name…"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
-                  />
-                  <input
-                    type="text"
-                    value={draftCustomerPhone}
-                    onChange={(e) => setDraftCustomerPhone(e.target.value)}
-                    placeholder="Phone number…"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+                {/* Internal Notes */}
+                {sale.notes && (
+                  <div className="pt-2 border-t border-slate-800/60 text-xs text-slate-400">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block mb-0.5">Notes:</span>
+                    <p className="italic bg-slate-900/50 p-2 rounded-lg border border-slate-800/60 text-slate-300">
+                      {sale.notes}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Payment */}
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-amber-500/20 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
-                  <CreditCard className="w-4 h-4" />
-                  Payment Details
-                </div>
-                <div className="space-y-2">
-                  <div className="relative">
-                    <select
-                      value={draftPaymentMethod}
-                      onChange={(e) => setDraftPaymentMethod(e.target.value)}
-                      className="w-full appearance-none bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 pr-7"
-                    >
-                      <option value="CASH">Cash</option>
-                      <option value="UPI">UPI</option>
-                      <option value="CARD">Card</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 shrink-0">Amount Paid ({currencySymbol})</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={draftPaidRupees}
-                      onChange={(e) => setDraftPaidRupees(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 shrink-0">Overall Discount ({currencySymbol})</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={draftDiscountRupees}
-                      onChange={(e) => setDraftDiscountRupees(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Line Items Editor */}
-            <div className="rounded-xl border border-amber-500/20 overflow-hidden bg-slate-900/40">
-              <div className="px-4 py-3 border-b border-amber-500/20 bg-slate-900/80 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                  Edit Line Items
-                </h3>
+              {/* Sidebar Action Button */}
+              <div className="pt-3 border-t border-slate-800/60">
                 <button
-                  onClick={() => setAddingProduct((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
+                  onClick={handleReprint}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700/80 transition-colors cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Product
+                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Reprint Receipt</span>
                 </button>
               </div>
-
-              {/* Product Search Input */}
-              {addingProduct && (
-                <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/60">
-                  <ProductSearchInput onSelect={addProductToDraft} allowNegativeStock={allowNegativeStock} />
-                </div>
-              )}
-
-              {/* Items table */}
-              <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-slate-900/60 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="py-2.5 px-4 w-10"></th>
-                    <th className="py-2.5 px-4">Product</th>
-                    <th className="py-2.5 px-4 text-right">Unit Price ({currencySymbol})</th>
-                    <th className="py-2.5 px-4 text-center">Qty</th>
-                    <th className="py-2.5 px-4 text-right">Disc/item ({currencySymbol})</th>
-                    <th className="py-2.5 px-4 text-right">Line Total</th>
-                    <th className="py-2.5 px-4 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {draftItems.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-500 italic text-xs">
-                        No items. Add a product above or this bill will not be saveable.
-                      </td>
-                    </tr>
-                  )}
-                  {draftItems.map((it) => {
-                    const lineTotal = Math.max(0, (it.unit_price_paise * it.quantity) - (it.discount_paise || 0));
-                    return (
-                      <tr key={it._tempId} className="hover:bg-slate-800/20 transition-colors group">
-                        <td className="py-2 px-4 text-slate-600 text-[10px] font-mono"></td>
-                        <td className="py-2 px-4">
-                          <div className="font-semibold text-slate-200">{it.product_name}</div>
-                          {it.product_sku && <div className="text-[10px] text-slate-500 font-mono">{it.product_sku}</div>}
-                        </td>
-                        <td className="py-2 px-4">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={rupees(it.unit_price_paise)}
-                            onChange={(e) => updateDraftItem(it._tempId, 'unit_price_paise', paise(e.target.value))}
-                            className="w-24 ml-auto block bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500 text-right"
-                          />
-                        </td>
-                        <td className="py-2 px-4">
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={it.quantity}
-                            onChange={(e) => updateDraftItem(it._tempId, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-16 mx-auto block bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500 text-center"
-                          />
-                        </td>
-                        <td className="py-2 px-4">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={rupees(it.discount_paise)}
-                            onChange={(e) => updateDraftItem(it._tempId, 'discount_paise', paise(e.target.value))}
-                            className="w-24 ml-auto block bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500 text-right"
-                          />
-                        </td>
-                        <td className="py-2 px-4 text-right font-mono font-bold text-slate-100">
-                          {formatPaise(lineTotal)}
-                        </td>
-                        <td className="py-2 px-4 text-center">
-                          <button
-                            onClick={() => removeDraftItem(it._tempId)}
-                            className="p-1 rounded hover:bg-rose-500/15 text-slate-600 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Remove item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* Totals */}
-              <div className="p-4 bg-slate-900/90 border-t border-amber-500/10 flex justify-end">
-                <div className="w-72 space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Subtotal</span>
-                    <span className="font-mono text-slate-200">{formatPaise(draftSubtotal)}</span>
-                  </div>
-                  {draftTotalDiscount > 0 && (
-                    <div className="flex justify-between text-amber-400 font-semibold">
-                      <span>Overall Discount</span>
-                      <span className="font-mono">-{formatPaise(draftTotalDiscount)}</span>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
-                    <span className="text-sm font-bold text-slate-100">Bill Total</span>
-                    <span className="text-lg font-mono font-bold text-amber-400">{formatPaise(draftTotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-400 pt-1">
-                    <span>Amount Paid</span>
-                    <span className="font-mono">{formatPaise(draftPaid)}</span>
-                  </div>
-                  {draftChange > 0 && (
-                    <div className="flex justify-between text-[11px] text-emerald-400 font-semibold">
-                      <span>Change</span>
-                      <span className="font-mono">{formatPaise(draftChange)}</span>
-                    </div>
-                  )}
-                  {draftPaid < draftTotal && (
-                    <div className="flex justify-between text-[11px] text-rose-400 font-semibold">
-                      <span>Balance Due</span>
-                      <span className="font-mono">{formatPaise(draftTotal - draftPaid)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="text-xs text-slate-400 block mb-1.5">Bill Notes (optional)</label>
-              <textarea
-                value={draftNotes}
-                onChange={(e) => setDraftNotes(e.target.value)}
-                rows={2}
-                placeholder="Internal notes or remarks…"
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 resize-none"
-              />
-            </div>
-
-            {/* Info box */}
-            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-300/80 flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-amber-300">Stock impact of editing:</strong> If you increase or add item quantities, stock will be automatically decreased. If you reduce or remove items, stock will be restored. All changes are logged in the audit trail and stock activity.
-              </div>
-            </div>
-
-            {/* Save / Discard */}
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={cancelEdit}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800 transition-colors border border-slate-700"
-              >
-                Discard Changes
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={updateMutation.isPending}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-60"
-              >
-                <Save className="w-3.5 h-3.5" />
-                {updateMutation.isPending ? 'Saving Changes…' : 'Save Changes'}
-              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Hidden Receipt Component for browser printing */}
       {reprintSale && (
