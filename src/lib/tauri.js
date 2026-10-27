@@ -36,14 +36,18 @@ export const tauriApi = {
   getCustomerSales: (customerId) => invoke('get_customer_sales', { customerId }),
 
   // Reports
-  getSalesReportSummary: (fromDate = null, toDate = null) =>
-    invoke('get_sales_report_summary', { fromDate, toDate }),
+  getSalesReportSummary: (fromDate = null, toDate = null, paymentMethod = null) =>
+    invoke('get_sales_report_summary', { fromDate, toDate, paymentMethod }),
   getSalesBreakdown: (periodType = 'daily', fromDate = null, toDate = null) =>
     invoke('get_sales_breakdown', { periodType, fromDate, toDate }),
   getProductFlow: (productId = null, fromDate = null, toDate = null, limit = 200) =>
     invoke('get_product_flow', { productId, fromDate, toDate, limit }),
-  getTopSellingProducts: (limit = 10) =>
-    invoke('get_top_selling_products', { limit }),
+  getTopSellingProducts: (limit = 10, fromDate = null, toDate = null, paymentMethod = null) =>
+    invoke('get_top_selling_products', { limit, fromDate, toDate, paymentMethod }),
+  getTopSellingCategories: (limit = 10, fromDate = null, toDate = null, paymentMethod = null) =>
+    invoke('get_top_selling_categories', { limit, fromDate, toDate, paymentMethod }),
+  getMultiYearSales: (yearsBack = 3, paymentMethod = null) =>
+    invoke('get_multi_year_sales', { yearsBack, paymentMethod }),
   getStockMovements: (productId = null, fromDate = null, toDate = null, limit = 200) =>
     invoke('get_stock_movements', { productId, fromDate, toDate, limit }),
   getAuditLogs: (limit = 100) => invoke('get_audit_logs', { limit }),

@@ -99,6 +99,8 @@ pub fn run() {
             commands::reports::get_sales_breakdown,
             commands::reports::get_product_flow,
             commands::reports::get_top_selling_products,
+            commands::reports::get_top_selling_categories,
+            commands::reports::get_multi_year_sales,
             commands::reports::get_stock_movements,
             commands::reports::get_audit_logs,
             // Settings

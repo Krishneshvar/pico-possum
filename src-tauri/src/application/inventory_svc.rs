@@ -3,9 +3,9 @@ use uuid::Uuid;
 
 use crate::domain::models::{
     BillSettings, Category, CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
-    Customer, GeneralSettings, Product, ProductFlowItem, SalesBreakdownItem, SalesReportSummary,
-    StockAdjustmentPayload, StockMovement, TopSellingProduct, UpdateCategoryPayload,
-    UpdateCustomerPayload, UpdateProductPayload,
+    Customer, GeneralSettings, MultiYearSalesPoint, Product, ProductFlowItem, SalesBreakdownItem,
+    SalesReportSummary, StockAdjustmentPayload, StockMovement, TopSellingCategory, TopSellingProduct,
+    UpdateCategoryPayload, UpdateCustomerPayload, UpdateProductPayload,
 };
 use crate::errors::AppError;
 
@@ -504,9 +504,11 @@ impl InventoryService {
         pool: &SqlitePool,
         from_date: Option<String>,
         to_date: Option<String>,
+        payment_method: Option<String>,
     ) -> Result<SalesReportSummary, AppError> {
         let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
         let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
 
         let row = sqlx::query(
             "SELECT
@@ -519,10 +521,13 @@ impl InventoryService {
                 COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_rev,
                 COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'CARD', 'UPI') THEN total_paise ELSE 0 END), 0) as other_rev
              FROM sales
-             WHERE status = 'PAID' AND created_at >= ? AND created_at <= ?"
+             WHERE status = 'PAID' AND created_at >= ? AND created_at <= ?
+               AND (? IS NULL OR payment_method = ?)"
         )
         .bind(from)
         .bind(to)
+        .bind(&pm)
+        .bind(&pm)
         .fetch_one(pool)
         .await?;
 
@@ -549,18 +554,33 @@ impl InventoryService {
 
     pub async fn get_top_selling_products(
         pool: &SqlitePool,
+        from_date: Option<String>,
+        to_date: Option<String>,
+        payment_method: Option<String>,
         limit: i64,
     ) -> Result<Vec<TopSellingProduct>, AppError> {
+        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
+        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+
         let rows = sqlx::query(
             "SELECT si.product_id, si.product_name,
+                    p.sku as product_sku,
                     SUM(si.quantity) as total_quantity,
                     SUM(si.total_paise) as total_revenue_paise
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
+             LEFT JOIN products p ON p.id = si.product_id
              WHERE s.status = 'PAID'
+               AND s.created_at >= ? AND s.created_at <= ?
+               AND (? IS NULL OR s.payment_method = ?)
              GROUP BY si.product_id, si.product_name
              ORDER BY total_quantity DESC LIMIT ?"
         )
+        .bind(from)
+        .bind(to)
+        .bind(&pm)
+        .bind(&pm)
         .bind(limit)
         .fetch_all(pool)
         .await?;
@@ -569,12 +589,90 @@ impl InventoryService {
             TopSellingProduct {
                 product_id: r.get("product_id"),
                 product_name: r.get("product_name"),
+                sku: r.get("product_sku"),
                 total_quantity: r.get("total_quantity"),
                 total_revenue_paise: r.get("total_revenue_paise"),
             }
         }).collect();
 
         Ok(items)
+    }
+
+    pub async fn get_top_selling_categories(
+        pool: &SqlitePool,
+        from_date: Option<String>,
+        to_date: Option<String>,
+        payment_method: Option<String>,
+        limit: i64,
+    ) -> Result<Vec<TopSellingCategory>, AppError> {
+        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
+        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+
+        let rows = sqlx::query(
+            "SELECT
+                COALESCE(c.id, 'uncategorized') as category_id,
+                COALESCE(c.name, 'Uncategorized') as category_name,
+                COUNT(DISTINCT si.product_id) as distinct_products_sold,
+                COALESCE(SUM(si.quantity), 0) as total_quantity,
+                COALESCE(SUM(si.total_paise), 0) as total_revenue_paise
+             FROM sale_items si
+             JOIN sales s ON s.id = si.sale_id
+             LEFT JOIN products p ON p.id = si.product_id
+             LEFT JOIN categories c ON c.id = p.category_id
+             WHERE s.status = 'PAID'
+               AND s.created_at >= ? AND s.created_at <= ?
+               AND (? IS NULL OR s.payment_method = ?)
+             GROUP BY COALESCE(c.id, 'uncategorized'), COALESCE(c.name, 'Uncategorized')
+             ORDER BY total_revenue_paise DESC LIMIT ?"
+        )
+        .bind(from)
+        .bind(to)
+        .bind(&pm)
+        .bind(&pm)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        let items = rows.into_iter().map(|r| {
+            TopSellingCategory {
+                category_id: r.get("category_id"),
+                category_name: r.get("category_name"),
+                distinct_products_sold: r.get("distinct_products_sold"),
+                total_quantity: r.get("total_quantity"),
+                total_revenue_paise: r.get("total_revenue_paise"),
+            }
+        }).collect();
+
+        Ok(items)
+    }
+
+    pub async fn get_multi_year_sales(
+        pool: &SqlitePool,
+        years_back: i64,
+        payment_method: Option<String>,
+    ) -> Result<Vec<MultiYearSalesPoint>, AppError> {
+        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+        let rows = sqlx::query_as::<_, MultiYearSalesPoint>(
+            "SELECT
+                strftime('%Y', s.created_at) as year,
+                strftime('%m', s.created_at) as month,
+                COALESCE(SUM(s.total_paise), 0) as total_revenue_paise,
+                COUNT(s.id) as total_transactions
+             FROM sales s
+             WHERE s.status = 'PAID'
+               AND CAST(strftime('%Y', s.created_at) AS INTEGER) >= (CAST(strftime('%Y', 'now') AS INTEGER) - ?)
+               AND (? IS NULL OR s.payment_method = ?)
+             GROUP BY year, month
+             ORDER BY year ASC, month ASC"
+        )
+        .bind(years_back)
+        .bind(&pm)
+        .bind(&pm)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
     }
 
     pub async fn get_sales_breakdown(

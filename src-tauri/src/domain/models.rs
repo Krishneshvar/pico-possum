@@ -292,8 +292,27 @@ pub struct SalesReportSummary {
 pub struct TopSellingProduct {
     pub product_id: String,
     pub product_name: String,
+    #[serde(default)]
+    pub sku: Option<String>,
     pub total_quantity: i64,
     pub total_revenue_paise: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TopSellingCategory {
+    pub category_id: String,
+    pub category_name: String,
+    pub distinct_products_sold: i64,
+    pub total_quantity: i64,
+    pub total_revenue_paise: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MultiYearSalesPoint {
+    pub year: String,
+    pub month: String,
+    pub total_revenue_paise: i64,
+    pub total_transactions: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
