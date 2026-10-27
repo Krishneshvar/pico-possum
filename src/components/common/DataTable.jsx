@@ -1,5 +1,16 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, X, Check, GripVertical } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronsUpDown,
+  ArrowUp,
+  ArrowDown,
+  X,
+  Check,
+  GripVertical,
+} from 'lucide-react';
+import { nextSortState, sortRows } from '../../lib/sort';
 
 // ── Persisted Table State (column order & widths) ────────────────────────────
 const TABLE_STATE_PREFIX = 'pico-possum:table-state:';
@@ -33,12 +44,20 @@ function writeTableState(key, state) {
   }
 }
 
+// ── Sorting helpers ──────────────────────────────────────────────────────────
+function getSortValue(row, col) {
+  if (typeof col.sortValue === 'function') return col.sortValue(row);
+  if (col.sortKey) return row[col.sortKey];
+  return row[col.key];
+}
+
 /**
  * Generic reusable DataTable component.
  *
  * Features:
  *   - Column reordering via drag-and-drop
  *   - Column resizing via edge drag handles
+ *   - Click column headers to sort: ascending → descending → unsorted
  *   - Search input across defined keys
  *   - Filters: select, multiselect, range (min/max), daterange (from/to)
  *   - Client-side pagination with row counts
@@ -193,6 +212,7 @@ export default function DataTable({
   const [rangeValues, setRangeValues] = useState({});
   const [dateValues, setDateValues] = useState({});
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState({ key: null, dir: null }); // dir: 'asc' | 'desc' | null
 
   // ── Column Ordering State (persisted per table) ────────────────────────────
   const persistedTableState = useMemo(() => readTableState(persistKey), [persistKey]);
@@ -219,6 +239,7 @@ export default function DataTable({
     return validWidths;
   });
   const isResizing = useRef(false);
+  const suppressHeaderClick = useRef(false);
 
   // Sync colOrder if incoming columns prop changes without causing extra renders
   useEffect(() => {
@@ -253,6 +274,7 @@ export default function DataTable({
       e.preventDefault();
       return;
     }
+    suppressHeaderClick.current = true;
     setDraggedColKey(colKey);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', colKey);
@@ -291,6 +313,8 @@ export default function DataTable({
   const handleDragEnd = () => {
     setDraggedColKey(null);
     setDragOverColKey(null);
+    // Ignore the click that some browsers emit right after a drag
+    setTimeout(() => { suppressHeaderClick.current = false; }, 250);
   };
 
   // ── Column Resizing Drag Handler ───────────────────────────────────────────
@@ -386,10 +410,22 @@ export default function DataTable({
     return rows;
   }, [data, search, selectValues, multiValues, rangeValues, dateValues, filters, searchKeys, columns]);
 
+  // ── Sorting ──────────────────────────────────────────────────────────────
+  const sortedRows = useMemo(() => {
+    const col = orderedColumns.find((c) => c.key === sort.key);
+    if (!col || col.sortable === false) return filtered;
+    return sortRows(filtered, sort, (row) => getSortValue(row, col));
+  }, [filtered, orderedColumns, sort]);
+
+  const toggleSort = (key) => {
+    setSort((prev) => nextSortState(prev, key));
+    setPage(1);
+  };
+
   // ── Pagination ───────────────────────────────────────────────────────────
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const slice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const slice = sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize);
   const goPage = (p) => setPage(Math.max(1, Math.min(totalPages, p)));
 
   const handleSearch = (v) => { setSearch(v); setPage(1); };
@@ -531,6 +567,13 @@ export default function DataTable({
 
                 const isDropTarget = dragOverColKey === col.key && draggedColKey !== col.key;
                 const isDraggingThis = draggedColKey === col.key;
+                const isSortable = col.sortable !== false;
+                const isSorted = isSortable && sort.key === col.key && !!sort.dir;
+                const SortIcon = sort.dir === 'asc' && sort.key === col.key
+                  ? ArrowUp
+                  : sort.dir === 'desc' && sort.key === col.key
+                  ? ArrowDown
+                  : ChevronsUpDown;
 
                 return (
                   <th
@@ -540,16 +583,33 @@ export default function DataTable({
                     onDragOver={(e) => handleDragOver(e, col.key)}
                     onDrop={(e) => handleDrop(e, col.key)}
                     onDragEnd={handleDragEnd}
+                    onClick={() => {
+                      if (!isSortable || suppressHeaderClick.current) return;
+                      toggleSort(col.key);
+                    }}
+                    title={isSortable ? `Sort by ${col.label}` : undefined}
+                    aria-sort={isSorted ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                     style={widthStyle}
-                    className={`relative py-3 px-4 transition-colors select-none group/th cursor-grab active:cursor-grabbing ${
-                      col.headerClassName ?? ''
-                    } ${isDraggingThis ? 'opacity-30' : ''} ${
+                    className={`relative py-3 px-4 transition-colors select-none group/th ${
+                      isSortable ? 'cursor-pointer' : ''
+                    } ${col.headerClassName ?? ''} ${isDraggingThis ? 'opacity-30' : ''} ${
                       isDropTarget ? 'bg-emerald-500/15 border-l-2 border-emerald-400' : ''
                     }`}
                   >
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <GripVertical className="w-3 h-3 text-slate-600 group-hover/th:text-slate-400 transition-colors shrink-0 opacity-40 group-hover/th:opacity-100" />
+                      <GripVertical className="w-3 h-3 text-slate-600 group-hover/th:text-slate-400 transition-colors shrink-0 opacity-40 group-hover/th:opacity-100 cursor-grab active:cursor-grabbing" />
                       <span className="truncate">{col.label}</span>
+                      {isSortable && (
+                        <span
+                          className={`ml-auto shrink-0 flex items-center transition-all ${
+                            isSorted
+                              ? 'text-emerald-400 opacity-100'
+                              : 'text-slate-500 opacity-0 group-hover/th:opacity-100'
+                          }`}
+                        >
+                          <SortIcon className="w-3 h-3" strokeWidth={isSorted ? 3 : 2} />
+                        </span>
+                      )}
                     </div>
 
                     {/* Resize Handle */}

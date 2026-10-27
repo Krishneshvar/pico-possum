@@ -341,6 +341,7 @@ export default function CategoriesView() {
       key: 'product_count',
       label: 'Products',
       className: 'text-slate-400 font-mono text-xs',
+      sortValue: (r) => productCounts[r.id] || 0,
       render: (r) => {
         const count = productCounts[r.id] || 0;
         return (

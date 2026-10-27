@@ -202,6 +202,7 @@ export default function SalesReportsView() {
         minWidth: 120,
         exportValue: (r) => ((r.total_sales_paise - r.total_discount_paise) / 100).toFixed(2),
         render: (r) => formatPaise(Math.max(0, r.total_sales_paise - r.total_discount_paise)),
+        sortValue: (r) => Math.max(0, (r.total_sales_paise || 0) - (r.total_discount_paise || 0)),
         isNumeric: true,
         totalKey: 'net',
       },

@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart3, TrendingUp, IndianRupee, CreditCard, Banknote, QrCode, Flame, Calendar, RefreshCw } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDateTime } from '../../../lib/formatters';
+import { nextSortState, sortRows } from '../../../lib/sort';
 import DataTable from '../../../components/common/DataTable';
+import SortableTh from '../../../components/common/SortableTh';
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'audit'
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [topSort, setTopSort] = useState({ key: null, dir: null });
 
   const { data: summary, isLoading: loadingSummary, refetch } = useQuery({
     queryKey: ['sales_report_summary', fromDate, toDate],
@@ -19,6 +22,11 @@ export default function ReportsView() {
     queryKey: ['top_products'],
     queryFn: () => tauriApi.getTopSellingProducts(10),
   });
+
+  const sortedTopProducts = useMemo(
+    () => sortRows(topProducts, topSort, (row, key) => row[key]),
+    [topProducts, topSort]
+  );
 
   const { data: auditLogs = [], isLoading: loadingAudit } = useQuery({
     queryKey: ['audit_logs'],
@@ -304,9 +312,9 @@ export default function ReportsView() {
                 <thead className="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-4 w-12 text-center">#</th>
-                    <th className="py-2.5 px-4">Product Name</th>
-                    <th className="py-2.5 px-4 text-center">Units Sold</th>
-                    <th className="py-2.5 px-4 text-right">Total Revenue</th>
+                    <SortableTh sortKey="product_name" sort={topSort} onSort={(key) => setTopSort((p) => nextSortState(p, key))} className="py-2.5 px-4">Product Name</SortableTh>
+                    <SortableTh sortKey="total_quantity" sort={topSort} onSort={(key) => setTopSort((p) => nextSortState(p, key))} align="center" className="py-2.5 px-4">Units Sold</SortableTh>
+                    <SortableTh sortKey="total_revenue_paise" sort={topSort} onSort={(key) => setTopSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Total Revenue</SortableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -317,7 +325,7 @@ export default function ReportsView() {
                       </td>
                     </tr>
                   ) : (
-                    topProducts.map((p, idx) => (
+                    sortedTopProducts.map((p, idx) => (
                       <tr key={p.product_id || idx} className="hover:bg-slate-900/40 transition-colors">
                         <td className="py-2.5 px-4 text-center text-slate-500 font-mono font-bold">
                           {idx + 1}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Settings,
@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { applyGeneralSettings, formatDateTime } from '../../lib/formatters';
+import { nextSortState, sortRows } from '../../lib/sort';
+import SortableTh from '../../components/common/SortableTh';
 import ReceiptPrinter from '../../components/receipt/ReceiptPrinter';
 
 export default function SettingsView() {
@@ -155,6 +157,12 @@ export default function SettingsView() {
     queryFn: () => tauriApi.listBackups(),
     enabled: activeTab === 'backup',
   });
+
+  const [backupSort, setBackupSort] = useState({ key: null, dir: null });
+  const sortedBackups = useMemo(
+    () => sortRows(backupsList, backupSort, (row, key) => row[key]),
+    [backupsList, backupSort]
+  );
 
   const { data: detectedLegacyDb } = useQuery({
     queryKey: ['detected_legacy_db'],
@@ -1297,15 +1305,15 @@ export default function SettingsView() {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="pb-2 font-semibold">Filename</th>
-                        <th className="pb-2 font-semibold">Type</th>
-                        <th className="pb-2 font-semibold">Date & Time</th>
-                        <th className="pb-2 font-semibold text-right">Size</th>
+                        <SortableTh sortKey="filename" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="pb-2 font-semibold">Filename</SortableTh>
+                        <SortableTh sortKey="backup_type" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="pb-2 font-semibold">Type</SortableTh>
+                        <SortableTh sortKey="created_at" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="pb-2 font-semibold">Date &amp; Time</SortableTh>
+                        <SortableTh sortKey="size_bytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="pb-2 font-semibold">Size</SortableTh>
                         <th className="pb-2 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 font-mono">
-                      {backupsList.map((bk) => {
+                      {sortedBackups.map((bk) => {
                         const isAuto = bk.backup_type === 'auto';
                         const isPre = bk.backup_type === 'pre-restore';
                         const badgeCls = isAuto

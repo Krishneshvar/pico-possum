@@ -4,8 +4,10 @@ import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, Shop
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime, formatDate, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import SortableTh from '../../../components/common/SortableTh';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import { nextSortState, sortRows } from '../../../lib/sort';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 
@@ -18,6 +20,7 @@ export default function CustomersView() {
   const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewingCustomer, setViewingCustomer] = useState(null);
+  const [historySort, setHistorySort] = useState({ key: null, dir: null });
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['customers'],
@@ -29,6 +32,11 @@ export default function CustomersView() {
     queryFn: () => tauriApi.getCustomerSales(viewingCustomer.id),
     enabled: !!viewingCustomer?.id,
   });
+
+  const sortedCustomerSales = useMemo(
+    () => sortRows(customerSales, historySort, (row, key) => row[key]),
+    [customerSales, historySort]
+  );
 
   const customerStats = useMemo(() => {
     if (!customerSales || customerSales.length === 0) {
@@ -243,11 +251,11 @@ export default function CustomersView() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-900/90 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800">
                   <tr>
-                    <th className="py-2.5 px-4">Invoice #</th>
-                    <th className="py-2.5 px-4">Date</th>
-                    <th className="py-2.5 px-4">Payment</th>
-                    <th className="py-2.5 px-4 text-center">Status</th>
-                    <th className="py-2.5 px-4 text-right">Amount</th>
+                    <SortableTh sortKey="invoice_number" sort={historySort} onSort={(key) => setHistorySort((p) => nextSortState(p, key))} className="py-2.5 px-4">Invoice #</SortableTh>
+                    <SortableTh sortKey="created_at" sort={historySort} onSort={(key) => setHistorySort((p) => nextSortState(p, key))} className="py-2.5 px-4">Date</SortableTh>
+                    <SortableTh sortKey="payment_method" sort={historySort} onSort={(key) => setHistorySort((p) => nextSortState(p, key))} className="py-2.5 px-4">Payment</SortableTh>
+                    <SortableTh sortKey="status" sort={historySort} onSort={(key) => setHistorySort((p) => nextSortState(p, key))} align="center" className="py-2.5 px-4">Status</SortableTh>
+                    <SortableTh sortKey="total_paise" sort={historySort} onSort={(key) => setHistorySort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Amount</SortableTh>
                     <th className="py-2.5 px-4 text-right w-20">Action</th>
                   </tr>
                 </thead>
@@ -258,14 +266,14 @@ export default function CustomersView() {
                         <div className="inline-block w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                       </td>
                     </tr>
-                  ) : customerSales.length === 0 ? (
+                  ) : sortedCustomerSales.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="py-12 text-center text-slate-500 font-sans">
                         No purchase history found for this customer.
                       </td>
                     </tr>
                   ) : (
-                    customerSales.map((sale) => (
+                    sortedCustomerSales.map((sale) => (
                       <tr key={sale.id} className="hover:bg-slate-800/30 transition-colors">
                         <td className="py-2.5 px-4 font-bold text-slate-200">{sale.invoice_number}</td>
                         <td className="py-2.5 px-4 text-slate-400 text-[11px]">{formatDateTime(sale.created_at)}</td>

@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
+import { nextSortState, sortRows } from '../../../lib/sort';
+import SortableTh from '../../../components/common/SortableTh';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
@@ -104,6 +106,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
   const [reprintSale, setReprintSale] = useState(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('Customer return / refund');
+  const [lineSort, setLineSort] = useState({ key: null, dir: null });
 
   // ── Edit mode state ──
   const [editing, setEditing] = useState(false);
@@ -362,6 +365,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
   }
 
   const { sale, items } = saleDetails;
+  const sortedItems = sortRows(items, lineSort, (row, key) => row[key]);
   const isCancelled = sale.status === 'CANCELLED';
 
   return (
@@ -531,16 +535,16 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
                 <thead className="bg-slate-900/60 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-4 w-12 text-slate-500">#</th>
-                    <th className="py-2.5 px-4">Product Name</th>
-                    <th className="py-2.5 px-4 text-right">Unit Price</th>
-                    <th className="py-2.5 px-4 text-center">Qty</th>
-                    <th className="py-2.5 px-4 text-right">Discount</th>
-                    <th className="py-2.5 px-4 text-right">Tax Rate</th>
-                    <th className="py-2.5 px-4 text-right">Total</th>
+                    <SortableTh sortKey="product_name" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} className="py-2.5 px-4">Product Name</SortableTh>
+                    <SortableTh sortKey="unit_price_paise" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Unit Price</SortableTh>
+                    <SortableTh sortKey="quantity" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="center" className="py-2.5 px-4">Qty</SortableTh>
+                    <SortableTh sortKey="discount_paise" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Discount</SortableTh>
+                    <SortableTh sortKey="tax_rate" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Tax Rate</SortableTh>
+                    <SortableTh sortKey="total_paise" sort={lineSort} onSort={(key) => setLineSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-4">Total</SortableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {items.map((it, idx) => (
+                  {sortedItems.map((it, idx) => (
                     <tr key={it.id || idx} className="hover:bg-slate-800/30 transition-colors">
                       <td className="py-3 px-4 text-slate-500 font-mono">{idx + 1}</td>
                       <td className="py-3 px-4">
