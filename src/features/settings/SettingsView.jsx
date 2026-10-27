@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import { confirmDialog } from '../../stores/confirm.store';
 import { applyGeneralSettings, formatDateTime } from '../../lib/formatters';
 import { nextSortState, sortRows } from '../../lib/sort';
 import SortableTh from '../../components/common/SortableTh';
@@ -1085,23 +1086,31 @@ export default function SettingsView() {
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  if (
-                    confirm(
-                      `Are you sure you want to restore from "${file.name}"?\n\n• Supports both native backups and Java app backups.\n• Database format is auto-detected and converted seamlessly.\n• An automated safety pre-restore backup will be created first.`
-                    )
-                  ) {
-                    if (file.path) {
-                      restoreBackupMutation.mutate(file.path);
-                    } else {
-                      try {
-                        const buffer = await file.arrayBuffer();
-                        const bytes = Array.from(new Uint8Array(buffer));
-                        restoreBackupMutation.mutate({ filename: file.name, bytes });
-                      } catch (err) {
-                        showNotification('Failed to read file: ' + err.message, 'error');
-                      }
-                    }
+                e.target.value = '';
+                if (!file) return;
+
+                const { confirmed } = await confirmDialog({
+                  title: 'Restore Database',
+                  message: `Are you sure you want to restore from "${file.name}"?`,
+                  details: [
+                    'Supports both native backups and Java app backups.',
+                    'Database format is auto-detected and converted seamlessly.',
+                    'An automated safety pre-restore backup will be created first.',
+                  ],
+                  confirmLabel: 'Restore Database',
+                  tone: 'warning',
+                });
+                if (!confirmed) return;
+
+                if (file.path) {
+                  restoreBackupMutation.mutate(file.path);
+                } else {
+                  try {
+                    const buffer = await file.arrayBuffer();
+                    const bytes = Array.from(new Uint8Array(buffer));
+                    restoreBackupMutation.mutate({ filename: file.name, bytes });
+                  } catch (err) {
+                    showNotification('Failed to read file: ' + err.message, 'error');
                   }
                 }
               }}
@@ -1124,8 +1133,15 @@ export default function SettingsView() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (confirm('Import all categories, products, customers, and sales history from your previous Java POS installation?')) {
+                    onClick={async () => {
+                      const { confirmed } = await confirmDialog({
+                        title: 'Import Previous POS Data',
+                        message:
+                          'Import all categories, products, customers, and sales history from your previous Java POS installation?',
+                        confirmLabel: 'Import Data',
+                        tone: 'warning',
+                      });
+                      if (confirmed) {
                         migrationMutation.mutate(detectedLegacyDb);
                       }
                     }}
@@ -1318,8 +1334,17 @@ export default function SettingsView() {
                             <td className="py-2.5 text-right font-sans">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (confirm(`Restore database from '${bk.filename}'? A safety pre-restore backup will be created.`)) {
+                                onClick={async () => {
+                                  const { confirmed } = await confirmDialog({
+                                    title: 'Restore Database',
+                                    message: `Restore the database from "${bk.filename}"?`,
+                                    details: [
+                                      'A safety pre-restore backup will be created automatically before the current database is replaced.',
+                                    ],
+                                    confirmLabel: 'Restore',
+                                    tone: 'warning',
+                                  });
+                                  if (confirmed) {
                                     restoreBackupMutation.mutate(bk.filename);
                                   }
                                 }}

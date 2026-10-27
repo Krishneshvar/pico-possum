@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import { confirmDialog } from '../../stores/confirm.store';
 import iconShell from '../../assets/icon-shell.png';
 
 /** Navigation structure – mirrors Java NavBarBuilder */
@@ -160,8 +161,14 @@ export default function NavBar({ authUser }) {
 
           <button
             type="button"
-            onClick={() => {
-              if (confirm('Lock terminal and sign out?')) {
+            onClick={async () => {
+              const { confirmed } = await confirmDialog({
+                title: 'Lock Terminal',
+                message: 'Lock the terminal and sign out of the current session?',
+                confirmLabel: 'Lock & Sign Out',
+                tone: 'warning',
+              });
+              if (confirmed) {
                 logoutMutation.mutate();
               }
             }}

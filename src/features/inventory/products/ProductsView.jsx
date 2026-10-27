@@ -5,6 +5,7 @@ import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
+import { confirmDialog } from '../../../stores/confirm.store';
 
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
@@ -131,6 +132,16 @@ export default function ProductsView() {
       note: 'Supplier restock delivery',
     });
     setModalMode('stock');
+  };
+  const handleDelete = async (product) => {
+    const { confirmed } = await confirmDialog({
+      title: 'Delete Product',
+      message: `Are you sure you want to delete "${product.name}"? This product will be removed from the active catalog.`,
+      confirmLabel: 'Delete Product',
+    });
+    if (confirmed) {
+      deleteMutation.mutate(product.id);
+    }
   };
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -338,7 +349,7 @@ export default function ProductsView() {
               { label: 'Adjust Stock', icon: <ArrowUpDown className="w-3.5 h-3.5" />, onClick: () => handleOpenStock(row) },
               { label: 'Edit Product', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(row) },
               'divider',
-              { label: 'Delete Product', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => { if (confirm(`Delete "${row.name}"?`)) deleteMutation.mutate(row.id); } },
+              { label: 'Delete Product', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => handleDelete(row) },
             ]} />
           )}
         />

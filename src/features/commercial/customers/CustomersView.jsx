@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, ShoppingBag, Clock } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
+import { confirmDialog } from '../../../stores/confirm.store';
 import { formatDateTime, formatDate, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import SortableTh from '../../../components/common/SortableTh';
@@ -19,7 +20,6 @@ export default function CustomersView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewingCustomer, setViewingCustomer] = useState(null);
   const [historySort, setHistorySort] = useState({ key: null, dir: null });
 
@@ -79,7 +79,6 @@ export default function CustomersView() {
     onSuccess: (_data, id) => {
       const deleted = customers.find((c) => c.id === id);
       queryClient.invalidateQueries({ queryKey: ['customers'] });
-      setDeleteTarget(null);
       toast.success(deleted ? `Customer "${deleted.name}" deleted successfully` : 'Customer deleted');
     },
     onError: (err) => toast.error(`Failed to delete customer: ${err}`, { title: 'Delete failed' }),
@@ -99,6 +98,17 @@ export default function CustomersView() {
       address: customer.address || '',
     });
     setModalOpen(true);
+  };
+
+  const handleDelete = async (customer) => {
+    const { confirmed } = await confirmDialog({
+      title: 'Delete Customer',
+      message: `Are you sure you want to delete "${customer.name}"? This customer will be soft-deleted and removed from the active directory.`,
+      confirmLabel: 'Delete Customer',
+    });
+    if (confirmed) {
+      deleteMutation.mutate(customer.id);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -202,7 +212,7 @@ export default function CustomersView() {
               { label: 'Purchase History', icon: <Receipt className="w-3.5 h-3.5" />, onClick: () => setViewingCustomer(row) },
               { label: 'Edit Customer', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(row) },
               'divider',
-              { label: 'Delete Customer', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => setDeleteTarget(row) },
+              { label: 'Delete Customer', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => handleDelete(row) },
             ]} />
           )}
         />
@@ -394,38 +404,6 @@ export default function CustomersView() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-              <Trash2 className="w-4 h-4 text-rose-400" />
-              Delete Customer
-            </h3>
-            <p className="text-xs text-slate-300">
-              Are you sure you want to delete <span className="font-semibold text-white">"{deleteTarget.name}"</span>?
-              This customer will be soft-deleted and removed from the active directory.
-            </p>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-                className="px-3 py-1.5 rounded-lg font-semibold text-slate-400 hover:bg-slate-800 text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-1.5 rounded-lg font-bold bg-rose-500 text-white hover:bg-rose-400 text-xs disabled:opacity-60"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

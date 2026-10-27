@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
+import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
@@ -99,15 +100,14 @@ function ProductSearchInput({ onSelect, allowNegativeStock = false }) {
 }
 
 // ── Main View ─────────────────────────────────────────────────────────────────
-export default function BillDetailView({ saleId, invoiceNumber }) {
+export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const currencySymbol = getCurrencySymbol();
   const queryClient = useQueryClient();
   const { openOrFocus, closeTab, activeTabId } = useWorkspaceStore();
 
   const [reprintSale, setReprintSale] = useState(null);
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState('Customer return / refund');
   const [lineSort, setLineSort] = useState({ key: null, dir: null });
+  const handledEditRequest = useRef(null);
 
   // ── Edit mode state ──
   const [editing, setEditing] = useState(false);
@@ -185,6 +185,19 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
     setEditing(true);
   };
 
+  // Enter edit mode when opened from the "Edit Bill" row action, including
+  // when the tab was already open on this bill.
+  useEffect(() => {
+    if (!editRequest || !saleDetails) return;
+    if (handledEditRequest.current === editRequest) return;
+
+    handledEditRequest.current = editRequest;
+    seedDraft(saleDetails);
+    setEditError('');
+    setAddingProduct(false);
+    setEditing(true);
+  }, [editRequest, saleDetails, seedDraft]);
+
   const cancelEdit = () => {
     setEditing(false);
     setEditError('');
@@ -248,7 +261,6 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
       queryClient.invalidateQueries({ queryKey: ['sale_details', saleId] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-      setCancelModalOpen(false);
       toast.success('Sale cancelled and all items returned to stock');
     },
     onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
@@ -380,6 +392,27 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
   const sortedItems = sortRows(items, lineSort, (row, key) => row[key]);
   const isCancelled = sale.status === 'CANCELLED';
 
+  const handleCancelSale = async () => {
+    const { confirmed, value } = await confirmDialog({
+      title: 'Cancel & Return Sale',
+      message: `This will mark Bill #${sale.invoice_number} as CANCELLED and immediately restore all item quantities back to inventory.`,
+      input: {
+        label: 'Reason for Return',
+        defaultValue: 'Customer return / refund',
+        placeholder: 'Reason for return',
+      },
+      confirmLabel: 'Confirm Cancellation',
+      cancelLabel: 'Back',
+      icon: RotateCcw,
+    });
+    if (confirmed) {
+      cancelMutation.mutate({
+        id: saleId,
+        reason: value || 'Customer return / refund',
+      });
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* ── Top Bar ── */}
@@ -432,7 +465,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
                 Edit Bill
               </button>
               <button
-                onClick={() => setCancelModalOpen(true)}
+                onClick={handleCancelSale}
                 className="px-3.5 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-rose-500/20 hover:border-rose-500/40"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -875,45 +908,6 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
             billSettings={billSettings}
             generalSettings={generalSettings}
           />
-        </div>
-      )}
-
-      {/* Cancellation Reason Modal */}
-      {cancelModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-400">
-              <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h3 className="font-bold text-sm text-slate-100">Cancel &amp; Return Sale</h3>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              This will mark Bill #{sale.invoice_number} as CANCELLED and immediately restore all item quantities back to inventory.
-            </p>
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Reason for Return</label>
-              <input
-                type="text"
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => setCancelModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => cancelMutation.mutate({ id: saleId, reason: cancelReason })}
-                disabled={cancelMutation.isPending}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-400 text-white shadow-md shadow-rose-500/20 disabled:opacity-60"
-              >
-                Confirm Cancellation
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

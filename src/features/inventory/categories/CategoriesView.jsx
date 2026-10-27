@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
+import { confirmDialog } from '../../../stores/confirm.store';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
@@ -291,8 +292,13 @@ export default function CategoriesView() {
     setModalOpen(true);
   };
 
-  const handleDelete = (c) => {
-    if (confirm(`Delete category '${c.name}'? Subcategories and products will be detached.`)) {
+  const handleDelete = async (c) => {
+    const { confirmed } = await confirmDialog({
+      title: 'Delete Category',
+      message: `Are you sure you want to delete "${c.name}"? Subcategories and products will be detached.`,
+      confirmLabel: 'Delete Category',
+    });
+    if (confirmed) {
       deleteMutation.mutate(c.id);
     }
   };
