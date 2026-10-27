@@ -59,6 +59,8 @@ impl BackupService {
                             "auto".to_string()
                         } else if filename.contains("pre-restore") {
                             "pre-restore".to_string()
+                        } else if filename.contains("exit-backup") {
+                            "exit".to_string()
                         } else {
                             "manual".to_string()
                         };
@@ -106,6 +108,40 @@ impl BackupService {
             size_bytes,
             created_at,
             backup_type: "manual".to_string(),
+        })
+    }
+
+    /// Creates a backup right before the application shuts down.
+    /// Only the newest `EXIT_BACKUP_RETENTION` exit backups are kept.
+    pub async fn create_exit_backup(pool: &SqlitePool) -> Result<BackupInfo, AppError> {
+        const EXIT_BACKUP_RETENTION: usize = 5;
+
+        // Checkpoint WAL so the copy contains every committed transaction.
+        let _ = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(pool).await;
+
+        let backups_dir = AppPaths::get_backups_dir();
+        let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+        let backup_filename = format!("pico-possum-exit-backup-{}.db", timestamp);
+        let backup_path = backups_dir.join(&backup_filename);
+
+        let live_db_path = AppPaths::get_database_path();
+        if !live_db_path.exists() {
+            return Err(AppError::Validation("Live database file not found".to_string()));
+        }
+
+        fs::copy(&live_db_path, &backup_path)?;
+
+        Self::prune_backups(&backups_dir, "pico-possum-exit-backup-", EXIT_BACKUP_RETENTION);
+
+        let size_bytes = fs::metadata(&backup_path).map(|m| m.len()).unwrap_or(0);
+        let created_at = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+
+        Ok(BackupInfo {
+            filename: backup_filename,
+            file_path: backup_path.to_string_lossy().to_string(),
+            size_bytes,
+            created_at,
+            backup_type: "exit".to_string(),
         })
     }
 
@@ -292,6 +328,31 @@ impl BackupService {
             target_path.file_name().unwrap_or_default().to_string_lossy(),
             pre_restore_path.file_name().unwrap_or_default().to_string_lossy()
         ))
+    }
+
+    /// Keeps only the newest `keep` backups whose filename starts with `prefix`.
+    fn prune_backups(dir: &Path, prefix: &str, keep: usize) {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+
+        let mut backups: Vec<PathBuf> = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.starts_with(prefix) && name.ends_with(".db"))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        // Timestamped filenames sort chronologically, oldest first.
+        backups.sort();
+        let excess = backups.len().saturating_sub(keep);
+        for path in backups.into_iter().take(excess) {
+            let _ = fs::remove_file(path);
+        }
     }
 
     fn prune_old_backups(dir: &Path, max_days: i64) {

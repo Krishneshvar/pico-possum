@@ -253,7 +253,7 @@ pub struct BackupInfo {
     pub file_path: String,
     pub size_bytes: u64,
     pub created_at: String,
-    pub backup_type: String, // "auto" | "manual" | "pre-restore"
+    pub backup_type: String, // "auto" | "manual" | "pre-restore" | "exit"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1188,7 +1188,7 @@ export default function SettingsView() {
                 <div>
                   <h3 className="text-sm font-bold text-slate-100">Automatic Daily Backups</h3>
                   <p className="text-xs text-slate-400">
-                    A mandatory backup is created once every day while the app is running
+                    A mandatory backup is created once every day while the app is running, and every time the app is closed
                   </p>
                 </div>
               </div>
@@ -1316,10 +1316,13 @@ export default function SettingsView() {
                       {sortedBackups.map((bk) => {
                         const isAuto = bk.backup_type === 'auto';
                         const isPre = bk.backup_type === 'pre-restore';
+                        const isExit = bk.backup_type === 'exit';
                         const badgeCls = isAuto
                           ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
                           : isPre
                           ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          : isExit
+                          ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
                           : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
 
                         return (
