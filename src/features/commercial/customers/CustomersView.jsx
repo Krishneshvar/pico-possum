@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, ShoppingBag, Clock } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatDateTime, formatPaise } from '../../../lib/formatters';
+import { formatDateTime, formatDate, formatPaise } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
@@ -174,6 +174,7 @@ export default function CustomersView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
+          persistKey="customers"
           data={customers}
           keyFn={(r) => r.id}
           searchKeys={['name', 'phone', 'address']}
@@ -232,7 +233,7 @@ export default function CustomersView() {
               <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-center">
                 <span className="text-slate-500 block">Last Purchase</span>
                 <span className="text-xs font-bold text-slate-300 font-mono mt-1 block truncate">
-                  {customerStats.lastOrder ? formatDateTime(customerStats.lastOrder).split(',')[0] : 'None'}
+                  {customerStats.lastOrder ? formatDate(customerStats.lastOrder) : 'None'}
                 </span>
               </div>
             </div>
@@ -326,7 +327,7 @@ export default function CustomersView() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 block mb-1">Name *</label>
+                <label className="text-slate-400 block mb-1">Name <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   required

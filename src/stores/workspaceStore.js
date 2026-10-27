@@ -69,6 +69,23 @@ export const useWorkspaceStore = create((set, get) => ({
     set({ activeTabId: id });
   },
 
+  /**
+   * Move a tab to a new index (drag-and-drop reordering).
+   */
+  moveTab(id, toIndex) {
+    const { tabs } = get();
+    const fromIndex = tabs.findIndex((t) => t.id === id);
+    if (fromIndex === -1) return;
+
+    const target = Math.max(0, Math.min(toIndex, tabs.length - 1));
+    if (fromIndex === target) return;
+
+    const next = [...tabs];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(target, 0, moved);
+    set({ tabs: next });
+  },
+
   cycleTab(step) {
     const { tabs, activeTabId } = get();
     if (tabs.length === 0) return;

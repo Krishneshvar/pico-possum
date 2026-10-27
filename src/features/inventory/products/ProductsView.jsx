@@ -5,11 +5,12 @@ import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { tauriApi } from '../../../lib/tauri';
 
-import { formatPaise, rupeesToPaise } from '../../../lib/formatters';
+import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 
 export default function ProductsView() {
   const queryClient = useQueryClient();
+  const currencySymbol = getCurrencySymbol();
   const [modalMode, setModalMode] = useState(null); // 'create' | 'edit' | 'stock'
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -273,6 +274,7 @@ export default function ProductsView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
+          persistKey="products"
           data={displayProducts}
           keyFn={(r) => r.id}
           searchKeys={['name', 'sku', 'category_name']}
@@ -310,7 +312,7 @@ export default function ProductsView() {
               type: 'range',
               key: 'mrp_paise',
               label: 'Price',
-              unit: '₹',
+              unit: currencySymbol,
               transform: (v) => Math.round(parseFloat(v) * 100),
             },
           ]}
@@ -339,7 +341,7 @@ export default function ProductsView() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 block mb-1">Product Name *</label>
+                <label className="text-slate-400 block mb-1">Product Name <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   required
@@ -393,7 +395,7 @@ export default function ProductsView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-400 block mb-1">MRP (₹) *</label>
+                  <label className="text-slate-400 block mb-1">MRP ({currencySymbol}) <span className="text-rose-500">*</span></label>
                   <input
                     type="number"
                     step="0.01"
@@ -405,7 +407,7 @@ export default function ProductsView() {
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1">Cost Price (₹)</label>
+                  <label className="text-slate-400 block mb-1">Cost Price ({currencySymbol})</label>
                   <input
                     type="number"
                     step="0.01"

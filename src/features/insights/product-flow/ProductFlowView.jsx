@@ -206,6 +206,7 @@ export default function ProductFlowView() {
         <div className="flex-1 overflow-hidden">
           <DataTable
             columns={columns}
+            persistKey="product-flow"
             data={flowItems}
             keyFn={(r) => r.id}
             searchKeys={['product_name', 'product_sku', 'invoice_number', 'customer_name']}

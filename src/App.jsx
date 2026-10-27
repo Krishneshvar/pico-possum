@@ -4,6 +4,7 @@ import NavBar from './components/layout/NavBar';
 import TabBar from './components/layout/TabBar';
 import { useWorkspaceStore } from './stores/workspaceStore';
 import { tauriApi } from './lib/tauri';
+import { applyGeneralSettings } from './lib/formatters';
 
 // Feature views
 import PosView from './features/commercial/pos/PosView';
@@ -51,12 +52,6 @@ function WorkspaceContent() {
           <p className="text-lg font-bold text-slate-700">Nothing open yet</p>
           <p className="text-sm mt-1">Use the menu bar above to open a view</p>
         </div>
-        <div className="flex gap-3 text-[11px] text-slate-700 mt-2">
-          <span className="px-2 py-1 rounded bg-slate-900 border border-slate-800">Inventory ▾</span>
-          <span className="px-2 py-1 rounded bg-slate-900 border border-slate-800">Commercial ▾</span>
-          <span className="px-2 py-1 rounded bg-slate-900 border border-slate-800">Insights ▾</span>
-          <span className="px-2 py-1 rounded bg-slate-900 border border-slate-800">Settings</span>
-        </div>
       </div>
     );
   }
@@ -85,15 +80,18 @@ import { RefreshCw } from 'lucide-react';
 import AuthScreen from './features/auth/AuthScreen';
 
 function MainLayout({ authUser }) {
-  const { data: legacyPath } = useQuery({
-    queryKey: ['detected_legacy_db'],
-    queryFn: () => tauriApi.detectLegacyDatabase(),
+  // Load locale/currency preferences once and keep the shared formatters in sync.
+  const { data: generalSettings } = useQuery({
+    queryKey: ['general_settings'],
+    queryFn: () => tauriApi.getGeneralSettings(),
   });
+
+  if (generalSettings) applyGeneralSettings(generalSettings);
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased">
       {/* Top navigation menu bar */}
-      <NavBar legacyDetected={!!legacyPath} authUser={authUser} />
+      <NavBar authUser={authUser} />
 
       {/* Browser-style tab strip */}
       <TabBar />

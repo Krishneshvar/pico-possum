@@ -22,6 +22,7 @@ import {
   Package,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
+import { applyGeneralSettings, formatDateTime } from '../../lib/formatters';
 import ReceiptPrinter from '../../components/receipt/ReceiptPrinter';
 
 export default function SettingsView() {
@@ -192,7 +193,9 @@ export default function SettingsView() {
   // ── Mutations ───────────────────────────────────────────────────────────────
   const updateGeneralMutation = useMutation({
     mutationFn: (data) => tauriApi.updateGeneralSettings(data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // Apply locale/currency formatting immediately across the app.
+      applyGeneralSettings(variables);
       queryClient.invalidateQueries({ queryKey: ['general_settings'] });
       queryClient.invalidateQueries({ queryKey: ['next_sku'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -419,7 +422,6 @@ export default function SettingsView() {
           >
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Backup & Restore</span>
-            {detectedLegacyDb && <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-1 right-1" />}
           </button>
         </div>
       </div>
@@ -1204,7 +1206,9 @@ export default function SettingsView() {
                   </div>
                   {backupStatus?.latest_backup && (
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      {backupStatus.latest_backup.created_at}
+                      {backupStatus.latest_backup.created_at
+                        ? formatDateTime(backupStatus.latest_backup.created_at)
+                        : backupStatus.latest_backup.created_at}
                     </span>
                   )}
                 </div>
@@ -1318,7 +1322,7 @@ export default function SettingsView() {
                                 {bk.backup_type}
                               </span>
                             </td>
-                            <td className="py-2.5 text-slate-400 text-[11px]">{bk.created_at}</td>
+                            <td className="py-2.5 text-slate-400 text-[11px]">{formatDateTime(bk.created_at)}</td>
                             <td className="py-2.5 text-right text-slate-300">{Math.round(bk.size_bytes / 1024)} KB</td>
                             <td className="py-2.5 text-right font-sans">
                               <button

@@ -1,6 +1,38 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, X, Check, GripVertical } from 'lucide-react';
 
+// ── Persisted Table State (column order & widths) ────────────────────────────
+const TABLE_STATE_PREFIX = 'pico-possum:table-state:';
+
+function readTableState(key) {
+  if (!key || typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(TABLE_STATE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      order: Array.isArray(parsed?.order)
+        ? parsed.order.filter((k) => typeof k === 'string')
+        : null,
+      widths:
+        parsed?.widths && typeof parsed.widths === 'object' && !Array.isArray(parsed.widths)
+          ? parsed.widths
+          : {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeTableState(key, state) {
+  if (!key || typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(TABLE_STATE_PREFIX + key, JSON.stringify(state));
+  } catch {
+    // Persistence is best-effort (storage may be unavailable or full).
+  }
+}
+
 /**
  * Generic reusable DataTable component.
  *
@@ -153,6 +185,7 @@ export default function DataTable({
   headerRight,
   onRowClick,
   onRowDoubleClick,
+  persistKey,
 }) {
   const [search, setSearch] = useState('');
   const [selectValues, setSelectValues] = useState({});
@@ -161,24 +194,53 @@ export default function DataTable({
   const [dateValues, setDateValues] = useState({});
   const [page, setPage] = useState(1);
 
-  // ── Column Ordering State ──────────────────────────────────────────────────
-  const [colOrder, setColOrder] = useState(() => columns.map((c) => c.key));
+  // ── Column Ordering State (persisted per table) ────────────────────────────
+  const persistedTableState = useMemo(() => readTableState(persistKey), [persistKey]);
+
+  const [colOrder, setColOrder] = useState(() => {
+    const currentKeys = columns.map((c) => c.key);
+    const savedOrder = persistedTableState?.order ?? [];
+    const kept = savedOrder.filter((k) => currentKeys.includes(k));
+    return [...kept, ...currentKeys.filter((k) => !kept.includes(k))];
+  });
   const [draggedColKey, setDraggedColKey] = useState(null);
   const [dragOverColKey, setDragOverColKey] = useState(null);
 
-  // ── Column Resizing State ──────────────────────────────────────────────────
-  const [colWidths, setColWidths] = useState({});
+  // ── Column Resizing State (persisted per table) ────────────────────────────
+  const [colWidths, setColWidths] = useState(() => {
+    const savedWidths = persistedTableState?.widths ?? {};
+    const validWidths = {};
+    for (const col of columns) {
+      const width = savedWidths[col.key];
+      if (typeof width === 'number' && Number.isFinite(width) && width > 0) {
+        validWidths[col.key] = width;
+      }
+    }
+    return validWidths;
+  });
   const isResizing = useRef(false);
 
-  // Sync colOrder if incoming columns prop changes
+  // Sync colOrder if incoming columns prop changes without causing extra renders
   useEffect(() => {
+    const currentKeys = columns.map((c) => c.key);
     setColOrder((prev) => {
-      const currentKeys = columns.map((c) => c.key);
       const filteredPrev = prev.filter((k) => currentKeys.includes(k));
       const newKeys = currentKeys.filter((k) => !filteredPrev.includes(k));
-      return [...filteredPrev, ...newKeys];
+      const next = [...filteredPrev, ...newKeys];
+      const unchanged =
+        next.length === prev.length && next.every((key, i) => key === prev[i]);
+      return unchanged ? prev : next;
     });
   }, [columns]);
+
+  // Persist column order/widths across app restarts (debounced during resize)
+  useEffect(() => {
+    if (!persistKey) return;
+    const timer = setTimeout(() => {
+      writeTableState(persistKey, { order: colOrder, widths: colWidths });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [persistKey, colOrder, colWidths]);
 
   const orderedColumns = useMemo(() => {
     const colMap = new Map(columns.map((c) => [c.key, c]));

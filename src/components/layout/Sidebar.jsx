@@ -10,7 +10,7 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 
-export default function Sidebar({ activeRoute, onNavigate, legacyDetected }) {
+export default function Sidebar({ activeRoute, onNavigate }) {
   const navItems = [
     { id: 'pos', label: 'Point of Sale', icon: ShoppingCart, badge: 'POS' },
     { id: 'bills', label: 'Bill History', icon: History },
@@ -19,7 +19,7 @@ export default function Sidebar({ activeRoute, onNavigate, legacyDetected }) {
     { id: 'stock-ledger', label: 'Stock Activity', icon: ArrowRightLeft },
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'reports', label: 'Analytics & Reports', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings, alert: legacyDetected },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
@@ -59,9 +59,6 @@ export default function Sidebar({ activeRoute, onNavigate, legacyDetected }) {
                   <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
                     {item.badge}
                   </span>
-                )}
-                {item.alert && (
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Legacy DB detected!" />
                 )}
               </button>
             );

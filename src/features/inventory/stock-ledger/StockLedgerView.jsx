@@ -166,6 +166,7 @@ export default function StockLedgerView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
+          persistKey="stock-ledger"
           data={movements}
           keyFn={(r) => r.id}
           searchKeys={['product_name', 'movement_type', 'note', 'reference_id']}

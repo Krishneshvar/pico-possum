@@ -87,7 +87,7 @@ function DropdownMenu({ menu, open, onOpen, onClose }) {
   );
 }
 
-export default function NavBar({ legacyDetected, authUser }) {
+export default function NavBar({ authUser }) {
   const [openMenu, setOpenMenu] = useState(null);
   const { openOrFocus } = useWorkspaceStore();
   const queryClient = useQueryClient();
@@ -111,7 +111,6 @@ export default function NavBar({ legacyDetected, authUser }) {
       <div className="flex items-center gap-2 mr-3">
         <img src={iconShell} alt="PicoPOSSUM" className="w-7 h-7 rounded-lg" />
         <span className="font-bold text-slate-100 text-sm tracking-tight">PicoPOSSUM</span>
-        <span className="text-[10px] text-emerald-400/80 font-medium">Retail Terminal</span>
       </div>
 
       {/* Separator */}
@@ -139,9 +138,6 @@ export default function NavBar({ legacyDetected, authUser }) {
           >
             <Icon className="w-3.5 h-3.5" />
             <span>{item.label}</span>
-            {legacyDetected && item.viewId === 'settings' && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" />
-            )}
           </button>
         );
       })}

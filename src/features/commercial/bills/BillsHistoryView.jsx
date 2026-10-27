@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { History, Eye, Printer, RotateCcw, X, AlertTriangle } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise, formatDateTime } from '../../../lib/formatters';
+import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
@@ -13,6 +13,7 @@ import { useWorkspaceStore } from '../../../stores/workspaceStore';
 export default function BillsHistoryView() {
   const queryClient = useQueryClient();
   const { openOrFocus } = useWorkspaceStore();
+  const currencySymbol = getCurrencySymbol();
   const [selectedSaleId, setSelectedSaleId] = useState(null);
   const [reprintSale, setReprintSale] = useState(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -139,6 +140,7 @@ export default function BillsHistoryView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
+          persistKey="bills"
           data={sales}
           keyFn={(r) => r.id}
           searchKeys={['invoice_number', 'customer_name', 'customer_phone', 'payment_method']}
@@ -172,7 +174,7 @@ export default function BillsHistoryView() {
               type: 'range',
               key: 'total_paise',
               label: 'Total',
-              unit: '₹',
+              unit: currencySymbol,
               transform: (v) => Math.round(parseFloat(v) * 100),
             },
           ]}

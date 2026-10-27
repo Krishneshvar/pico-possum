@@ -96,6 +96,7 @@ export default function AuditLogView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
+          persistKey="audit-log"
           data={logs}
           keyFn={(r) => r.id}
           searchKeys={['description', 'entity_id', 'event_type', 'entity_type']}

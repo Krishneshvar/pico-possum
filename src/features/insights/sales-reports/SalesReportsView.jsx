@@ -14,10 +14,11 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise } from '../../../lib/formatters';
+import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 
 export default function SalesReportsView() {
+  const currencySymbol = getCurrencySymbol();
   const todayStr = new Date().toISOString().split('T')[0];
   const firstOfMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     .toISOString()
@@ -464,7 +465,7 @@ export default function SalesReportsView() {
         <div className="flex items-center gap-1.5">
           <input
             type="number"
-            placeholder="Min ₹"
+            placeholder={`Min ${currencySymbol}`}
             value={minAmount}
             onChange={(e) => setMinAmount(e.target.value)}
             className="w-20 bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 font-mono focus:border-emerald-500 focus:outline-none"
@@ -472,7 +473,7 @@ export default function SalesReportsView() {
           <span className="text-slate-600">–</span>
           <input
             type="number"
-            placeholder="Max ₹"
+            placeholder={`Max ${currencySymbol}`}
             value={maxAmount}
             onChange={(e) => setMaxAmount(e.target.value)}
             className="w-20 bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 font-mono focus:border-emerald-500 focus:outline-none"
@@ -537,6 +538,7 @@ export default function SalesReportsView() {
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={visibleColumns}
+          persistKey="sales-reports"
           data={filteredData}
           keyFn={(r) => r.period}
           searchKeys={['period']}

@@ -20,7 +20,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise, formatDateTime } from '../../../lib/formatters';
+import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
@@ -97,6 +97,7 @@ function ProductSearchInput({ onSelect, allowNegativeStock = false }) {
 
 // ── Main View ─────────────────────────────────────────────────────────────────
 export default function BillDetailView({ saleId, invoiceNumber }) {
+  const currencySymbol = getCurrencySymbol();
   const queryClient = useQueryClient();
   const { openOrFocus, closeTab, activeTabId } = useWorkspaceStore();
 
@@ -646,7 +647,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 shrink-0">Amount Paid (₹)</span>
+                    <span className="text-xs text-slate-400 shrink-0">Amount Paid ({currencySymbol})</span>
                     <input
                       type="number"
                       min="0"
@@ -657,7 +658,7 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 shrink-0">Overall Discount (₹)</span>
+                    <span className="text-xs text-slate-400 shrink-0">Overall Discount ({currencySymbol})</span>
                     <input
                       type="number"
                       min="0"
@@ -699,9 +700,9 @@ export default function BillDetailView({ saleId, invoiceNumber }) {
                   <tr>
                     <th className="py-2.5 px-4 w-10"></th>
                     <th className="py-2.5 px-4">Product</th>
-                    <th className="py-2.5 px-4 text-right">Unit Price (₹)</th>
+                    <th className="py-2.5 px-4 text-right">Unit Price ({currencySymbol})</th>
                     <th className="py-2.5 px-4 text-center">Qty</th>
-                    <th className="py-2.5 px-4 text-right">Disc/item (₹)</th>
+                    <th className="py-2.5 px-4 text-right">Disc/item ({currencySymbol})</th>
                     <th className="py-2.5 px-4 text-right">Line Total</th>
                     <th className="py-2.5 px-4 w-10"></th>
                   </tr>

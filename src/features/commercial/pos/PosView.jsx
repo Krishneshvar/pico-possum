@@ -18,12 +18,13 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { usePosStore, computeBillTotals } from '../../../stores/pos.store';
-import { formatPaise, rupeesToPaise } from '../../../lib/formatters';
+import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 
 export default function PosView() {
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
+  const currencySymbol = getCurrencySymbol();
 
   // Store state
   const {
@@ -627,7 +628,7 @@ export default function PosView() {
                       currentBill.discountType === 'FIXED' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
                     }`}
                   >
-                    ₹ Flat
+                    {currencySymbol} Flat
                   </button>
                   <button
                     onClick={() => setDiscount('PERCENT', currentBill.discountValue)}
@@ -703,7 +704,7 @@ export default function PosView() {
                       }}
                       className="px-2 py-1 rounded bg-slate-800/80 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 text-[10px] font-mono transition-colors border border-slate-700/60"
                     >
-                      ₹{denom}
+                      {currencySymbol}{denom}
                     </button>
                   ))}
                 </div>
@@ -835,7 +836,7 @@ export default function PosView() {
             </div>
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 block mb-1">Customer Name *</label>
+                <label className="text-slate-400 block mb-1">Customer Name <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={newCustomer.name}

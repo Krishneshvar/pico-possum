@@ -521,6 +521,7 @@ export default function CategoriesView() {
             <div className="flex-1 overflow-hidden">
               <DataTable
                 columns={columns}
+                persistKey="categories"
                 data={displayedCategories}
                 keyFn={(r) => r.id}
                 searchKeys={['name', 'parent_name']}
@@ -559,7 +560,7 @@ export default function CategoriesView() {
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 block mb-1">Category Name *</label>
+                <label className="text-slate-400 block mb-1">Category Name <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   required

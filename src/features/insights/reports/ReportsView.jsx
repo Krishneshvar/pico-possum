@@ -344,6 +344,7 @@ export default function ReportsView() {
         <div className="flex-1 overflow-hidden">
           <DataTable
             columns={auditColumns}
+            persistKey="reports-audit"
             data={auditLogs}
             keyFn={(r) => r.id}
             searchKeys={['event_type', 'entity_type', 'description']}
