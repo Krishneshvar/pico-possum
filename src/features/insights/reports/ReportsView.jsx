@@ -21,6 +21,8 @@ import { formatPaise } from '../../../lib/formatters';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
 import MultiYearComparisonChart from './MultiYearComparisonChart';
+import Select from '../../../components/common/Select';
+import DatePicker from '../../../components/common/DatePicker';
 
 export default function ReportsView() {
   const [fromDate, setFromDate] = useState('');
@@ -216,20 +218,17 @@ export default function ReportsView() {
         <div className="flex items-center justify-between bg-surface p-3.5 rounded-xl border border-border flex-wrap gap-3">
           {/* Date Pickers */}
           <div className="flex items-center gap-2 text-xs text-content-secondary flex-wrap">
-            <Calendar className="w-4 h-4 text-brand flex-shrink-0" />
             <span className="font-medium text-content">Reporting Period:</span>
-            <input
-              type="date"
+            <DatePicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="bg-surface-secondary border border-border-strong rounded-lg px-2.5 py-1 text-content text-xs font-mono focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              onChange={(val) => setFromDate(val)}
+              placeholder="From date"
             />
             <span className="text-content-muted">to</span>
-            <input
-              type="date"
+            <DatePicker
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="bg-surface-secondary border border-border-strong rounded-lg px-2.5 py-1 text-content text-xs font-mono focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              onChange={(val) => setToDate(val)}
+              placeholder="To date"
             />
 
             {/* Quick Date Presets */}
@@ -267,17 +266,17 @@ export default function ReportsView() {
               <Filter className="w-3.5 h-3.5 text-content-muted" />
               <span>Payment Method:</span>
             </span>
-            <select
+            <Select
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="bg-surface-secondary border border-border-strong rounded-lg px-3 py-1 text-content font-medium focus:border-brand focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">All Methods ({pmCounts.ALL})</option>
-              <option value="CASH">Cash ({pmCounts.CASH})</option>
-              <option value="UPI">UPI / QR ({pmCounts.UPI})</option>
-              <option value="CARD">Card ({pmCounts.CARD})</option>
-              <option value="OTHER">Other ({pmCounts.OTHER})</option>
-            </select>
+              onChange={(val) => setPaymentMethod(val)}
+              options={[
+                { value: 'ALL', label: `All Methods (${pmCounts.ALL})` },
+                { value: 'CASH', label: `Cash (${pmCounts.CASH})` },
+                { value: 'UPI', label: `UPI / QR (${pmCounts.UPI})` },
+                { value: 'CARD', label: `Card (${pmCounts.CARD})` },
+                { value: 'OTHER', label: `Other (${pmCounts.OTHER})` },
+              ]}
+            />
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRightLeft, ArrowDownRight, ArrowUpRight, RefreshCw, Calendar, Receipt, ExternalLink } from 'lucide-react';
+import { ArrowRightLeft, ArrowDownRight, ArrowUpRight, RefreshCw, Receipt, ExternalLink } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
@@ -155,47 +155,6 @@ export default function StockLedgerView() {
         </button>
       </div>
 
-      {/* Date Filter Toolbar */}
-      <div className="px-5 py-2.5 border-b border-border-default bg-surface flex items-center gap-3 flex-wrap text-xs shrink-0">
-        <div className="flex items-center gap-1.5 text-text-muted">
-          <Calendar className="w-3.5 h-3.5 text-brand" />
-          <span className="font-medium text-text-secondary">Date Filter:</span>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-text-muted">From:</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none font-mono text-xs"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-text-muted">To:</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none font-mono text-xs"
-          />
-        </div>
-
-        {(fromDate || toDate) && (
-          <button
-            type="button"
-            onClick={() => {
-              setFromDate('');
-              setToDate('');
-            }}
-            className="text-xs text-brand hover:underline px-2 py-1 cursor-pointer"
-          >
-            Clear Dates
-          </button>
-        )}
-      </div>
-
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
@@ -209,6 +168,16 @@ export default function StockLedgerView() {
               key: 'movement_type',
               label: 'Movement Types',
               options: movementTypeOptions,
+            },
+            {
+              type: 'daterange',
+              fromKey: 'created_at',
+              toKey: 'created_at',
+              label: 'Date Filter',
+              fromVal: fromDate,
+              toVal: toDate,
+              onFromChange: (val) => setFromDate(val),
+              onToChange: (val) => setToDate(val),
             },
           ]}
           isLoading={isLoading}

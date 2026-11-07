@@ -21,6 +21,7 @@ import { confirmDialog } from '../../../stores/confirm.store';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import Select from '../../../components/common/Select';
 
 // Recursive Tree Node Component
 function TreeNode({
@@ -612,20 +613,17 @@ export default function CategoriesView() {
 
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">Parent Category (Optional)</label>
-                <select
+                <Select
                   value={parentId}
-                  onChange={(e) => setParentId(e.target.value)}
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
-                >
-                  <option value="">None (Top-Level Category)</option>
-                  {categories
-                    .filter((c) => !editingCategory || c.id !== editingCategory.id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(val) => setParentId(val)}
+                  placeholder="None (Top-Level Category)"
+                  options={[
+                    { value: '', label: 'None (Top-Level Category)' },
+                    ...categories
+                      .filter((c) => !editingCategory || c.id !== editingCategory.id)
+                      .map((c) => ({ value: String(c.id), label: c.name })),
+                  ]}
+                />
                 <p className="text-[10px] text-text-muted mt-1">
                   Nest this category under an existing parent class
                 </p>
@@ -644,7 +642,7 @@ export default function CategoriesView() {
                   disabled={createMutation.isPending || updateMutation.isPending}
                   className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {editingCategory ? 'Save Changes' : 'Create'}
+                  {editingCategory ? 'Save' : 'Create'}
                 </button>
               </div>
             </form>

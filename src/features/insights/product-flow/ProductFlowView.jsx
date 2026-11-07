@@ -17,6 +17,8 @@ import {
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import Select from '../../../components/common/Select';
+import DatePicker from '../../../components/common/DatePicker';
 
 export default function ProductFlowView() {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -204,39 +206,37 @@ export default function ProductFlowView() {
         {/* Product Picker */}
         <div className="flex items-center gap-2 min-w-64 flex-1 max-w-md">
           <span className="text-content-secondary font-medium shrink-0">Select Product:</span>
-          <select
+          <Select
             value={selectedProductId}
-            onChange={(e) => setSelectedProductId(e.target.value)}
-            className="w-full bg-surface-secondary border border-border-strong text-content rounded-lg px-3 py-1.5 focus:border-brand focus:outline-none cursor-pointer truncate"
-          >
-            <option value="">-- Choose a product to inspect history --</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.sku ? `(SKU: ${p.sku})` : ''}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedProductId(val)}
+            placeholder="-- Choose a product to inspect history --"
+            options={[
+              { value: '', label: '-- Choose a product to inspect history --' },
+              ...products.map((p) => ({
+                value: String(p.id),
+                label: `${p.name}${p.sku ? ` (SKU: ${p.sku})` : ''}`,
+              })),
+            ]}
+            className="w-full"
+          />
         </div>
 
         {/* Date Filters */}
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-content-muted" />
           <span className="text-content-secondary font-medium">From:</span>
-          <input
-            type="date"
+          <DatePicker
             value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-content rounded-lg px-2.5 py-1 text-xs font-mono focus:border-brand focus:outline-none"
+            onChange={(val) => setFromDate(val)}
+            placeholder="From date"
           />
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-content-secondary font-medium">To:</span>
-          <input
-            type="date"
+          <DatePicker
             value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-content rounded-lg px-2.5 py-1 text-xs font-mono focus:border-brand focus:outline-none"
+            onChange={(val) => setToDate(val)}
+            placeholder="To date"
           />
         </div>
       </div>

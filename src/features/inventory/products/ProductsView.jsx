@@ -8,6 +8,7 @@ import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import Select from '../../../components/common/Select';
 
 export default function ProductsView() {
   const queryClient = useQueryClient();
@@ -219,7 +220,7 @@ export default function ProductsView() {
       title: `Delete "${product.name}"?`,
       message: `Are you sure you want to delete "${product.name}" (SKU: ${product.sku || 'N/A'})? This item will be removed from the active catalog.`,
       confirmLabel: 'Delete Product',
-      cancelLabel: 'Keep Product',
+      cancelLabel: 'Cancel',
       tone: 'danger',
     });
     if (confirmed) {
@@ -517,18 +518,15 @@ export default function ProductsView() {
                   </div>
                   <div>
                     <label className="text-text-secondary block font-semibold mb-1">Category</label>
-                    <select
+                    <Select
                       value={formData.category_id}
-                      onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
-                    >
-                      <option value="">No Category</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, category_id: val })}
+                      placeholder="No Category"
+                      options={[
+                        { value: '', label: 'No Category' },
+                        ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -600,15 +598,15 @@ export default function ProductsView() {
                   </div>
                   <div>
                     <label className="text-text-secondary block font-semibold mb-1">Product Status</label>
-                    <select
+                    <Select
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
-                    >
-                      <option value="active">Active (Available for POS)</option>
-                      <option value="inactive">Inactive (Hidden)</option>
-                      <option value="discontinued">Discontinued</option>
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, status: val })}
+                      options={[
+                        { value: 'active', label: 'Active (Available for POS)' },
+                        { value: 'inactive', label: 'Inactive (Hidden)' },
+                        { value: 'discontinued', label: 'Discontinued' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -642,7 +640,7 @@ export default function ProductsView() {
                   disabled={createMutation.isPending || updateMutation.isPending}
                   className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {modalMode === 'create' ? 'Create Product' : 'Save Changes'}
+                  {modalMode === 'create' ? 'Create Product' : 'Save'}
                 </button>
               </div>
             </form>
@@ -678,18 +676,18 @@ export default function ProductsView() {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">Movement Type</label>
-                <select
+                <Select
                   value={stockAdjustment.movement_type}
-                  onChange={(e) =>
-                    setStockAdjustment({ ...stockAdjustment, movement_type: e.target.value })
+                  onChange={(val) =>
+                    setStockAdjustment({ ...stockAdjustment, movement_type: val })
                   }
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
-                >
-                  <option value="RESTOCK">Supplier Restock Delivery</option>
-                  <option value="PURCHASE">Wholesale Purchase</option>
-                  <option value="MANUAL_ADJUSTMENT">Manual Stock Correction / Audit</option>
-                  <option value="RETURN">Customer Return / Exchange</option>
-                </select>
+                  options={[
+                    { value: 'RESTOCK', label: 'Supplier Restock Delivery' },
+                    { value: 'PURCHASE', label: 'Wholesale Purchase' },
+                    { value: 'MANUAL_ADJUSTMENT', label: 'Manual Stock Correction / Audit' },
+                    { value: 'RETURN', label: 'Customer Return / Exchange' },
+                  ]}
+                />
               </div>
 
               <div>

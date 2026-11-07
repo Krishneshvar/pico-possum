@@ -17,6 +17,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { formatPaise, rupeesToPaise } from '../../../lib/formatters';
+import Select from '../../../components/common/Select';
 
 const EMPTY_STOCK_ALLOWANCE = new Map();
 
@@ -480,21 +481,21 @@ export default function PosBillEditor({
                 </button>
               </div>
             ) : (
-              <select
+              <Select
                 value={bill.customer?.id || ''}
-                onChange={(e) => {
-                  const c = customers.find((cust) => cust.id === e.target.value);
+                onChange={(val) => {
+                  const c = customers.find((cust) => String(cust.id) === String(val));
                   onSetCustomer(c || null);
                 }}
-                className="w-full bg-surface-secondary border border-border-strong text-xs text-text-primary rounded-lg p-2 focus:border-brand focus:outline-none cursor-pointer"
-              >
-                <option value="">Walk-in Customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.phone ? `(${c.phone})` : ''}
-                  </option>
-                ))}
-              </select>
+                placeholder="Walk-in Customer"
+                options={[
+                  { value: '', label: 'Walk-in Customer' },
+                  ...customers.map((c) => ({
+                    value: String(c.id),
+                    label: `${c.name}${c.phone ? ` (${c.phone})` : ''}`,
+                  })),
+                ]}
+              />
             )}
           </div>
 

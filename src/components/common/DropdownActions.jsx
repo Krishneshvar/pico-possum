@@ -10,10 +10,23 @@ const MENU_GAP = 6;
  */
 export default function DropdownActions({ items = [], align = 'right' }) {
   const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const wrapperRef = useRef(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
+
+  const actionableIndices = items
+    .map((item, idx) => (item !== 'divider' && !item.disabled ? idx : null))
+    .filter((idx) => idx !== null);
+
+  useEffect(() => {
+    if (open) {
+      setHighlightedIndex(actionableIndices.length > 0 ? actionableIndices[0] : -1);
+    } else {
+      setHighlightedIndex(-1);
+    }
+  }, [open]);
 
   const updatePosition = useCallback(() => {
     const btn = buttonRef.current;
@@ -63,7 +76,33 @@ export default function DropdownActions({ items = [], align = 'right' }) {
       setOpen(false);
     };
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        buttonRef.current?.focus();
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const curPos = actionableIndices.indexOf(highlightedIndex);
+        const nextPos = curPos < actionableIndices.length - 1 ? curPos + 1 : 0;
+        setHighlightedIndex(actionableIndices[nextPos]);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const curPos = actionableIndices.indexOf(highlightedIndex);
+        const prevPos = curPos > 0 ? curPos - 1 : actionableIndices.length - 1;
+        setHighlightedIndex(actionableIndices[prevPos]);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && items[highlightedIndex] && items[highlightedIndex] !== 'divider') {
+          const it = items[highlightedIndex];
+          if (!it.disabled) {
+            setOpen(false);
+            it.onClick?.();
+            buttonRef.current?.focus();
+          }
+        }
+      }
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -123,9 +162,14 @@ export default function DropdownActions({ items = [], align = 'right' }) {
                     setOpen(false);
                     item.onClick?.();
                   }}
+                  onMouseEnter={() => setHighlightedIndex(i)}
                   disabled={item.disabled}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
-                    item.danger
+                    highlightedIndex === i
+                      ? item.danger
+                        ? 'bg-danger-bg text-danger font-semibold'
+                        : 'bg-surface-secondary text-brand font-semibold'
+                      : item.danger
                       ? 'text-danger hover:bg-danger-bg'
                       : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
                   }`}

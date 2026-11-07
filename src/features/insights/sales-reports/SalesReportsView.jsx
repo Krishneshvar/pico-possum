@@ -19,6 +19,8 @@ import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import { toast } from '../../../stores/toast.store';
 import DataTable from '../../../components/common/DataTable';
+import Select from '../../../components/common/Select';
+import DatePicker from '../../../components/common/DatePicker';
 
 export default function SalesReportsView() {
   const currencySymbol = getCurrencySymbol();
@@ -409,34 +411,32 @@ export default function SalesReportsView() {
       <div className="px-5 py-2.5 border-b border-border-default bg-surface flex items-center gap-3 flex-wrap text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-text-muted font-medium">Period:</span>
-          <select
+          <Select
             value={reportType}
-            onChange={(e) => setReportType(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2.5 py-1.5 focus:border-brand focus:outline-none cursor-pointer"
-          >
-            <option value="daily">Daily</option>
-            <option value="monthly">Monthly</option>
-            <option value="yearly">Yearly</option>
-          </select>
+            onChange={(val) => setReportType(val)}
+            options={[
+              { value: 'daily', label: 'Daily' },
+              { value: 'monthly', label: 'Monthly' },
+              { value: 'yearly', label: 'Yearly' },
+            ]}
+          />
         </div>
 
         <div className="flex items-center gap-1.5">
           <span className="text-text-muted font-medium">From:</span>
-          <input
-            type="date"
+          <DatePicker
             value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none font-mono text-xs"
+            onChange={(val) => setFromDate(val)}
+            placeholder="From date"
           />
         </div>
 
         <div className="flex items-center gap-1.5">
           <span className="text-text-muted font-medium">To:</span>
-          <input
-            type="date"
+          <DatePicker
             value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none font-mono text-xs"
+            onChange={(val) => setToDate(val)}
+            placeholder="To date"
           />
         </div>
 
@@ -468,17 +468,17 @@ export default function SalesReportsView() {
       {advancedOpen && (
         <div className="px-5 py-2.5 bg-surface-secondary border-b border-border-default flex items-center gap-3 text-xs flex-wrap animate-fade-in shrink-0">
           <span className="text-text-muted font-semibold">Filter Threshold:</span>
-          <select
+          <Select
             value={amountCol}
-            onChange={(e) => setAmountCol(e.target.value)}
-            className="bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none cursor-pointer"
-          >
-            <option value="gross">Gross Sales</option>
-            <option value="net">Net Sales</option>
-            <option value="cash">Cash</option>
-            <option value="upi">UPI</option>
-            <option value="card">Card</option>
-          </select>
+            onChange={(val) => setAmountCol(val)}
+            options={[
+              { value: 'gross', label: 'Gross Sales' },
+              { value: 'net', label: 'Net Sales' },
+              { value: 'cash', label: 'Cash' },
+              { value: 'upi', label: 'UPI' },
+              { value: 'card', label: 'Card' },
+            ]}
+          />
           <div className="flex items-center gap-1.5">
             <input
               type="number"

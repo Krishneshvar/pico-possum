@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import Select from '../../components/common/Select';
 import { confirmDialog } from '../../stores/confirm.store';
 import { useThemeStore } from '../../stores/theme.store';
 import { applyGeneralSettings, formatDateTime } from '../../lib/formatters';
@@ -501,29 +502,29 @@ export default function SettingsView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="text-content font-medium block mb-1.5">Date Display Format</label>
-                    <select
+                    <Select
                       value={general.date_format}
-                      onChange={(e) => setGeneral({ ...general, date_format: e.target.value })}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none cursor-pointer"
-                    >
-                      <option value="DD-MM-YYYY">DD-MM-YYYY (e.g. 26-10-2026)</option>
-                      <option value="MM-DD-YYYY">MM-DD-YYYY (e.g. 10-26-2026)</option>
-                      <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-10-26)</option>
-                      <option value="Month Date, Year">Month Date, Year (e.g. Oct 26, 2026)</option>
-                      <option value="Date Month, Year">Date Month, Year (e.g. 26 Oct, 2026)</option>
-                    </select>
+                      onChange={(val) => setGeneral({ ...general, date_format: val })}
+                      options={[
+                        { value: 'DD-MM-YYYY', label: 'DD-MM-YYYY (e.g. 26-10-2026)' },
+                        { value: 'MM-DD-YYYY', label: 'MM-DD-YYYY (e.g. 10-26-2026)' },
+                        { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (e.g. 2026-10-26)' },
+                        { value: 'Month Date, Year', label: 'Month Date, Year (e.g. Oct 26, 2026)' },
+                        { value: 'Date Month, Year', label: 'Date Month, Year (e.g. 26 Oct, 2026)' },
+                      ]}
+                    />
                   </div>
 
                   <div>
                     <label className="text-content font-medium block mb-1.5">Time Display Format</label>
-                    <select
+                    <Select
                       value={general.time_format}
-                      onChange={(e) => setGeneral({ ...general, time_format: e.target.value })}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none cursor-pointer"
-                    >
-                      <option value="12 hour format">12 hour format (e.g. 02:45 PM)</option>
-                      <option value="24 hour format">24 hour format (e.g. 14:45)</option>
-                    </select>
+                      onChange={(val) => setGeneral({ ...general, time_format: val })}
+                      options={[
+                        { value: '12 hour format', label: '12 hour format (e.g. 02:45 PM)' },
+                        { value: '24 hour format', label: '24 hour format (e.g. 14:45)' },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -941,20 +942,18 @@ export default function SettingsView() {
                 <div className="space-y-4 text-xs">
                   <div>
                     <label className="text-content font-medium block mb-1.5">Default Thermal Printer</label>
-                    <select
+                    <Select
                       value={general.default_printer_name}
-                      onChange={(e) =>
-                        setGeneral({ ...general, default_printer_name: e.target.value })
-                      }
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none cursor-pointer"
-                    >
-                      <option value="">-- Use OS Default Printer --</option>
-                      {printers.map((p) => (
-                        <option key={p.name} value={p.name}>
-                          {p.name} {p.is_default ? '(System Default)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setGeneral({ ...general, default_printer_name: val })}
+                      placeholder="-- Use OS Default Printer --"
+                      options={[
+                        { value: '', label: '-- Use OS Default Printer --' },
+                        ...printers.map((p) => ({
+                          value: p.name,
+                          label: `${p.name} ${p.is_default ? '(System Default)' : ''}`,
+                        })),
+                      ]}
+                    />
                     <span className="text-[11px] text-content-muted mt-1 block">
                       Receipts printed during POS checkout will be automatically routed to this printer
                     </span>

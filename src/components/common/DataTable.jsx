@@ -11,6 +11,8 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { nextSortState, sortRows } from '../../lib/sort';
+import DatePicker from './DatePicker';
+import Select from './Select';
 
 // ── Persisted Table State (column order & widths) ────────────────────────────
 const TABLE_STATE_PREFIX = 'pico-possum:table-state:';
@@ -52,17 +54,38 @@ function getSortValue(row, col) {
 }
 
 // ── MultiSelect Dropdown ────────────────────────────────────────────────────
-function MultiSelectDropdown({ label, options, selected, onChange }) {
+function MultiSelectDropdown({ label, options = [], selected = [], onChange }) {
   const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const optionRefs = useRef([]);
 
   useEffect(() => {
+    if (!open) return;
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      setHighlightedIndex(0);
+    } else {
+      setHighlightedIndex(-1);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open && highlightedIndex >= 0 && optionRefs.current[highlightedIndex]) {
+      optionRefs.current[highlightedIndex]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      });
+    }
+  }, [highlightedIndex, open]);
 
   const toggle = (value) => {
     const next = selected.includes(value)
@@ -72,12 +95,59 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
   };
 
   const activeCount = selected.length;
+  const totalItems = activeCount > 0 ? options.length + 1 : options.length;
+
+  const handleKeyDown = (e) => {
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev < totalItems - 1 ? prev + 1 : 0));
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : totalItems - 1));
+        break;
+      }
+      case 'Enter':
+      case ' ': {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+          toggle(options[highlightedIndex].value);
+        } else if (highlightedIndex === options.length && activeCount > 0) {
+          onChange([]);
+          setOpen(false);
+          triggerRef.current?.focus();
+        }
+        break;
+      }
+      case 'Escape':
+      case 'Tab': {
+        setOpen(false);
+        triggerRef.current?.focus();
+        break;
+      }
+      default:
+        break;
+    }
+  };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} onKeyDown={handleKeyDown} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className={`flex items-center gap-1.5 bg-surface border rounded-lg px-2.5 py-1.5 text-xs transition-colors cursor-pointer ${
           activeCount > 0
             ? 'border-brand text-brand font-semibold shadow-2xs'
@@ -89,17 +159,31 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-surface border border-border-default rounded-xl shadow-lg min-w-[180px] overflow-hidden animate-scale-in">
-          {options.map((o) => {
+        <div
+          role="listbox"
+          tabIndex={-1}
+          className="absolute top-full left-0 mt-1 z-50 bg-surface border border-border-default rounded-xl shadow-lg min-w-[180px] max-h-64 overflow-y-auto animate-scale-in"
+        >
+          {options.map((o, idx) => {
             const isSelected = selected.includes(o.value);
+            const isHighlighted = highlightedIndex === idx;
+
             return (
               <button
                 key={o.value}
+                ref={(el) => (optionRefs.current[idx] = el)}
                 type="button"
+                role="option"
+                aria-selected={isSelected}
                 onClick={() => toggle(o.value)}
+                onMouseEnter={() => setHighlightedIndex(idx)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left transition-colors cursor-pointer ${
                   isSelected
-                    ? 'bg-brand-subtle text-brand font-medium'
+                    ? isHighlighted
+                      ? 'bg-brand/15 text-brand font-medium'
+                      : 'bg-brand-subtle text-brand font-medium'
+                    : isHighlighted
+                    ? 'bg-surface-secondary text-text-primary'
                     : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
                 }`}
               >
@@ -116,12 +200,17 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
           })}
           {activeCount > 0 && (
             <button
+              ref={(el) => (optionRefs.current[options.length] = el)}
               type="button"
               onClick={() => {
                 onChange([]);
                 setOpen(false);
+                triggerRef.current?.focus();
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-danger hover:bg-danger-bg border-t border-border-default transition-colors cursor-pointer"
+              onMouseEnter={() => setHighlightedIndex(options.length)}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] text-danger hover:bg-danger-bg border-t border-border-default transition-colors cursor-pointer ${
+                highlightedIndex === options.length ? 'bg-danger-bg font-semibold' : ''
+              }`}
             >
               <X className="w-3 h-3" /> Clear selected
             </button>
@@ -160,19 +249,17 @@ function RangeFilter({ label, unit, minVal, maxVal, onMinChange, onMaxChange }) 
 function DateRangeFilter({ label, fromVal, toVal, onFromChange, onToChange }) {
   return (
     <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-      <span className="whitespace-nowrap">{label}:</span>
-      <input
-        type="date"
+      <span className="whitespace-nowrap font-medium text-text-primary">{label}:</span>
+      <DatePicker
         value={fromVal}
-        onChange={(e) => onFromChange(e.target.value)}
-        className="bg-surface border border-border-default text-text-primary rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand font-mono transition-colors"
+        onChange={onFromChange}
+        placeholder="Start date"
       />
       <span className="text-text-muted">–</span>
-      <input
-        type="date"
+      <DatePicker
         value={toVal}
-        onChange={(e) => onToChange(e.target.value)}
-        className="bg-surface border border-border-default text-text-primary rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand font-mono transition-colors"
+        onChange={onToChange}
+        placeholder="End date"
       />
     </div>
   );
@@ -530,7 +617,8 @@ export default function DataTable({
     Object.values(selectValues).some(Boolean) ||
     Object.values(multiValues).some((v) => v && v.length > 0) ||
     Object.values(rangeValues).some((v) => v?.min || v?.max) ||
-    Object.values(dateValues).some((v) => v?.from || v?.to);
+    Object.values(dateValues).some((v) => v?.from || v?.to) ||
+    filters.some((f) => f.type === 'daterange' && (f.fromVal || f.toVal));
 
   const clearAllFilters = () => {
     setSearch('');
@@ -538,6 +626,12 @@ export default function DataTable({
     setMultiValues({});
     setRangeValues({});
     setDateValues({});
+    for (const f of filters) {
+      if (f.type === 'daterange') {
+        f.onFromChange?.('');
+        f.onToChange?.('');
+      }
+    }
     setPage(1);
   };
 
@@ -575,23 +669,16 @@ export default function DataTable({
 
           if (type === 'select') {
             return (
-              <select
+              <Select
                 key={f.key}
                 value={selectValues[f.key] ?? ''}
-                onChange={(e) => handleSelect(f.key, e.target.value)}
-                className={`bg-surface border text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-brand transition-colors cursor-pointer ${
-                  selectValues[f.key]
-                    ? 'border-brand text-brand font-semibold shadow-2xs'
-                    : 'border-border-default text-text-secondary hover:border-border-strong'
-                }`}
-              >
-                <option value="">{f.label}</option>
-                {f.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => handleSelect(f.key, val)}
+                placeholder={f.label}
+                options={[
+                  { value: '', label: `All ${f.label}` },
+                  ...f.options,
+                ]}
+              />
             );
           }
 
@@ -625,14 +712,22 @@ export default function DataTable({
           if (type === 'daterange') {
             const dk = dateRangeKey(f);
             const dv = dateValues[dk] ?? {};
+            const curFrom = f.fromVal !== undefined ? f.fromVal : (dv.from ?? '');
+            const curTo = f.toVal !== undefined ? f.toVal : (dv.to ?? '');
             return (
               <DateRangeFilter
                 key={dk}
                 label={f.label}
-                fromVal={dv.from ?? ''}
-                toVal={dv.to ?? ''}
-                onFromChange={(v) => handleDateFrom(dk, v)}
-                onToChange={(v) => handleDateTo(dk, v)}
+                fromVal={curFrom}
+                toVal={curTo}
+                onFromChange={(v) => {
+                  handleDateFrom(dk, v);
+                  f.onFromChange?.(v);
+                }}
+                onToChange={(v) => {
+                  handleDateTo(dk, v);
+                  f.onToChange?.(v);
+                }}
               />
             );
           }
