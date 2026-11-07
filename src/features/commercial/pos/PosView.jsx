@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { CheckCircle2, Printer, Plus, Trash2, X } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { usePosStore, computeBillTotals } from '../../../stores/pos.store';
 import { toast } from '../../../stores/toast.store';
+import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import PosBillEditor from './PosBillEditor';
@@ -76,7 +77,7 @@ export default function PosView() {
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
-  // Unfiltered catalog used for authoritative stock lookups in the cart.
+  // Unfiltered catalog for authoritative stock check
   const { data: stockProducts = [] } = useQuery({
     queryKey: ['products', 'stock-catalog'],
     queryFn: () => tauriApi.getProducts(null, null),
@@ -101,11 +102,11 @@ export default function PosView() {
       setShowPrintModal(true);
       clearCurrentBill();
       toast.success(`Invoice ${response.sale.invoice_number} completed successfully`, {
-        title: 'Sale completed',
+        title: 'Sale Completed',
       });
     },
     onError: (err) => {
-      toast.error(`Sale failed: ${err}`, { title: 'Checkout failed' });
+      toast.error(`Sale failed: ${err}`, { title: 'Checkout Failed' });
     },
   });
 
@@ -168,7 +169,7 @@ export default function PosView() {
         if (available != null && item.quantity > available) {
           toast.warning(
             `Cannot complete sale: "${item.name}" has only ${available} unit${available === 1 ? '' : 's'} in stock (cart: ${item.quantity}).`,
-            { title: 'Insufficient stock' }
+            { title: 'Insufficient Stock' }
           );
           return;
         }
@@ -208,7 +209,7 @@ export default function PosView() {
       if (inCart + 1 > available) {
         toast.warning(
           `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`,
-          { title: 'Stock limit reached' }
+          { title: 'Stock Limit' }
         );
         return;
       }
@@ -230,7 +231,7 @@ export default function PosView() {
       if (available != null && nextQty > available) {
         toast.warning(
           `Only ${available} unit${available === 1 ? '' : 's'} of "${item.name}" available in stock.`,
-          { title: 'Stock limit reached' }
+          { title: 'Stock Limit' }
         );
         return;
       }
@@ -240,22 +241,31 @@ export default function PosView() {
   };
 
   const handlePrintReceipt = () => {
-    toast.info('Opening the system print dialog');
+    toast.info('Opening system print dialog');
     window.print();
   };
 
-  const handleClearCart = () => {
+  const handleClearCart = async () => {
     if (currentBill.items.length === 0) {
       toast.info(`Bill ${activeBillIndex + 1} is already empty`);
       return;
     }
-    clearCurrentBill();
-    toast.info(`Bill ${activeBillIndex + 1} cleared`);
+    const { confirmed } = await confirmDialog({
+      title: 'Clear Cart',
+      message: `Remove all ${currentBill.items.length} items from Bill ${activeBillIndex + 1}?`,
+      confirmLabel: 'Clear Cart',
+      cancelLabel: 'Keep Items',
+      tone: 'danger',
+    });
+    if (confirmed) {
+      clearCurrentBill();
+      toast.info(`Bill ${activeBillIndex + 1} cleared`);
+    }
   };
 
   const primaryAction = {
     label: 'Complete Sale [F12]',
-    pendingLabel: 'Processing...',
+    pendingLabel: 'Processing Sale...',
     icon: CheckCircle2,
     onClick: handleCompleteSale,
     disabled: saleMutation.isPending || currentBill.items.length === 0,
@@ -263,9 +273,9 @@ export default function PosView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950">
-      {/* ── Bill Tabs Bar ──────────────────────────────────────────────── */}
-      <div className="h-12 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-2 select-none justify-between">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-canvas">
+      {/* ── POS Bill Tabs Bar ────────────────────────────────────────── */}
+      <div className="h-11 bg-surface border-b border-border-default flex items-center px-4 gap-2 select-none justify-between shrink-0">
         <div className="flex items-center gap-1.5 overflow-x-auto">
           {bills.map((b, idx) => {
             const isActive = idx === activeBillIndex;
@@ -273,18 +283,19 @@ export default function PosView() {
             return (
               <button
                 key={idx}
+                type="button"
                 onClick={() => switchBill(idx)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60'
+                    ? 'bg-brand text-white shadow-2xs'
+                    : 'bg-surface-secondary text-text-secondary hover:text-text-primary border border-border-default'
                 }`}
               >
                 <span>Bill {idx + 1}</span>
                 {itemCount > 0 && (
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-slate-950/30 text-slate-950' : 'bg-emerald-500/20 text-emerald-400'
+                      isActive ? 'bg-white/20 text-white' : 'bg-brand-subtle text-brand'
                     }`}
                   >
                     {itemCount}
@@ -295,17 +306,22 @@ export default function PosView() {
           })}
         </div>
 
-        <div className="text-xs text-slate-400 flex items-center gap-2">
-          <span>Active Tab: <strong className="text-emerald-400">Bill {activeBillIndex + 1}</strong></span>
+        <div className="text-xs text-text-muted flex items-center gap-3">
+          <span>
+            Active: <strong className="text-text-primary font-semibold">Bill {activeBillIndex + 1}</strong>
+          </span>
           <button
+            type="button"
             onClick={handleClearCart}
-            className="text-[11px] text-slate-400 hover:text-rose-400 px-2 py-1 rounded bg-slate-800/60 hover:bg-slate-800 transition-colors"
+            disabled={currentBill.items.length === 0}
+            className="text-[11px] text-text-secondary hover:text-danger px-2 py-1 rounded bg-surface-secondary hover:bg-danger-bg border border-border-default transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Clear Cart
           </button>
         </div>
       </div>
 
+      {/* POS Cart and Checkout Editor */}
       <PosBillEditor
         bill={currentBill}
         totals={totals}
@@ -338,25 +354,30 @@ export default function PosView() {
 
       {/* ── Completion & Receipt Print Modal ───────────────────────────── */}
       {showPrintModal && completedSale && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4 animate-scale-in">
             <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-12 h-12 rounded-full bg-success-bg text-success flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-slate-100">Sale Completed Successfully</h3>
-              <p className="text-xs text-slate-400">
-                Invoice: <strong className="text-emerald-400 font-mono">{completedSale.sale.invoice_number}</strong>
+              <h3 className="text-base font-bold text-text-primary">Sale Completed</h3>
+              <p className="text-xs text-text-muted">
+                Invoice Number:{' '}
+                <strong className="text-text-primary font-mono">{completedSale.sale.invoice_number}</strong>
               </p>
             </div>
 
             {/* Change banner */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
-              <div className="text-xs text-slate-400 uppercase font-semibold">Change to Return</div>
-              <div className="text-3xl font-black text-emerald-400 font-mono mt-1">
-                {formatPaise(completedSale.change_paise)}
+            {completedSale.change_paise > 0 && (
+              <div className="bg-surface-secondary p-3.5 rounded-xl border border-border-default text-center">
+                <div className="text-[11px] text-text-muted uppercase font-bold tracking-wider">
+                  Change to Return
+                </div>
+                <div className="text-2xl font-black text-text-primary financial-value mt-0.5">
+                  {formatPaise(completedSale.change_paise)}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Hidden printable receipt container */}
             <div className="hidden">
@@ -369,17 +390,19 @@ export default function PosView() {
             </div>
 
             {/* Action buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
+                type="button"
                 onClick={handlePrintReceipt}
-                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-slate-700"
+                className="py-2 px-3 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-border-default cursor-pointer"
               >
-                <Printer className="w-4 h-4" />
+                <Printer className="w-4 h-4 text-text-muted" />
                 <span>Print Receipt</span>
               </button>
               <button
+                type="button"
                 onClick={() => setShowPrintModal(false)}
-                className="py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-500/20"
+                className="py-2 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
               >
                 <span>New Sale [Esc]</span>
               </button>

@@ -6,16 +6,7 @@ const VIEWPORT_PADDING = 8;
 const MENU_GAP = 6;
 
 /**
- * A single "⋯" button that reveals a dropdown menu of actions.
- *
- * The menu is rendered in a portal with fixed positioning so it is never
- * clipped or painted underneath adjacent table rows / sticky action cells.
- *
- * Usage:
- *   <DropdownActions items={[
- *     { label: 'Edit', icon: <Edit2 />, onClick: () => ... },
- *     { label: 'Delete', icon: <Trash2 />, onClick: () => ..., danger: true },
- *   ]} />
+ * DropdownActions button adhering to solid surface tokens.
  */
 export default function DropdownActions({ items = [], align = 'right' }) {
   const [open, setOpen] = useState(false);
@@ -24,15 +15,11 @@ export default function DropdownActions({ items = [], align = 'right' }) {
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
 
-  // Position the portaled menu next to the trigger, flipping above and
-  // clamping horizontally when there is not enough viewport space.
   const updatePosition = useCallback(() => {
     const btn = buttonRef.current;
     if (!btn) return;
 
     const rect = btn.getBoundingClientRect();
-
-    // Close the menu if its trigger has been scrolled out of view.
     if (rect.bottom < 0 || rect.top > window.innerHeight) {
       setOpen(false);
       return;
@@ -60,7 +47,6 @@ export default function DropdownActions({ items = [], align = 'right' }) {
     setCoords({ top, left });
   }, [align]);
 
-  // Measure the menu and place it before the first paint.
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
@@ -104,10 +90,10 @@ export default function DropdownActions({ items = [], align = 'right' }) {
           ref={buttonRef}
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className={`p-1.5 rounded-lg transition-colors text-slate-400 border ${
+          className={`p-1.5 rounded-lg transition-colors border cursor-pointer ${
             open
-              ? 'bg-slate-700 text-white border-slate-600'
-              : 'hover:bg-slate-800 hover:text-white border-transparent hover:border-slate-700'
+              ? 'bg-surface-secondary text-text-primary border-border-strong'
+              : 'hover:bg-surface-secondary text-text-muted hover:text-text-primary border-transparent'
           }`}
           title="Actions"
         >
@@ -121,13 +107,13 @@ export default function DropdownActions({ items = [], align = 'right' }) {
             ref={menuRef}
             role="menu"
             style={{ position: 'fixed', top: `${coords.top}px`, left: `${coords.left}px` }}
-            className="z-[9999] min-w-[160px] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-slate-950/60 py-1 overflow-hidden"
+            className="z-[9999] min-w-[160px] bg-surface border border-border-default rounded-xl shadow-lg py-1 overflow-hidden animate-scale-in"
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
             {items.map((item, i) =>
               item === 'divider' ? (
-                <div key={i} className="my-1 border-t border-slate-800" />
+                <div key={i} className="my-1 border-t border-border-default" />
               ) : (
                 <button
                   key={i}
@@ -138,16 +124,18 @@ export default function DropdownActions({ items = [], align = 'right' }) {
                     item.onClick?.();
                   }}
                   disabled={item.disabled}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
                     item.danger
-                      ? 'text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'text-danger hover:bg-danger-bg'
+                      : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
                   }`}
                 >
                   {item.icon && (
-                    <span className={`shrink-0 w-3.5 h-3.5 flex items-center justify-center ${
-                      item.danger ? 'text-rose-400' : 'text-slate-400'
-                    }`}>
+                    <span
+                      className={`shrink-0 w-3.5 h-3.5 flex items-center justify-center ${
+                        item.danger ? 'text-danger' : 'text-text-muted'
+                      }`}
+                    >
                       {item.icon}
                     </span>
                   )}

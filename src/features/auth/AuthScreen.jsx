@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Lock,
@@ -11,9 +11,11 @@ import {
   CheckCircle2,
   ArrowRight,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import iconShell from '../../assets/icon-shell.png';
 
 export default function AuthScreen({ authState, onAuthenticated }) {
   const queryClient = useQueryClient();
@@ -26,13 +28,13 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // On app launch the cursor belongs in the password field – the username is
-  // usually pre-filled with the administrator account.
+  // Auto focus password
   useEffect(() => {
     const timer = window.setTimeout(() => {
       passwordInputRef.current?.focus();
-    }, 0);
+    }, 50);
     return () => window.clearTimeout(timer);
   }, [requiresSetup]);
 
@@ -47,16 +49,14 @@ export default function AuthScreen({ authState, onAuthenticated }) {
     if (adminUsername && !username) {
       setUsername(adminUsername);
     }
-  }, [adminUsername]);
+  }, [adminUsername, username]);
 
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: (credentials) => tauriApi.login(credentials),
     onSuccess: (res) => {
       toast.success(
-        res?.user?.name
-          ? `Welcome back, ${res.user.name}`
-          : 'Signed in successfully',
+        res?.user?.name ? `Welcome back, ${res.user.name}` : 'Signed in successfully',
         { title: 'Signed in' }
       );
       queryClient.setQueryData(['auth_state'], res);
@@ -64,9 +64,9 @@ export default function AuthScreen({ authState, onAuthenticated }) {
     },
     onError: (err) => {
       const msg = typeof err === 'string' ? err : err?.message || 'Invalid username or password';
-      toast.error(msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''), {
-        title: 'Sign in failed',
-      });
+      const cleanMsg = msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, '');
+      setErrorMessage(cleanMsg);
+      toast.error(cleanMsg, { title: 'Sign in failed' });
     },
   });
 
@@ -82,34 +82,35 @@ export default function AuthScreen({ authState, onAuthenticated }) {
     },
     onError: (err) => {
       const msg = typeof err === 'string' ? err : err?.message || 'Failed to complete registration';
-      toast.error(msg.replace(/^Validation error:\s*|^Forbidden:\s*/, ''), {
-        title: 'Setup failed',
-      });
+      const cleanMsg = msg.replace(/^Validation error:\s*|^Forbidden:\s*/, '');
+      setErrorMessage(cleanMsg);
+      toast.error(cleanMsg, { title: 'Setup failed' });
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setErrorMessage('');
 
     if (requiresSetup) {
       if (!name.trim()) {
-        toast.warning('Please enter your full name');
+        setErrorMessage('Please enter your full name');
         return;
       }
       if (!username.trim()) {
-        toast.warning('Please choose an administrator username');
+        setErrorMessage('Please choose an administrator username');
         return;
       }
       if (!password) {
-        toast.warning('Please enter a secure password');
+        setErrorMessage('Please enter a secure password');
         return;
       }
       if (password.length < 4) {
-        toast.warning('Password must be at least 4 characters long');
+        setErrorMessage('Password must be at least 4 characters long');
         return;
       }
       if (password !== confirmPassword) {
-        toast.warning('Passwords do not match');
+        setErrorMessage('Passwords do not match');
         return;
       }
 
@@ -120,7 +121,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
       });
     } else {
       if (!username.trim() || !password) {
-        toast.warning('Please enter both username and password');
+        setErrorMessage('Please enter both username and password');
         return;
       }
 
@@ -147,75 +148,79 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const strength = getPasswordStrength();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4 select-none">
-      {/* Background ambient decorative glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Auth Card Container */}
-      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl relative z-10 transition-all animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas p-4 select-none">
+      {/* Auth Card Container - 420px max width, solid surfaces, no glow */}
+      <div className="w-full max-w-[420px] bg-surface border border-border-default rounded-2xl p-7 shadow-lg relative z-10 animate-fade-in">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center mb-7">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-sky-500/20 border border-emerald-500/30 p-2.5 mb-4 shadow-lg shadow-emerald-500/10 flex items-center justify-center">
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-14 h-14 rounded-xl bg-surface-secondary border border-border-default p-2 mb-3 shadow-xs flex items-center justify-center">
             <img
-              src="/src/assets/icon-shell.png"
-              alt="Pico POS"
+              src={iconShell}
+              alt="PicoPOSSUM"
               className="w-full h-full object-contain"
             />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] font-semibold text-emerald-400 mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-subtle text-brand text-[11px] font-semibold mb-2">
             {requiresSetup ? (
               <>
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3 h-3" />
                 <span>First-Time Setup</span>
               </>
             ) : (
               <>
-                <ShieldCheck className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-3 h-3" />
                 <span>Protected Terminal</span>
               </>
             )}
           </div>
 
-          <h1 className="text-xl font-extrabold text-slate-100 tracking-tight">
-            {requiresSetup ? 'System Administrator Setup' : 'Sign In to Pico POS'}
+          <h1 className="text-xl font-bold text-text-primary tracking-tight">
+            {requiresSetup ? 'System Administrator Setup' : 'Sign In to PicoPOSSUM'}
           </h1>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs">
+          <p className="text-xs text-text-secondary mt-1 max-w-xs leading-relaxed">
             {requiresSetup
               ? "Create your master administrator account to secure your store's database and data."
               : 'Enter your credentials to unlock terminal sales and operations.'}
           </p>
         </div>
 
+        {/* Inline Error Message */}
+        {errorMessage && (
+          <div className="mb-4 p-3 rounded-xl bg-danger-bg border border-danger/30 text-danger text-xs flex items-start gap-2 animate-fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-medium">{errorMessage}</span>
+          </div>
+        )}
+
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           {requiresSetup && (
             <div>
-              <label className="block text-slate-300 text-xs font-semibold mb-1.5">
+              <label className="block text-text-secondary text-xs font-semibold mb-1">
                 Administrator Name
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. John Doe / Store Manager"
+                  placeholder="e.g. Store Owner / Manager"
                   disabled={isPending}
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-3.5 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                 />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-slate-300 text-xs font-semibold mb-1.5">
+            <label className="block text-text-secondary text-xs font-semibold mb-1">
               Username
             </label>
             <div className="relative">
-              <AtSign className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <AtSign className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={username}
@@ -223,17 +228,17 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                 placeholder="admin"
                 disabled={isPending}
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-3.5 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 text-xs font-semibold mb-1.5">
+            <label className="block text-text-secondary text-xs font-semibold mb-1">
               Password
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
@@ -242,13 +247,12 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                 placeholder="••••••••"
                 disabled={isPending}
                 required
-                autoFocus
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-9 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -256,29 +260,23 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
             {requiresSetup && password && (
               <div className="mt-2 space-y-1">
-                <div className="flex gap-1 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex gap-1 h-1 w-full bg-surface-tertiary rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
                       strength <= 1
-                        ? 'w-1/4 bg-rose-500'
+                        ? 'w-1/4 bg-danger'
                         : strength === 2
-                        ? 'w-2/4 bg-amber-500'
+                        ? 'w-2/4 bg-warning'
                         : strength === 3
-                        ? 'w-3/4 bg-sky-500'
-                        : 'w-full bg-emerald-500'
+                        ? 'w-3/4 bg-info'
+                        : 'w-full bg-success'
                     }`}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] text-slate-400">
+                <div className="flex justify-between text-[10px] text-text-muted">
                   <span>Password strength</span>
-                  <span className="font-semibold text-slate-300">
-                    {strength <= 1
-                      ? 'Weak'
-                      : strength === 2
-                      ? 'Moderate'
-                      : strength === 3
-                      ? 'Good'
-                      : 'Strong'}
+                  <span className="font-semibold text-text-secondary">
+                    {strength <= 1 ? 'Weak' : strength === 2 ? 'Moderate' : strength === 3 ? 'Good' : 'Strong'}
                   </span>
                 </div>
               </div>
@@ -287,11 +285,11 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
           {requiresSetup && (
             <div>
-              <label className="block text-slate-300 text-xs font-semibold mb-1.5">
+              <label className="block text-text-secondary text-xs font-semibold mb-1">
                 Confirm Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
@@ -299,35 +297,40 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                   placeholder="••••••••"
                   disabled={isPending}
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-9 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                 />
                 {confirmPassword && password === confirmPassword && (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  <CheckCircle2 className="w-4 h-4 text-success absolute right-3 top-1/2 -translate-y-1/2" />
                 )}
               </div>
             </div>
           )}
 
+          {/* Solid Brand-Blue Action Button */}
           <button
             type="submit"
             disabled={isPending}
-            className="w-full mt-2 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer"
+            className="w-full mt-1 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 transition-colors cursor-pointer"
           >
             {isPending ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                 <span>{requiresSetup ? 'Setting up account...' : 'Authenticating...'}</span>
               </>
             ) : (
               <>
                 <span>{requiresSetup ? 'Create Account & Open Terminal' : 'Sign In'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
           </button>
         </form>
 
-
+        {/* Footer with App Version */}
+        <div className="mt-6 pt-4 border-t border-border-default flex items-center justify-between text-[11px] text-text-muted">
+          <span>PicoPOSSUM POS</span>
+          <span className="font-mono">v0.1.0</span>
+        </div>
       </div>
     </div>
   );

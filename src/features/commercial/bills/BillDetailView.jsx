@@ -14,6 +14,7 @@ import {
   Pencil,
   X,
   Save,
+  Clock,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
@@ -46,7 +47,6 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const [editSelectedCategory, setEditSelectedCategory] = useState(null);
   const [editSearchFocused, setEditSearchFocused] = useState(false);
 
-  // Lookup key — prefer UUID sale ID, fallback to invoice number
   const lookupKey = saleId || invoiceNumber;
 
   const { data: saleDetails, isLoading, isError } = useQuery({
@@ -89,7 +89,6 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     return map;
   }, [catalogProducts]);
 
-  // Quantities already sold on this bill are still available to this bill edit session.
   const stockAllowanceByProduct = useMemo(() => {
     const map = new Map();
     for (const it of saleDetails?.items || []) {
@@ -110,7 +109,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     });
   }, [catalogProducts, editSelectedCategory, editSearchQuery]);
 
-  // ── Seed POS draft from loaded bill ──
+  // Seed POS draft from loaded bill
   const seedDraft = useCallback(
     (details) => {
       if (!details) return;
@@ -158,7 +157,6 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     setEditing(true);
   };
 
-  // Enter edit mode when opened via "Edit Bill" row action
   useEffect(() => {
     if (!editRequest || !saleDetails) return;
     if (handledEditRequest.current === editRequest) return;
@@ -171,7 +169,6 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     setEditing(true);
   }, [editRequest, saleDetails, seedDraft]);
 
-  // Ctrl+K to focus search input in edit mode
   useEffect(() => {
     if (!editing) return;
     const handleKeyDown = (e) => {
@@ -195,10 +192,8 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     setEditSelectedCategory(null);
   };
 
-  // ── Draft calculations ──
   const draftTotals = useMemo(() => computeBillTotals(draftBill), [draftBill]);
 
-  // ── Draft item mutations (matches POS store behavior) ──
   const addProductToDraft = (product) => {
     if (!allowNegativeStock) {
       const available =
@@ -348,7 +343,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     setDraftBill((prev) => (prev ? { ...prev, notes } : prev));
   };
 
-  // ── Mutations ──
+  // Mutations
   const cancelMutation = useMutation({
     mutationFn: ({ id, reason }) => tauriApi.cancelSale(id, reason),
     onSuccess: () => {
@@ -356,7 +351,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       queryClient.invalidateQueries({ queryKey: ['sale_details'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-      toast.success('Sale cancelled and all items returned to stock');
+      toast.success('Sale cancelled and items returned to stock');
     },
     onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
   });
@@ -374,7 +369,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       setCustomerModalOpen(false);
       setEditSearchQuery('');
       setEditSelectedCategory(null);
-      toast.success('Bill updated successfully');
+      toast.success('Bill amended and inventory adjustments logged');
     },
     onError: (err) => {
       const message = `Save failed: ${String(err)}`;
@@ -383,55 +378,31 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     },
   });
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     setEditError('');
     if (!draftBill || draftBill.items.length === 0) {
-      const message = 'A bill must have at least one item. To remove all items, cancel the bill instead.';
-      setEditError(message);
-      toast.warning(message);
-      return;
-    }
-    const invalidItem = draftBill.items.find(
-      (it) => it.quantity <= 0 || it.unitPricePaise < 0
-    );
-    if (invalidItem) {
-      const message = 'All items must have a quantity ≥ 1 and a valid price.';
+      const message = 'A bill must have at least one item.';
       setEditError(message);
       toast.warning(message);
       return;
     }
 
-    if (!allowNegativeStock && saleDetails) {
-      const oldQtyByProduct = new Map();
-      for (const it of saleDetails.items) {
-        oldQtyByProduct.set(
-          it.product_id,
-          (oldQtyByProduct.get(it.product_id) || 0) + it.quantity
-        );
-      }
+    const { confirmed, value: amendmentReason } = await confirmDialog({
+      title: 'Confirm Bill Amendment',
+      message: `Save changes to invoice #${saleDetails?.sale?.invoice_number}? A structured amendment record will be logged.`,
+      input: {
+        label: 'Amendment Reason (Audit Trail)',
+        defaultValue: 'Correction of line item / rate amendment',
+        placeholder: 'Reason for change',
+        required: true,
+      },
+      confirmLabel: 'Save Changes',
+      cancelLabel: 'Keep Editing',
+      tone: 'primary',
+      icon: Save,
+    });
 
-      const newQtyByProduct = new Map();
-      for (const it of draftBill.items) {
-        newQtyByProduct.set(
-          it.productId,
-          (newQtyByProduct.get(it.productId) || 0) + Number(it.quantity)
-        );
-      }
-
-      for (const [productId, newQty] of newQtyByProduct) {
-        const oldQty = oldQtyByProduct.get(productId) || 0;
-        const delta = newQty - oldQty;
-        if (delta <= 0) continue;
-
-        const product = productStockById.get(productId);
-        if (product && delta > product.current_stock) {
-          const message = `Insufficient stock for "${product.name}": available ${product.current_stock}, requested ${delta}.`;
-          setEditError(message);
-          toast.warning(message, { title: 'Insufficient stock' });
-          return;
-        }
-      }
-    }
+    if (!confirmed) return;
 
     const payload = {
       sale_id: saleDetails?.sale?.id || saleId,
@@ -448,7 +419,9 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       discount_paise: draftTotals.discountPaise,
       payment_method: draftBill.paymentMethod,
       paid_paise: draftTotals.tenderedPaise,
-      notes: (draftBill.notes || '').trim() || null,
+      notes: amendmentReason
+        ? `[Amended: ${amendmentReason}] ${draftBill.notes || ''}`.trim()
+        : draftBill.notes || null,
     };
     updateMutation.mutate(payload);
   };
@@ -465,12 +438,11 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     if (activeTabId) closeTab(activeTabId);
   };
 
-  // ── Loading / Error states ──
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-500">
+      <div className="flex-1 flex items-center justify-center bg-canvas text-text-muted">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
           <span className="text-sm">Loading bill details…</span>
         </div>
       </div>
@@ -479,12 +451,13 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
   if (isError || !saleDetails) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
-        <Receipt className="w-10 h-10 text-slate-600" />
+      <div className="flex-1 flex flex-col items-center justify-center bg-canvas text-text-secondary gap-3">
+        <Receipt className="w-10 h-10 text-text-muted" />
         <p className="text-sm">Could not find bill details for ID: {saleId}</p>
         <button
+          type="button"
           onClick={handleBack}
-          className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+          className="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary border border-border-default text-text-primary text-xs font-semibold cursor-pointer"
         >
           Return to Bill History
         </button>
@@ -498,15 +471,17 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
   const handleCancelSale = async () => {
     const { confirmed, value } = await confirmDialog({
-      title: 'Cancel & Return Sale',
-      message: `Are you sure you want to cancel Bill #${sale.invoice_number}? All items will be returned to inventory.`,
+      title: `Cancel Bill #${sale.invoice_number}?`,
+      message: `Are you sure you want to cancel invoice #${sale.invoice_number}? All items will be returned to inventory.`,
       input: {
         label: 'Cancellation Reason',
         defaultValue: 'Customer return / refund',
         placeholder: 'Reason for return',
+        required: true,
       },
-      confirmLabel: 'Confirm Cancellation',
-      cancelLabel: 'Back',
+      confirmLabel: 'Cancel Bill',
+      cancelLabel: 'Keep Active',
+      tone: 'danger',
       icon: RotateCcw,
     });
 
@@ -519,36 +494,37 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-      {/* ── Top Bar ── */}
-      <div className="h-14 px-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
+      {/* ── Top Header ── */}
+      <div className="h-14 px-6 border-b border-border-default bg-surface flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={editing ? cancelEdit : handleBack}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg bg-surface-secondary hover:bg-surface border border-border-default text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             title={editing ? 'Discard edit' : 'Back to Bill History'}
           >
             {editing ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <div className="w-8 h-8 rounded-xl bg-brand-subtle text-brand flex items-center justify-center">
               <Receipt className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h2 className="text-sm font-bold text-slate-100 font-mono tracking-wide">
+                <h2 className="text-sm font-bold text-text-primary font-mono tracking-wide">
                   Bill #{sale.invoice_number || invoiceNumber}
                 </h2>
                 {editing ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-500/15 text-amber-400 border-amber-500/30">
-                    <Pencil className="w-3 h-3" /> Editing in POS Mode
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-warning-bg text-warning border-warning/30">
+                    <Pencil className="w-3 h-3" /> Editing Mode
                   </span>
                 ) : (
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                       isCancelled
-                        ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                        : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        ? 'bg-danger-bg text-danger border-danger/30'
+                        : 'bg-success-bg text-success border-success/30'
                     }`}
                   >
                     {isCancelled ? <XCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
@@ -556,7 +532,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 font-mono">{formatDateTime(sale.created_at)}</p>
+              <p className="text-[11px] text-text-muted font-mono">{formatDateTime(sale.created_at)}</p>
             </div>
           </div>
         </div>
@@ -565,18 +541,20 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
           {!isCancelled && !editing && (
             <>
               <button
+                type="button"
                 onClick={enterEdit}
-                className="px-3.5 py-1.5 rounded-lg text-amber-400 hover:bg-amber-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-amber-500/20 hover:border-amber-500/40 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-text-secondary hover:text-text-primary bg-surface hover:bg-surface-secondary text-xs font-semibold flex items-center gap-1.5 transition-colors border border-border-default cursor-pointer shadow-2xs"
               >
-                <Pencil className="w-3.5 h-3.5" />
-                Edit Bill
+                <Pencil className="w-3.5 h-3.5 text-text-muted" />
+                Amend Bill
               </button>
               <button
+                type="button"
                 onClick={handleCancelSale}
-                className="px-3.5 py-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-rose-500/20 hover:border-rose-500/40 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-danger hover:bg-danger-bg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-danger/30 cursor-pointer shadow-2xs"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Cancel / Return Sale
+                Cancel / Return
               </button>
             </>
           )}
@@ -584,26 +562,29 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
           {editing && (
             <>
               <button
+                type="button"
                 onClick={cancelEdit}
-                className="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-medium border border-slate-700/60 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary text-xs font-medium border border-border-default transition-colors cursor-pointer"
               >
-                Discard Changes
+                Discard
               </button>
               <button
+                type="button"
                 onClick={handleSaveEdit}
                 disabled={updateMutation.isPending || !draftBill?.items.length}
-                className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-60 cursor-pointer"
+                className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+                {updateMutation.isPending ? 'Saving…' : 'Save Amendment'}
               </button>
             </>
           )}
 
           {!editing && (
             <button
+              type="button"
               onClick={handleReprint}
-              className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               Reprint Receipt
@@ -616,8 +597,8 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       {editing && draftBill ? (
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {editError && (
-            <div className="p-3 mx-4 mt-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300 flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-3 mx-4 mt-2 rounded-xl bg-danger-bg border border-danger/30 flex items-start gap-2.5 text-xs text-danger shrink-0">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{editError}</span>
             </div>
           )}
@@ -654,7 +635,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             notes={draftBill.notes || ''}
             onNotesChange={setDraftNotes}
             primaryAction={{
-              label: 'Save & Update Bill',
+              label: 'Save Amendment',
               pendingLabel: 'Saving Changes…',
               pending: updateMutation.isPending,
               disabled: updateMutation.isPending || draftBill.items.length === 0,
@@ -673,42 +654,41 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
           />
         </div>
       ) : (
-        /* ── READ MODE: Two-Column Workspace (Items Table on Left, Metadata & Summary on Right) ── */
+        /* ── READ MODE: Two-Column Workspace ── */
         <div className="flex-1 flex overflow-hidden">
-          {/* Left Column: Itemized Line Items Table */}
-          <div className="flex-1 flex flex-col p-6 overflow-y-auto space-y-4 min-w-0">
-            {/* Cancelled Banner */}
+          {/* Left Column: Line Items Table */}
+          <div className="flex-1 flex flex-col p-6 overflow-y-auto space-y-4 min-w-0 bg-canvas">
             {isCancelled && (
-              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl bg-danger-bg border border-danger/30 flex items-start gap-3 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <h4 className="font-bold text-rose-300">This sale has been voided / cancelled</h4>
-                  <p className="text-rose-400/80 mt-0.5">
-                    All inventory quantities have been restored to stock, and the invoice has been recorded as returned.
+                  <h4 className="font-bold text-danger">This bill has been cancelled</h4>
+                  <p className="text-text-secondary mt-0.5">
+                    Items were returned to inventory and transaction recorded as voided.
                   </p>
                 </div>
               </div>
             )}
 
             {/* Line Items Table Card */}
-            <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900/40 shadow-sm flex-1 flex flex-col">
-              <div className="px-5 py-3.5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between flex-shrink-0">
+            <div className="rounded-xl border border-border-default overflow-hidden bg-surface shadow-xs flex-1 flex flex-col">
+              <div className="px-4 py-3 border-b border-border-default bg-surface-secondary flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Itemized Bill</span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-primary">Itemized Bill</span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-surface border border-border-default text-text-muted">
                     {items.length} line{items.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                <span className="text-xs text-slate-400 font-mono">
+                <span className="text-xs text-text-muted font-mono">
                   {items.reduce((acc, it) => acc + (it.quantity || 0), 0)} total units
                 </span>
               </div>
 
               <div className="flex-1 overflow-x-auto overflow-y-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-900/90 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800 z-10">
+                <table className="w-full text-left border-collapse text-xs select-text">
+                  <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
                     <tr>
-                      <th className="py-2.5 px-4 w-12 text-slate-500 text-center">#</th>
+                      <th className="py-2.5 px-4 w-12 text-center">#</th>
                       <SortableTh
                         sortKey="product_name"
                         sort={lineSort}
@@ -724,7 +704,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="right"
                         className="py-2.5 px-4"
                       >
-                        Unit Price
+                        Unit Rate
                       </SortableTh>
                       <SortableTh
                         sortKey="quantity"
@@ -733,7 +713,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="center"
                         className="py-2.5 px-4"
                       >
-                        Qty
+                        Quantity
                       </SortableTh>
                       <SortableTh
                         sortKey="discount_paise"
@@ -751,7 +731,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="right"
                         className="py-2.5 px-4"
                       >
-                        Tax Rate
+                        Tax %
                       </SortableTh>
                       <SortableTh
                         sortKey="total_paise"
@@ -764,29 +744,29 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                       </SortableTh>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-border-default">
                     {sortedItems.map((it, idx) => (
-                      <tr key={it.id || idx} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3 px-4 text-slate-500 font-mono text-center">{idx + 1}</td>
+                      <tr key={it.id || idx} className="hover:bg-surface-secondary/60 transition-colors">
+                        <td className="py-3 px-4 text-text-muted font-mono text-center">{idx + 1}</td>
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-200">{it.product_name}</div>
+                          <div className="font-semibold text-text-primary">{it.product_name}</div>
                           {it.product_sku && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">{it.product_sku}</div>
+                            <div className="text-[10px] text-text-muted font-mono mt-0.5">{it.product_sku}</div>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-300">
+                        <td className="py-3 px-4 text-right financial-value text-text-secondary">
                           {formatPaise(it.unit_price_paise)}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-200">
+                        <td className="py-3 px-4 text-center font-bold text-text-primary financial-value">
                           {it.quantity}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-amber-400">
+                        <td className="py-3 px-4 text-right financial-value text-amber-600">
                           {it.discount_paise > 0 ? `-${formatPaise(it.discount_paise)}` : '—'}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-400">
+                        <td className="py-3 px-4 text-right font-mono text-text-muted">
                           {it.tax_rate != null ? `${it.tax_rate}%` : '0%'}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-100">
+                        <td className="py-3 px-4 text-right font-bold text-text-primary financial-value">
                           {formatPaise(it.total_paise)}
                         </td>
                       </tr>
@@ -797,124 +777,134 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             </div>
           </div>
 
-          {/* Right Column: Metadata & Order Summary Sidebar (mirrors Java app sale-detail-view) */}
-          <div className="w-80 lg:w-96 border-l border-slate-800/80 bg-slate-900/60 flex flex-col overflow-y-auto p-5 space-y-4 flex-shrink-0">
+          {/* Right Column: Metadata & Summary Sidebar */}
+          <div className="w-80 lg:w-96 border-l border-border-default bg-surface flex flex-col overflow-y-auto p-5 space-y-4 shrink-0">
             {/* Customer Details Card */}
-            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                <User className="w-4 h-4 text-emerald-400" />
+            <div className="p-3.5 rounded-xl bg-surface-secondary border border-border-default space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-text-primary">
+                <User className="w-4 h-4 text-brand" />
                 <span className="uppercase tracking-wider text-[11px]">Customer Details</span>
               </div>
-              <div className="pt-2 border-t border-slate-800/60 space-y-1">
-                <div className="text-sm font-bold text-slate-100">
+              <div className="pt-2 border-t border-border-default space-y-1">
+                <div className="text-sm font-bold text-text-primary">
                   {sale.customer_name || 'Walk-in Customer'}
                 </div>
                 {sale.customer_phone ? (
-                  <div className="text-xs text-slate-400 font-mono">{sale.customer_phone}</div>
+                  <div className="text-xs text-text-muted font-mono">{sale.customer_phone}</div>
                 ) : (
-                  <div className="text-xs text-slate-600 italic">No phone number provided</div>
+                  <div className="text-xs text-text-muted italic">No phone provided</div>
                 )}
                 {sale.customer_address && (
-                  <div className="text-xs text-slate-400 mt-1">{sale.customer_address}</div>
+                  <div className="text-xs text-text-secondary mt-1">{sale.customer_address}</div>
                 )}
               </div>
             </div>
 
             {/* Payment & Transaction Card */}
-            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2.5 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                <CreditCard className="w-4 h-4 text-cyan-400" />
+            <div className="p-3.5 rounded-xl bg-surface-secondary border border-border-default space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-text-primary">
+                <CreditCard className="w-4 h-4 text-brand" />
                 <span className="uppercase tracking-wider text-[11px]">Payment & Transaction</span>
               </div>
-              <div className="pt-2 border-t border-slate-800/60 space-y-2.5">
+              <div className="pt-2 border-t border-border-default space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Payment Method</span>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-slate-800 text-slate-200 uppercase tracking-wide">
+                  <span className="text-text-muted">Payment Method</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-surface border border-border-default text-text-primary uppercase tracking-wide">
                     {sale.payment_method}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Biller</span>
-                  <span className="text-xs font-medium text-slate-300">
+                  <span className="text-text-muted">Cashier / Operator</span>
+                  <span className="font-medium text-text-primary">
                     {sale.biller_name || 'Counter Terminal'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between pt-1 border-t border-slate-800/40">
-                  <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-amber-400" /> Date & Time
+                <div className="flex items-center justify-between pt-1 border-t border-border-default">
+                  <span className="text-text-muted flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Date & Time
                   </span>
-                  <span className="text-xs font-mono text-slate-300">
+                  <span className="font-mono text-text-primary">
                     {formatDateTime(sale.created_at)}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Order Summary Card */}
-            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3.5 shadow-sm flex-1 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <Receipt className="w-4 h-4 text-emerald-400" />
-                  <span className="uppercase tracking-wider text-[11px]">Order Summary</span>
+            {/* Financial Summary Card */}
+            <div className="p-3.5 rounded-xl bg-surface-secondary border border-border-default space-y-3 flex-1 flex flex-col justify-between">
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-semibold text-text-primary">
+                  <Receipt className="w-4 h-4 text-brand" />
+                  <span className="uppercase tracking-wider text-[11px]">Financial Summary</span>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-slate-800/60 text-xs text-slate-300">
+                <div className="space-y-1.5 pt-2 border-t border-border-default text-xs text-text-secondary">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Subtotal</span>
-                    <span className="font-mono text-slate-200">{formatPaise(sale.subtotal_paise)}</span>
+                    <span className="text-text-muted">Subtotal</span>
+                    <span className="financial-value font-medium text-text-primary">
+                      {formatPaise(sale.subtotal_paise)}
+                    </span>
                   </div>
 
                   {sale.discount_paise > 0 && (
-                    <div className="flex justify-between text-amber-400">
+                    <div className="flex justify-between text-amber-600">
                       <span>Discount</span>
-                      <span className="font-mono">-{formatPaise(sale.discount_paise)}</span>
+                      <span className="financial-value font-medium">
+                        -{formatPaise(sale.discount_paise)}
+                      </span>
                     </div>
                   )}
 
                   {sale.tax_paise > 0 && (
-                    <div className="flex justify-between text-slate-400">
-                      <span>Tax Amount</span>
-                      <span className="font-mono text-slate-200">{formatPaise(sale.tax_paise)}</span>
+                    <div className="flex justify-between text-text-muted">
+                      <span>GST Tax</span>
+                      <span className="financial-value font-medium text-text-primary">
+                        {formatPaise(sale.tax_paise)}
+                      </span>
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
-                    <span className="text-sm font-bold text-slate-100 uppercase tracking-wide">Total Due</span>
-                    <span className="text-xl font-mono font-black text-emerald-400">
+                  <div className="pt-2 border-t border-border-default flex justify-between items-baseline">
+                    <span className="text-sm font-bold text-text-primary uppercase tracking-wide">Grand Total</span>
+                    <span className="text-xl font-bold financial-value text-text-primary">
                       {formatPaise(sale.total_paise)}
                     </span>
                   </div>
                 </div>
 
-                {/* Paid & Balance/Change Box */}
-                <div className="bg-slate-900/90 rounded-lg p-3 border border-slate-800/80 space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-400">
+                {/* Paid & Settlement Details */}
+                <div className="bg-surface rounded-lg p-2.5 border border-border-default space-y-1 text-xs">
+                  <div className="flex justify-between text-text-muted">
                     <span>Paid Amount ({sale.payment_method})</span>
-                    <span className="font-mono text-slate-200 font-semibold">{formatPaise(sale.paid_paise)}</span>
+                    <span className="financial-value font-semibold text-text-primary">
+                      {formatPaise(sale.paid_paise)}
+                    </span>
                   </div>
                   {sale.paid_paise > sale.total_paise ? (
-                    <div className="flex justify-between text-emerald-400 font-semibold">
+                    <div className="flex justify-between text-success font-semibold">
                       <span>Change Returned</span>
-                      <span className="font-mono">{formatPaise(sale.paid_paise - sale.total_paise)}</span>
+                      <span className="financial-value">{formatPaise(sale.paid_paise - sale.total_paise)}</span>
                     </div>
                   ) : sale.paid_paise < sale.total_paise ? (
-                    <div className="flex justify-between text-rose-400 font-semibold">
+                    <div className="flex justify-between text-danger font-semibold">
                       <span>Balance Due</span>
-                      <span className="font-mono">{formatPaise(sale.total_paise - sale.paid_paise)}</span>
+                      <span className="financial-value">{formatPaise(sale.total_paise - sale.paid_paise)}</span>
                     </div>
                   ) : (
-                    <div className="flex justify-between text-slate-500 text-[11px]">
-                      <span>Balance</span>
-                      <span className="font-mono">Exact payment settled</span>
+                    <div className="flex justify-between text-text-muted text-[11px]">
+                      <span>Balance Status</span>
+                      <span>Settled</span>
                     </div>
                   )}
                 </div>
 
-                {/* Internal Notes */}
+                {/* Notes & Audit Reason */}
                 {sale.notes && (
-                  <div className="pt-2 border-t border-slate-800/60 text-xs text-slate-400">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block mb-0.5">Notes:</span>
-                    <p className="italic bg-slate-900/50 p-2 rounded-lg border border-slate-800/60 text-slate-300">
+                  <div className="pt-2 border-t border-border-default text-xs">
+                    <span className="text-[10px] uppercase font-bold text-text-muted block mb-0.5">
+                      Transaction Notes:
+                    </span>
+                    <p className="bg-surface p-2 rounded-lg border border-border-default text-text-primary leading-relaxed">
                       {sale.notes}
                     </p>
                   </div>
@@ -922,12 +912,13 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
               </div>
 
               {/* Sidebar Action Button */}
-              <div className="pt-3 border-t border-slate-800/60">
+              <div className="pt-3 border-t border-border-default">
                 <button
+                  type="button"
                   onClick={handleReprint}
-                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700/80 transition-colors cursor-pointer"
+                  className="w-full py-2 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary font-semibold text-xs flex items-center justify-center gap-2 border border-border-default transition-colors cursor-pointer shadow-2xs"
                 >
-                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                  <Printer className="w-3.5 h-3.5 text-text-muted" />
                   <span>Reprint Receipt</span>
                 </button>
               </div>
@@ -936,7 +927,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         </div>
       )}
 
-      {/* Hidden Receipt Component for browser printing */}
+      {/* Hidden Receipt Component */}
       {reprintSale && (
         <div className="hidden">
           <ReceiptPrinter

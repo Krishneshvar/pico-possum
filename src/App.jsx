@@ -7,6 +7,8 @@ import { ConfirmDialogHost } from './components/common/ConfirmDialog';
 import { useWorkspaceStore } from './stores/workspaceStore';
 import { tauriApi } from './lib/tauri';
 import { applyGeneralSettings } from './lib/formatters';
+import { RefreshCw, ShoppingCart, Package, BarChart3 } from 'lucide-react';
+import AuthScreen from './features/auth/AuthScreen';
 
 // Feature views
 import PosView from './features/commercial/pos/PosView';
@@ -39,28 +41,51 @@ const VIEW_REGISTRY = {
 };
 
 function WorkspaceContent() {
-  const { tabs, activeTabId } = useWorkspaceStore();
+  const { tabs, activeTabId, openOrFocus } = useWorkspaceStore();
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   if (!activeTab) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 text-slate-600 select-none gap-4">
-        <img
-          src="/src/assets/icon-shell.png"
-          alt="PicoPOSSUM"
-          className="w-24 h-24 rounded-2xl opacity-20"
-        />
-        <div className="text-center">
-          <p className="text-lg font-bold text-slate-700">Nothing open yet</p>
-          <p className="text-sm mt-1">Use the menu bar above to open a view</p>
+      <div className="flex-1 flex flex-col items-center justify-center bg-canvas text-text-muted select-none gap-6 p-6">
+        <div className="w-16 h-16 rounded-2xl bg-surface border border-border-default flex items-center justify-center shadow-xs">
+          <img
+            src="/src/assets/icon-shell.png"
+            alt="PicoPOSSUM"
+            className="w-10 h-10 rounded-xl"
+          />
+        </div>
+        <div className="text-center max-w-sm">
+          <h2 className="text-base font-bold text-text-primary">No workspace tabs open</h2>
+          <p className="text-xs text-text-secondary mt-1 leading-relaxed">
+            Open the Point of Sale terminal or select a workspace from the navigation bar above.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => openOrFocus('Point of Sale', 'pos')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>Open Point of Sale</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openOrFocus('Products', 'products')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-surface-secondary border border-border-default text-text-primary text-xs font-medium transition-colors cursor-pointer"
+          >
+            <Package className="w-4 h-4 text-text-muted" />
+            <span>Product Catalog</span>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-hidden relative">
-      {/* Render ALL tabs but only show the active one – keeps state alive */}
+    <div className="flex-1 overflow-hidden relative bg-canvas">
+      {/* Render tabs, showing only the active one */}
       {tabs.map((tab) => {
         const ViewComponent = VIEW_REGISTRY[tab.viewId];
         if (!ViewComponent) return null;
@@ -78,11 +103,8 @@ function WorkspaceContent() {
   );
 }
 
-import { RefreshCw } from 'lucide-react';
-import AuthScreen from './features/auth/AuthScreen';
-
 function MainLayout({ authUser }) {
-  // Load locale/currency preferences once and keep the shared formatters in sync.
+  // Load locale/currency preferences once and keep shared formatters in sync.
   const { data: generalSettings } = useQuery({
     queryKey: ['general_settings'],
     queryFn: () => tauriApi.getGeneralSettings(),
@@ -91,14 +113,14 @@ function MainLayout({ authUser }) {
   if (generalSettings) applyGeneralSettings(generalSettings);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-canvas text-text-primary antialiased">
       {/* Top navigation menu bar */}
       <NavBar authUser={authUser} />
 
       {/* Browser-style tab strip */}
       <TabBar />
 
-      {/* Content area */}
+      {/* Content workspace */}
       <WorkspaceContent />
     </div>
   );
@@ -112,11 +134,11 @@ function AppRoot() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3 select-none">
-        <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center">
-          <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-canvas text-text-secondary gap-3 select-none">
+        <div className="w-12 h-12 rounded-xl bg-surface border border-border-default flex items-center justify-center shadow-xs">
+          <RefreshCw className="w-6 h-6 animate-spin text-brand" />
         </div>
-        <span className="text-xs font-medium text-slate-500">Initializing Pico POS...</span>
+        <span className="text-xs font-medium text-text-muted">Initializing Pico POS...</span>
       </div>
     );
   }

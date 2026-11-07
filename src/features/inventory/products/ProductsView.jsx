@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, Edit2, Trash2, X, ArrowUpDown } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, ArrowUpDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 
@@ -17,11 +16,17 @@ export default function ProductsView() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [formData, setFormData] = useState({
-    name: '', sku: '', category_id: '', mrp_rupees: '',
-    cost_price_rupees: '', tax_rate: '0', initial_stock: '0',
-    status: 'active', min_stock_alert: '5',
+    name: '',
+    sku: '',
+    category_id: '',
+    mrp_rupees: '',
+    cost_price_rupees: '',
+    tax_rate: '0',
+    initial_stock: '0',
+    status: 'active',
+    min_stock_alert: '5',
+    uom: 'Piece',
   });
-  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [stockAdjustment, setStockAdjustment] = useState({
     quantity_change: 0,
     movement_type: 'RESTOCK',
@@ -45,7 +50,6 @@ export default function ProductsView() {
   const settingsLoaded = generalSettings !== undefined;
   const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
 
-  // Preview of the SKU that will be assigned on create (backend is authoritative).
   const { data: nextSku } = useQuery({
     queryKey: ['next_sku'],
     queryFn: () => tauriApi.getNextSku(),
@@ -58,16 +62,80 @@ export default function ProductsView() {
     }
   }, [settingsLoaded, modalMode, autoNumericSku, nextSku]);
 
+  // Category counts and options with parentheses
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    for (const p of products) {
+      if (p.category_id) {
+        counts[p.category_id] = (counts[p.category_id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [products]);
+
+  const categoryFilterOptions = useMemo(
+    () =>
+      categories.map((c) => ({
+        value: String(c.id),
+        label: `${c.name} (${categoryCounts[c.id] || 0})`,
+      })),
+    [categories, categoryCounts]
+  );
+
+  // Stock level counts and options with parentheses
+  const stockCounts = useMemo(() => {
+    let inStock = 0;
+    let lowStock = 0;
+    let outOfStock = 0;
+    for (const p of products) {
+      const stock = p.current_stock || 0;
+      const alertThreshold = p.min_stock_alert ?? 5;
+      if (stock <= 0) outOfStock++;
+      else if (stock <= alertThreshold) lowStock++;
+      else inStock++;
+    }
+    return { inStock, lowStock, outOfStock };
+  }, [products]);
+
+  const stockFilterOptions = useMemo(
+    () => [
+      { value: 'in_stock', label: `In stock (${stockCounts.inStock})` },
+      { value: 'low_stock', label: `Low stock (${stockCounts.lowStock})` },
+      { value: 'out_of_stock', label: `Out of stock (${stockCounts.outOfStock})` },
+    ],
+    [stockCounts]
+  );
+
+  // Status counts and options with parentheses
+  const statusCounts = useMemo(() => {
+    const counts = { active: 0, inactive: 0, discontinued: 0 };
+    for (const p of products) {
+      const s = p.status || 'active';
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    return counts;
+  }, [products]);
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: 'active', label: `Active (${statusCounts.active || 0})` },
+      { value: 'inactive', label: `Inactive (${statusCounts.inactive || 0})` },
+      { value: 'discontinued', label: `Discontinued (${statusCounts.discontinued || 0})` },
+    ],
+    [statusCounts]
+  );
+
   const createMutation = useMutation({
     mutationFn: (p) => tauriApi.createProduct(p),
     onSuccess: (_data, product) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['next_sku'] });
       setModalMode(null);
-      toast.success(`Product "${product.name}" created successfully`);
+      toast.success(`Product "${product.name}" added to catalog`);
     },
     onError: (err) => toast.error(`Failed to create product: ${err}`, { title: 'Create failed' }),
   });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => tauriApi.updateProduct(id, payload),
     onSuccess: (_data, { payload }) => {
@@ -77,14 +145,16 @@ export default function ProductsView() {
     },
     onError: (err) => toast.error(`Failed to update product: ${err}`, { title: 'Update failed' }),
   });
+
   const deleteMutation = useMutation({
     mutationFn: (id) => tauriApi.deleteProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Product deleted successfully');
+      toast.success('Product removed from active catalog');
     },
     onError: (err) => toast.error(`Failed to delete product: ${err}`, { title: 'Delete failed' }),
   });
+
   const adjustStockMutation = useMutation({
     mutationFn: (p) => tauriApi.adjustStock(p),
     onSuccess: (_data, adjustment) => {
@@ -103,12 +173,20 @@ export default function ProductsView() {
 
   const handleOpenCreate = () => {
     setFormData({
-      name: '', sku: '', category_id: '', mrp_rupees: '',
-      cost_price_rupees: '', tax_rate: '0', initial_stock: '0',
-      status: 'active', min_stock_alert: '5',
+      name: '',
+      sku: '',
+      category_id: '',
+      mrp_rupees: '',
+      cost_price_rupees: '',
+      tax_rate: '0',
+      initial_stock: '0',
+      status: 'active',
+      min_stock_alert: '5',
+      uom: 'Piece',
     });
     setModalMode('create');
   };
+
   const handleOpenEdit = (p) => {
     setSelectedProduct(p);
     setFormData({
@@ -120,10 +198,12 @@ export default function ProductsView() {
       tax_rate: p.tax_rate.toString(),
       initial_stock: p.current_stock.toString(),
       status: p.status || 'active',
-      min_stock_alert: (p.min_stock_alert !== undefined && p.min_stock_alert !== null ? p.min_stock_alert : 5).toString(),
+      min_stock_alert: (p.min_stock_alert != null ? p.min_stock_alert : 5).toString(),
+      uom: 'Piece',
     });
     setModalMode('edit');
   };
+
   const handleOpenStock = (p) => {
     setSelectedProduct(p);
     setStockAdjustment({
@@ -133,19 +213,26 @@ export default function ProductsView() {
     });
     setModalMode('stock');
   };
+
   const handleDelete = async (product) => {
     const { confirmed } = await confirmDialog({
-      title: 'Delete Product',
-      message: `Are you sure you want to delete "${product.name}"? This product will be removed from the active catalog.`,
+      title: `Delete "${product.name}"?`,
+      message: `Are you sure you want to delete "${product.name}" (SKU: ${product.sku || 'N/A'})? This item will be removed from the active catalog.`,
       confirmLabel: 'Delete Product',
+      cancelLabel: 'Keep Product',
+      tone: 'danger',
     });
     if (confirmed) {
       deleteMutation.mutate(product.id);
     }
   };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) { toast.warning('Product name is required'); return; }
+    if (!formData.name.trim()) {
+      toast.warning('Product name is required');
+      return;
+    }
     const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
     const payload = {
       name: formData.name.trim(),
@@ -164,55 +251,59 @@ export default function ProductsView() {
     }
   };
 
-  // ── DataTable column definitions ─────────────────────────────────────────
   const columns = [
     {
-      key: 'sku', label: 'SKU',
-      className: 'font-mono text-slate-400',
+      key: 'name',
+      label: 'Product',
+      className: 'font-semibold text-text-primary text-xs',
+      render: (r) => (
+        <div>
+          <span>{r.name}</span>
+          {r.category_name && (
+            <div className="text-[10px] text-text-muted">{r.category_name}</div>
+          )}
+        </div>
+      ),
     },
     {
-      key: 'name', label: 'Product Name',
-      className: 'font-semibold text-slate-200',
+      key: 'sku',
+      label: 'SKU / Barcode',
+      className: 'font-mono text-text-muted text-xs',
+      render: (r) => r.sku || '—',
     },
     {
-      key: 'category_name', label: 'Category',
-      className: 'text-slate-400',
-      render: (r) => r.category_name || <span className="text-slate-600">—</span>,
-    },
-    {
-      key: 'mrp_paise', label: 'MRP',
+      key: 'cost_price_paise',
+      label: 'Cost Price',
       headerClassName: 'text-right',
-      className: 'text-right font-mono font-bold text-slate-100',
-      render: (r) => formatPaise(r.mrp_paise),
-    },
-    {
-      key: 'cost_price_paise', label: 'Cost',
-      headerClassName: 'text-right',
-      className: 'text-right font-mono text-slate-400',
+      className: 'text-right financial-value text-text-muted text-xs',
       render: (r) => formatPaise(r.cost_price_paise),
     },
     {
-      key: 'tax_rate', label: 'Tax %',
+      key: 'mrp_paise',
+      label: 'Selling Price',
+      headerClassName: 'text-right',
+      className: 'text-right financial-value font-bold text-text-primary text-xs',
+      render: (r) => formatPaise(r.mrp_paise),
+    },
+    {
+      key: 'tax_rate',
+      label: 'GST %',
       headerClassName: 'text-center',
-      className: 'text-center font-mono text-slate-400',
+      className: 'text-center font-mono text-text-muted text-xs',
       render: (r) => `${r.tax_rate}%`,
     },
     {
-      key: 'current_stock', label: 'Stock',
+      key: 'current_stock',
+      label: 'Stock Level',
       headerClassName: 'text-center',
-      className: 'text-center',
+      className: 'text-center text-xs',
       render: (r) => {
         const s = r.current_stock;
         const alertThreshold = r.min_stock_alert ?? 5;
 
-        // Stock alerts are intentionally muted when the user has allowed
-        // negative stock / ignore stock alerts in General Settings.
         if (allowNegativeStock) {
           return (
-            <span
-              title={`Stock: ${s}`}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border bg-slate-800/70 text-slate-300 border-slate-700/60"
-            >
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-surface-secondary text-text-secondary border border-border-default">
               {s}
             </span>
           );
@@ -221,34 +312,39 @@ export default function ProductsView() {
         const isOut = s <= 0;
         const isLow = s <= alertThreshold && !isOut;
         const cls = isOut
-          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+          ? 'bg-danger-bg text-danger border-danger/30'
           : isLow
-          ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+          ? 'bg-warning-bg text-warning border-warning/30'
+          : 'bg-success-bg text-success border-success/30';
         return (
           <span
-            title={isLow ? `Low stock alert (threshold: ${alertThreshold})` : isOut ? 'Out of stock' : `Stock: ${s} (Alert at ≤ ${alertThreshold})`}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}
+            title={isLow ? `Low stock alert (≤ ${alertThreshold})` : isOut ? 'Out of stock' : `Stock: ${s}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}
           >
-            {isLow && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+            {isLow && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
             {s}
           </span>
         );
       },
     },
     {
-      key: 'status', label: 'Status',
+      key: 'status',
+      label: 'Status',
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => {
         const status = r.status || 'active';
         const styles = {
-          active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-          inactive: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
-          discontinued: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+          active: 'bg-success-bg text-success border-success/30',
+          inactive: 'bg-surface-secondary text-text-muted border-border-default',
+          discontinued: 'bg-danger-bg text-danger border-danger/30',
         };
         return (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${styles[status] || styles.active}`}>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${
+              styles[status] || styles.active
+            }`}
+          >
             {status}
           </span>
         );
@@ -256,23 +352,17 @@ export default function ProductsView() {
     },
   ];
 
-  const categoryFilterOptions = categories.map((c) => ({ value: String(c.id), label: c.name }));
-
-  const displayProducts = showLowStockOnly && !allowNegativeStock
-    ? products.filter((p) => p.current_stock <= (p.min_stock_alert ?? 5))
-    : products;
-
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-      {/* Header */}
-      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
+      {/* ── Page Header ── */}
+      <div className="h-14 px-5 border-b border-border-default bg-surface flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+          <div className="w-8 h-8 rounded-xl bg-brand-subtle text-brand flex items-center justify-center">
             <Package className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100">Product Catalog</h2>
-            <p className="text-[11px] text-slate-500">Manage catalog, pricing, tax rates, alerts, and stock</p>
+            <h2 className="text-sm font-bold text-text-primary">Product Catalog</h2>
+            <p className="text-[11px] text-text-muted">Manage items, rates, categories, and inventory</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -286,8 +376,9 @@ export default function ProductsView() {
             }}
           />
           <button
+            type="button"
             onClick={handleOpenCreate}
-            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            className="px-3.5 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Product
@@ -295,28 +386,14 @@ export default function ProductsView() {
         </div>
       </div>
 
-
-      {/* Data Table */}
+      {/* ── DataTable ── */}
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
           persistKey="products"
-          data={displayProducts}
+          data={products}
           keyFn={(r) => r.id}
           searchKeys={['name', 'sku', 'category_name']}
-          headerRight={!allowNegativeStock ? (
-            <button
-              onClick={() => setShowLowStockOnly((v) => !v)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
-                showLowStockOnly
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${showLowStockOnly ? 'bg-amber-400 animate-pulse' : 'bg-slate-500'}`} />
-              Low Stock Only ({products.filter((p) => p.current_stock <= (p.min_stock_alert ?? 5)).length})
-            </button>
-          ) : undefined}
           filters={[
             {
               type: 'multiselect',
@@ -326,13 +403,23 @@ export default function ProductsView() {
             },
             {
               type: 'multiselect',
+              key: 'stock_level',
+              label: 'Stock Level',
+              options: stockFilterOptions,
+              filterFn: (row, vals) => {
+                const stock = row.current_stock || 0;
+                const alertThreshold = row.min_stock_alert ?? 5;
+                let level = 'in_stock';
+                if (stock <= 0) level = 'out_of_stock';
+                else if (stock <= alertThreshold) level = 'low_stock';
+                return vals.includes(level);
+              },
+            },
+            {
+              type: 'multiselect',
               key: 'status',
               label: 'Status',
-              options: [
-                { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' },
-                { value: 'discontinued', label: 'Discontinued' },
-              ],
+              options: statusFilterOptions,
             },
             {
               type: 'range',
@@ -343,181 +430,217 @@ export default function ProductsView() {
             },
           ]}
           isLoading={isLoading}
-          emptyMessage="No products found."
+          emptyMessage="No products found in catalog."
           actions={(row) => (
-            <DropdownActions items={[
-              { label: 'Adjust Stock', icon: <ArrowUpDown className="w-3.5 h-3.5" />, onClick: () => handleOpenStock(row) },
-              { label: 'Edit Product', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(row) },
-              'divider',
-              { label: 'Delete Product', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => handleDelete(row) },
-            ]} />
+            <DropdownActions
+              items={[
+                {
+                  label: 'Adjust Stock',
+                  icon: <ArrowUpDown className="w-3.5 h-3.5" />,
+                  onClick: () => handleOpenStock(row),
+                },
+                {
+                  label: 'Edit Product',
+                  icon: <Edit2 className="w-3.5 h-3.5" />,
+                  onClick: () => handleOpenEdit(row),
+                },
+                'divider',
+                {
+                  label: 'Delete Product',
+                  icon: <Trash2 className="w-3.5 h-3.5" />,
+                  danger: true,
+                  onClick: () => handleDelete(row),
+                },
+              ]}
+            />
           )}
         />
       </div>
 
-      {/* ── Product Create / Edit Modal ── */}
+      {/* ── Grouped Product Form Modal ── */}
       {(modalMode === 'create' || modalMode === 'edit') && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-sm text-slate-100">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-surface border border-border-default rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 text-text-primary animate-scale-in">
+            <div className="flex justify-between items-center border-b border-border-default pb-3">
+              <h3 className="font-bold text-sm text-text-primary">
                 {modalMode === 'create' ? 'Add New Product' : 'Edit Product'}
               </h3>
-              <button onClick={() => setModalMode(null)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button
+                type="button"
+                onClick={() => setModalMode(null)}
+                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-400 block mb-1">Product Name <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Mineral Water 500ml"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              {/* Group 1: Product Information */}
+              <div className="space-y-2.5">
+                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
+                  Product Information
+                </span>
                 <div>
-                  <label className="text-slate-400 block mb-1">
-                    SKU / Barcode
-                    {autoNumericSku && (
-                      <span className="ml-1.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                        Auto
-                      </span>
-                    )}
+                  <label className="text-text-secondary block font-semibold mb-1">
+                    Product Name <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    disabled={autoNumericSku}
-                    placeholder={autoNumericSku ? 'Generating…' : 'e.g. 100201'}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono ${
-                      autoNumericSku ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
-                  />
-                  {autoNumericSku && (
-                    <span className="text-[10px] text-slate-500 mt-1 block">
-                      {modalMode === 'create'
-                        ? 'Assigned automatically from the latest numerical SKU.'
-                        : 'SKU is locked while automatic numerical SKUs are enabled.'}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Category</label>
-                  <select
-                    value={formData.category_id}
-                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="">No Category</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-400 block mb-1">MRP ({currencySymbol}) <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
-                    step="0.01"
                     required
-                    value={formData.mrp_rupees}
-                    onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })}
-                    placeholder="100.00"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. Basmati Rice 5kg / Fresh Milk 500ml"
+                    className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Cost Price ({currencySymbol})</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.cost_price_rupees}
-                    onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })}
-                    placeholder="75.00"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-400 block mb-1">Tax Rate (%)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.tax_rate}
-                    onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
-                    placeholder="0"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">
-                    Stock Alert Threshold{' '}
-                    <span className="text-slate-500 text-[10px]">
-                      {allowNegativeStock ? '(ignored while stock alerts are off)' : '(notify when stock ≤)'}
-                    </span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.min_stock_alert}
-                    onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
-                    disabled={allowNegativeStock}
-                    placeholder="5"
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono ${
-                      allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-400 block mb-1">Product Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="active">Active (Available for sale)</option>
-                    <option value="inactive">Inactive (Hidden from POS)</option>
-                    <option value="discontinued">Discontinued (End of life)</option>
-                  </select>
-                </div>
-                {modalMode === 'create' ? (
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-400 block mb-1">Initial Stock (units)</label>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      SKU / Barcode
+                      {autoNumericSku && (
+                        <span className="ml-1.5 text-[10px] font-bold text-brand bg-brand-subtle px-1.5 py-0.5 rounded">
+                          Auto
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      disabled={autoNumericSku}
+                      placeholder={autoNumericSku ? 'Generating SKU…' : 'e.g. 100201'}
+                      className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
+                        autoNumericSku ? 'opacity-70 cursor-not-allowed' : ''
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">Category</label>
+                    <select
+                      value={formData.category_id}
+                      onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
+                    >
+                      <option value="">No Category</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 2: Pricing and Tax */}
+              <div className="space-y-2.5 pt-2 border-t border-border-default">
+                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
+                  Pricing & Taxation
+                </span>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">Cost Price ({currencySymbol})</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.cost_price_rupees}
+                      onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })}
+                      placeholder="0.00"
+                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      Selling Price ({currencySymbol}) <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formData.mrp_rupees}
+                      onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })}
+                      placeholder="100.00"
+                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono font-semibold focus:border-brand focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">GST Tax Rate (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={formData.tax_rate}
+                      onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
+                      placeholder="0"
+                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 3: Inventory Configuration */}
+              <div className="space-y-2.5 pt-2 border-t border-border-default">
+                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
+                  Inventory Configuration
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">Low-Stock Alert Threshold</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.min_stock_alert}
+                      onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
+                      disabled={allowNegativeStock}
+                      placeholder="5"
+                      className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
+                        allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">Product Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
+                    >
+                      <option value="active">Active (Available for POS)</option>
+                      <option value="inactive">Inactive (Hidden)</option>
+                      <option value="discontinued">Discontinued</option>
+                    </select>
+                  </div>
+                </div>
+
+                {modalMode === 'create' && (
+                  <div>
+                    <label className="text-text-secondary block font-semibold mb-1">Initial Opening Stock (Units)</label>
                     <input
                       type="number"
                       value={formData.initial_stock}
                       onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })}
                       placeholder="0"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
                     />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="text-slate-400 block mb-1">Current Stock (units)</label>
-                    <div className="w-full bg-slate-950/50 border border-slate-800/80 rounded-lg p-2 text-slate-400 font-mono">
-                      {selectedProduct?.current_stock ?? 0}
-                    </div>
+                    <span className="text-[10px] text-text-muted mt-1 block">
+                      Recorded as initial stock balance in the stock movements ledger.
+                    </span>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setModalMode(null)} className="px-4 py-2 rounded-lg font-semibold text-slate-400 hover:bg-slate-800">Cancel</button>
+              <div className="flex justify-end gap-2 pt-3 border-t border-border-default">
+                <button
+                  type="button"
+                  onClick={() => setModalMode(null)}
+                  className="px-3.5 py-1.5 rounded-lg font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-5 py-2 rounded-lg font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors shadow-md shadow-emerald-500/20 disabled:opacity-60"
+                  className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {modalMode === 'create' ? 'Create Product' : 'Save Changes'}
                 </button>
@@ -527,58 +650,87 @@ export default function ProductsView() {
         </div>
       )}
 
-      {/* ── Stock Adjustment Modal ── */}
+      {/* ── Stock Adjustment Modal (Dedicated Movement Tracking) ── */}
       {modalMode === 'stock' && selectedProduct && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-text-primary animate-scale-in">
+            <div className="flex justify-between items-center border-b border-border-default pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100">Adjust Stock</h3>
-                <p className="text-[11px] text-slate-400 truncate max-w-[200px]">{selectedProduct.name}</p>
+                <h3 className="font-bold text-sm text-text-primary">Adjust Stock</h3>
+                <p className="text-[11px] text-text-muted truncate max-w-[200px]">{selectedProduct.name}</p>
               </div>
-              <button onClick={() => setModalMode(null)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button
+                type="button"
+                onClick={() => setModalMode(null)}
+                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs flex justify-between">
-              <span className="text-slate-400">Current Stock:</span>
-              <strong className="text-slate-100 font-mono text-sm">{selectedProduct.current_stock}</strong>
+
+            <div className="bg-surface-secondary p-3 rounded-lg border border-border-default text-xs flex justify-between">
+              <span className="text-text-muted">Current Balance:</span>
+              <strong className="text-text-primary font-mono font-bold text-sm">
+                {selectedProduct.current_stock} units
+              </strong>
             </div>
+
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 block mb-1">Adjustment Type</label>
+                <label className="text-text-secondary block font-semibold mb-1">Movement Type</label>
                 <select
                   value={stockAdjustment.movement_type}
-                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, movement_type: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  onChange={(e) =>
+                    setStockAdjustment({ ...stockAdjustment, movement_type: e.target.value })
+                  }
+                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
                 >
-                  <option value="RESTOCK">Restock / Inventory Delivery</option>
-                  <option value="PURCHASE">Supplier Purchase</option>
-                  <option value="MANUAL_ADJUSTMENT">Manual Stock Adjustment / Correction</option>
+                  <option value="RESTOCK">Supplier Restock Delivery</option>
+                  <option value="PURCHASE">Wholesale Purchase</option>
+                  <option value="MANUAL_ADJUSTMENT">Manual Stock Correction / Audit</option>
                   <option value="RETURN">Customer Return / Exchange</option>
                 </select>
               </div>
+
               <div>
-                <label className="text-slate-400 block mb-1">Quantity Change (+ to add, − to deduct)</label>
+                <label className="text-text-secondary block font-semibold mb-1">
+                  Quantity Change (+ to add, − to deduct)
+                </label>
                 <input
                   type="number"
                   value={stockAdjustment.quantity_change}
-                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, quantity_change: parseInt(e.target.value, 10) || 0 })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none font-mono"
+                  onChange={(e) =>
+                    setStockAdjustment({
+                      ...stockAdjustment,
+                      quantity_change: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none font-mono"
                 />
               </div>
+
               <div>
-                <label className="text-slate-400 block mb-1">Reason / Note</label>
+                <label className="text-text-secondary block font-semibold mb-1">Reason / Note</label>
                 <input
                   type="text"
                   value={stockAdjustment.note}
                   onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
-                  placeholder="e.g. Supplier delivery, damage, recount"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  placeholder="e.g. Delivery Challan #882, physical recount"
+                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setModalMode(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800">Cancel</button>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
               <button
+                type="button"
+                onClick={() => setModalMode(null)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   if (stockAdjustment.quantity_change === 0) {
                     toast.warning('Enter a non-zero quantity to adjust stock');
@@ -592,7 +744,7 @@ export default function ProductsView() {
                   });
                 }}
                 disabled={adjustStockMutation.isPending || stockAdjustment.quantity_change === 0}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/20 disabled:opacity-50"
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 Confirm Adjustment
               </button>

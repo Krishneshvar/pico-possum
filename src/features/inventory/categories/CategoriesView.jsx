@@ -22,7 +22,6 @@ import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 
-
 // Recursive Tree Node Component
 function TreeNode({
   node,
@@ -43,21 +42,22 @@ function TreeNode({
   return (
     <div className="select-none">
       <div
-        className={`group flex items-center justify-between py-1.5 px-2 rounded-lg text-xs cursor-pointer transition-all ${
+        className={`group flex items-center justify-between py-1.5 px-2 rounded-lg text-xs cursor-pointer transition-colors ${
           isSelected
-            ? 'bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/30'
-            : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+            ? 'bg-brand text-white font-semibold shadow-xs'
+            : 'text-slate-300 hover:bg-white/10 hover:text-white'
         }`}
         onClick={() => onSelect(node.id)}
       >
         <div className="flex items-center gap-1.5 min-w-0">
           {hasChildren ? (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleExpand(node.id);
               }}
-              className="p-0.5 text-slate-500 hover:text-slate-200 transition-colors"
+              className="p-0.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               {isExpanded ? (
                 <ChevronDown className="w-3.5 h-3.5" />
@@ -70,7 +70,7 @@ function TreeNode({
           )}
 
           {isExpanded ? (
-            <FolderOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <FolderOpen className="w-3.5 h-3.5 text-blue-400 shrink-0" />
           ) : (
             <Folder className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           )}
@@ -79,38 +79,47 @@ function TreeNode({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-800/80 text-slate-400 border border-slate-700/60">
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono border ${
+              isSelected
+                ? 'bg-white/20 text-white border-white/30'
+                : 'bg-white/10 text-slate-300 border-white/20'
+            }`}
+          >
             {count}
           </span>
 
           <div className="hidden group-hover:flex items-center gap-0.5">
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onAddChild(node);
               }}
               title="Add subcategory"
-              className="p-1 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-700/60"
+              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(node);
               }}
               title="Edit category"
-              className="p-1 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-700/60"
+              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
             >
               <Edit2 className="w-3 h-3" />
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(node);
               }}
               title="Delete category"
-              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-700/60"
+              className="p-1 rounded text-slate-400 hover:text-red-300 hover:bg-red-500/20 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -119,7 +128,7 @@ function TreeNode({
       </div>
 
       {hasChildren && isExpanded && (
-        <div className="pl-4 border-l border-slate-800/80 ml-2 my-0.5 space-y-0.5">
+        <div className="pl-4 border-l border-white/15 ml-2 my-0.5 space-y-0.5">
           {node.children.map((child) => (
             <TreeNode
               key={child.id}
@@ -146,10 +155,10 @@ export default function CategoriesView() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
-  const [viewMode, setViewMode] = useState('split'); // 'split' | 'table' | 'tree'
+  const [viewMode, setViewMode] = useState('split');
   const [selectedTreeId, setSelectedTreeId] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
-  const [splitWidth, setSplitWidth] = useState(288); // px — default ~w-72
+  const [splitWidth, setSplitWidth] = useState(280);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
@@ -163,7 +172,7 @@ export default function CategoriesView() {
     const onMouseMove = (ev) => {
       if (!isDragging.current) return;
       const delta = ev.clientX - dragStartX.current;
-      const next = Math.min(560, Math.max(180, dragStartWidth.current + delta));
+      const next = Math.min(520, Math.max(200, dragStartWidth.current + delta));
       setSplitWidth(next);
     };
 
@@ -184,10 +193,9 @@ export default function CategoriesView() {
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
-    queryFn: () => tauriApi.getProducts({ limit: 1000 }),
+    queryFn: () => tauriApi.getProducts(null, null),
   });
 
-  // Calculate direct product counts per category
   const productCounts = useMemo(() => {
     const counts = {};
     for (const p of products) {
@@ -198,41 +206,23 @@ export default function CategoriesView() {
     return counts;
   }, [products]);
 
-  // Build hierarchical tree structure
-  const treeRoots = useMemo(() => {
+  const { treeRoots, categoryMap } = useMemo(() => {
     const map = {};
-    const roots = [];
-    categories.forEach((c) => {
-      map[c.id] = { ...c, children: [] };
+    categories.forEach((cat) => {
+      map[cat.id] = { ...cat, children: [] };
     });
-    categories.forEach((c) => {
-      if (c.parent_id && map[c.parent_id]) {
-        map[c.parent_id].children.push(map[c.id]);
+
+    const roots = [];
+    categories.forEach((cat) => {
+      if (cat.parent_id && map[cat.parent_id]) {
+        map[cat.parent_id].children.push(map[cat.id]);
       } else {
-        roots.push(map[c.id]);
+        roots.push(map[cat.id]);
       }
     });
-    return roots;
+
+    return { treeRoots: roots, categoryMap: map };
   }, [categories]);
-
-  // Filtered table rows if a tree node is selected
-  const displayedCategories = useMemo(() => {
-    if (!selectedTreeId) return categories;
-
-    // Helper to get selected node + all descendant ids
-    const descendantIds = new Set([selectedTreeId]);
-    const addChildren = (catId) => {
-      categories.forEach((c) => {
-        if (c.parent_id === catId && !descendantIds.has(c.id)) {
-          descendantIds.add(c.id);
-          addChildren(c.id);
-        }
-      });
-    };
-    addChildren(selectedTreeId);
-
-    return categories.filter((c) => descendantIds.has(c.id));
-  }, [categories, selectedTreeId]);
 
   const handleToggleExpand = (id) => {
     setExpandedIds((prev) => {
@@ -245,25 +235,25 @@ export default function CategoriesView() {
 
   const createMutation = useMutation({
     mutationFn: (payload) => tauriApi.createCategory(payload),
-    onSuccess: (_data, payload) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setModalOpen(false);
       setName('');
       setParentId('');
-      toast.success(`Category "${payload.name}" created successfully`);
+      toast.success('Category created successfully');
     },
     onError: (err) => toast.error(`Failed to create category: ${err}`, { title: 'Create failed' }),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => tauriApi.updateCategory(id, payload),
-    onSuccess: (_data, { payload }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setModalOpen(false);
       setEditingCategory(null);
       setName('');
       setParentId('');
-      toast.success(`Category "${payload.name}" updated successfully`);
+      toast.success('Category updated successfully');
     },
     onError: (err) => toast.error(`Failed to update category: ${err}`, { title: 'Update failed' }),
   });
@@ -272,7 +262,6 @@ export default function CategoriesView() {
     mutationFn: (id) => tauriApi.deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      if (selectedTreeId) setSelectedTreeId(null);
       toast.success('Category deleted successfully');
     },
     onError: (err) => toast.error(`Failed to delete category: ${err}`, { title: 'Delete failed' }),
@@ -293,10 +282,20 @@ export default function CategoriesView() {
   };
 
   const handleDelete = async (c) => {
+    const count = productCounts[c.id] || 0;
+    if (count > 0) {
+      toast.warning(
+        `Cannot delete "${c.name}" because it still contains ${count} product${count === 1 ? '' : 's'}. Reassign those products first.`
+      );
+      return;
+    }
+
     const { confirmed } = await confirmDialog({
-      title: 'Delete Category',
-      message: `Are you sure you want to delete "${c.name}"? Subcategories and products will be detached.`,
+      title: `Delete Category "${c.name}"?`,
+      message: `Are you sure you want to delete category "${c.name}"? This action cannot be undone.`,
       confirmLabel: 'Delete Category',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
     });
     if (confirmed) {
       deleteMutation.mutate(c.id);
@@ -312,7 +311,7 @@ export default function CategoriesView() {
 
     const payload = {
       name: name.trim(),
-      parent_id: parentId || null,
+      parent_id: parentId ? parentId : null,
     };
 
     if (editingCategory) {
@@ -322,16 +321,32 @@ export default function CategoriesView() {
     }
   };
 
+  // Filtered categories when a tree node is selected
+  const displayedCategories = useMemo(() => {
+    if (!selectedTreeId) return categories;
+
+    const ids = new Set([selectedTreeId]);
+    const collectDescendants = (id) => {
+      const node = categoryMap[id];
+      if (!node) return;
+      node.children?.forEach((child) => {
+        ids.add(child.id);
+        collectDescendants(child.id);
+      });
+    };
+    collectDescendants(selectedTreeId);
+
+    return categories.filter((c) => ids.has(c.id));
+  }, [categories, selectedTreeId, categoryMap]);
+
   const columns = [
     {
       key: 'name',
       label: 'Category Name',
-      className: 'font-semibold text-slate-200',
+      className: 'font-semibold text-text-primary text-xs',
       render: (r) => (
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
-            <FolderTree className="w-3.5 h-3.5" />
-          </div>
+        <div className="flex items-center gap-2">
+          <Folder className="w-3.5 h-3.5 text-text-muted" />
           <span>{r.name}</span>
         </div>
       ),
@@ -339,27 +354,19 @@ export default function CategoriesView() {
     {
       key: 'parent_name',
       label: 'Parent Category',
-      className: 'text-slate-400 text-xs',
-      render: (r) =>
-        r.parent_name ? (
-          <span className="inline-flex items-center gap-1 text-slate-300">
-            <Folder className="w-3 h-3 text-slate-500" />
-            {r.parent_name}
-          </span>
-        ) : (
-          <span className="text-slate-600">—</span>
-        ),
+      className: 'text-text-muted text-xs',
+      render: (r) => r.parent_name || '—',
     },
     {
       key: 'product_count',
       label: 'Products',
-      className: 'text-slate-400 font-mono text-xs',
+      className: 'text-text-muted font-mono text-xs',
       sortValue: (r) => productCounts[r.id] || 0,
       render: (r) => {
         const count = productCounts[r.id] || 0;
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700/60">
-            <Tag className="w-2.5 h-2.5 text-slate-500" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary border border-border-default">
+            <Tag className="w-2.5 h-2.5 text-text-muted" />
             {count} {count === 1 ? 'item' : 'items'}
           </span>
         );
@@ -368,26 +375,27 @@ export default function CategoriesView() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-      {/* Header */}
-      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
+      {/* ── Page Header ── */}
+      <div className="h-14 px-5 border-b border-border-default bg-surface flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+          <div className="w-8 h-8 rounded-xl bg-brand-subtle text-brand flex items-center justify-center">
             <FolderTree className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100">Product Categories</h2>
-            <p className="text-[11px] text-slate-500">Organize store catalog into classes and hierarchy</p>
+            <h2 className="text-sm font-bold text-text-primary">Categories Hierarchy</h2>
+            <p className="text-[11px] text-text-muted">Organize catalog hierarchy and class mappings</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View Mode Toggle */}
-          <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
+          {/* View Mode Switcher */}
+          <div className="flex bg-surface-secondary border border-border-default rounded-lg p-0.5 text-xs">
             <button
+              type="button"
               onClick={() => setViewMode('split')}
-              className={`p-1.5 rounded flex items-center gap-1 transition-all ${
-                viewMode === 'split' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+              className={`p-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer ${
+                viewMode === 'split' ? 'bg-brand text-white font-semibold shadow-2xs' : 'text-text-muted hover:text-text-primary'
               }`}
               title="Split View (Tree + Table)"
             >
@@ -395,9 +403,10 @@ export default function CategoriesView() {
               <span className="hidden sm:inline">Split</span>
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('tree')}
-              className={`p-1.5 rounded flex items-center gap-1 transition-all ${
-                viewMode === 'tree' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+              className={`p-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer ${
+                viewMode === 'tree' ? 'bg-brand text-white font-semibold shadow-2xs' : 'text-text-muted hover:text-text-primary'
               }`}
               title="Tree View"
             >
@@ -405,9 +414,10 @@ export default function CategoriesView() {
               <span className="hidden sm:inline">Tree</span>
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded flex items-center gap-1 transition-all ${
-                viewMode === 'table' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
+              className={`p-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer ${
+                viewMode === 'table' ? 'bg-brand text-white font-semibold shadow-2xs' : 'text-text-muted hover:text-text-primary'
               }`}
               title="Table View"
             >
@@ -424,8 +434,9 @@ export default function CategoriesView() {
           />
 
           <button
+            type="button"
             onClick={() => handleOpenCreate()}
-            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            className="px-3.5 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Category</span>
@@ -433,26 +444,26 @@ export default function CategoriesView() {
         </div>
       </div>
 
-
-      {/* Main Content Area */}
+      {/* ── Main Content Area ── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Category Tree Pane (Visible in 'split' or 'tree' mode) */}
+        {/* Category Tree Pane */}
         {(viewMode === 'split' || viewMode === 'tree') && (
           <div
-          className={`flex flex-col border-r border-slate-800/80 bg-slate-900/30 overflow-hidden ${
+            className={`flex flex-col border-r border-navbar-border bg-navbar-bg text-navbar-text overflow-hidden ${
               viewMode === 'tree' ? 'flex-1' : ''
             }`}
-            style={viewMode === 'split' ? { width: splitWidth, flexShrink: 0 } : undefined}
+            style={viewMode === 'split' ? { width: splitWidth, shrink: 0 } : undefined}
           >
-            <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <ListTree className="w-3.5 h-3.5 text-emerald-400" />
-                Category Hierarchy
+            <div className="p-3 border-b border-navbar-border flex items-center justify-between">
+              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <ListTree className="w-3.5 h-3.5 text-blue-400" />
+                Category Tree
               </span>
               {selectedTreeId && (
                 <button
+                  type="button"
                   onClick={() => setSelectedTreeId(null)}
-                  className="text-[11px] text-slate-400 hover:text-emerald-400"
+                  className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
                 >
                   Clear Selection
                 </button>
@@ -460,25 +471,20 @@ export default function CategoriesView() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              {/* All Categories Root selector */}
               <div
                 className={`py-1.5 px-2.5 rounded-lg text-xs cursor-pointer flex items-center justify-between transition-colors ${
                   !selectedTreeId
-                    ? 'bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30'
-                    : 'text-slate-300 hover:bg-slate-800/80'
+                    ? 'bg-brand text-white font-bold border border-brand/50 shadow-xs'
+                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
                 }`}
                 onClick={() => setSelectedTreeId(null)}
               >
                 <div className="flex items-center gap-2">
-                  <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
+                  <FolderOpen className="w-3.5 h-3.5 text-blue-400" />
                   <span>All Categories</span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-500">
-                  {categories.length} total
-                </span>
               </div>
 
-              {/* Hierarchy Tree Nodes */}
               {treeRoots.map((root) => (
                 <TreeNode
                   key={root.id}
@@ -495,7 +501,7 @@ export default function CategoriesView() {
               ))}
 
               {categories.length === 0 && !isLoading && (
-                <div className="text-center py-8 text-xs text-slate-500">
+                <div className="text-center py-8 text-xs text-slate-400">
                   No categories created yet. Click "Add Category" above.
                 </div>
               )}
@@ -503,31 +509,32 @@ export default function CategoriesView() {
           </div>
         )}
 
-        {/* Drag divider — only in split mode */}
+        {/* Drag divider in split mode */}
         {viewMode === 'split' && (
           <div
             onMouseDown={handleDividerMouseDown}
-            className="w-1 flex-shrink-0 bg-slate-800/80 hover:bg-emerald-500/60 active:bg-emerald-500 cursor-col-resize transition-colors group relative"
-            title="Drag to resize"
+            className="w-1 shrink-0 bg-border-default hover:bg-brand cursor-col-resize transition-colors group relative"
+            title="Drag to resize pane"
           >
             <div className="absolute inset-y-0 -left-1 -right-1" />
           </div>
         )}
 
-        {/* Data Table Pane (Visible in 'split' or 'table' mode) */}
+        {/* Data Table Pane */}
         {(viewMode === 'split' || viewMode === 'table') && (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden bg-surface">
             {selectedTreeId && (
-              <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-xs text-emerald-300 flex items-center justify-between">
+              <div className="px-4 py-2 bg-brand-subtle border-b border-brand/20 text-xs text-brand flex items-center justify-between">
                 <span>
-                  Showing category and descendants for:{' '}
+                  Filtering category and subcategories for:{' '}
                   <strong>{categories.find((c) => c.id === selectedTreeId)?.name}</strong>
                 </span>
                 <button
+                  type="button"
                   onClick={() => setSelectedTreeId(null)}
-                  className="text-[11px] underline hover:text-white"
+                  className="text-[11px] underline hover:opacity-80 cursor-pointer"
                 >
-                  Show all categories
+                  Show all
                 </button>
               </div>
             )}
@@ -543,12 +550,27 @@ export default function CategoriesView() {
                 emptyMessage="No categories found."
                 isLoading={isLoading}
                 actions={(c) => (
-                  <DropdownActions items={[
-                    { label: 'Add Subcategory', icon: <Plus className="w-3.5 h-3.5" />, onClick: () => handleOpenCreate(c) },
-                    { label: 'Edit Category', icon: <Edit2 className="w-3.5 h-3.5" />, onClick: () => handleOpenEdit(c) },
-                    'divider',
-                    { label: 'Delete Category', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => handleDelete(c) },
-                  ]} />
+                  <DropdownActions
+                    items={[
+                      {
+                        label: 'Add Subcategory',
+                        icon: <Plus className="w-3.5 h-3.5" />,
+                        onClick: () => handleOpenCreate(c),
+                      },
+                      {
+                        label: 'Edit Category',
+                        icon: <Edit2 className="w-3.5 h-3.5" />,
+                        onClick: () => handleOpenEdit(c),
+                      },
+                      'divider',
+                      {
+                        label: 'Delete Category',
+                        icon: <Trash2 className="w-3.5 h-3.5" />,
+                        danger: true,
+                        onClick: () => handleDelete(c),
+                      },
+                    ]}
+                  />
                 )}
               />
             </div>
@@ -556,17 +578,18 @@ export default function CategoriesView() {
         )}
       </div>
 
-      {/* Create / Edit Modal with Parent Category field */}
+      {/* Modal Dialog for Category Creation/Editing */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-sm text-slate-100">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-text-primary animate-scale-in">
+            <div className="flex justify-between items-center border-b border-border-default pb-3">
+              <h3 className="font-bold text-sm text-text-primary">
                 {editingCategory ? 'Edit Category' : 'Create Category'}
               </h3>
               <button
+                type="button"
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -574,23 +597,25 @@ export default function CategoriesView() {
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 block mb-1">Category Name <span className="text-rose-500">*</span></label>
+                <label className="text-text-secondary block font-semibold mb-1">
+                  Category Name <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Beverages, Snacks, Personal Care"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  placeholder="e.g. Beverages, Dairy, Snacks"
+                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-slate-400 block mb-1">Parent Category (Optional)</label>
+                <label className="text-text-secondary block font-semibold mb-1">Parent Category (Optional)</label>
                 <select
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none cursor-pointer"
                 >
                   <option value="">None (Top-Level Category)</option>
                   {categories
@@ -601,23 +626,23 @@ export default function CategoriesView() {
                       </option>
                     ))}
                 </select>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-text-muted mt-1">
                   Nest this category under an existing parent class
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg font-semibold text-slate-400 hover:bg-slate-800"
+                  className="px-3 py-1.5 rounded-lg font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-1.5 rounded-lg font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+                  className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {editingCategory ? 'Save Changes' : 'Create'}
                 </button>

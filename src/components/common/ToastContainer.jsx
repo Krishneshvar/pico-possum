@@ -11,31 +11,39 @@ import { useToastStore } from '../../stores/toast.store';
 const TOAST_STYLES = {
   success: {
     icon: CheckCircle2,
-    panel: 'border-emerald-500/40 bg-emerald-500/10',
-    iconColor: 'text-emerald-400',
-    titleColor: 'text-emerald-200',
-    bar: 'bg-emerald-400',
+    panel: 'bg-[#15803D] text-white border border-[#166534]',
+    iconColor: 'text-white',
+    titleColor: 'text-white',
+    messageColor: 'text-emerald-100',
+    closeColor: 'text-white/80 hover:text-white hover:bg-white/10',
+    bar: 'bg-emerald-300',
   },
   error: {
     icon: XCircle,
-    panel: 'border-rose-500/40 bg-rose-500/10',
-    iconColor: 'text-rose-400',
-    titleColor: 'text-rose-200',
-    bar: 'bg-rose-400',
+    panel: 'bg-[#DC2626] text-white border border-[#B91C1C]',
+    iconColor: 'text-white',
+    titleColor: 'text-white',
+    messageColor: 'text-red-100',
+    closeColor: 'text-white/80 hover:text-white hover:bg-white/10',
+    bar: 'bg-red-300',
   },
   warning: {
     icon: AlertTriangle,
-    panel: 'border-amber-500/40 bg-amber-500/10',
-    iconColor: 'text-amber-400',
-    titleColor: 'text-amber-200',
-    bar: 'bg-amber-400',
+    panel: 'bg-[#D97706] text-white border border-[#B45309]',
+    iconColor: 'text-white',
+    titleColor: 'text-white',
+    messageColor: 'text-amber-100',
+    closeColor: 'text-white/80 hover:text-white hover:bg-white/10',
+    bar: 'bg-amber-300',
   },
   info: {
     icon: Info,
-    panel: 'border-sky-500/40 bg-sky-500/10',
-    iconColor: 'text-sky-400',
-    titleColor: 'text-sky-200',
-    bar: 'bg-sky-400',
+    panel: 'bg-[#1D4ED8] text-white border border-[#1E40AF]',
+    iconColor: 'text-white',
+    titleColor: 'text-white',
+    messageColor: 'text-blue-100',
+    closeColor: 'text-white/80 hover:text-white hover:bg-white/10',
+    bar: 'bg-blue-300',
   },
 };
 
@@ -43,7 +51,7 @@ const TYPE_LABELS = {
   success: 'Success',
   error: 'Error',
   warning: 'Warning',
-  info: 'Info',
+  info: 'Information',
 };
 
 export function Toast({ toast: item, onDismiss }) {
@@ -55,16 +63,16 @@ export function Toast({ toast: item, onDismiss }) {
     <div
       role={isUrgent ? 'alert' : 'status'}
       aria-live={isUrgent ? 'assertive' : 'polite'}
-      className={`pointer-events-auto relative w-full overflow-hidden rounded-xl border ${style.panel} bg-slate-900/95 shadow-2xl shadow-black/50 backdrop-blur-xl animate-toast-in`}
+      className={`pointer-events-auto relative w-full overflow-hidden rounded-xl ${style.panel} shadow-xl animate-toast-in`}
     >
       <div className="flex items-start gap-3 p-3.5 pr-9">
-        <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${style.iconColor}`} />
+        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${style.iconColor}`} />
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-bold ${style.titleColor}`}>
             {item.title || TYPE_LABELS[item.type] || 'Notice'}
           </p>
           {item.message && (
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-300 break-words">
+            <p className={`mt-0.5 text-xs leading-relaxed ${style.messageColor} break-words`}>
               {item.message}
             </p>
           )}
@@ -75,7 +83,7 @@ export function Toast({ toast: item, onDismiss }) {
         type="button"
         onClick={() => onDismiss(item.id)}
         aria-label="Dismiss notification"
-        className="absolute right-2 top-2 p-1 rounded-md text-slate-500 hover:text-slate-200 hover:bg-slate-800/80 transition-colors cursor-pointer"
+        className={`absolute right-2 top-2 p-1 rounded-md ${style.closeColor} transition-colors cursor-pointer`}
       >
         <X className="w-3.5 h-3.5" />
       </button>
@@ -98,13 +106,13 @@ export default function ToastContainer() {
 
   return createPortal(
     <div
-      className="fixed top-3 right-3 z-[9999] flex w-[360px] max-w-[calc(100vw-1.5rem)] flex-col gap-2 pointer-events-none select-none"
       aria-label="Notifications"
+      className="pointer-events-none fixed top-4 right-4 z-[9999] flex w-full max-w-sm flex-col gap-2 p-2"
     >
       {toasts.map((item) => (
         <Toast key={item.id} toast={item} onDismiss={dismiss} />
       ))}
     </div>,
-    document.body,
+    document.body
   );
 }

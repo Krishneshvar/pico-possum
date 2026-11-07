@@ -10,7 +10,9 @@ import {
   Check,
   RotateCcw,
   ChevronDown,
+  ChevronUp,
   X,
+  Filter,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
@@ -25,16 +27,17 @@ export default function SalesReportsView() {
     .toISOString()
     .split('T')[0];
 
-  const [reportType, setReportType] = useState('daily'); // 'daily' | 'monthly' | 'yearly'
+  const [reportType, setReportType] = useState('daily');
   const [fromDate, setFromDate] = useState(firstOfMonthStr);
   const [toDate, setToDate] = useState(todayStr);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Amount filtering
-  const [amountCol, setAmountCol] = useState('gross'); // 'gross' | 'net' | 'cash' | 'upi' | 'card'
+  const [amountCol, setAmountCol] = useState('gross');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
 
-  // Column visibility state (all enabled by default)
+  // Column visibility
   const defaultColKeys = [
     'period',
     'total_transactions',
@@ -50,7 +53,6 @@ export default function SalesReportsView() {
   const [colMenuOpen, setColMenuOpen] = useState(false);
   const colMenuRef = useRef(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (colMenuRef.current && !colMenuRef.current.contains(e.target)) {
@@ -61,36 +63,29 @@ export default function SalesReportsView() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const { data: rawBreakdown = [], isLoading, refetch } = useQuery({
+  const { data: rawData = [], isLoading, refetch } = useQuery({
     queryKey: ['sales_breakdown', reportType, fromDate, toDate],
     queryFn: () => tauriApi.getSalesBreakdown(reportType, fromDate || null, toDate || null),
   });
 
-  // Client-side amount filtering
   const filteredData = useMemo(() => {
-    let rows = rawBreakdown;
-    const minPaise = minAmount !== '' && !isNaN(minAmount) ? Math.round(parseFloat(minAmount) * 100) : null;
-    const maxPaise = maxAmount !== '' && !isNaN(maxAmount) ? Math.round(parseFloat(maxAmount) * 100) : null;
+    if (!rawData || !rawData.length) return [];
+    return rawData.filter((row) => {
+      let valPaise = 0;
+      if (amountCol === 'gross') valPaise = row.total_sales_paise || 0;
+      else if (amountCol === 'net')
+        valPaise = (row.total_sales_paise || 0) - (row.total_discount_paise || 0);
+      else if (amountCol === 'cash') valPaise = row.cash_paise || 0;
+      else if (amountCol === 'upi') valPaise = row.upi_paise || 0;
+      else if (amountCol === 'card') valPaise = row.card_paise || 0;
 
-    if (minPaise !== null || maxPaise !== null) {
-      rows = rows.filter((r) => {
-        let val = r.total_sales_paise;
-        if (amountCol === 'cash') val = r.cash_paise;
-        else if (amountCol === 'upi') val = r.upi_paise;
-        else if (amountCol === 'card') val = r.card_paise;
-        else if (amountCol === 'net') val = Math.max(0, r.total_sales_paise - r.total_discount_paise);
-        else if (amountCol === 'gross') val = r.total_sales_paise;
+      const valRs = valPaise / 100;
+      if (minAmount !== '' && !isNaN(minAmount) && valRs < parseFloat(minAmount)) return false;
+      if (maxAmount !== '' && !isNaN(maxAmount) && valRs > parseFloat(maxAmount)) return false;
+      return true;
+    });
+  }, [rawData, amountCol, minAmount, maxAmount]);
 
-        if (minPaise !== null && val < minPaise) return false;
-        if (maxPaise !== null && val > maxPaise) return false;
-        return true;
-      });
-    }
-
-    return rows;
-  }, [rawBreakdown, amountCol, minAmount, maxAmount]);
-
-  // Aggregate totals across filtered data
   const totals = useMemo(() => {
     return filteredData.reduce(
       (acc, r) => {
@@ -108,22 +103,22 @@ export default function SalesReportsView() {
     );
   }, [filteredData]);
 
-  // Column definitions with labels, formatting, and numeric properties
   const ALL_COLUMNS = useMemo(
     () => [
       {
         key: 'period',
         label: reportType === 'daily' ? 'Date' : reportType === 'monthly' ? 'Month' : 'Year',
-        className: 'font-mono font-semibold text-slate-200',
+        className: 'font-mono text-text-primary font-semibold text-xs whitespace-nowrap',
         minWidth: 120,
         exportValue: (r) => r.period,
+        render: (r) => r.period,
       },
       {
         key: 'total_transactions',
-        label: 'Transactions',
+        label: 'Bills Count',
         headerClassName: 'text-center',
-        className: 'text-center font-mono text-slate-300',
-        minWidth: 100,
+        className: 'text-center text-xs font-mono',
+        minWidth: 90,
         exportValue: (r) => r.total_transactions,
         render: (r) => r.total_transactions,
         isNumeric: true,
@@ -131,10 +126,10 @@ export default function SalesReportsView() {
       },
       {
         key: 'cash_paise',
-        label: 'Cash',
+        label: 'Cash Settled',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-emerald-400',
-        minWidth: 100,
+        className: 'text-right financial-value text-text-secondary text-xs',
+        minWidth: 110,
         exportValue: (r) => (r.cash_paise / 100).toFixed(2),
         render: (r) => formatPaise(r.cash_paise),
         isNumeric: true,
@@ -142,10 +137,10 @@ export default function SalesReportsView() {
       },
       {
         key: 'upi_paise',
-        label: 'UPI',
+        label: 'UPI / QR',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-sky-400',
-        minWidth: 100,
+        className: 'text-right financial-value text-text-secondary text-xs',
+        minWidth: 110,
         exportValue: (r) => (r.upi_paise / 100).toFixed(2),
         render: (r) => formatPaise(r.upi_paise),
         isNumeric: true,
@@ -153,10 +148,10 @@ export default function SalesReportsView() {
       },
       {
         key: 'card_paise',
-        label: 'Card',
+        label: 'Card Terminal',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-indigo-400',
-        minWidth: 100,
+        className: 'text-right financial-value text-text-secondary text-xs',
+        minWidth: 110,
         exportValue: (r) => (r.card_paise / 100).toFixed(2),
         render: (r) => formatPaise(r.card_paise),
         isNumeric: true,
@@ -166,8 +161,8 @@ export default function SalesReportsView() {
         key: 'other_paise',
         label: 'Other',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-amber-400',
-        minWidth: 100,
+        className: 'text-right financial-value text-text-muted text-xs',
+        minWidth: 90,
         exportValue: (r) => (r.other_paise / 100).toFixed(2),
         render: (r) => formatPaise(r.other_paise),
         isNumeric: true,
@@ -177,10 +172,10 @@ export default function SalesReportsView() {
         key: 'total_discount_paise',
         label: 'Discounts',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-rose-400/80',
+        className: 'text-right financial-value text-amber-600 text-xs',
         minWidth: 100,
         exportValue: (r) => (r.total_discount_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.total_discount_paise),
+        render: (r) => (r.total_discount_paise > 0 ? `-${formatPaise(r.total_discount_paise)}` : '—'),
         isNumeric: true,
         totalKey: 'discount',
       },
@@ -188,7 +183,7 @@ export default function SalesReportsView() {
         key: 'total_sales_paise',
         label: 'Gross Sales',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-slate-200 font-bold',
+        className: 'text-right financial-value text-text-primary font-medium text-xs',
         minWidth: 120,
         exportValue: (r) => (r.total_sales_paise / 100).toFixed(2),
         render: (r) => formatPaise(r.total_sales_paise),
@@ -199,7 +194,7 @@ export default function SalesReportsView() {
         key: 'net_sales',
         label: 'Net Sales',
         headerClassName: 'text-right',
-        className: 'text-right font-mono text-emerald-400 font-bold',
+        className: 'text-right financial-value font-bold text-text-primary text-xs',
         minWidth: 120,
         exportValue: (r) => ((r.total_sales_paise - r.total_discount_paise) / 100).toFixed(2),
         render: (r) => formatPaise(Math.max(0, r.total_sales_paise - r.total_discount_paise)),
@@ -211,7 +206,6 @@ export default function SalesReportsView() {
     [reportType]
   );
 
-  // Active visible columns for view and export
   const visibleColumns = useMemo(
     () => ALL_COLUMNS.filter((col) => visibleColKeys.includes(col.key)),
     [ALL_COLUMNS, visibleColKeys]
@@ -220,7 +214,7 @@ export default function SalesReportsView() {
   const toggleColumn = (key) => {
     setVisibleColKeys((prev) => {
       if (prev.includes(key)) {
-        if (prev.length <= 1) return prev; // At least one column must remain visible
+        if (prev.length <= 1) return prev;
         return prev.filter((k) => k !== key);
       }
       return [...prev, key];
@@ -240,10 +234,9 @@ export default function SalesReportsView() {
     setMaxAmount('');
   };
 
-  // CSV Export (Selected columns only)
   const handleExportCsv = () => {
     if (!filteredData.length || !visibleColumns.length) {
-      toast.warning('There is no report data to export');
+      toast.warning('No report data to export');
       return;
     }
 
@@ -270,13 +263,12 @@ export default function SalesReportsView() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredData.length} row${filteredData.length === 1 ? '' : 's'} to CSV`);
+    toast.success(`Exported ${filteredData.length} rows to CSV`);
   };
 
-  // XLSX Export (Selected columns only)
   const handleExportXlsx = () => {
     if (!filteredData.length || !visibleColumns.length) {
-      toast.warning('There is no report data to export');
+      toast.warning('No report data to export');
       return;
     }
 
@@ -284,15 +276,12 @@ export default function SalesReportsView() {
     const rows = filteredData.map((row) =>
       visibleColumns.map((col) => {
         const val = col.exportValue(row);
-        if (col.isNumeric && !isNaN(val)) {
-          return Number(val);
-        }
+        if (col.isNumeric && !isNaN(val)) return Number(val);
         return val;
       })
     );
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    // Auto-fit column widths
     ws['!cols'] = visibleColumns.map((col) => ({
       wch: Math.max(col.label.length + 4, 14),
     }));
@@ -300,56 +289,55 @@ export default function SalesReportsView() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
     XLSX.writeFile(wb, `sales_report_${reportType}_${fromDate}_to_${toDate}.xlsx`);
-    toast.success(`Exported ${filteredData.length} row${filteredData.length === 1 ? '' : 's'} to Excel`);
+    toast.success(`Exported ${filteredData.length} rows to Excel`);
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-      {/* ── Top Header ── */}
-      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
+      {/* ── Row 1: Header & Export Controls ── */}
+      <div className="h-14 px-5 border-b border-border-default bg-surface flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+          <div className="w-8 h-8 rounded-xl bg-brand-subtle text-brand flex items-center justify-center">
             <Calendar className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100">Sales Reports</h2>
-            <p className="text-[11px] text-slate-500">Periodic financial revenue and payment method breakdown</p>
+            <h2 className="text-sm font-bold text-text-primary">Financial Sales Reports</h2>
+            <p className="text-[11px] text-text-muted">Periodic reconciliation and payment collection audits</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Column Selection Dropdown */}
+          {/* Column Picker */}
           <div ref={colMenuRef} className="relative">
             <button
               type="button"
               onClick={() => setColMenuOpen((o) => !o)}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-1.5 border border-slate-700/60 transition-all cursor-pointer"
-              title="Select columns to display and export"
+              className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary font-medium text-xs flex items-center gap-1.5 border border-border-default transition-colors cursor-pointer shadow-2xs"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-              <span>
-                Columns ({visibleColKeys.length}/{ALL_COLUMNS.length})
-              </span>
-              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${colMenuOpen ? 'rotate-180' : ''}`} />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-text-muted" />
+              <span>Columns ({visibleColKeys.length})</span>
+              <ChevronDown
+                className={`w-3 h-3 text-text-muted transition-transform ${colMenuOpen ? 'rotate-180' : ''}`}
+              />
             </button>
 
             {colMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 z-50 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/60 p-2.5 min-w-[210px] space-y-1">
-                <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-slate-800 text-[11px]">
-                  <span className="font-semibold text-slate-300">Visible Columns</span>
+              <div className="absolute right-0 top-full mt-1.5 z-50 bg-surface border border-border-default rounded-xl shadow-xl p-2.5 min-w-[210px] space-y-1 text-text-primary animate-scale-in">
+                <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border-default text-[11px]">
+                  <span className="font-semibold text-text-primary">Visible Columns</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={selectAllColumns}
-                      className="text-emerald-400 hover:underline cursor-pointer"
+                      className="text-brand hover:underline cursor-pointer"
                     >
                       All
                     </button>
-                    <span className="text-slate-600">|</span>
+                    <span className="text-text-muted">|</span>
                     <button
                       type="button"
                       onClick={() => setVisibleColKeys(defaultColKeys)}
-                      className="text-slate-400 hover:text-slate-200 cursor-pointer"
+                      className="text-text-muted hover:text-text-primary cursor-pointer"
                     >
                       Reset
                     </button>
@@ -366,16 +354,16 @@ export default function SalesReportsView() {
                         onClick={() => toggleColumn(col.key)}
                         className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer ${
                           isChecked
-                            ? 'bg-emerald-500/10 text-emerald-300'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                            ? 'bg-brand-subtle text-brand font-medium'
+                            : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
                         }`}
                       >
                         <span
-                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
-                            isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'
+                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                            isChecked ? 'bg-brand border-brand' : 'border-border-strong'
                           }`}
                         >
-                          {isChecked && <Check className="w-2.5 h-2.5 text-slate-950" strokeWidth={3} />}
+                          {isChecked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                         </span>
                         <span>{col.label}</span>
                       </button>
@@ -386,48 +374,45 @@ export default function SalesReportsView() {
             )}
           </div>
 
-          {/* Refresh */}
           <button
+            type="button"
             onClick={() => refetch()}
-            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             title="Refresh Report"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
 
-          {/* Export CSV */}
           <button
+            type="button"
             onClick={handleExportCsv}
             disabled={!filteredData.length || !visibleColumns.length}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 border border-slate-700/60 transition-all disabled:opacity-40 cursor-pointer"
-            title="Export selected columns as CSV"
+            className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary font-medium text-xs flex items-center gap-1.5 border border-border-default transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
           >
-            <FileText className="w-3.5 h-3.5 text-sky-400" />
+            <FileText className="w-3.5 h-3.5 text-text-muted" />
             <span>CSV</span>
           </button>
 
-          {/* Export XLSX */}
           <button
+            type="button"
             onClick={handleExportXlsx}
             disabled={!filteredData.length || !visibleColumns.length}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 border border-emerald-500/40 shadow-sm transition-all disabled:opacity-40 cursor-pointer"
-            title="Export selected columns as Excel XLSX"
+            className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary font-medium text-xs flex items-center gap-1.5 border border-border-default transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel (XLSX)</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-text-muted" />
+            <span>Excel</span>
           </button>
         </div>
       </div>
 
-      {/* ── Filter Toolbar ── */}
-      <div className="px-5 py-2.5 border-b border-slate-800/80 bg-slate-900/30 flex items-center gap-3 flex-wrap text-xs">
-        {/* Report Type */}
+      {/* ── Row 2: Period & Date Range Toolbar ── */}
+      <div className="px-5 py-2.5 border-b border-border-default bg-surface flex items-center gap-3 flex-wrap text-xs shrink-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 font-medium">Type:</span>
+          <span className="text-text-muted font-medium">Period:</span>
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value)}
-            className="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-emerald-500 focus:outline-none cursor-pointer"
+            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2.5 py-1.5 focus:border-brand focus:outline-none cursor-pointer"
           >
             <option value="daily">Daily</option>
             <option value="monthly">Monthly</option>
@@ -435,34 +420,58 @@ export default function SalesReportsView() {
           </select>
         </div>
 
-        {/* Date Pickers */}
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 font-medium">From:</span>
+          <span className="text-text-muted font-medium">From:</span>
           <input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 focus:border-emerald-500 focus:outline-none font-mono"
+            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none font-mono text-xs"
           />
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 font-medium">To:</span>
+          <span className="text-text-muted font-medium">To:</span>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 focus:border-emerald-500 focus:outline-none font-mono"
+            className="bg-surface-secondary border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none font-mono text-xs"
           />
         </div>
 
-        {/* Amount Range Filter */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 font-medium">Amount on:</span>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((o) => !o)}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+            advancedOpen || minAmount || maxAmount
+              ? 'bg-brand-subtle text-brand border-brand/30'
+              : 'bg-surface text-text-secondary border-border-default hover:border-border-strong'
+          }`}
+        >
+          <Filter className="w-3 h-3" />
+          <span>Advanced Filters</span>
+          {advancedOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleReset}
+          className="text-text-muted hover:text-text-primary px-2 py-1 rounded hover:bg-surface-secondary transition-colors ml-auto flex items-center gap-1 cursor-pointer"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>Reset</span>
+        </button>
+      </div>
+
+      {/* ── Row 3: Collapsible Advanced Filters ── */}
+      {advancedOpen && (
+        <div className="px-5 py-2.5 bg-surface-secondary border-b border-border-default flex items-center gap-3 text-xs flex-wrap animate-fade-in shrink-0">
+          <span className="text-text-muted font-semibold">Filter Threshold:</span>
           <select
             value={amountCol}
             onChange={(e) => setAmountCol(e.target.value)}
-            className="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1.5 focus:border-emerald-500 focus:outline-none cursor-pointer"
+            className="bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 focus:border-brand focus:outline-none cursor-pointer"
           >
             <option value="gross">Gross Sales</option>
             <option value="net">Net Sales</option>
@@ -470,81 +479,39 @@ export default function SalesReportsView() {
             <option value="upi">UPI</option>
             <option value="card">Card</option>
           </select>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              placeholder={`Min ${currencySymbol}`}
+              value={minAmount}
+              onChange={(e) => setMinAmount(e.target.value)}
+              className="w-20 bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 font-mono focus:border-brand focus:outline-none"
+            />
+            <span className="text-text-muted">–</span>
+            <input
+              type="number"
+              placeholder={`Max ${currencySymbol}`}
+              value={maxAmount}
+              onChange={(e) => setMaxAmount(e.target.value)}
+              className="w-20 bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 font-mono focus:border-brand focus:outline-none"
+            />
+            {(minAmount !== '' || maxAmount !== '') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMinAmount('');
+                  setMaxAmount('');
+                }}
+                className="text-danger hover:underline text-xs cursor-pointer ml-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-1.5">
-          <input
-            type="number"
-            placeholder={`Min ${currencySymbol}`}
-            value={minAmount}
-            onChange={(e) => setMinAmount(e.target.value)}
-            className="w-20 bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 font-mono focus:border-emerald-500 focus:outline-none"
-          />
-          <span className="text-slate-600">–</span>
-          <input
-            type="number"
-            placeholder={`Max ${currencySymbol}`}
-            value={maxAmount}
-            onChange={(e) => setMaxAmount(e.target.value)}
-            className="w-20 bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 font-mono focus:border-emerald-500 focus:outline-none"
-          />
-          {(minAmount !== '' || maxAmount !== '') && (
-            <button
-              type="button"
-              onClick={() => {
-                setMinAmount('');
-                setMaxAmount('');
-              }}
-              className="text-slate-500 hover:text-rose-400 transition-colors p-0.5 cursor-pointer"
-              title="Clear amount filter"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        <button
-          onClick={handleReset}
-          className="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition-colors ml-auto flex items-center gap-1 cursor-pointer"
-        >
-          <RotateCcw className="w-3 h-3" />
-          <span>Reset</span>
-        </button>
-      </div>
-
-      {/* ── Summary KPI Cards Bar ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 p-3 bg-slate-900/40 border-b border-slate-800/80 flex-shrink-0">
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider block">Transactions</span>
-          <span className="text-sm font-bold font-mono text-slate-200">{totals.transactions}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-emerald-500/80 font-medium uppercase tracking-wider block">Cash</span>
-          <span className="text-sm font-bold font-mono text-emerald-400">{formatPaise(totals.cash)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-sky-500/80 font-medium uppercase tracking-wider block">UPI</span>
-          <span className="text-sm font-bold font-mono text-sky-400">{formatPaise(totals.upi)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-indigo-500/80 font-medium uppercase tracking-wider block">Card</span>
-          <span className="text-sm font-bold font-mono text-indigo-400">{formatPaise(totals.card)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-rose-500/80 font-medium uppercase tracking-wider block">Discounts</span>
-          <span className="text-sm font-bold font-mono text-rose-400">{formatPaise(totals.discount)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">Gross Sales</span>
-          <span className="text-sm font-bold font-mono text-slate-100">{formatPaise(totals.gross)}</span>
-        </div>
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Net Sales</span>
-          <span className="text-sm font-black font-mono text-emerald-400">{formatPaise(totals.net)}</span>
-        </div>
-      </div>
-
-      {/* ── Main Breakdown Table (Renders Selected Columns) ── */}
+      {/* ── Main Breakdown Table ── */}
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={visibleColumns}
@@ -553,55 +520,47 @@ export default function SalesReportsView() {
           keyFn={(r) => r.period}
           searchKeys={['period']}
           pageSize={25}
-          emptyMessage="No sales records found for the selected criteria."
+          emptyMessage="No sales records found for the selected period."
           isLoading={isLoading}
         />
       </div>
 
-      {/* ── Totals Bar Below Table (Reflects Visible Columns) ── */}
-      <div className="border-t border-slate-800 bg-slate-900/95 backdrop-blur-md px-5 py-2.5 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 text-xs font-mono flex-shrink-0 shadow-lg shadow-black/40 z-20">
+      {/* ── Sticky Financial Totals Bar ── */}
+      <div className="border-t border-border-default bg-surface px-5 py-2.5 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 text-xs shrink-0 shadow-xs z-20">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-100 uppercase tracking-wide">Totals</span>
-          <span className="text-slate-400 text-[11px]">
-            ({filteredData.length} {reportType === 'daily' ? 'days' : reportType === 'monthly' ? 'months' : 'years'})
-          </span>
+          <span className="font-bold text-text-primary uppercase tracking-wide">Totals</span>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
           {visibleColumns.map((col) => {
             if (!col.totalKey) return null;
             let displayVal = '';
-            let colorClass = 'text-slate-200';
 
             if (col.totalKey === 'transactions') {
               displayVal = `${totals.transactions} txns`;
             } else if (col.totalKey === 'cash') {
               displayVal = formatPaise(totals.cash);
-              colorClass = 'text-emerald-400';
             } else if (col.totalKey === 'upi') {
               displayVal = formatPaise(totals.upi);
-              colorClass = 'text-sky-400';
             } else if (col.totalKey === 'card') {
               displayVal = formatPaise(totals.card);
-              colorClass = 'text-indigo-400';
             } else if (col.totalKey === 'other') {
               displayVal = formatPaise(totals.other);
-              colorClass = 'text-amber-400';
             } else if (col.totalKey === 'discount') {
               displayVal = formatPaise(totals.discount);
-              colorClass = 'text-rose-400';
             } else if (col.totalKey === 'gross') {
               displayVal = formatPaise(totals.gross);
-              colorClass = 'text-slate-100 font-bold';
             } else if (col.totalKey === 'net') {
               displayVal = formatPaise(totals.net);
-              colorClass = 'text-emerald-400 font-bold';
             }
 
             return (
-              <div key={col.key} className="flex items-center gap-1.5 bg-slate-950/50 px-2 py-1 rounded-md border border-slate-800">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">{col.label}:</span>
-                <span className={`font-semibold ${colorClass}`}>{displayVal}</span>
+              <div
+                key={col.key}
+                className="flex items-center gap-1.5 bg-surface-secondary px-2 py-1 rounded-md border border-border-default"
+              >
+                <span className="text-[10px] text-text-muted uppercase tracking-wider">{col.label}:</span>
+                <span className="font-semibold text-text-primary financial-value">{displayVal}</span>
               </div>
             );
           })}

@@ -1,13 +1,142 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+  --app-canvas: #F4F6F9;
+  --app-surface: #FFFFFF;
+  --app-surface-secondary: #E8EEF5;
+  --app-surface-tertiary: #DCE3EC;
+  --app-border: #D1D9E2;
+  --app-border-strong: #94A3B8;
+  --app-text-primary: #17212F;
+  --app-text-secondary: #526174;
+  --app-text-muted: #5B6878;
+  --app-primary: #1D4ED8;
+  --app-primary-hover: #1E40AF;
+  --app-primary-subtle: #EAF1FF;
+  --app-success: #166534;
+  --app-success-bg: #DCFCE7;
+  --app-warning: #92400E;
+  --app-warning-bg: #FEF3C7;
+  --app-danger: #B91C1C;
+  --app-danger-bg: #FEE2E2;
+  --app-info: #1D4ED8;
+  --app-info-bg: #DBEAFE;
+
+  /* Elevated Top Navbar & Table Headers */
+  --app-navbar-bg: #0F172A;
+  --app-navbar-text: #F8FAFC;
+  --app-navbar-border: #1E293B;
+  --app-table-header-bg: #0F172A;
+  --app-table-header-border: #1E293B;
+  --app-table-header-text: #F8FAFC;
+
+  /* Categorical charts */
+  --chart-1: #2563EB;
+  --chart-2: #0F766E;
+  --chart-3: #7C3AED;
+  --chart-4: #C2410C;
+  --chart-5: #BE185D;
+  --chart-6: #475569;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --app-canvas: #0B1220;
+  --app-surface: #111C2E;
+  --app-surface-secondary: #19273E;
+  --app-surface-tertiary: #1E304C;
+  --app-border: #2B3B51;
+  --app-border-strong: #475569;
+  --app-text-primary: #E5EDF7;
+  --app-text-secondary: #B6C3D4;
+  --app-text-muted: #9BAAC0;
+  --app-primary: #2457C5;
+  --app-primary-hover: #316AD9;
+  --app-primary-subtle: #142B4B;
+  --app-success: #6EE7B7;
+  --app-success-bg: #10372E;
+  --app-warning: #FCD34D;
+  --app-warning-bg: #3B2C0A;
+  --app-danger: #FDA4AF;
+  --app-danger-bg: #441D26;
+  --app-info: #93C5FD;
+  --app-info-bg: #162F50;
+
+  /* Elevated Top Navbar & Table Headers */
+  --app-navbar-bg: #080D1A;
+  --app-navbar-text: #F1F5F9;
+  --app-navbar-border: #1E293B;
+  --app-table-header-bg: #080D1A;
+  --app-table-header-border: #1E293B;
+  --app-table-header-text: #F1F5F9;
+
+  /* Categorical charts */
+  --chart-1: #60A5FA;
+  --chart-2: #2DD4BF;
+  --chart-3: #A78BFA;
+  --chart-4: #FB923C;
+  --chart-5: #F472B6;
+  --chart-6: #CBD5E1;
+}
+
+@theme inline {
+  --color-canvas: var(--app-canvas);
+  --color-surface: var(--app-surface);
+  --color-surface-secondary: var(--app-surface-secondary);
+  --color-surface-tertiary: var(--app-surface-tertiary);
+  --color-border: var(--app-border);
+  --color-border-default: var(--app-border);
+  --color-border-strong: var(--app-border-strong);
+  --color-text-primary: var(--app-text-primary);
+  --color-text-secondary: var(--app-text-secondary);
+  --color-text-muted: var(--app-text-muted);
+  --color-content: var(--app-text-primary);
+  --color-content-secondary: var(--app-text-secondary);
+  --color-content-muted: var(--app-text-muted);
+  --color-brand: var(--app-primary);
+  --color-brand-hover: var(--app-primary-hover);
+  --color-brand-subtle: var(--app-primary-subtle);
+  --color-success: var(--app-success);
+  --color-success-bg: var(--app-success-bg);
+  --color-warning: var(--app-warning);
+  --color-warning-bg: var(--app-warning-bg);
+  --color-danger: var(--app-danger);
+  --color-danger-bg: var(--app-danger-bg);
+  --color-info: var(--app-info);
+  --color-info-bg: var(--app-info-bg);
+
+  --color-navbar-bg: var(--app-navbar-bg);
+  --color-navbar-text: var(--app-navbar-text);
+  --color-navbar-border: var(--app-navbar-border);
+  --color-table-header-bg: var(--app-table-header-bg);
+  --color-table-header-border: var(--app-table-header-border);
+  --color-table-header-text: var(--app-table-header-text);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+}
+
 @layer base {
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--app-canvas);
+    color: var(--app-text-primary);
   }
   
   code, kbd, samp, pre {
     font-family: 'JetBrains Mono', monospace;
   }
+}
+
+/* Tabular numerals for financial and currency values */
+.financial-value {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 /* Hide native increment/decrement spinners on number inputs */
@@ -22,9 +151,7 @@ input[type="number"] {
   appearance: textfield;
 }
 
-/* Custom sleek scrollbar */
-
-/* Toast + UI animations */
+/* Toast animations */
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -53,7 +180,7 @@ input[type="number"] {
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
@@ -61,16 +188,8 @@ input[type="number"] {
   }
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-5px); }
-  40% { transform: translateX(5px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(3px); }
-}
-
 .animate-toast-in {
-  animation: toast-in 0.22s ease-out both;
+  animation: toast-in 0.2s ease-out both;
 }
 
 .toast-progress {
@@ -81,44 +200,42 @@ input[type="number"] {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out both;
+  animation: fade-in 0.15s ease-out both;
 }
 
 .animate-scale-in {
-  animation: scale-in 0.2s ease-out both;
+  animation: scale-in 0.15s ease-out both;
 }
 
-.animate-shake {
-  animation: shake 0.4s ease-in-out both;
-}
-
+/* Scrollbar styles conforming to light and dark theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: var(--app-border-strong);
   border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: var(--app-text-muted);
 }
 
-/* Glassmorphism helpers */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Solid surface containers - replacing glassmorphism */
+.solid-panel {
+  background-color: var(--app-surface);
+  border: 1px solid var(--app-border);
 }
 
-.glass-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.solid-card {
+  background-color: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* Thermal receipt printable style */

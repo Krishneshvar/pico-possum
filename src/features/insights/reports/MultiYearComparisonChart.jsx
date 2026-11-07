@@ -4,13 +4,14 @@ import { formatPaise } from '../../../lib/formatters';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const SERIES_COLORS = [
-  { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.15)', name: 'Emerald' },
-  { stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.15)', name: 'Cyan' },
-  { stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.15)', name: 'Violet' },
-  { stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.15)', name: 'Amber' },
-  { stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.15)', name: 'Pink' },
-  { stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.15)', name: 'Blue' },
+/** Recommended Categorical Chart Palette */
+const SERIES_PALETTE = [
+  { stroke: '#2563EB', fill: 'rgba(37, 99, 235, 0.12)', name: 'Blue', dash: 'none', shape: 'circle' },
+  { stroke: '#0F766E', fill: 'rgba(15, 118, 110, 0.12)', name: 'Teal', dash: 'none', shape: 'square' },
+  { stroke: '#7C3AED', fill: 'rgba(124, 58, 237, 0.12)', name: 'Purple', dash: 'none', shape: 'triangle' },
+  { stroke: '#C2410C', fill: 'rgba(194, 65, 12, 0.12)', name: 'Orange', dash: '4,4', shape: 'circle' },
+  { stroke: '#BE185D', fill: 'rgba(190, 24, 93, 0.12)', name: 'Pink', dash: '6,3', shape: 'square' },
+  { stroke: '#475569', fill: 'rgba(71, 85, 105, 0.12)', name: 'Slate', dash: '2,2', shape: 'circle' },
 ];
 
 export default function MultiYearComparisonChart({
@@ -20,17 +21,15 @@ export default function MultiYearComparisonChart({
   isLoading = false,
   paymentMethod = 'ALL',
 }) {
-  const [hoveredPoint, setHoveredPoint] = useState(null); // { year, monthIdx, value, transactions, x, y }
+  const [hoveredPoint, setHoveredPoint] = useState(null);
   const [hoveredMonthIdx, setHoveredMonthIdx] = useState(null);
   const [hiddenYears, setHiddenYears] = useState(new Set());
 
-  // Extract all distinct years present in the dataset or past N years
   const { years, yearDataMap, maxRevenue } = useMemo(() => {
     const map = {};
     const yearSet = new Set();
     const currentYear = new Date().getFullYear();
 
-    // Ensure past N years exist
     for (let i = 0; i < yearsBack; i++) {
       yearSet.add(String(currentYear - i));
     }
@@ -49,7 +48,7 @@ export default function MultiYearComparisonChart({
       }
     });
 
-    const sortedYears = Array.from(yearSet).sort((a, b) => b.localeCompare(a)); // Descending order (newest first)
+    const sortedYears = Array.from(yearSet).sort((a, b) => b.localeCompare(a));
 
     let maxVal = 0;
     sortedYears.forEach((yr) => {
@@ -62,7 +61,7 @@ export default function MultiYearComparisonChart({
     return {
       years: sortedYears,
       yearDataMap: map,
-      maxRevenue: maxVal > 0 ? maxVal : 100000, // Default baseline ₹1,000 if empty
+      maxRevenue: maxVal > 0 ? maxVal : 100000,
     };
   }, [data, yearsBack]);
 
@@ -72,7 +71,6 @@ export default function MultiYearComparisonChart({
       if (next.has(yr)) {
         next.delete(yr);
       } else {
-        // Prevent hiding all years
         if (next.size < years.length - 1) {
           next.add(yr);
         }
@@ -81,14 +79,12 @@ export default function MultiYearComparisonChart({
     });
   };
 
-  // Dimensions for responsive SVG
   const width = 800;
   const height = 300;
   const padding = { top: 25, right: 35, bottom: 40, left: 75 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Nice Y-axis ceiling & steps
   const yTicksCount = 4;
   const yCeil = Math.ceil(maxRevenue / 100000) * 100000 || 100000;
   const yTicks = Array.from({ length: yTicksCount + 1 }, (_, i) => Math.round((yCeil / yTicksCount) * i));
@@ -97,278 +93,252 @@ export default function MultiYearComparisonChart({
   const getY = (val) => padding.top + chartHeight - (val / yCeil) * chartHeight;
 
   return (
-    <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
+    <div className="solid-card p-5 rounded-2xl border border-border-default bg-surface space-y-4">
       {/* Chart Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <span className="p-1.5 rounded-lg bg-brand-subtle text-brand">
               <Calendar className="w-4 h-4" />
             </span>
-            <h3 className="text-sm font-bold text-slate-100">Multi-Year Performance Comparison</h3>
+            <h3 className="text-sm font-bold text-text-primary">Multi-Year Revenue Comparison</h3>
           </div>
-          <p className="text-xs text-slate-400">
-            Compare monthly sales revenue trends across multiple years
+          <p className="text-xs text-text-muted">
+            Monthly revenue performance trends across comparison years
             {paymentMethod !== 'ALL' && (
-              <span className="ml-1 text-emerald-400 font-semibold font-mono">
-                ({paymentMethod})
-              </span>
+              <span className="ml-1 text-brand font-semibold font-mono">({paymentMethod})</span>
             )}
           </p>
         </div>
 
-        {/* Controls: Years back selector */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs text-slate-300">
-            <span className="text-slate-500 font-medium">Compare:</span>
-            <select
-              value={yearsBack}
-              onChange={(e) => onYearsBackChange(Number(e.target.value))}
-              className="bg-transparent text-emerald-400 font-semibold focus:outline-none cursor-pointer"
-            >
-              <option value={2} className="bg-slate-900 text-slate-200">Last 2 Years</option>
-              <option value={3} className="bg-slate-900 text-slate-200">Last 3 Years</option>
-              <option value={5} className="bg-slate-900 text-slate-200">Last 5 Years</option>
-            </select>
+        {/* Years back selector */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-text-muted">Comparison Range:</span>
+          <div className="flex bg-surface-secondary border border-border-default rounded-lg p-0.5">
+            {[2, 3, 4, 5].map((y) => (
+              <button
+                key={y}
+                type="button"
+                onClick={() => onYearsBackChange && onYearsBackChange(y)}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  yearsBack === y
+                    ? 'bg-brand text-white shadow-2xs'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {y} Years
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Series Toggle Chips / Legend */}
-      <div className="flex items-center flex-wrap gap-2 pt-1 border-t border-slate-800/60">
-        <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mr-1">
-          <Layers className="w-3.5 h-3.5" /> Series:
-        </span>
-        {years.map((yr, idx) => {
-          const color = SERIES_COLORS[idx % SERIES_COLORS.length];
-          const isHidden = hiddenYears.has(yr);
-          return (
-            <button
-              key={yr}
-              type="button"
-              onClick={() => toggleYearVisibility(yr)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all border ${
-                isHidden
-                  ? 'bg-slate-900/40 text-slate-500 border-slate-800/50 opacity-60'
-                  : 'bg-slate-900 text-slate-200 border-slate-700 hover:border-slate-600 shadow-sm'
-              }`}
-              title={isHidden ? `Show ${yr} series` : `Hide ${yr} series`}
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: isHidden ? '#475569' : color.stroke }}
-              />
-              <span>{yr}</span>
-              {isHidden ? <EyeOff className="w-3 h-3 text-slate-500 ml-0.5" /> : <Eye className="w-3 h-3 text-slate-400 ml-0.5" />}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Interactive SVG Chart Area */}
-      <div className="relative w-full aspect-[8/3] min-h-[260px] bg-slate-950/40 rounded-xl border border-slate-800/80 p-2 overflow-hidden flex items-center justify-center">
-        {isLoading ? (
-          <div className="text-xs text-slate-500 font-medium animate-pulse">
-            Loading multi-year sales data...
+      {/* SVG Chart */}
+      <div className="relative w-full aspect-[8/3] max-h-[340px] select-none">
+        {isLoading && (
+          <div className="absolute inset-0 bg-surface/80 flex items-center justify-center z-20 backdrop-blur-xs">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+              <span>Updating comparison data…</span>
+            </div>
           </div>
-        ) : (
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            className="w-full h-full select-none overflow-visible"
-            onMouseLeave={() => {
-              setHoveredPoint(null);
-              setHoveredMonthIdx(null);
-            }}
-          >
-            <defs>
-              {years.map((yr, idx) => {
-                const color = SERIES_COLORS[idx % SERIES_COLORS.length];
-                return (
-                  <linearGradient key={`grad-${yr}`} id={`grad-${yr}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color.stroke} stopOpacity="0.3" />
-                    <stop offset="100%" stopColor={color.stroke} stopOpacity="0.0" />
-                  </linearGradient>
-                );
-              })}
-            </defs>
+        )}
 
-            {/* Horizontal Grid Lines & Y Axis Labels */}
-            {yTicks.map((tickVal, i) => {
-              const y = getY(tickVal);
-              return (
-                <g key={`y-tick-${i}`}>
-                  <line
-                    x1={padding.left}
-                    y1={y}
-                    x2={width - padding.right}
-                    y2={y}
-                    stroke="#1e293b"
-                    strokeDasharray={i === 0 ? 'none' : '4,4'}
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={padding.left - 10}
-                    y={y + 3.5}
-                    textAnchor="end"
-                    className="fill-slate-500 text-[10px] font-mono"
-                  >
-                    {formatPaise(tickVal)}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Hovered Month Vertical Guideline */}
-            {hoveredMonthIdx !== null && (
-              <line
-                x1={getX(hoveredMonthIdx)}
-                y1={padding.top}
-                x2={getX(hoveredMonthIdx)}
-                y2={height - padding.bottom}
-                stroke="#38bdf8"
-                strokeWidth="1.5"
-                strokeDasharray="3,3"
-                opacity="0.8"
-              />
-            )}
-
-            {/* X Axis Labels */}
-            {MONTH_LABELS.map((name, idx) => {
-              const x = getX(idx);
-              const isSelected = hoveredMonthIdx === idx;
-              return (
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-full overflow-visible"
+          onMouseLeave={() => {
+            setHoveredPoint(null);
+            setHoveredMonthIdx(null);
+          }}
+        >
+          {/* Y-axis grid lines & labels */}
+          {yTicks.map((tickVal, i) => {
+            const y = getY(tickVal);
+            return (
+              <g key={i}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="var(--color-border-default)"
+                  strokeDasharray="4 4"
+                  strokeWidth="1"
+                />
                 <text
-                  key={`month-${name}`}
+                  x={padding.left - 10}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  className="fill-text-muted text-[10px] font-mono"
+                >
+                  {formatPaise(tickVal)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* X-axis Month Labels */}
+          {MONTH_LABELS.map((m, i) => {
+            const x = getX(i);
+            const isHovered = hoveredMonthIdx === i;
+            return (
+              <g key={m}>
+                {isHovered && (
+                  <line
+                    x1={x}
+                    y1={padding.top}
+                    x2={x}
+                    y2={padding.top + chartHeight}
+                    stroke="var(--color-brand)"
+                    strokeWidth="1.5"
+                    strokeDasharray="2 2"
+                    opacity="0.6"
+                  />
+                )}
+                <text
                   x={x}
                   y={height - padding.bottom + 20}
                   textAnchor="middle"
-                  className={`text-[11px] font-mono transition-colors ${
-                    isSelected ? 'fill-emerald-400 font-bold' : 'fill-slate-400'
+                  className={`text-[11px] font-medium transition-colors ${
+                    isHovered ? 'fill-brand font-bold' : 'fill-text-muted'
                   }`}
                 >
-                  {name}
+                  {m}
                 </text>
-              );
-            })}
+              </g>
+            );
+          })}
 
-            {/* Lines and Areas for Each Year */}
-            {years
-              .filter((yr) => !hiddenYears.has(yr))
-              .map((yr) => {
-                const yearOriginalIdx = years.indexOf(yr);
-                const color = SERIES_COLORS[yearOriginalIdx % SERIES_COLORS.length];
+          {/* Lines & Data for each year in categorical series */}
+          {years.map((year, yearIdx) => {
+            if (hiddenYears.has(year)) return null;
+            const color = SERIES_PALETTE[yearIdx % SERIES_PALETTE.length];
 
-                // Build points array for the 12 months
-                const points = MONTH_LABELS.map((_, mIdx) => {
-                  const m = mIdx + 1;
-                  const item = yearDataMap[yr]?.[m];
-                  const rev = item?.revenue || 0;
-                  return {
-                    monthIdx: mIdx,
-                    monthName: MONTH_LABELS[mIdx],
-                    value: rev,
-                    transactions: item?.transactions || 0,
-                    x: getX(mIdx),
-                    y: getY(rev),
-                  };
-                });
+            const points = [];
+            for (let m = 1; m <= 12; m++) {
+              const val = yearDataMap[year]?.[m]?.revenue || 0;
+              const txns = yearDataMap[year]?.[m]?.transactions || 0;
+              points.push({
+                monthIdx: m - 1,
+                monthName: MONTH_LABELS[m - 1],
+                value: val,
+                transactions: txns,
+                x: getX(m - 1),
+                y: getY(val),
+              });
+            }
 
-                // Path points
-                const pathD = points.reduce((acc, p, idx) => {
-                  return `${acc} ${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-                }, '');
+            const pathD = points.reduce((acc, pt, i) => {
+              return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+            }, '');
 
-                // Area path for gradient fill
-                const areaD = `${pathD} L ${points[points.length - 1].x.toFixed(1)},${(height - padding.bottom).toFixed(1)} L ${points[0].x.toFixed(1)},${(height - padding.bottom).toFixed(1)} Z`;
+            return (
+              <g key={year}>
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={color.stroke}
+                  strokeWidth="2.5"
+                  strokeDasharray={color.dash}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
 
-                return (
-                  <g key={`series-${yr}`} className="transition-opacity duration-300">
-                    {/* Area fill */}
-                    <path d={areaD} fill={`url(#grad-${yr})`} opacity="0.8" />
-
-                    {/* Main Line */}
-                    <path
-                      d={pathD}
-                      fill="none"
+                {points.map((pt) => {
+                  const isHovered =
+                    hoveredPoint?.year === year && hoveredPoint?.monthIdx === pt.monthIdx;
+                  return (
+                    <circle
+                      key={pt.monthIdx}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={isHovered ? 6 : 3.5}
+                      fill={isHovered ? 'white' : color.stroke}
                       stroke={color.stroke}
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="hover:stroke-width-3 transition-all"
+                      strokeWidth={isHovered ? 3 : 1.5}
+                      className="cursor-pointer transition-all"
+                      onMouseEnter={() => {
+                        setHoveredPoint({
+                          year,
+                          monthName: pt.monthName,
+                          monthIdx: pt.monthIdx,
+                          value: pt.value,
+                          transactions: pt.transactions,
+                          x: pt.x,
+                          y: pt.y,
+                          color: color.stroke,
+                        });
+                        setHoveredMonthIdx(pt.monthIdx);
+                      }}
                     />
+                  );
+                })}
+              </g>
+            );
+          })}
+        </svg>
 
-                    {/* Data Points */}
-                    {points.map((p) => {
-                      const isHovered =
-                        hoveredPoint?.year === yr && hoveredPoint?.monthIdx === p.monthIdx;
-                      return (
-                        <g key={`pt-${yr}-${p.monthIdx}`}>
-                          {/* Invisible larger hit target */}
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r="12"
-                            fill="transparent"
-                            className="cursor-pointer"
-                            onMouseEnter={() => {
-                              setHoveredPoint({
-                                year: yr,
-                                monthName: p.monthName,
-                                monthIdx: p.monthIdx,
-                                value: p.value,
-                                transactions: p.transactions,
-                                color: color.stroke,
-                                x: p.x,
-                                y: p.y,
-                              });
-                              setHoveredMonthIdx(p.monthIdx);
-                            }}
-                          />
-                          {/* Visible point circle */}
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r={isHovered ? '6' : '3.5'}
-                            fill={isHovered ? '#ffffff' : color.stroke}
-                            stroke={color.stroke}
-                            strokeWidth="2"
-                            className="transition-all duration-150 pointer-events-none"
-                          />
-                        </g>
-                      );
-                    })}
-                  </g>
-                );
-              })}
-          </svg>
-        )}
-
-        {/* Floating Tooltip */}
+        {/* Hover Tooltip */}
         {hoveredPoint && (
           <div
-            className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl px-3.5 py-2 shadow-2xl space-y-1"
             style={{
+              position: 'absolute',
               left: `${(hoveredPoint.x / width) * 100}%`,
               top: `${(hoveredPoint.y / height) * 100}%`,
+              transform: 'translate(-50%, -125%)',
             }}
+            className="z-30 pointer-events-none bg-surface border border-border-default rounded-xl shadow-lg p-2.5 text-xs whitespace-nowrap animate-scale-in"
           >
-            <div className="flex items-center justify-between gap-3 text-xs border-b border-slate-800 pb-1">
-              <span className="font-bold text-slate-200">
-                {hoveredPoint.monthName} {hoveredPoint.year}
+            <div className="flex items-center gap-2 mb-1 border-b border-border-default pb-1">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hoveredPoint.color }} />
+              <span className="font-bold text-text-primary">
+                {hoveredPoint.year} · {hoveredPoint.monthName}
               </span>
-              <span
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: hoveredPoint.color }}
-              />
             </div>
-            <div className="text-sm font-black font-mono" style={{ color: hoveredPoint.color }}>
-              {formatPaise(hoveredPoint.value)}
-            </div>
-            <div className="text-[10px] text-slate-400 font-mono">
-              {hoveredPoint.transactions} {hoveredPoint.transactions === 1 ? 'sale' : 'sales'} recorded
+            <div className="space-y-0.5">
+              <div className="flex justify-between gap-4">
+                <span className="text-text-muted">Revenue:</span>
+                <span className="font-bold financial-value text-text-primary">
+                  {formatPaise(hoveredPoint.value)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-text-muted">Transactions:</span>
+                <span className="font-mono text-text-secondary">{hoveredPoint.transactions}</span>
+              </div>
             </div>
           </div>
         )}
+      </div>
+
+      {/* Categorical Series Legend */}
+      <div className="flex items-center justify-center gap-4 flex-wrap pt-2 border-t border-border-default text-xs">
+        {years.map((year, idx) => {
+          const color = SERIES_PALETTE[idx % SERIES_PALETTE.length];
+          const isHidden = hiddenYears.has(year);
+
+          return (
+            <button
+              key={year}
+              type="button"
+              onClick={() => toggleYearVisibility(year)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                isHidden
+                  ? 'border-dashed border-border-default opacity-40 bg-surface'
+                  : 'border-border-default bg-surface hover:bg-surface-secondary shadow-2xs'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color.stroke }} />
+              <span className="font-semibold text-text-primary">{year}</span>
+              {isHidden ? (
+                <EyeOff className="w-3 h-3 text-text-muted" />
+              ) : (
+                <Eye className="w-3 h-3 text-text-muted" />
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

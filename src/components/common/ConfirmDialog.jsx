@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Trash2, Info } from 'lucide-react';
 import { useConfirmStore } from '../../stores/confirm.store';
 
 const TONE_STYLES = {
   danger: {
-    icon: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    button: 'bg-rose-500 text-white hover:bg-rose-400 shadow-rose-500/20',
+    iconWrapper: 'bg-danger-bg text-danger border-danger/30',
+    button: 'bg-danger text-white hover:bg-danger/90',
   },
   warning: {
-    icon: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    button: 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-amber-500/20',
+    iconWrapper: 'bg-warning-bg text-warning border-warning/30',
+    button: 'bg-warning text-white hover:bg-warning/90',
   },
   primary: {
-    icon: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    button: 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-emerald-500/20',
+    iconWrapper: 'bg-brand-subtle text-brand border-brand/30',
+    button: 'bg-brand text-white hover:bg-brand-hover',
   },
 };
 
@@ -25,13 +25,13 @@ const TONE_ICONS = {
 };
 
 /**
- * The app-wide confirmation dialog.
- *
- * Render it through <ConfirmDialogHost /> (imperative `confirmDialog()` calls)
- * or use it directly when a view already owns the open/closed state.
+ * App-wide confirmation dialog adhering to WCAG and design standards:
+ * - Safe button focus by default on destructive actions
+ * - Explicit action labels
+ * - Escape key dismisses
  */
 export default function ConfirmDialog({
-  title = 'Are you sure?',
+  title = 'Confirm Action',
   message,
   details = [],
   confirmLabel = 'Confirm',
@@ -70,8 +70,7 @@ export default function ConfirmDialog({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleCancel]);
 
-  // Put focus where it is most useful: the input when present, otherwise the
-  // safe option for destructive dialogs and the primary action for the rest.
+  // Focus management: For destructive dialogs, default focus is on Cancel!
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
@@ -81,9 +80,7 @@ export default function ConfirmDialog({
     } else {
       confirmRef.current?.focus();
     }
-    // Only run when the dialog mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tone]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -93,7 +90,7 @@ export default function ConfirmDialog({
 
   const dialog = (
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-fade-in"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) handleCancel();
       }}
@@ -102,28 +99,28 @@ export default function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl animate-scale-in"
+        className="w-full max-w-md space-y-4 rounded-2xl border border-border-default bg-surface p-5 shadow-xl animate-scale-in"
       >
         <div className="flex items-start gap-3">
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${styles.icon}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${styles.iconWrapper}`}
           >
             <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
-            <h3 id={titleId} className="text-sm font-bold text-slate-100">
+            <h3 id={titleId} className="text-sm font-bold text-text-primary">
               {title}
             </h3>
             {message && (
-              <div className="mt-1 text-xs leading-relaxed text-slate-400">
+              <div className="mt-1 text-xs leading-relaxed text-text-secondary">
                 {message}
               </div>
             )}
             {detailItems.length > 0 && (
-              <ul className="mt-2.5 space-y-1.5 text-[11px] leading-relaxed text-slate-400">
+              <ul className="mt-2.5 space-y-1.5 text-[11px] leading-relaxed text-text-muted">
                 {detailItems.map((detail, index) => (
                   <li key={index} className="flex gap-2">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-600" />
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-border-strong" />
                     <span>{detail}</span>
                   </li>
                 ))}
@@ -138,7 +135,7 @@ export default function ConfirmDialog({
               {input.label && (
                 <label
                   htmlFor={inputId}
-                  className="mb-1 block text-xs text-slate-400"
+                  className="mb-1 block text-xs font-medium text-text-secondary"
                 >
                   {input.label}
                 </label>
@@ -150,18 +147,18 @@ export default function ConfirmDialog({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={input.placeholder || ''}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 p-2 text-xs text-slate-200 focus:border-rose-500 focus:outline-none"
+                className="w-full rounded-lg border border-border-strong bg-surface-secondary p-2 text-xs text-text-primary focus:border-brand focus:outline-none"
               />
             </div>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-slate-800 pt-3">
+          <div className="flex justify-end gap-2 border-t border-border-default pt-3">
             <button
               ref={cancelRef}
               type="button"
               onClick={handleCancel}
               disabled={isPending}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:opacity-60"
+              className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50 cursor-pointer border border-border-default"
             >
               {cancelLabel}
             </button>
@@ -169,7 +166,7 @@ export default function ConfirmDialog({
               ref={confirmRef}
               type="submit"
               disabled={cannotConfirm}
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold shadow-md transition-all disabled:cursor-not-allowed disabled:opacity-60 ${styles.button}`}
+              className={`rounded-lg px-4 py-1.5 text-xs font-bold shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer ${styles.button}`}
             >
               {isPending ? 'Please wait…' : confirmLabel}
             </button>
@@ -183,7 +180,7 @@ export default function ConfirmDialog({
   return createPortal(dialog, document.body);
 }
 
-/** Renders the active imperative `confirmDialog()` request at the app root. */
+/** Renders active imperative confirm dialog */
 export function ConfirmDialogHost() {
   const request = useConfirmStore((state) => state.request);
   const close = useConfirmStore((state) => state.close);

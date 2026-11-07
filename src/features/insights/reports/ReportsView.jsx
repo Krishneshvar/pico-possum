@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   BarChart3,
   TrendingUp,
-  IndianRupee,
   CreditCard,
   Banknote,
   QrCode,
@@ -13,8 +12,9 @@ import {
   FolderTree,
   RotateCcw,
   X,
-  Layers,
   Filter,
+  Receipt,
+  Tag,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise } from '../../../lib/formatters';
@@ -74,6 +74,29 @@ export default function ReportsView() {
     queryFn: () => tauriApi.getMultiYearSales(yearsBack, activePmFilter),
   });
 
+  // Sales list for computing counts
+  const { data: allSales = [] } = useQuery({
+    queryKey: ['sales'],
+    queryFn: () => tauriApi.getSales(1000, 0, null),
+  });
+
+  const pmCounts = useMemo(() => {
+    const counts = { ALL: 0, CASH: 0, UPI: 0, CARD: 0, OTHER: 0 };
+    for (const s of allSales) {
+      if (s.status === 'CANCELLED') continue;
+      if (fromDate && s.created_at && s.created_at.split('T')[0] < fromDate) continue;
+      if (toDate && s.created_at && s.created_at.split('T')[0] > toDate) continue;
+      counts.ALL++;
+      const pm = (s.payment_method || 'CASH').toUpperCase();
+      if (counts[pm] !== undefined) {
+        counts[pm]++;
+      } else {
+        counts.OTHER++;
+      }
+    }
+    return counts;
+  }, [allSales, fromDate, toDate]);
+
   const refetchAll = () => {
     refetchSummary();
     refetchTopProducts();
@@ -101,6 +124,7 @@ export default function ReportsView() {
   const otherRev = summary?.other_revenue_paise || 0;
   const totalCount = summary?.total_sales_count || 0;
   const avgBill = totalCount > 0 ? Math.round(totalRev / totalCount) : 0;
+  const totalDiscount = summary?.total_discount_paise || 0;
 
   const cashPct = totalRev > 0 ? (cashRev / totalRev) * 100 : 0;
   const upiPct = totalRev > 0 ? (upiRev / totalRev) * 100 : 0;
@@ -142,11 +166,6 @@ export default function ReportsView() {
     setToDate(today);
   };
 
-  const setRangeAll = () => {
-    setFromDate('');
-    setToDate('');
-  };
-
   const handleResetFilters = () => {
     setFromDate('');
     setToDate('');
@@ -155,17 +174,17 @@ export default function ReportsView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-      {/* View Header */}
-      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+    <div className="flex-1 flex flex-col h-full bg-canvas text-content overflow-hidden">
+      {/* 1. Header Toolbar */}
+      <div className="h-14 px-6 border-b border-border bg-surface flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-            <BarChart3 className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-brand-subtle text-brand flex items-center justify-center border border-brand/20">
+            <BarChart3 className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Sales Analytics</h2>
-            <p className="text-xs text-slate-400">
-              Financial summaries, multi-year performance, and category performance
+            <h1 className="text-sm font-semibold text-content">Sales Analytics</h1>
+            <p className="text-xs text-content-secondary">
+              Revenue summaries, growth comparisons, and categorical breakdown
             </p>
           </div>
         </div>
@@ -174,18 +193,18 @@ export default function ReportsView() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleResetFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-all hover:border-slate-700 shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
             title="Reset filters"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+            <RotateCcw className="w-3.5 h-3.5 text-content-muted" />
             <span>Reset</span>
           </button>
           <button
             onClick={refetchAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-all hover:border-slate-700 shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
             title="Refresh analytics data"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+            <RefreshCw className="w-3.5 h-3.5 text-brand" />
             <span>Refresh</span>
           </button>
         </div>
@@ -193,43 +212,49 @@ export default function ReportsView() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Filter Bar */}
-        <div className="flex items-center justify-between bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800 flex-wrap gap-3 shadow-sm">
+        {/* 2. Filter Toolbar */}
+        <div className="flex items-center justify-between bg-surface p-3.5 rounded-xl border border-border flex-wrap gap-3">
           {/* Date Pickers */}
-          <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
-            <Calendar className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span className="font-medium text-slate-300">Reporting Range:</span>
+          <div className="flex items-center gap-2 text-xs text-content-secondary flex-wrap">
+            <Calendar className="w-4 h-4 text-brand flex-shrink-0" />
+            <span className="font-medium text-content">Reporting Period:</span>
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs font-mono focus:border-emerald-500 focus:outline-none"
+              className="bg-surface-secondary border border-border-strong rounded-lg px-2.5 py-1 text-content text-xs font-mono focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
-            <span>to</span>
+            <span className="text-content-muted">to</span>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs font-mono focus:border-emerald-500 focus:outline-none"
+              className="bg-surface-secondary border border-border-strong rounded-lg px-2.5 py-1 text-content text-xs font-mono focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
 
             {/* Quick Date Presets */}
             <div className="flex items-center gap-1 ml-1">
               <button
+                type="button"
                 onClick={setRangeToday}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors text-[11px]"
+                className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-content-secondary hover:text-content font-medium transition-colors text-[11px]"
               >
                 Today
               </button>
               <button
+                type="button"
                 onClick={setRangeMonth}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors text-[11px]"
+                className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-content-secondary hover:text-content font-medium transition-colors text-[11px]"
               >
                 This Month
               </button>
               <button
-                onClick={setRangeAll}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors text-[11px]"
+                type="button"
+                onClick={() => {
+                  setFromDate('');
+                  setToDate('');
+                }}
+                className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-content-secondary hover:text-content font-medium transition-colors text-[11px]"
               >
                 All Time
               </button>
@@ -238,37 +263,37 @@ export default function ReportsView() {
 
           {/* Payment Method Filter Dropdown */}
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-content-secondary font-medium flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-content-muted" />
               <span>Payment Method:</span>
             </span>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1 text-slate-200 font-semibold focus:border-emerald-500 focus:outline-none cursor-pointer"
+              className="bg-surface-secondary border border-border-strong rounded-lg px-3 py-1 text-content font-medium focus:border-brand focus:outline-none cursor-pointer"
             >
-              <option value="ALL">All Payment Methods</option>
-              <option value="CASH">Cash</option>
-              <option value="UPI">UPI / QR</option>
-              <option value="CARD">Card</option>
-              <option value="OTHER">Other</option>
+              <option value="ALL">All Methods ({pmCounts.ALL})</option>
+              <option value="CASH">Cash ({pmCounts.CASH})</option>
+              <option value="UPI">UPI / QR ({pmCounts.UPI})</option>
+              <option value="CARD">Card ({pmCounts.CARD})</option>
+              <option value="OTHER">Other ({pmCounts.OTHER})</option>
             </select>
           </div>
         </div>
 
-        {/* Filter-Based View Banner (When specific payment method is filtered) */}
+        {/* Filter-Based View Banner (When payment method is restricted) */}
         {paymentMethod !== 'ALL' && (
-          <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-2.5 text-xs text-emerald-300">
+          <div className="flex items-center justify-between bg-brand-subtle border border-brand/30 rounded-xl px-4 py-2.5 text-xs text-brand">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-brand" />
               <span>
-                Filtered by payment method: <strong className="font-mono text-emerald-200 uppercase">{paymentMethod}</strong>.
-                Payment-method breakdown analytics is hidden to focus on scoped transaction performance.
+                Filtered by payment method: <strong className="font-semibold uppercase">{paymentMethod}</strong>.
+                Method distribution breakdown is scoped to this selection.
               </span>
             </div>
             <button
               onClick={() => setPaymentMethod('ALL')}
-              className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 font-semibold transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-brand/40 hover:bg-surface-secondary text-brand font-medium transition-colors"
             >
               <X className="w-3 h-3" />
               <span>Show All Methods</span>
@@ -276,64 +301,68 @@ export default function ReportsView() {
           </div>
         )}
 
-        {/* Top Metric Cards */}
+        {/* 3. Compact KPI Cards (Solid neutral cards with semantic accents) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Total Revenue</span>
-              <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-                <TrendingUp className="w-4 h-4" />
-              </span>
+          {/* Revenue */}
+          <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-content-secondary">
+              <span className="font-medium">Total Revenue</span>
+              <div className="w-7 h-7 rounded-lg bg-brand-subtle text-brand flex items-center justify-center">
+                <TrendingUp className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-slate-100 font-mono">
+            <div className="text-2xl font-semibold text-content financial-value">
               {formatPaise(totalRev)}
             </div>
-            <p className="text-[11px] text-emerald-400/90 font-medium">
-              {paymentMethod === 'ALL' ? 'All completed transactions' : `${paymentMethod} transactions`}
+            <p className="text-[11px] text-content-muted">
+              {paymentMethod === 'ALL' ? 'Gross transaction volume' : `${paymentMethod} volume`}
             </p>
           </div>
 
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Total Bills Issued</span>
-              <span className="p-1.5 rounded-lg bg-teal-500/10 text-teal-400">
-                <BarChart3 className="w-4 h-4" />
-              </span>
+          {/* Bills Issued */}
+          <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-content-secondary">
+              <span className="font-medium">Total Invoices</span>
+              <div className="w-7 h-7 rounded-lg bg-surface-secondary text-content-secondary flex items-center justify-center border border-border">
+                <Receipt className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-slate-100 font-mono">
+            <div className="text-2xl font-semibold text-content financial-value">
               {totalCount}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Customer checkouts</p>
+            <p className="text-[11px] text-content-muted">Customer transactions</p>
           </div>
 
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Average Bill Value</span>
-              <span className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
-                <IndianRupee className="w-4 h-4" />
-              </span>
+          {/* Average Bill Value */}
+          <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-content-secondary">
+              <span className="font-medium">Average Bill Value</span>
+              <div className="w-7 h-7 rounded-lg bg-surface-secondary text-content-secondary flex items-center justify-center border border-border">
+                <BarChart3 className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-slate-100 font-mono">
+            <div className="text-2xl font-semibold text-content financial-value">
               {formatPaise(avgBill)}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Per checkout average</p>
+            <p className="text-[11px] text-content-muted">Per checkout average</p>
           </div>
 
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Total Discounts Given</span>
-              <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
-                <TrendingUp className="w-4 h-4" />
-              </span>
+          {/* Discounts Given */}
+          <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-content-secondary">
+              <span className="font-medium">Total Discounts</span>
+              <div className="w-7 h-7 rounded-lg bg-warning/10 text-warning flex items-center justify-center">
+                <Tag className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-amber-400 font-mono">
-              {formatPaise(summary?.total_discount_paise || 0)}
+            <div className="text-2xl font-semibold text-content financial-value">
+              {formatPaise(totalDiscount)}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Customer savings</p>
+            <p className="text-[11px] text-content-muted">Customer savings awarded</p>
           </div>
         </div>
 
-        {/* Multi-Year Performance Comparison Chart */}
+        {/* 4. Multi-Year Comparison Chart */}
         <MultiYearComparisonChart
           data={multiYearData}
           yearsBack={yearsBack}
@@ -342,134 +371,148 @@ export default function ReportsView() {
           paymentMethod={paymentMethod}
         />
 
-        {/* Payment Method Breakdown Grid & Distribution Bar (Rendered ONLY when Payment Method filter is 'ALL') */}
+        {/* 5. Payment Distribution Bar: Show BOTH absolute ₹ values and percentages */}
         {paymentMethod === 'ALL' && (
-          <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-bold text-slate-100">Revenue by Payment Method</h3>
-                <p className="text-xs text-slate-400">Distribution across payment channels</p>
+              <div>
+                <h2 className="text-sm font-semibold text-content">Revenue by Payment Method</h2>
+                <p className="text-xs text-content-secondary">Distribution across payment collection channels</p>
               </div>
-              <span className="text-xs text-slate-400 font-mono">Total: {formatPaise(totalRev)}</span>
+              <span className="text-xs font-semibold text-content financial-value">
+                Total: {formatPaise(totalRev)}
+              </span>
             </div>
 
             {/* Visual Stacked Distribution Bar */}
             {totalRev > 0 && (
-              <div className="space-y-1.5">
-                <div className="w-full h-3.5 bg-slate-900 rounded-full overflow-hidden flex border border-slate-800 shadow-inner">
+              <div className="space-y-2">
+                <div className="w-full h-3 bg-surface-secondary rounded-full overflow-hidden flex border border-border">
                   {cashPct > 0 && (
                     <div
-                      style={{ width: `${cashPct}%` }}
-                      className="bg-emerald-500 h-full transition-all hover:opacity-90"
-                      title={`Cash: ${cashPct.toFixed(1)}%`}
+                      style={{ width: `${cashPct}%`, backgroundColor: '#2563EB' }}
+                      className="h-full transition-all"
+                      title={`Cash: ${formatPaise(cashRev)} (${cashPct.toFixed(1)}%)`}
                     />
                   )}
                   {upiPct > 0 && (
                     <div
-                      style={{ width: `${upiPct}%` }}
-                      className="bg-cyan-500 h-full transition-all hover:opacity-90"
-                      title={`UPI: ${upiPct.toFixed(1)}%`}
+                      style={{ width: `${upiPct}%`, backgroundColor: '#0F766E' }}
+                      className="h-full transition-all"
+                      title={`UPI / QR: ${formatPaise(upiRev)} (${upiPct.toFixed(1)}%)`}
                     />
                   )}
                   {cardPct > 0 && (
                     <div
-                      style={{ width: `${cardPct}%` }}
-                      className="bg-blue-500 h-full transition-all hover:opacity-90"
-                      title={`Card: ${cardPct.toFixed(1)}%`}
+                      style={{ width: `${cardPct}%`, backgroundColor: '#7C3AED' }}
+                      className="h-full transition-all"
+                      title={`Card: ${formatPaise(cardRev)} (${cardPct.toFixed(1)}%)`}
                     />
                   )}
                   {otherPct > 0 && (
                     <div
-                      style={{ width: `${otherPct}%` }}
-                      className="bg-purple-500 h-full transition-all hover:opacity-90"
-                      title={`Other: ${otherPct.toFixed(1)}%`}
+                      style={{ width: `${otherPct}%`, backgroundColor: '#475569' }}
+                      className="h-full transition-all"
+                      title={`Other: ${formatPaise(otherRev)} (${otherPct.toFixed(1)}%)`}
                     />
                   )}
                 </div>
-                <div className="flex items-center justify-end gap-4 text-[10px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Cash ({cashPct.toFixed(1)}%)
+
+                {/* Legend with BOTH absolute ₹ and % */}
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-content-secondary pt-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#2563EB' }} />
+                    <span className="font-medium text-content">Cash:</span>
+                    <span className="financial-value">{formatPaise(cashRev)}</span>
+                    <span className="text-content-muted">({cashPct.toFixed(1)}%)</span>
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-cyan-500" /> UPI ({upiPct.toFixed(1)}%)
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#0F766E' }} />
+                    <span className="font-medium text-content">UPI / QR:</span>
+                    <span className="financial-value">{formatPaise(upiRev)}</span>
+                    <span className="text-content-muted">({upiPct.toFixed(1)}%)</span>
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" /> Card ({cardPct.toFixed(1)}%)
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#7C3AED' }} />
+                    <span className="font-medium text-content">Card:</span>
+                    <span className="financial-value">{formatPaise(cardRev)}</span>
+                    <span className="text-content-muted">({cardPct.toFixed(1)}%)</span>
                   </span>
                   {otherPct > 0 && (
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-purple-500" /> Other ({otherPct.toFixed(1)}%)
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#475569' }} />
+                      <span className="font-medium text-content">Other:</span>
+                      <span className="financial-value">{formatPaise(otherRev)}</span>
+                      <span className="text-content-muted">({otherPct.toFixed(1)}%)</span>
                     </span>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-1">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <Banknote className="w-4 h-4 text-emerald-400" /> Cash
+            {/* Individual Method Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
+                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
+                  <Banknote className="w-4 h-4 text-brand" /> Cash
                 </div>
-                <div className="text-xl font-bold font-mono text-slate-100">
+                <div className="text-lg font-semibold text-content financial-value">
                   {formatPaise(cashRev)}
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  {cashPct.toFixed(1)}% of revenue
+                <div className="text-[11px] text-content-muted">
+                  {cashPct.toFixed(1)}% of total revenue
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-1">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <QrCode className="w-4 h-4 text-cyan-400" /> UPI / QR
+              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
+                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
+                  <QrCode className="w-4 h-4 text-teal-600" /> UPI / QR
                 </div>
-                <div className="text-xl font-bold font-mono text-slate-100">
+                <div className="text-lg font-semibold text-content financial-value">
                   {formatPaise(upiRev)}
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  {upiPct.toFixed(1)}% of revenue
+                <div className="text-[11px] text-content-muted">
+                  {upiPct.toFixed(1)}% of total revenue
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-1">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <CreditCard className="w-4 h-4 text-blue-400" /> Card
+              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
+                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
+                  <CreditCard className="w-4 h-4 text-purple-600" /> Card
                 </div>
-                <div className="text-xl font-bold font-mono text-slate-100">
+                <div className="text-lg font-semibold text-content financial-value">
                   {formatPaise(cardRev)}
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  {cardPct.toFixed(1)}% of revenue
+                <div className="text-[11px] text-content-muted">
+                  {cardPct.toFixed(1)}% of total revenue
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Bottom Section: Top Selling Categories & Top Selling Products */}
+        {/* 6. Bottom Tables: Top Selling Categories & Products */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Top Selling Categories */}
-          <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
+          {/* Top Categories */}
+          <div className="p-5 rounded-xl bg-surface border border-border space-y-3.5 flex flex-col justify-between">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FolderTree className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-sm font-bold text-slate-100">Top Selling Categories</h3>
+                  <FolderTree className="w-4 h-4 text-brand" />
+                  <h2 className="text-sm font-semibold text-content">Top Selling Categories</h2>
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {topCategories.length} categories
-                </span>
               </div>
 
-              <div className="border border-slate-800 rounded-xl overflow-hidden">
+              <div className="border border-border rounded-lg overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                    <tr>
-                      <th className="py-2.5 px-3 w-10 text-center">#</th>
+                  <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
+                    <tr className="h-10">
+                      <th className="px-3 w-10 text-center">#</th>
                       <SortableTh
                         sortKey="category_name"
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Category
                       </SortableTh>
@@ -478,7 +521,7 @@ export default function ReportsView() {
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                         align="center"
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Products
                       </SortableTh>
@@ -487,7 +530,7 @@ export default function ReportsView() {
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                         align="center"
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Sold
                       </SortableTh>
@@ -496,41 +539,41 @@ export default function ReportsView() {
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                         align="right"
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Total Revenue
                       </SortableTh>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-border">
                     {loadingTopCategories ? (
                       <tr>
-                        <td colSpan="5" className="py-8 text-center text-slate-500 font-medium">
+                        <td colSpan="5" className="py-8 text-center text-content-muted">
                           Loading categories...
                         </td>
                       </tr>
                     ) : topCategories.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="py-8 text-center text-slate-500">
+                        <td colSpan="5" className="py-8 text-center text-content-muted">
                           No category sales in this period.
                         </td>
                       </tr>
                     ) : (
                       sortedTopCategories.map((c, idx) => (
-                        <tr key={c.category_id || idx} className="hover:bg-slate-900/40 transition-colors">
-                          <td className="py-2.5 px-3 text-center text-slate-500 font-mono font-bold">
+                        <tr key={c.category_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
+                          <td className="px-3 text-center text-content-muted text-xs">
                             {idx + 1}
                           </td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-200">
+                          <td className="px-3 font-medium text-content">
                             {c.category_name}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-mono text-slate-300">
+                          <td className="px-3 text-center text-content-secondary financial-value">
                             {c.distinct_products_sold}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
+                          <td className="px-3 text-center font-medium text-content financial-value">
                             {c.total_quantity}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-100">
+                          <td className="px-3 text-right font-medium text-content financial-value">
                             {formatPaise(c.total_revenue_paise)}
                           </td>
                         </tr>
@@ -541,44 +584,41 @@ export default function ReportsView() {
               </div>
             </div>
 
-            {/* Category Summary Totals Footer */}
+            {/* Category Totals Footer */}
             {topCategories.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-300 font-mono bg-slate-900/40 px-3.5 py-2 rounded-xl">
+              <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-content-secondary bg-surface-secondary px-3.5 py-2 rounded-lg">
                 <div>
-                  <span className="text-slate-500 font-sans font-medium mr-1.5">Total Sold:</span>
-                  <span className="text-emerald-400 font-bold">{totalCategoryUnits}</span>
+                  <span className="text-content-muted mr-1.5">Total Sold:</span>
+                  <span className="font-semibold text-content financial-value">{totalCategoryUnits}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-sans font-medium mr-1.5">Total Revenue:</span>
-                  <span className="text-slate-100 font-bold">{formatPaise(totalCategoryRevenue)}</span>
+                  <span className="text-content-muted mr-1.5">Total Revenue:</span>
+                  <span className="font-semibold text-content financial-value">{formatPaise(totalCategoryRevenue)}</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Top Selling Products */}
-          <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
+          {/* Top Products */}
+          <div className="p-5 rounded-xl bg-surface border border-border space-y-3.5 flex flex-col justify-between">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-amber-400" />
-                  <h3 className="text-sm font-bold text-slate-100">Top Selling Products</h3>
+                  <Flame className="w-4 h-4 text-warning" />
+                  <h2 className="text-sm font-semibold text-content">Top Selling Products</h2>
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {topProducts.length} products
-                </span>
               </div>
 
-              <div className="border border-slate-800 rounded-xl overflow-hidden">
+              <div className="border border-border rounded-lg overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                    <tr>
-                      <th className="py-2.5 px-3 w-10 text-center">#</th>
+                  <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
+                    <tr className="h-10">
+                      <th className="px-3 w-10 text-center">#</th>
                       <SortableTh
                         sortKey="product_name"
                         sort={topProdSort}
                         onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Product
                       </SortableTh>
@@ -587,7 +627,7 @@ export default function ReportsView() {
                         sort={topProdSort}
                         onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                         align="center"
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Qty Sold
                       </SortableTh>
@@ -596,43 +636,43 @@ export default function ReportsView() {
                         sort={topProdSort}
                         onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                         align="right"
-                        className="py-2.5 px-3"
+                        className="px-3"
                       >
                         Total Revenue
                       </SortableTh>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-border">
                     {loadingTopProducts ? (
                       <tr>
-                        <td colSpan="4" className="py-8 text-center text-slate-500 font-medium">
+                        <td colSpan="4" className="py-8 text-center text-content-muted">
                           Loading products...
                         </td>
                       </tr>
                     ) : topProducts.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="py-8 text-center text-slate-500">
+                        <td colSpan="4" className="py-8 text-center text-content-muted">
                           No product sales in this period.
                         </td>
                       </tr>
                     ) : (
                       sortedTopProducts.map((p, idx) => (
-                        <tr key={p.product_id || idx} className="hover:bg-slate-900/40 transition-colors">
-                          <td className="py-2.5 px-3 text-center text-slate-500 font-mono font-bold">
+                        <tr key={p.product_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
+                          <td className="px-3 text-center text-content-muted text-xs">
                             {idx + 1}
                           </td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-200">
-                            <div>{p.product_name}</div>
+                          <td className="px-3 text-content">
+                            <div className="font-medium">{p.product_name}</div>
                             {p.sku && (
-                              <div className="text-[10px] text-slate-500 font-mono font-normal">
+                              <div className="text-[10px] text-content-muted font-mono">
                                 SKU: {p.sku}
                               </div>
                             )}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
+                          <td className="px-3 text-center font-medium text-content financial-value">
                             {p.total_quantity}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-100">
+                          <td className="px-3 text-right font-medium text-content financial-value">
                             {formatPaise(p.total_revenue_paise)}
                           </td>
                         </tr>
@@ -643,16 +683,16 @@ export default function ReportsView() {
               </div>
             </div>
 
-            {/* Product Summary Totals Footer */}
+            {/* Product Totals Footer */}
             {topProducts.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-300 font-mono bg-slate-900/40 px-3.5 py-2 rounded-xl">
+              <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-content-secondary bg-surface-secondary px-3.5 py-2 rounded-lg">
                 <div>
-                  <span className="text-slate-500 font-sans font-medium mr-1.5">Total Qty:</span>
-                  <span className="text-emerald-400 font-bold">{totalProductUnits}</span>
+                  <span className="text-content-muted mr-1.5">Total Qty:</span>
+                  <span className="font-semibold text-content financial-value">{totalProductUnits}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-sans font-medium mr-1.5">Total Revenue:</span>
-                  <span className="text-slate-100 font-bold">{formatPaise(totalProductRevenue)}</span>
+                  <span className="text-content-muted mr-1.5">Total Revenue:</span>
+                  <span className="font-semibold text-content financial-value">{formatPaise(totalProductRevenue)}</span>
                 </div>
               </div>
             )}

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { History, Eye, Pencil, Printer, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
+import { History, Eye, Printer, RotateCcw, FileText, FileSpreadsheet, Download, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
@@ -9,7 +9,6 @@ import { formatPaise, formatDate, formatTime, formatDateTime, getCurrencySymbol 
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
-import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function BillsHistoryView() {
@@ -41,7 +40,7 @@ export default function BillsHistoryView() {
       queryClient.invalidateQueries({ queryKey: ['sale_details'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-      toast.success('Sale cancelled and all items returned to stock');
+      toast.success('Sale marked as cancelled and inventory restored');
     },
     onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
   });
@@ -55,19 +54,6 @@ export default function BillsHistoryView() {
     );
   };
 
-  const handleEditBill = (row) => {
-    openOrFocus(
-      `Bill #${row.invoice_number}`,
-      'bill-detail',
-      {
-        saleId: row.id,
-        invoiceNumber: row.invoice_number,
-        editRequest: Date.now(),
-      },
-      `bill-${row.id}`
-    );
-  };
-
   const handleReprint = (details) => {
     setReprintSale(details);
     toast.info('Preparing receipt for printing');
@@ -76,29 +62,27 @@ export default function BillsHistoryView() {
 
   const handleCancelSale = async (saleId, invoiceNumber) => {
     const { confirmed, value } = await confirmDialog({
-      title: 'Cancel & Return Sale',
-      message: invoiceNumber
-        ? `This will mark Bill #${invoiceNumber} as CANCELLED and automatically restore all items back into inventory.`
-        : 'This will mark the sale as CANCELLED and automatically restore all items back into inventory.',
+      title: `Cancel Invoice ${invoiceNumber || ''}?`,
+      message: `Are you sure you want to cancel invoice #${invoiceNumber}? This will mark the transaction as CANCELLED and restore the items to inventory.`,
       input: {
-        label: 'Reason for Return',
-        defaultValue: 'Customer return / refund',
-        placeholder: 'Reason for return',
+        label: 'Reason for Cancellation / Return',
+        defaultValue: 'Customer returned items / cancelled',
+        placeholder: 'Reason for cancellation',
       },
-      confirmLabel: 'Confirm Cancellation',
-      cancelLabel: 'Back',
+      confirmLabel: 'Cancel Invoice',
+      cancelLabel: 'Keep Active',
+      tone: 'danger',
       icon: RotateCcw,
     });
 
     if (confirmed) {
       cancelMutation.mutate({
         id: saleId,
-        reason: value || 'Customer return / refund',
+        reason: value || 'Customer returned items / cancelled',
       });
     }
   };
 
-  // ── CSV & XLSX Export Handlers ──────────────────────────────────────────────
   const getExportData = () => {
     return filteredSales ?? sales;
   };
@@ -124,15 +108,12 @@ export default function BillsHistoryView() {
       'Time',
       'Customer Name',
       'Customer Phone',
-      'Biller',
       'Payment Method',
       'Subtotal (Rs)',
       'Discount (Rs)',
       'Tax (Rs)',
       'Net Total (Rs)',
-      'Paid (Rs)',
       'Status',
-      'Notes',
     ];
 
     const rows = dataToExport.map((s) => [
@@ -141,15 +122,12 @@ export default function BillsHistoryView() {
       escapeCsv(formatTime(s.created_at)),
       escapeCsv(s.customer_name || 'Walk-in Customer'),
       escapeCsv(s.customer_phone || ''),
-      escapeCsv(s.biller_name || ''),
       escapeCsv(s.payment_method || ''),
       escapeCsv((s.subtotal_paise / 100).toFixed(2)),
       escapeCsv((s.discount_paise / 100).toFixed(2)),
       escapeCsv((s.tax_paise / 100).toFixed(2)),
       escapeCsv((s.total_paise / 100).toFixed(2)),
-      escapeCsv((s.paid_paise / 100).toFixed(2)),
       escapeCsv(s.status || ''),
-      escapeCsv(s.notes || ''),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
@@ -179,15 +157,12 @@ export default function BillsHistoryView() {
       'Time',
       'Customer Name',
       'Customer Phone',
-      'Biller',
       'Payment Method',
       'Subtotal (Rs)',
       'Discount (Rs)',
       'Tax (Rs)',
       'Net Total (Rs)',
-      'Paid (Rs)',
       'Status',
-      'Notes',
     ];
 
     const rows = dataToExport.map((s) => [
@@ -196,79 +171,74 @@ export default function BillsHistoryView() {
       formatTime(s.created_at),
       s.customer_name || 'Walk-in Customer',
       s.customer_phone || '',
-      s.biller_name || '',
       s.payment_method || '',
-      Number((s.subtotal_paise / 100).toFixed(2)),
-      Number((s.discount_paise / 100).toFixed(2)),
-      Number((s.tax_paise / 100).toFixed(2)),
-      Number((s.total_paise / 100).toFixed(2)),
-      Number((s.paid_paise / 100).toFixed(2)),
+      parseFloat((s.subtotal_paise / 100).toFixed(2)),
+      parseFloat((s.discount_paise / 100).toFixed(2)),
+      parseFloat((s.tax_paise / 100).toFixed(2)),
+      parseFloat((s.total_paise / 100).toFixed(2)),
       s.status || '',
-      s.notes || '',
     ]);
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = [
-      { wch: 16 }, // Invoice
-      { wch: 12 }, // Date
-      { wch: 10 }, // Time
-      { wch: 22 }, // Customer Name
-      { wch: 15 }, // Customer Phone
-      { wch: 14 }, // Biller
-      { wch: 14 }, // Payment Method
-      { wch: 14 }, // Subtotal
-      { wch: 14 }, // Discount
-      { wch: 12 }, // Tax
-      { wch: 14 }, // Net Total
-      { wch: 14 }, // Paid
-      { wch: 12 }, // Status
-      { wch: 25 }, // Notes
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Bills');
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Bills');
     const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `bill_history_${dateStr}.xlsx`);
-    toast.success(`Exported ${dataToExport.length} bills to Excel (XLSX)`);
+    XLSX.writeFile(workbook, `bill_history_${dateStr}.xlsx`);
+    toast.success(`Exported ${dataToExport.length} bills to Excel`);
   };
 
-  const columns = useMemo(() => [
+  const columns = [
     {
       key: 'invoice_number',
       label: 'Invoice #',
-      className: 'font-mono font-bold text-slate-100',
+      className: 'font-mono text-brand font-semibold text-xs',
+      render: (r) => (
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenDetail(r);
+          }}
+          className="hover:underline cursor-pointer"
+        >
+          {r.invoice_number}
+        </span>
+      ),
     },
     {
       key: 'created_at',
       label: 'Date & Time',
-      className: 'font-mono text-slate-400 text-[11px]',
+      className: 'text-text-muted text-xs whitespace-nowrap',
       render: (r) => formatDateTime(r.created_at),
     },
     {
       key: 'customer_name',
       label: 'Customer',
-      className: 'text-slate-300',
+      className: 'font-medium text-text-primary text-xs',
       render: (r) => (
         <div>
-          <div>{r.customer_name || <span className="text-slate-500 italic">Walk-in</span>}</div>
-          {r.customer_phone && <div className="text-[11px] text-slate-500 font-mono">{r.customer_phone}</div>}
+          <span>{r.customer_name || 'Walk-in Customer'}</span>
+          {r.customer_phone && (
+            <div className="text-[10px] text-text-muted font-mono">{r.customer_phone}</div>
+          )}
         </div>
       ),
     },
     {
       key: 'payment_method',
       label: 'Payment',
+      headerClassName: 'text-center',
+      className: 'text-center text-xs',
       render: (r) => (
-        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-          {r.payment_method}
+        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-secondary text-text-secondary border border-border-default uppercase">
+          {r.payment_method || 'CASH'}
         </span>
       ),
     },
     {
       key: 'total_paise',
-      label: 'Total',
+      label: 'Total Amount',
       headerClassName: 'text-right',
-      className: 'text-right font-mono font-bold text-slate-100',
+      className: 'text-right financial-value font-bold text-text-primary text-xs',
       render: (r) => formatPaise(r.total_paise),
     },
     {
@@ -276,121 +246,139 @@ export default function BillsHistoryView() {
       label: 'Status',
       headerClassName: 'text-center',
       className: 'text-center',
-      render: (r) => (
-        <span
-          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-            r.status === 'CANCELLED'
-              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-              : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-          }`}
-        >
-          {r.status}
-        </span>
-      ),
+      render: (r) => {
+        const isCancelled = r.status === 'CANCELLED';
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
+              isCancelled
+                ? 'bg-danger-bg text-danger border-danger/30'
+                : 'bg-success-bg text-success border-success/30'
+            }`}
+          >
+            {isCancelled ? 'Cancelled' : 'Paid'}
+          </span>
+        );
+      },
     },
-  ], [currencySymbol]);
+  ];
 
-  const filters = useMemo(() => [
-    {
-      type: 'multiselect',
-      key: 'status',
-      label: 'Status',
-      options: [
-        { value: 'PAID', label: 'Paid' },
-        { value: 'CANCELLED', label: 'Cancelled' },
-      ],
-    },
-    {
-      type: 'multiselect',
-      key: 'payment_method',
-      label: 'Payment Method',
-      options: [
-        { value: 'CASH', label: 'Cash' },
-        { value: 'UPI', label: 'UPI' },
-        { value: 'CARD', label: 'Card' },
-      ],
-    },
-    {
-      type: 'daterange',
-      fromKey: 'created_at',
-      toKey: 'created_at',
-      label: 'Date',
-    },
-    {
-      type: 'range',
-      key: 'total_paise',
-      label: 'Total',
-      unit: currencySymbol,
-      transform: (v) => Math.round(parseFloat(v) * 100),
-    },
-  ], [currencySymbol]);
+  const statusCounts = useMemo(() => {
+    let completed = 0;
+    let cancelled = 0;
+    for (const s of sales) {
+      if (s.status === 'CANCELLED') cancelled++;
+      else completed++;
+    }
+    return { completed, cancelled };
+  }, [sales]);
 
-  const searchKeys = useMemo(
-    () => ['invoice_number', 'customer_name', 'customer_phone', 'payment_method'],
-    []
+  const pmCounts = useMemo(() => {
+    const counts = { CASH: 0, UPI: 0, CARD: 0, OTHER: 0 };
+    for (const s of sales) {
+      const pm = (s.payment_method || 'CASH').toUpperCase();
+      if (counts[pm] !== undefined) {
+        counts[pm]++;
+      } else {
+        counts.OTHER++;
+      }
+    }
+    return counts;
+  }, [sales]);
+
+  const filters = useMemo(
+    () => [
+      {
+        type: 'multiselect',
+        key: 'status',
+        label: 'Status',
+        options: [
+          { value: 'COMPLETED', label: `Paid (${statusCounts.completed})` },
+          { value: 'CANCELLED', label: `Cancelled (${statusCounts.cancelled})` },
+        ],
+        filterFn: (row, vals) => {
+          const isCancelled = row.status === 'CANCELLED';
+          const rowStatus = isCancelled ? 'CANCELLED' : 'COMPLETED';
+          return vals.includes(rowStatus);
+        },
+      },
+      {
+        type: 'multiselect',
+        key: 'payment_method',
+        label: 'Payment Method',
+        options: [
+          { value: 'CASH', label: `Cash (${pmCounts.CASH})` },
+          { value: 'UPI', label: `UPI / QR (${pmCounts.UPI})` },
+          { value: 'CARD', label: `Card (${pmCounts.CARD})` },
+          { value: 'OTHER', label: `Other (${pmCounts.OTHER})` },
+        ],
+        filterFn: (row, vals) => {
+          const pm = (row.payment_method || 'CASH').toUpperCase();
+          const normalized = ['CASH', 'UPI', 'CARD'].includes(pm) ? pm : 'OTHER';
+          return vals.includes(normalized);
+        },
+      },
+      {
+        type: 'daterange',
+        fromKey: 'created_at',
+        toKey: 'created_at',
+        label: 'Date Range',
+      },
+    ],
+    [statusCounts, pmCounts]
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
-      {/* Header */}
-      <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between flex-shrink-0">
+    <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
+      {/* ── Page Header with Export Controls near Title ── */}
+      <div className="h-14 px-5 border-b border-border-default bg-surface flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+          <div className="w-8 h-8 rounded-xl bg-brand-subtle text-brand flex items-center justify-center">
             <History className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100">Bill History & Sales Ledger</h2>
-            <p className="text-[11px] text-slate-500">View past sales, reprint receipts, and process returns</p>
+            <h2 className="text-sm font-bold text-text-primary">Bill History</h2>
+            <p className="text-[11px] text-text-muted">
+              Search, reprint receipts, inspect audits, and manage past sales
+            </p>
           </div>
         </div>
+
+        {/* Export Actions */}
         <div className="flex items-center gap-2">
-          {/* Export CSV */}
           <button
+            type="button"
             onClick={handleExportCsv}
-            disabled={!sales.length}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 border border-slate-700/60 transition-all disabled:opacity-40 cursor-pointer"
-            title="Export bills as CSV"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+            title="Export filtered bills to CSV"
           >
-            <FileText className="w-3.5 h-3.5 text-sky-400" />
+            <FileText className="w-3.5 h-3.5 text-text-muted" />
             <span>CSV</span>
           </button>
-
-          {/* Export XLSX */}
           <button
+            type="button"
             onClick={handleExportXlsx}
-            disabled={!sales.length}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 border border-emerald-500/40 shadow-sm transition-all disabled:opacity-40 cursor-pointer"
-            title="Export bills as Excel XLSX"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+            title="Export filtered bills to Excel"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel (XLSX)</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-text-muted" />
+            <span>Excel</span>
           </button>
-
-          <ImportCsvButton
-            entity="bills"
-            label="Import Legacy CSV"
-            onComplete={() => {
-              queryClient.invalidateQueries({ queryKey: ['sales'] });
-              queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
-              queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
-            }}
-          />
         </div>
       </div>
 
-      {/* Data Table */}
+      {/* ── DataTable with Filters & Actions ── */}
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
-          persistKey="bills"
           data={sales}
           keyFn={(r) => r.id}
-          searchKeys={searchKeys}
+          searchKeys={['invoice_number', 'customer_name', 'customer_phone']}
           filters={filters}
+          persistKey="bill_history"
           isLoading={isLoading}
-          emptyMessage="No sales recorded."
-          onFilteredChange={setFilteredSales}
           onRowDoubleClick={handleOpenDetail}
+          onFilteredChange={setFilteredSales}
           actions={(row) => (
             <DropdownActions
               items={[
@@ -399,39 +387,26 @@ export default function BillsHistoryView() {
                   icon: <Eye className="w-3.5 h-3.5" />,
                   onClick: () => handleOpenDetail(row),
                 },
-                ...(row.status !== 'CANCELLED'
-                  ? [
-                      {
-                        label: 'Edit Bill',
-                        icon: <Pencil className="w-3.5 h-3.5" />,
-                        onClick: () => handleEditBill(row),
-                      },
-                    ]
-                  : []),
                 {
-                  label: 'Quick Reprint',
+                  label: 'Reprint Receipt',
                   icon: <Printer className="w-3.5 h-3.5" />,
-                  onClick: () => {
-                    setTimeout(() => {
-                      tauriApi
-                        .getSaleDetails(row.id)
-                        .then((d) => handleReprint(d))
-                        .catch((err) =>
-                          toast.error(`Could not load receipt: ${err}`, { title: 'Reprint failed' })
-                        );
-                    }, 100);
+                  onClick: async () => {
+                    try {
+                      const details = await tauriApi.getSaleDetails(row.id);
+                      handleReprint(details);
+                    } catch (err) {
+                      toast.error(`Failed to load receipt: ${err}`);
+                    }
                   },
                 },
                 ...(row.status !== 'CANCELLED'
                   ? [
                       'divider',
                       {
-                        label: 'Cancel & Return',
+                        label: 'Cancel Invoice & Return Stock',
                         icon: <RotateCcw className="w-3.5 h-3.5" />,
                         danger: true,
-                        onClick: () => {
-                          handleCancelSale(row.id, row.invoice_number);
-                        },
+                        onClick: () => handleCancelSale(row.id, row.invoice_number),
                       },
                     ]
                   : []),
@@ -441,6 +416,7 @@ export default function BillsHistoryView() {
         />
       </div>
 
+      {/* Hidden printable receipt container */}
       {reprintSale && (
         <div className="hidden">
           <ReceiptPrinter

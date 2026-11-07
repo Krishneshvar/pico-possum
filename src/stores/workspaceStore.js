@@ -1,15 +1,15 @@
 import { create } from 'zustand';
+import { toast } from './toast.store';
 
 let _nextId = 1;
 
 /**
- * Workspace tab store – mirrors the Java WorkspaceDesktop/WorkspaceManager logic.
+ * Workspace tab store.
  *
  * Each tab:
- *   { id, title, viewId, closeable }
+ *   { id, title, viewId, tabKey, props, closeable, isDirty }
  *
- * viewId maps to a component in the registry (App.jsx).
- * Up to 10 tabs at once (matching Java limit).
+ * Up to 10 tabs at once.
  */
 export const useWorkspaceStore = create((set, get) => ({
   tabs: [],
@@ -17,6 +17,7 @@ export const useWorkspaceStore = create((set, get) => ({
 
   /**
    * Open a tab for the given viewId (or custom tabKey), or focus it if already open.
+   * Warns the operator if the maximum limit of 10 tabs is reached.
    */
   openOrFocus(title, viewId, props = {}, tabKey = null) {
     const key = tabKey || viewId;
@@ -31,13 +32,15 @@ export const useWorkspaceStore = create((set, get) => ({
 
     const { tabs } = get();
     if (tabs.length >= 10) {
-      // Focus the last tab if max limit reached
-      if (tabs.length > 0) set({ activeTabId: tabs[tabs.length - 1].id });
+      toast.warning(
+        'Maximum limit of 10 open tabs reached. Please close a tab before opening another workspace.',
+        { title: 'Tab Limit Reached' }
+      );
       return;
     }
 
     const id = _nextId++;
-    const newTab = { id, title, viewId, tabKey: key, props, closeable: true };
+    const newTab = { id, title, viewId, tabKey: key, props, closeable: true, isDirty: false };
     set((s) => ({ tabs: [...s.tabs, newTab], activeTabId: id }));
   },
 
@@ -53,7 +56,6 @@ export const useWorkspaceStore = create((set, get) => ({
     let newActive = activeTabId;
 
     if (activeTabId === id) {
-      // focus neighbour
       if (newTabs.length > 0) {
         const nextIdx = Math.min(idx, newTabs.length - 1);
         newActive = newTabs[nextIdx].id;
@@ -62,7 +64,41 @@ export const useWorkspaceStore = create((set, get) => ({
       }
     }
 
-    set({ tabs: newTabs, activeTabId: newActive });
+    set({
+      tabs: newTabs,
+      activeTabId: newActive,
+    });
+  },
+
+  /**
+   * Close all tabs other than the specified tab id.
+   */
+  closeOtherTabs(id) {
+    const { tabs } = get();
+    const target = tabs.find((t) => t.id === id);
+    if (!target) return;
+    set({
+      tabs: [target],
+      activeTabId: target.id,
+    });
+  },
+
+  /**
+   * Close all tabs.
+   */
+  closeAllTabs() {
+    const { tabs } = get();
+    if (tabs.length === 0) return;
+    set({
+      tabs: [],
+      activeTabId: null,
+    });
+  },
+
+  setTabDirty(id, isDirty = true) {
+    set({
+      tabs: get().tabs.map((t) => (t.id === id ? { ...t, isDirty } : t)),
+    });
   },
 
   setActiveTab(id) {
