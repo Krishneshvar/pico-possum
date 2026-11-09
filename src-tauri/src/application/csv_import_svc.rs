@@ -524,7 +524,7 @@ impl CsvImportService {
     }
 
     // ------------------------------------------------------------------------
-    // Bill History (Legacy Serieswise Sales) Import
+    // Bill History (App Exports & Legacy Serieswise Sales) Import
     // ------------------------------------------------------------------------
     pub async fn import_bills(
         pool: &SqlitePool,
@@ -536,24 +536,29 @@ impl CsvImportService {
             return Err(AppError::Validation("CSV file is empty".to_string()));
         }
 
-        let header_idx = find_header_row_index(
-            &rows,
-            &["Bill Date", "Bill Number", "Net amount", "Bill Time"],
-        )
-        .or_else(|| {
-            find_header_row_index(
-                &rows,
-                &["Bill Date", "Invoice Number", "Net Amount", "Bill Time"],
-            )
-        })
-        .or_else(|| find_header_row_index(&rows, &["Bill Date", "Bill Number", "Net amount"]))
-        .or_else(|| find_header_row_index(&rows, &["Invoice Number", "Total Amount"]))
-        .ok_or_else(|| {
-            AppError::Validation(
-                "Could not find valid bill header row. Required: 'Bill Date', 'Bill Number', 'Net amount', 'Bill Time'."
-                    .to_string(),
-            )
-        })?;
+        let header_idx = rows
+            .iter()
+            .position(|r| is_bill_header_row(r))
+            .or_else(|| {
+                find_header_row_index(
+                    &rows,
+                    &["Bill Date", "Bill Number", "Net amount", "Bill Time"],
+                )
+            })
+            .or_else(|| {
+                find_header_row_index(
+                    &rows,
+                    &["Bill Date", "Invoice Number", "Net Amount", "Bill Time"],
+                )
+            })
+            .or_else(|| find_header_row_index(&rows, &["Bill Date", "Bill Number", "Net amount"]))
+            .or_else(|| find_header_row_index(&rows, &["Invoice Number", "Total Amount"]))
+            .ok_or_else(|| {
+                AppError::Validation(
+                    "Could not find valid bill header row. Required: 'Invoice #' (or 'Bill Number'), 'Date', and 'Net Total (Rs)' (or 'Net Amount')."
+                        .to_string(),
+                )
+            })?;
 
         let headers = build_header_index(&rows[header_idx]);
         let mut tx = pool.begin().await?;
@@ -569,9 +574,28 @@ impl CsvImportService {
                 continue;
             }
 
-            let bill_number = get_value(row, &headers, &["Bill Number", "Invoice Number"]);
+            let bill_number = get_value(
+                row,
+                &headers,
+                &[
+                    "Invoice #",
+                    "Invoice Number",
+                    "Invoice No",
+                    "Invoice",
+                    "Inv #",
+                    "Inv No",
+                    "Bill Number",
+                    "Bill No",
+                    "Bill #",
+                    "Bill",
+                ],
+            );
             let bill_number = match bill_number {
-                Some(b) if !b.trim().is_empty() && !b.trim().eq_ignore_ascii_case("Grand Total") => {
+                Some(b)
+                    if !b.trim().is_empty()
+                        && !b.trim().eq_ignore_ascii_case("Grand Total")
+                        && !b.trim().eq_ignore_ascii_case("Total") =>
+                {
                     b.trim().to_string()
                 }
                 _ => {
@@ -580,11 +604,22 @@ impl CsvImportService {
                 }
             };
 
-            let bill_date_str = get_value(row, &headers, &["Bill Date", "Date"]);
-            let bill_time_str = get_value(row, &headers, &["Bill Time", "Time"]);
+            let bill_date_str = get_value(
+                row,
+                &headers,
+                &["Date", "Bill Date", "Sale Date", "Invoice Date", "Created At"],
+            );
+            let bill_time_str = get_value(
+                row,
+                &headers,
+                &["Time", "Bill Time", "Sale Time", "Invoice Time", "Created Time"],
+            );
 
-            let parsed_date = match bill_date_str.as_deref().and_then(parse_csv_date) {
-                Some(d) => d,
+            let (parsed_date, date_extracted_time) = match bill_date_str
+                .as_deref()
+                .and_then(parse_csv_date_and_time)
+            {
+                Some(pair) => pair,
                 None => {
                     skipped += 1;
                     errors.push(format!("Row {}: Invalid date in bill '{}'", row_num, bill_number));
@@ -595,6 +630,7 @@ impl CsvImportService {
             let parsed_time = bill_time_str
                 .as_deref()
                 .map(parse_csv_time)
+                .or(date_extracted_time)
                 .unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap());
 
             let created_at = NaiveDateTime::new(parsed_date, parsed_time)
@@ -604,20 +640,159 @@ impl CsvImportService {
             let net_amount_paise = get_value(
                 row,
                 &headers,
-                &["Net amount", "Net Amount", "Total Amount", "Amount", "Total"],
+                &[
+                    "Net Total (Rs)",
+                    "Net Total",
+                    "Net amount",
+                    "Net Amount",
+                    "Total Amount",
+                    "Total (Rs)",
+                    "Total",
+                    "Grand Total",
+                    "Amount",
+                    "Bill Amount",
+                    "Net Amt",
+                ],
             )
             .and_then(|v| parse_decimal_to_paise(&v))
             .unwrap_or(0);
 
-            let customer_name = get_value(row, &headers, &["Customer Name", "Customer"])
-                .filter(|n| !n.trim().is_empty())
-                .unwrap_or_else(|| "Walk-in Customer".to_string());
+            let subtotal_paise = get_value(
+                row,
+                &headers,
+                &[
+                    "Subtotal (Rs)",
+                    "Subtotal",
+                    "Sub Total (Rs)",
+                    "Sub Total",
+                    "Gross Amount",
+                    "Gross Total",
+                ],
+            )
+            .and_then(|v| parse_decimal_to_paise(&v))
+            .unwrap_or(net_amount_paise);
 
-            let payment_method = infer_legacy_payment_method(&bill_number);
-            let notes = format!(
-                "Imported legacy bill from {}",
-                source_file.unwrap_or("legacy CSV")
+            let discount_paise = get_value(
+                row,
+                &headers,
+                &["Discount (Rs)", "Discount", "Disc (Rs)", "Disc"],
+            )
+            .and_then(|v| parse_decimal_to_paise(&v))
+            .unwrap_or(0);
+
+            let tax_paise = get_value(
+                row,
+                &headers,
+                &["Tax (Rs)", "Tax", "GST (Rs)", "GST", "VAT (Rs)", "VAT"],
+            )
+            .and_then(|v| parse_decimal_to_paise(&v))
+            .unwrap_or(0);
+
+            let customer_name = get_value(
+                row,
+                &headers,
+                &[
+                    "Customer Name",
+                    "Customer",
+                    "Client Name",
+                    "Client",
+                    "Party Name",
+                    "Party",
+                    "Account Name",
+                ],
+            )
+            .filter(|n| !n.trim().is_empty())
+            .unwrap_or_else(|| "Walk-in Customer".to_string());
+
+            let customer_phone = get_value(
+                row,
+                &headers,
+                &[
+                    "Customer Phone",
+                    "Customer Mobile",
+                    "Phone",
+                    "Mobile",
+                    "Contact",
+                    "Contact Number",
+                    "Phone Number",
+                    "Mobile Number",
+                ],
+            )
+            .map(|p| p.trim().to_string())
+            .filter(|p| !p.is_empty());
+
+            let payment_method = get_value(
+                row,
+                &headers,
+                &[
+                    "Payment Method",
+                    "Payment Mode",
+                    "Payment",
+                    "Mode",
+                    "Method",
+                ],
+            )
+            .map(|pm| pm.trim().to_string())
+            .filter(|pm| !pm.is_empty())
+            .unwrap_or_else(|| infer_legacy_payment_method(&bill_number));
+
+            let status_raw = get_value(
+                row,
+                &headers,
+                &["Status", "Bill Status", "Sale Status"],
             );
+            let status = match status_raw.as_deref().map(|s| s.trim().to_uppercase()).as_deref() {
+                Some("REFUNDED") => "REFUNDED",
+                Some("CANCELLED") | Some("CANCELED") | Some("VOID") => "CANCELLED",
+                Some("PARTIALLY_PAID") | Some("PARTIAL") => "PARTIALLY_PAID",
+                _ => "PAID",
+            };
+
+            let paid_paise = match status {
+                "CANCELLED" | "REFUNDED" => 0,
+                _ => net_amount_paise,
+            };
+
+            let notes_from_file = get_value(row, &headers, &["Notes", "Note", "Remarks"]);
+            let notes = match notes_from_file {
+                Some(n) if !n.trim().is_empty() => n.trim().to_string(),
+                _ => format!(
+                    "Imported bill from {}",
+                    source_file.unwrap_or("CSV/Excel")
+                ),
+            };
+
+            let biller_name = get_value(
+                row,
+                &headers,
+                &["Biller Name", "Biller", "Cashier", "Operator"],
+            )
+            .unwrap_or_else(|| {
+                if source_file.map(|s| s.to_lowercase().contains("legacy")).unwrap_or(false) {
+                    "Legacy Import".to_string()
+                } else {
+                    "Imported".to_string()
+                }
+            });
+
+            // Look up existing customer if phone or name is provided
+            let mut customer_id: Option<String> = None;
+            if let Some(ref phone) = customer_phone {
+                customer_id = sqlx::query_scalar("SELECT id FROM customers WHERE phone = ? AND is_deleted = 0")
+                    .bind(phone)
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .ok()
+                    .flatten();
+            }
+            if customer_id.is_none() && customer_name != "Walk-in Customer" {
+                customer_id = sqlx::query_scalar("SELECT id FROM customers WHERE lower(name) = lower(?) AND is_deleted = 0")
+                    .bind(&customer_name)
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .ok()
+                    .flatten();
+            }
 
             let new_sale_id = Uuid::new_v4().to_string();
 
@@ -627,24 +802,36 @@ impl CsvImportService {
                     id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
                     subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise,
                     payment_method, status, fulfillment_status, notes, created_at
-                ) VALUES (?, ?, NULL, ?, NULL, 'Legacy Import', ?, 0, 0, ?, ?, ?, 'PAID', 'FULFILLED', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'FULFILLED', ?, ?)
                 ON CONFLICT(invoice_number) DO UPDATE SET
+                    customer_id = coalesce(excluded.customer_id, sales.customer_id),
+                    customer_name = excluded.customer_name,
+                    customer_phone = coalesce(excluded.customer_phone, sales.customer_phone),
+                    biller_name = excluded.biller_name,
+                    subtotal_paise = excluded.subtotal_paise,
+                    discount_paise = excluded.discount_paise,
+                    tax_paise = excluded.tax_paise,
                     total_paise = excluded.total_paise,
                     paid_paise = excluded.paid_paise,
-                    subtotal_paise = excluded.subtotal_paise,
-                    created_at = excluded.created_at,
-                    customer_name = excluded.customer_name,
                     payment_method = excluded.payment_method,
-                    notes = excluded.notes
+                    status = excluded.status,
+                    notes = excluded.notes,
+                    created_at = excluded.created_at
                 "#,
             )
             .bind(&new_sale_id)
             .bind(&bill_number)
+            .bind(&customer_id)
             .bind(&customer_name)
+            .bind(&customer_phone)
+            .bind(&biller_name)
+            .bind(subtotal_paise)
+            .bind(discount_paise)
+            .bind(tax_paise)
             .bind(net_amount_paise)
-            .bind(net_amount_paise)
-            .bind(net_amount_paise)
+            .bind(paid_paise)
             .bind(&payment_method)
+            .bind(status)
             .bind(&notes)
             .bind(&created_at)
             .execute(&mut *tx)
@@ -653,6 +840,15 @@ impl CsvImportService {
             match res {
                 Ok(_) => {
                     imported += 1;
+                    let audit_id = Uuid::new_v4().to_string();
+                    let _ = sqlx::query(
+                        "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description) VALUES (?, 'IMPORT', 'sales', ?, ?)",
+                    )
+                    .bind(audit_id)
+                    .bind(&new_sale_id)
+                    .bind(format!("Imported bill: {}", bill_number))
+                    .execute(&mut *tx)
+                    .await;
                 }
                 Err(e) => {
                     skipped += 1;
@@ -829,21 +1025,109 @@ pub fn infer_legacy_payment_method(bill_number: &str) -> String {
     }
 }
 
+pub fn is_bill_header_row(row: &[String]) -> bool {
+    let headers = build_header_index(row);
+    let has_id = headers.keys().any(|k| {
+        matches!(
+            k.as_str(),
+            "invoice"
+                | "invoicenumber"
+                | "invoiceno"
+                | "invoicenum"
+                | "inv"
+                | "invno"
+                | "billnumber"
+                | "billno"
+                | "billnum"
+                | "bill"
+        )
+    });
+    let has_date = headers.keys().any(|k| {
+        matches!(
+            k.as_str(),
+            "date"
+                | "billdate"
+                | "saledate"
+                | "invoicedate"
+                | "datetime"
+                | "createdat"
+        )
+    });
+    let has_amount = headers.keys().any(|k| {
+        matches!(
+            k.as_str(),
+            "nettotalrs"
+                | "nettotal"
+                | "netamount"
+                | "totalamount"
+                | "totalrs"
+                | "total"
+                | "amount"
+                | "grandtotal"
+                | "billamount"
+                | "netamt"
+                | "totamt"
+        )
+    });
+
+    has_id && has_date && has_amount
+}
+
 pub fn parse_csv_date(raw: &str) -> Option<NaiveDate> {
     let trimmed = raw.trim();
-    // Common date patterns
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // Try full datetime formats first (e.g. ISO 8601 or timestamps)
+    let dt_formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%d %H:%M",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %I:%M %p",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %I:%M %p",
+    ];
+    for fmt in dt_formats {
+        if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, fmt) {
+            return Some(dt.date());
+        }
+    }
+
+    // Common date patterns (prioritizing DD/MM/YYYY)
     let formats = [
-        "%m/%d/%Y",
         "%d/%m/%Y",
+        "%m/%d/%Y",
         "%Y-%m-%d",
         "%d-%m-%Y",
+        "%m-%d-%Y",
         "%Y/%m/%d",
         "%d.%m.%Y",
+        "%b %d, %Y",
+        "%b %d %Y",
+        "%d %b, %Y",
+        "%d %b %Y",
+        "%d-%b-%Y",
+        "%B %d, %Y",
+        "%B %d %Y",
+        "%d %B, %Y",
+        "%d %B %Y",
     ];
 
     for fmt in formats {
         if let Ok(d) = NaiveDate::parse_from_str(trimmed, fmt) {
             return Some(d);
+        }
+    }
+
+    // If it has a date-like token separated by space or 'T'
+    if let Some(token) = trimmed.split(['T', ' ']).next() {
+        if token != trimmed {
+            if let Some(d) = parse_csv_date(token) {
+                return Some(d);
+            }
         }
     }
 
@@ -856,12 +1140,12 @@ pub fn parse_csv_date(raw: &str) -> Option<NaiveDate> {
             parts[2].parse::<i32>(),
         ) {
             let year = if p3 < 100 { 2000 + p3 } else { p3 };
-            // Check month/day/year
-            if let Some(d) = NaiveDate::from_ymd_opt(year, p1, p2) {
+            // Check day/month/year first (DD/MM/YYYY)
+            if let Some(d) = NaiveDate::from_ymd_opt(year, p2, p1) {
                 return Some(d);
             }
-            // Check day/month/year
-            if let Some(d) = NaiveDate::from_ymd_opt(year, p2, p1) {
+            // Check month/day/year (MM/DD/YYYY)
+            if let Some(d) = NaiveDate::from_ymd_opt(year, p1, p2) {
                 return Some(d);
             }
         }
@@ -870,17 +1154,46 @@ pub fn parse_csv_date(raw: &str) -> Option<NaiveDate> {
     None
 }
 
+pub fn parse_csv_date_and_time(raw: &str) -> Option<(NaiveDate, Option<NaiveTime>)> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let dt_formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%d %H:%M",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %I:%M %p",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %I:%M %p",
+    ];
+    for fmt in dt_formats {
+        if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, fmt) {
+            return Some((dt.date(), Some(dt.time())));
+        }
+    }
+
+    parse_csv_date(trimmed).map(|d| (d, None))
+}
+
 pub fn parse_csv_time(raw: &str) -> NaiveTime {
     let trimmed = raw.trim().to_uppercase();
     let cleaned = trimmed.split_whitespace().collect::<Vec<_>>().join(" ");
 
     let formats = [
+        "%I:%M:%S %p",
+        "%I:%M:%S%p",
         "%I:%M %p",
-        "%I.%M %p",
         "%I:%M%p",
-        "%I.%M%p",
+        "%I.%M.%S %p",
+        "%I.%M %p",
         "%H:%M:%S",
         "%H:%M",
+        "%H.%M.%S",
+        "%H.%M",
     ];
 
     for fmt in formats {

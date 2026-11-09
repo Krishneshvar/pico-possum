@@ -61,14 +61,70 @@ const ENTITY_SCHEMAS = {
   bills: {
     title: 'Import Bill History',
     singular: 'bill',
+    compatibility: 'Supports both this application\'s own export files (CSV & Excel) and legacy billing data from external POS systems.',
     required: [
-      { name: 'Bill Number', aliases: 'Invoice Number', desc: 'Unique bill or invoice number' },
-      { name: 'Bill Date', aliases: 'Date', desc: 'Sale date (DD/MM/YYYY or YYYY-MM-DD)' },
-      { name: 'Net Amount', aliases: 'Total Amount, Amount, Total', desc: 'Net bill total (in ₹)' },
+      {
+        name: 'Invoice # / Bill Number',
+        aliases: 'Invoice #, Invoice Number, Bill Number, Bill No, Invoice No',
+        desc: 'Unique bill or invoice number (matches this app\'s export "Invoice #" and legacy formats)',
+      },
+      {
+        name: 'Date / Bill Date',
+        aliases: 'Date, Bill Date, Sale Date',
+        desc: 'Sale date (DD/MM/YYYY, YYYY-MM-DD, or Month Date, Year)',
+      },
+      {
+        name: 'Net Total (Rs) / Net Amount',
+        aliases: 'Net Total (Rs), Net Total, Net Amount, Total Amount, Total, Amount',
+        desc: 'Final bill total in ₹ (matches this app\'s export "Net Total (Rs)")',
+      },
     ],
     optional: [
-      { name: 'Bill Time', aliases: 'Time', desc: 'Sale time (HH:MM:SS, defaults to 00:00:00)' },
-      { name: 'Customer Name', aliases: 'Customer', desc: 'Customer name (defaults to Walk-in Customer)' },
+      {
+        name: 'Time / Bill Time',
+        aliases: 'Time, Bill Time',
+        desc: 'Sale time (12-hour AM/PM or 24-hour HH:MM, defaults to 00:00:00)',
+      },
+      {
+        name: 'Customer Name',
+        aliases: 'Customer Name, Customer, Client',
+        desc: 'Customer name (defaults to Walk-in Customer)',
+      },
+      {
+        name: 'Customer Phone',
+        aliases: 'Customer Phone, Phone, Mobile, Contact Number',
+        desc: 'Customer contact phone (auto-linked to customer directory if found)',
+      },
+      {
+        name: 'Payment Method',
+        aliases: 'Payment Method, Payment Mode, Mode',
+        desc: 'Payment mode (e.g. Cash, UPI, Card; inferred from bill # if omitted)',
+      },
+      {
+        name: 'Subtotal (Rs)',
+        aliases: 'Subtotal (Rs), Subtotal, Sub Total',
+        desc: 'Pre-tax gross subtotal (defaults to Net Total if omitted)',
+      },
+      {
+        name: 'Discount (Rs)',
+        aliases: 'Discount (Rs), Discount, Disc',
+        desc: 'Total discount amount in ₹ (defaults to 0.00)',
+      },
+      {
+        name: 'Tax (Rs)',
+        aliases: 'Tax (Rs), Tax, GST',
+        desc: 'Total tax amount in ₹ (defaults to 0.00)',
+      },
+      {
+        name: 'Status',
+        aliases: 'Status, Bill Status',
+        desc: 'Sale status (PAID, PARTIALLY_PAID, CANCELLED, REFUNDED; defaults to PAID)',
+      },
+      {
+        name: 'Notes',
+        aliases: 'Notes, Note, Remarks',
+        desc: 'Optional bill memo or remarks',
+      },
     ],
   },
 };
@@ -144,7 +200,11 @@ export default function ImportCsvButton({
       let csvContent = '';
       if (isXlsx) {
         const arrayBuffer = await file.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const workbook = XLSX.read(arrayBuffer, {
+          type: 'array',
+          cellDates: true,
+          dateNF: 'yyyy-mm-dd',
+        });
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
           throw new Error('The uploaded Excel workbook contains no sheets.');
         }
@@ -294,9 +354,17 @@ export default function ImportCsvButton({
               {/* Warning / Strict Schema Notice */}
               <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200">
                 <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
-                <div className="text-xs leading-relaxed">
-                  <span className="font-semibold block mb-0.5">Strict Schema Notice</span>
-                  Only the supported fields listed below will be taken into the application and stored in the database. Any other columns or extra data present in your file will not be taken in or stored anywhere in the app.
+                <div className="text-xs leading-relaxed space-y-1">
+                  {schema.compatibility && (
+                    <div className="pb-1 border-b border-amber-500/20">
+                      <span className="font-semibold">Format Support: </span>
+                      <span>{schema.compatibility}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold block mb-0.5">Strict Schema Notice</span>
+                    Only the supported fields listed below will be taken into the application and stored in the database. Any other columns or extra data present in your file will not be taken in or stored anywhere in the app.
+                  </div>
                 </div>
               </div>
 
