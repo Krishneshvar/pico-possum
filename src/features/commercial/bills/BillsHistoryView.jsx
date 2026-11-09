@@ -254,15 +254,18 @@ export default function BillsHistoryView() {
       className: 'text-center',
       render: (r) => {
         const isCancelled = r.status === 'CANCELLED';
+        const isLegacy = r.status === 'LEGACY';
         return (
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
               isCancelled
                 ? 'bg-danger-bg text-danger border-danger/30'
+                : isLegacy
+                ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30'
                 : 'bg-success-bg text-success border-success/30'
             }`}
           >
-            {isCancelled ? 'Cancelled' : 'Paid'}
+            {isCancelled ? 'Cancelled' : isLegacy ? 'Legacy' : 'Paid'}
           </span>
         );
       },
@@ -272,11 +275,13 @@ export default function BillsHistoryView() {
   const statusCounts = useMemo(() => {
     let completed = 0;
     let cancelled = 0;
+    let legacy = 0;
     for (const s of sales) {
       if (s.status === 'CANCELLED') cancelled++;
+      else if (s.status === 'LEGACY') legacy++;
       else completed++;
     }
-    return { completed, cancelled };
+    return { completed, cancelled, legacy };
   }, [sales]);
 
   const pmCounts = useMemo(() => {
@@ -300,11 +305,16 @@ export default function BillsHistoryView() {
         label: 'Status',
         options: [
           { value: 'COMPLETED', label: `Paid (${statusCounts.completed})` },
+          { value: 'LEGACY', label: `Legacy (${statusCounts.legacy})` },
           { value: 'CANCELLED', label: `Cancelled (${statusCounts.cancelled})` },
         ],
         filterFn: (row, vals) => {
-          const isCancelled = row.status === 'CANCELLED';
-          const rowStatus = isCancelled ? 'CANCELLED' : 'COMPLETED';
+          const rowStatus =
+            row.status === 'CANCELLED'
+              ? 'CANCELLED'
+              : row.status === 'LEGACY'
+              ? 'LEGACY'
+              : 'COMPLETED';
           return vals.includes(rowStatus);
         },
       },

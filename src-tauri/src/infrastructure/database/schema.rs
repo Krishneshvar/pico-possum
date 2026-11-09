@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS sales (
     total_paise INTEGER NOT NULL CHECK(total_paise >= 0),
     paid_paise INTEGER NOT NULL DEFAULT 0 CHECK(paid_paise >= 0),
     payment_method TEXT NOT NULL,
-    status TEXT NOT NULL CHECK(status IN ('PAID', 'PARTIALLY_PAID', 'CANCELLED', 'REFUNDED')) DEFAULT 'PAID',
+    status TEXT NOT NULL CHECK(status IN ('PAID', 'PARTIALLY_PAID', 'CANCELLED', 'REFUNDED', 'LEGACY')) DEFAULT 'PAID',
     fulfillment_status TEXT NOT NULL DEFAULT 'FULFILLED',
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP

@@ -266,6 +266,20 @@ function DateRangeFilter({ label, fromVal, toVal, onFromChange, onToChange }) {
 }
 
 // ── Main DataTable ───────────────────────────────────────────────────────────
+// ── Truncated Pagination Helper ──────────────────────────────────────────────
+function getPaginationItems(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 export default function DataTable({
   columns = [],
   data = [],
@@ -892,69 +906,99 @@ export default function DataTable({
         </table>
       </div>
 
-      {/* ── Standardized Pagination ── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-2 border-t border-border-default bg-surface-secondary shrink-0 text-xs text-text-secondary">
-          <span>
-            Page <strong className="text-text-primary font-semibold">{safePage}</strong> of{' '}
-            <strong className="text-text-primary font-semibold">{totalPages}</strong>
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => goPage(1)}
-              disabled={safePage === 1}
-              className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface transition-colors cursor-pointer"
-              title="First page"
-            >
-              «
-            </button>
-            <button
-              type="button"
-              onClick={() => goPage(safePage - 1)}
-              disabled={safePage === 1}
-              className="p-1 rounded disabled:opacity-30 hover:bg-surface transition-colors cursor-pointer"
-              title="Previous page"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => Math.abs(p - safePage) <= 2)
-              .map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => goPage(p)}
-                  className={`w-7 h-7 rounded font-semibold text-xs transition-colors cursor-pointer ${
-                    p === safePage
-                      ? 'bg-brand text-white shadow-xs'
-                      : 'hover:bg-surface text-text-secondary'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            <button
-              type="button"
-              onClick={() => goPage(safePage + 1)}
-              disabled={safePage === totalPages}
-              className="p-1 rounded disabled:opacity-30 hover:bg-surface transition-colors cursor-pointer"
-              title="Next page"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => goPage(totalPages)}
-              disabled={safePage === totalPages}
-              className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface transition-colors cursor-pointer"
-              title="Last page"
-            >
-              »
-            </button>
+      {/* ── Standardized Pagination (Always visible) ── */}
+      {(() => {
+        const startRecord = sorted.length === 0 ? 0 : startIdx + 1;
+        const endRecord = Math.min(startIdx + pageSize, sorted.length);
+
+        return (
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border-default bg-surface-secondary shrink-0 text-xs text-text-secondary select-none">
+            {/* Left: Current Page info */}
+            <div className="flex-1 min-w-0 flex items-center">
+              <span>
+                Page <strong className="text-text-primary font-semibold">{safePage}</strong> of{' '}
+                <strong className="text-text-primary font-semibold">{totalPages}</strong>
+              </span>
+            </div>
+
+            {/* Center: Truncated Page navigation */}
+            <div className="flex items-center justify-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => goPage(1)}
+                disabled={safePage === 1}
+                className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="First page"
+              >
+                «
+              </button>
+              <button
+                type="button"
+                onClick={() => goPage(safePage - 1)}
+                disabled={safePage === 1}
+                className="p-1 rounded disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Previous page"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {getPaginationItems(safePage, totalPages).map((p, idx) =>
+                p === '...' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="w-7 h-7 flex items-center justify-center text-text-muted font-bold select-none"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => goPage(p)}
+                    className={`w-7 h-7 rounded font-semibold text-xs transition-colors cursor-pointer ${
+                      p === safePage
+                        ? 'bg-brand text-white shadow-xs'
+                        : 'hover:bg-surface text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() => goPage(safePage + 1)}
+                disabled={safePage === totalPages}
+                className="p-1 rounded disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Next page"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => goPage(totalPages)}
+                disabled={safePage === totalPages}
+                className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Last page"
+              >
+                »
+              </button>
+            </div>
+
+            {/* Right: Record range */}
+            <div className="flex-1 min-w-0 flex items-center justify-end text-right">
+              <span>
+                from <strong className="text-text-primary font-semibold">{startRecord}</strong> to{' '}
+                <strong className="text-text-primary font-semibold">{endRecord}</strong>
+                {sorted.length > 0 && (
+                  <span className="text-text-muted"> of {sorted.length}</span>
+                )}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

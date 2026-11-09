@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   TrendingUp,
   Tag,
+  ExternalLink,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
@@ -23,8 +24,10 @@ import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
+import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function ProductFlowView() {
+  const { openOrFocus } = useWorkspaceStore();
   const todayStr = new Date().toISOString().split('T')[0];
   const firstOfMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     .toISOString()
@@ -86,12 +89,29 @@ export default function ProductFlowView() {
       key: 'invoice_number',
       label: 'Invoice / Bill #',
       className: 'font-mono text-content font-medium',
-      render: (r) => (
-        <span className="inline-flex items-center gap-1.5 text-content">
-          <Receipt className="w-3.5 h-3.5 text-content-muted" />
-          <span>{r.invoice_number || '—'}</span>
-        </span>
-      ),
+      render: (r) => {
+        if (!r.invoice_number) return <span className="text-content-muted">—</span>;
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openOrFocus(
+                `Bill #${r.invoice_number}`,
+                'bill-detail',
+                { invoiceNumber: r.invoice_number },
+                `bill-${r.invoice_number}`
+              );
+            }}
+            className="inline-flex items-center gap-1.5 text-brand hover:underline font-mono text-xs font-semibold cursor-pointer transition-colors"
+            title={`View bill #${r.invoice_number}`}
+          >
+            <Receipt className="w-3.5 h-3.5 text-brand shrink-0" />
+            <span>{r.invoice_number}</span>
+            <ExternalLink className="w-3 h-3 opacity-60 shrink-0" />
+          </button>
+        );
+      },
     },
     {
       key: 'customer_name',

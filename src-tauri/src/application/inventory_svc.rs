@@ -571,7 +571,7 @@ impl InventoryService {
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
              LEFT JOIN products p ON p.id = si.product_id
-             WHERE s.status = 'PAID'
+             WHERE s.status IN ('PAID', 'LEGACY')
                AND s.created_at >= ? AND s.created_at <= ?
                AND (? IS NULL OR s.payment_method = ?)
              GROUP BY si.product_id, si.product_name
@@ -620,7 +620,7 @@ impl InventoryService {
              JOIN sales s ON s.id = si.sale_id
              LEFT JOIN products p ON p.id = si.product_id
              LEFT JOIN categories c ON c.id = p.category_id
-             WHERE s.status = 'PAID'
+             WHERE s.status IN ('PAID', 'LEGACY')
                AND s.created_at >= ? AND s.created_at <= ?
                AND (? IS NULL OR s.payment_method = ?)
              GROUP BY COALESCE(c.id, 'uncategorized'), COALESCE(c.name, 'Uncategorized')
@@ -660,7 +660,7 @@ impl InventoryService {
                 COALESCE(SUM(s.total_paise), 0) as total_revenue_paise,
                 COUNT(s.id) as total_transactions
              FROM sales s
-             WHERE s.status = 'PAID'
+             WHERE s.status IN ('PAID', 'LEGACY')
                AND CAST(strftime('%Y', s.created_at) AS INTEGER) >= (CAST(strftime('%Y', 'now') AS INTEGER) - ?)
                AND (? IS NULL OR s.payment_method = ?)
              GROUP BY year, month
@@ -785,7 +785,7 @@ impl InventoryService {
                 s.created_at as created_at
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
-             WHERE s.status = 'PAID'
+             WHERE s.status IN ('PAID', 'LEGACY')
                AND (?1 IS NULL OR si.product_id = ?1)
                AND strftime('%Y-%m-%d', s.created_at) >= ?2
                AND strftime('%Y-%m-%d', s.created_at) <= ?3

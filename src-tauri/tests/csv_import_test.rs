@@ -143,7 +143,7 @@ async fn test_import_legacy_bills_csv() {
     assert_eq!(count, 3);
 
     // Verify Cash bill
-    let cash = sqlx::query("SELECT invoice_number, total_paise, payment_method, customer_name, biller_name FROM sales WHERE invoice_number = 'C01003247'")
+    let cash = sqlx::query("SELECT invoice_number, total_paise, payment_method, customer_name, biller_name, status FROM sales WHERE invoice_number = 'C01003247'")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -151,6 +151,7 @@ async fn test_import_legacy_bills_csv() {
     assert_eq!(cash.get::<String, _>("payment_method"), "Cash");
     assert_eq!(cash.get::<String, _>("customer_name"), "Sindhu");
     assert_eq!(cash.get::<String, _>("biller_name"), "Legacy Import");
+    assert_eq!(cash.get::<String, _>("status"), "LEGACY");
 
     // Verify Card bill
     let card = sqlx::query("SELECT invoice_number, total_paise, payment_method FROM sales WHERE invoice_number = 'K01000205'")

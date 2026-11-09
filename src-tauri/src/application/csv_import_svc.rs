@@ -745,7 +745,10 @@ impl CsvImportService {
                 Some("REFUNDED") => "REFUNDED",
                 Some("CANCELLED") | Some("CANCELED") | Some("VOID") => "CANCELLED",
                 Some("PARTIALLY_PAID") | Some("PARTIAL") => "PARTIALLY_PAID",
-                _ => "PAID",
+                Some("PAID") | Some("COMPLETED") => "PAID",
+                Some("LEGACY") => "LEGACY",
+                Some(_) => "LEGACY",
+                None => "LEGACY",
             };
 
             let paid_paise = match status {

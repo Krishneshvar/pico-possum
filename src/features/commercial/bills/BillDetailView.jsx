@@ -468,6 +468,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const { sale, items } = saleDetails;
   const sortedItems = sortRows(items, lineSort, (row, key) => row[key]);
   const isCancelled = sale.status === 'CANCELLED';
+  const isLegacy = sale.status === 'LEGACY';
 
   const handleCancelSale = async () => {
     const { confirmed, value } = await confirmDialog({
@@ -524,11 +525,19 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                       isCancelled
                         ? 'bg-danger-bg text-danger border-danger/30'
+                        : isLegacy
+                        ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30'
                         : 'bg-success-bg text-success border-success/30'
                     }`}
                   >
-                    {isCancelled ? <XCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                    {sale.status}
+                    {isCancelled ? (
+                      <XCircle className="w-3 h-3" />
+                    ) : isLegacy ? (
+                      <History className="w-3 h-3" />
+                    ) : (
+                      <CheckCircle2 className="w-3 h-3" />
+                    )}
+                    {isLegacy ? 'Legacy' : sale.status}
                   </span>
                 )}
               </div>
@@ -538,7 +547,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {!isCancelled && !editing && (
+          {!isCancelled && !isLegacy && !editing && (
             <>
               <button
                 type="button"
