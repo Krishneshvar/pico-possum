@@ -175,7 +175,7 @@ export default function ProductFlowView() {
       className: 'text-center',
       render: (r) => (
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-surface-secondary text-content-secondary border border-border">
-          {r.payment_method || '—'}
+          {r.payment_method ? r.payment_method.replace(/_/g, ' ') : '—'}
         </span>
       ),
     },

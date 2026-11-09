@@ -236,7 +236,7 @@ export default function BillsHistoryView() {
       className: 'text-center text-xs',
       render: (r) => (
         <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-secondary text-text-secondary border border-border-default uppercase">
-          {r.payment_method || 'CASH'}
+          {r.payment_method ? r.payment_method.replace(/_/g, ' ') : 'CASH'}
         </span>
       ),
     },
@@ -285,13 +285,19 @@ export default function BillsHistoryView() {
   }, [sales]);
 
   const pmCounts = useMemo(() => {
-    const counts = { CASH: 0, UPI: 0, CARD: 0, OTHER: 0 };
+    const counts = { CASH: 0, UPI: 0, CARD: 0, GIFT_CARD: 0 };
     for (const s of sales) {
-      const pm = (s.payment_method || 'CASH').toUpperCase();
+      const pm = (s.payment_method || 'CASH').toUpperCase().replace(/\s+/g, '_');
       if (counts[pm] !== undefined) {
         counts[pm]++;
+      } else if (pm.includes('GIFT') || pm === 'GC') {
+        counts.GIFT_CARD++;
+      } else if (pm.includes('CARD') || pm === 'CP') {
+        counts.CARD++;
+      } else if (pm.includes('UPI') || pm === 'UP') {
+        counts.UPI++;
       } else {
-        counts.OTHER++;
+        counts.CASH++;
       }
     }
     return counts;
@@ -326,11 +332,17 @@ export default function BillsHistoryView() {
           { value: 'CASH', label: `Cash (${pmCounts.CASH})` },
           { value: 'UPI', label: `UPI / QR (${pmCounts.UPI})` },
           { value: 'CARD', label: `Card (${pmCounts.CARD})` },
-          { value: 'OTHER', label: `Other (${pmCounts.OTHER})` },
+          { value: 'GIFT_CARD', label: `Gift Card (${pmCounts.GIFT_CARD})` },
         ],
         filterFn: (row, vals) => {
-          const pm = (row.payment_method || 'CASH').toUpperCase();
-          const normalized = ['CASH', 'UPI', 'CARD'].includes(pm) ? pm : 'OTHER';
+          const pm = (row.payment_method || 'CASH').toUpperCase().replace(/\s+/g, '_');
+          const normalized = pm.includes('GIFT') || pm === 'GC'
+            ? 'GIFT_CARD'
+            : pm.includes('CARD') || pm === 'CP'
+            ? 'CARD'
+            : pm.includes('UPI') || pm === 'UP'
+            ? 'UPI'
+            : 'CASH';
           return vals.includes(normalized);
         },
       },

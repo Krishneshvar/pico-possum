@@ -15,6 +15,7 @@ import {
   Filter,
   Receipt,
   Tag,
+  Gift,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise } from '../../../lib/formatters';
@@ -27,7 +28,7 @@ import DatePicker from '../../../components/common/DatePicker';
 export default function ReportsView() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('ALL'); // 'ALL' | 'CASH' | 'UPI' | 'CARD' | 'OTHER'
+  const [paymentMethod, setPaymentMethod] = useState('ALL'); // 'ALL' | 'CASH' | 'UPI' | 'CARD' | 'GIFT_CARD'
   const [yearsBack, setYearsBack] = useState(3);
 
   // Sorting state for tables
@@ -83,17 +84,19 @@ export default function ReportsView() {
   });
 
   const pmCounts = useMemo(() => {
-    const counts = { ALL: 0, CASH: 0, UPI: 0, CARD: 0, OTHER: 0 };
+    const counts = { ALL: 0, CASH: 0, UPI: 0, CARD: 0, GIFT_CARD: 0 };
     for (const s of allSales) {
       if (s.status === 'CANCELLED') continue;
       if (fromDate && s.created_at && s.created_at.split('T')[0] < fromDate) continue;
       if (toDate && s.created_at && s.created_at.split('T')[0] > toDate) continue;
       counts.ALL++;
       const pm = (s.payment_method || 'CASH').toUpperCase();
-      if (counts[pm] !== undefined) {
+      if (pm === 'GIFT_CARD' || pm === 'GIFT CARD' || pm === 'GIFTCARD' || pm === 'GC' || pm === 'X') {
+        counts.GIFT_CARD++;
+      } else if (counts[pm] !== undefined) {
         counts[pm]++;
       } else {
-        counts.OTHER++;
+        counts.GIFT_CARD++;
       }
     }
     return counts;
@@ -123,7 +126,7 @@ export default function ReportsView() {
   const cashRev = summary?.cash_revenue_paise || 0;
   const cardRev = summary?.card_revenue_paise || 0;
   const upiRev = summary?.upi_revenue_paise || 0;
-  const otherRev = summary?.other_revenue_paise || 0;
+  const giftCardRev = summary?.gift_card_revenue_paise || 0;
   const totalCount = summary?.total_sales_count || 0;
   const avgBill = totalCount > 0 ? Math.round(totalRev / totalCount) : 0;
   const totalDiscount = summary?.total_discount_paise || 0;
@@ -131,7 +134,7 @@ export default function ReportsView() {
   const cashPct = totalRev > 0 ? (cashRev / totalRev) * 100 : 0;
   const upiPct = totalRev > 0 ? (upiRev / totalRev) * 100 : 0;
   const cardPct = totalRev > 0 ? (cardRev / totalRev) * 100 : 0;
-  const otherPct = totalRev > 0 ? (otherRev / totalRev) * 100 : 0;
+  const giftCardPct = totalRev > 0 ? (giftCardRev / totalRev) * 100 : 0;
 
   // Category totals
   const totalCategoryUnits = useMemo(
@@ -274,7 +277,7 @@ export default function ReportsView() {
                 { value: 'CASH', label: `Cash (${pmCounts.CASH})` },
                 { value: 'UPI', label: `UPI / QR (${pmCounts.UPI})` },
                 { value: 'CARD', label: `Card (${pmCounts.CARD})` },
-                { value: 'OTHER', label: `Other (${pmCounts.OTHER})` },
+                { value: 'GIFT_CARD', label: `Gift Card (${pmCounts.GIFT_CARD})` },
               ]}
             />
           </div>
@@ -286,7 +289,7 @@ export default function ReportsView() {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-brand" />
               <span>
-                Filtered by payment method: <strong className="font-semibold uppercase">{paymentMethod}</strong>.
+                Filtered by payment method: <strong className="font-semibold uppercase">{paymentMethod.replace(/_/g, ' ')}</strong>.
                 Method distribution breakdown is scoped to this selection.
               </span>
             </div>
@@ -314,7 +317,7 @@ export default function ReportsView() {
               {formatPaise(totalRev)}
             </div>
             <p className="text-[11px] text-content-muted">
-              {paymentMethod === 'ALL' ? 'Gross transaction volume' : `${paymentMethod} volume`}
+              {paymentMethod === 'ALL' ? 'Gross transaction volume' : `${paymentMethod.replace(/_/g, ' ')} volume`}
             </p>
           </div>
 
@@ -408,11 +411,11 @@ export default function ReportsView() {
                       title={`Card: ${formatPaise(cardRev)} (${cardPct.toFixed(1)}%)`}
                     />
                   )}
-                  {otherPct > 0 && (
+                  {giftCardPct > 0 && (
                     <div
-                      style={{ width: `${otherPct}%`, backgroundColor: '#475569' }}
+                      style={{ width: `${giftCardPct}%`, backgroundColor: '#D97706' }}
                       className="h-full transition-all"
-                      title={`Other: ${formatPaise(otherRev)} (${otherPct.toFixed(1)}%)`}
+                      title={`Gift Card: ${formatPaise(giftCardRev)} (${giftCardPct.toFixed(1)}%)`}
                     />
                   )}
                 </div>
@@ -437,12 +440,12 @@ export default function ReportsView() {
                     <span className="financial-value">{formatPaise(cardRev)}</span>
                     <span className="text-content-muted">({cardPct.toFixed(1)}%)</span>
                   </span>
-                  {otherPct > 0 && (
+                  {giftCardPct > 0 && (
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#475569' }} />
-                      <span className="font-medium text-content">Other:</span>
-                      <span className="financial-value">{formatPaise(otherRev)}</span>
-                      <span className="text-content-muted">({otherPct.toFixed(1)}%)</span>
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
+                      <span className="font-medium text-content">Gift Card:</span>
+                      <span className="financial-value">{formatPaise(giftCardRev)}</span>
+                      <span className="text-content-muted">({giftCardPct.toFixed(1)}%)</span>
                     </span>
                   )}
                 </div>
@@ -450,7 +453,7 @@ export default function ReportsView() {
             )}
 
             {/* Individual Method Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
               <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
                 <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
                   <Banknote className="w-4 h-4 text-brand" /> Cash
@@ -484,6 +487,18 @@ export default function ReportsView() {
                 </div>
                 <div className="text-[11px] text-content-muted">
                   {cardPct.toFixed(1)}% of total revenue
+                </div>
+              </div>
+
+              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
+                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
+                  <Gift className="w-4 h-4 text-amber-600" /> Gift Card
+                </div>
+                <div className="text-lg font-semibold text-content financial-value">
+                  {formatPaise(giftCardRev)}
+                </div>
+                <div className="text-[11px] text-content-muted">
+                  {giftCardPct.toFixed(1)}% of total revenue
                 </div>
               </div>
             </div>

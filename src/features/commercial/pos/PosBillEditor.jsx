@@ -583,7 +583,7 @@ export default function PosBillEditor({
                 { id: 'CASH', label: 'Cash', icon: Banknote },
                 { id: 'UPI', label: 'UPI / QR', icon: QrCode },
                 { id: 'CARD', label: 'Card', icon: CreditCard },
-                { id: 'OTHER', label: 'Other', icon: Gift },
+                { id: 'GIFT_CARD', label: 'Gift Card', icon: Gift },
               ].map((pm) => {
                 const Icon = pm.icon;
                 const isSelected = bill.paymentMethod === pm.id;
@@ -717,14 +717,17 @@ export default function PosBillEditor({
             </div>
           )}
 
-          {bill.paymentMethod === 'OTHER' && (
+          {bill.paymentMethod === 'GIFT_CARD' && (
             <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2 animate-fade-in">
-              <span className="text-xs font-semibold text-text-primary block">Payment Note</span>
+              <span className="text-xs font-semibold text-text-primary block">Gift Card / Voucher Code</span>
               <input
                 type="text"
-                placeholder="Gift voucher, store credit, cheque ref…"
+                placeholder="Gift card number or voucher code (Optional)"
                 className="w-full bg-surface-secondary border border-border-strong rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand"
               />
+              <p className="text-[11px] text-text-muted">
+                Redeem customer gift card voucher for this order settlement.
+              </p>
             </div>
           )}
 

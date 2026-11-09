@@ -732,8 +732,18 @@ impl CsvImportService {
                     "Method",
                 ],
             )
-            .map(|pm| pm.trim().to_string())
-            .filter(|pm| !pm.is_empty())
+            .map(|pm| {
+                let norm = pm.trim().to_uppercase().replace(['-', '_'], " ");
+                if norm.contains("GIFT") || norm == "GC" || norm == "X" {
+                    "Gift Card".to_string()
+                } else if norm.contains("CARD") || norm == "CP" || norm == "K" {
+                    "Card".to_string()
+                } else if norm.contains("UPI") || norm.contains("QR") || norm == "UP" || norm == "U" {
+                    "UPI".to_string()
+                } else {
+                    "Cash".to_string()
+                }
+            })
             .unwrap_or_else(|| infer_legacy_payment_method(&bill_number));
 
             let status_raw = get_value(
@@ -1017,14 +1027,24 @@ pub fn parse_decimal_to_paise(s: &str) -> Option<i64> {
 pub fn infer_legacy_payment_method(bill_number: &str) -> String {
     let trimmed = bill_number.trim();
     if trimmed.is_empty() {
-        return "Legacy Import".to_string();
+        return "Cash".to_string();
     }
-    match trimmed.chars().next().map(|c| c.to_ascii_uppercase()) {
+    let upper = trimmed.to_uppercase();
+    if upper.starts_with('S') && upper.len() >= 5 && upper[1..3].chars().all(|c| c.is_ascii_digit()) {
+        let code = &upper[3..5];
+        return match code {
+            "GC" => "Gift Card".to_string(),
+            "CP" => "Card".to_string(),
+            "UP" => "UPI".to_string(),
+            _ => "Cash".to_string(),
+        };
+    }
+    match upper.chars().next() {
         Some('C') => "Cash".to_string(),
-        Some('X') => "Gift Card".to_string(),
-        Some('K') => "Card".to_string(),
+        Some('X') | Some('G') => "Gift Card".to_string(),
+        Some('K') | Some('P') => "Card".to_string(),
         Some('U') => "UPI".to_string(),
-        _ => "Legacy Import".to_string(),
+        _ => "Cash".to_string(),
     }
 }
 

@@ -478,7 +478,7 @@ export default function CustomersView() {
                         </td>
                         <td className="py-2 px-3.5">
                           <span className="px-1.5 py-0.5 rounded bg-surface-secondary text-text-secondary text-[10px] uppercase border border-border-default">
-                            {sale.payment_method}
+                            {sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH'}
                           </span>
                         </td>
                         <td className="py-2 px-3.5 text-center">

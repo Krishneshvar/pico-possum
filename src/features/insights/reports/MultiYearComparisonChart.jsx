@@ -106,7 +106,7 @@ export default function MultiYearComparisonChart({
           <p className="text-xs text-text-muted">
             Monthly revenue performance trends across comparison years
             {paymentMethod !== 'ALL' && (
-              <span className="ml-1 text-brand font-semibold font-mono">({paymentMethod})</span>
+              <span className="ml-1 text-brand font-semibold">({paymentMethod.replace(/_/g, ' ')})</span>
             )}
           </p>
         </div>

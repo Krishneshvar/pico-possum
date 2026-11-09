@@ -45,7 +45,7 @@ export default function SalesReportsView() {
     'cash_paise',
     'upi_paise',
     'card_paise',
-    'other_paise',
+    'gift_card_paise',
     'total_discount_paise',
     'total_sales_paise',
     'net_sales',
@@ -79,6 +79,7 @@ export default function SalesReportsView() {
       else if (amountCol === 'cash') valPaise = row.cash_paise || 0;
       else if (amountCol === 'upi') valPaise = row.upi_paise || 0;
       else if (amountCol === 'card') valPaise = row.card_paise || 0;
+      else if (amountCol === 'gift_card') valPaise = row.gift_card_paise || 0;
 
       const valRs = valPaise / 100;
       if (minAmount !== '' && !isNaN(minAmount) && valRs < parseFloat(minAmount)) return false;
@@ -94,13 +95,13 @@ export default function SalesReportsView() {
         acc.cash += r.cash_paise || 0;
         acc.upi += r.upi_paise || 0;
         acc.card += r.card_paise || 0;
-        acc.other += r.other_paise || 0;
+        acc.giftCard += r.gift_card_paise || 0;
         acc.discount += r.total_discount_paise || 0;
         acc.gross += r.total_sales_paise || 0;
         acc.net += Math.max(0, (r.total_sales_paise || 0) - (r.total_discount_paise || 0));
         return acc;
       },
-      { transactions: 0, cash: 0, upi: 0, card: 0, other: 0, discount: 0, gross: 0, net: 0 }
+      { transactions: 0, cash: 0, upi: 0, card: 0, giftCard: 0, discount: 0, gross: 0, net: 0 }
     );
   }, [filteredData]);
 
@@ -159,15 +160,15 @@ export default function SalesReportsView() {
         totalKey: 'card',
       },
       {
-        key: 'other_paise',
-        label: 'Other',
+        key: 'gift_card_paise',
+        label: 'Gift Card',
         headerClassName: 'text-right',
-        className: 'text-right financial-value text-text-muted text-xs',
-        minWidth: 90,
-        exportValue: (r) => (r.other_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.other_paise),
+        className: 'text-right financial-value text-text-secondary text-xs',
+        minWidth: 100,
+        exportValue: (r) => (r.gift_card_paise / 100).toFixed(2),
+        render: (r) => formatPaise(r.gift_card_paise),
         isNumeric: true,
-        totalKey: 'other',
+        totalKey: 'giftCard',
       },
       {
         key: 'total_discount_paise',
@@ -457,6 +458,7 @@ export default function SalesReportsView() {
               { value: 'cash', label: 'Cash' },
               { value: 'upi', label: 'UPI' },
               { value: 'card', label: 'Card' },
+              { value: 'gift_card', label: 'Gift Card' },
             ]}
           />
           <div className="flex items-center gap-1.5">
@@ -524,8 +526,8 @@ export default function SalesReportsView() {
               displayVal = formatPaise(totals.upi);
             } else if (col.totalKey === 'card') {
               displayVal = formatPaise(totals.card);
-            } else if (col.totalKey === 'other') {
-              displayVal = formatPaise(totals.other);
+            } else if (col.totalKey === 'giftCard') {
+              displayVal = formatPaise(totals.giftCard);
             } else if (col.totalKey === 'discount') {
               displayVal = formatPaise(totals.discount);
             } else if (col.totalKey === 'gross') {

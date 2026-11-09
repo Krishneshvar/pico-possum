@@ -285,7 +285,7 @@ pub struct SalesReportSummary {
     pub cash_revenue_paise: i64,
     pub card_revenue_paise: i64,
     pub upi_revenue_paise: i64,
-    pub other_revenue_paise: i64,
+    pub gift_card_revenue_paise: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -324,7 +324,7 @@ pub struct SalesBreakdownItem {
     pub cash_paise: i64,
     pub upi_paise: i64,
     pub card_paise: i64,
-    pub other_paise: i64,
+    pub gift_card_paise: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

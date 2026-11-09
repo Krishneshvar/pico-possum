@@ -509,6 +509,14 @@ impl InventoryService {
         let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
         let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
         let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+        let pm_norm = pm.as_deref().map(|m| {
+            let u = m.to_uppercase();
+            if u.contains("GIFT") || u == "GC" {
+                "GIFT_CARD".to_string()
+            } else {
+                u
+            }
+        });
 
         let row = sqlx::query(
             "SELECT
@@ -516,18 +524,19 @@ impl InventoryService {
                 COALESCE(SUM(discount_paise), 0) as total_discount,
                 COALESCE(SUM(tax_paise), 0) as total_tax,
                 COUNT(id) as total_count,
-                COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_rev,
-                COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_rev,
-                COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_rev,
-                COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'CARD', 'UPI') THEN total_paise ELSE 0 END), 0) as other_rev
+                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_rev,
+                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_rev,
+                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_rev,
+                COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_rev
              FROM sales
-             WHERE status = 'PAID' AND created_at >= ? AND created_at <= ?
-               AND (? IS NULL OR payment_method = ?)"
+             WHERE status IN ('PAID', 'LEGACY') AND created_at >= ? AND created_at <= ?
+               AND (? IS NULL OR upper(replace(payment_method, ' ', '_')) = ? OR upper(payment_method) = ?)"
         )
         .bind(from)
         .bind(to)
-        .bind(&pm)
-        .bind(&pm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
         .fetch_one(pool)
         .await?;
 
@@ -538,7 +547,7 @@ impl InventoryService {
         let cash_revenue_paise: i64 = row.get("cash_rev");
         let card_revenue_paise: i64 = row.get("card_rev");
         let upi_revenue_paise: i64 = row.get("upi_rev");
-        let other_revenue_paise: i64 = row.get("other_rev");
+        let gift_card_revenue_paise: i64 = row.get("gift_card_rev");
 
         Ok(SalesReportSummary {
             total_revenue_paise,
@@ -548,7 +557,7 @@ impl InventoryService {
             cash_revenue_paise,
             card_revenue_paise,
             upi_revenue_paise,
-            other_revenue_paise,
+            gift_card_revenue_paise,
         })
     }
 
@@ -562,6 +571,14 @@ impl InventoryService {
         let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
         let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
         let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+        let pm_norm = pm.as_deref().map(|m| {
+            let u = m.to_uppercase();
+            if u.contains("GIFT") || u == "GC" {
+                "GIFT_CARD".to_string()
+            } else {
+                u
+            }
+        });
 
         let rows = sqlx::query(
             "SELECT si.product_id, si.product_name,
@@ -573,14 +590,15 @@ impl InventoryService {
              LEFT JOIN products p ON p.id = si.product_id
              WHERE s.status IN ('PAID', 'LEGACY')
                AND s.created_at >= ? AND s.created_at <= ?
-               AND (? IS NULL OR s.payment_method = ?)
+               AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY si.product_id, si.product_name
              ORDER BY total_quantity DESC LIMIT ?"
         )
         .bind(from)
         .bind(to)
-        .bind(&pm)
-        .bind(&pm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
         .bind(limit)
         .fetch_all(pool)
         .await?;
@@ -608,6 +626,14 @@ impl InventoryService {
         let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
         let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
         let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+        let pm_norm = pm.as_deref().map(|m| {
+            let u = m.to_uppercase();
+            if u.contains("GIFT") || u == "GC" {
+                "GIFT_CARD".to_string()
+            } else {
+                u
+            }
+        });
 
         let rows = sqlx::query(
             "SELECT
@@ -622,14 +648,15 @@ impl InventoryService {
              LEFT JOIN categories c ON c.id = p.category_id
              WHERE s.status IN ('PAID', 'LEGACY')
                AND s.created_at >= ? AND s.created_at <= ?
-               AND (? IS NULL OR s.payment_method = ?)
+               AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY COALESCE(c.id, 'uncategorized'), COALESCE(c.name, 'Uncategorized')
              ORDER BY total_revenue_paise DESC LIMIT ?"
         )
         .bind(from)
         .bind(to)
-        .bind(&pm)
-        .bind(&pm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
         .bind(limit)
         .fetch_all(pool)
         .await?;
@@ -653,6 +680,15 @@ impl InventoryService {
         payment_method: Option<String>,
     ) -> Result<Vec<MultiYearSalesPoint>, AppError> {
         let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
+        let pm_norm = pm.as_deref().map(|m| {
+            let u = m.to_uppercase();
+            if u.contains("GIFT") || u == "GC" {
+                "GIFT_CARD".to_string()
+            } else {
+                u
+            }
+        });
+
         let rows = sqlx::query_as::<_, MultiYearSalesPoint>(
             "SELECT
                 strftime('%Y', s.created_at) as year,
@@ -662,13 +698,14 @@ impl InventoryService {
              FROM sales s
              WHERE s.status IN ('PAID', 'LEGACY')
                AND CAST(strftime('%Y', s.created_at) AS INTEGER) >= (CAST(strftime('%Y', 'now') AS INTEGER) - ?)
-               AND (? IS NULL OR s.payment_method = ?)
+               AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY year, month
              ORDER BY year ASC, month ASC"
         )
         .bind(years_back)
-        .bind(&pm)
-        .bind(&pm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
+        .bind(&pm_norm)
         .fetch_all(pool)
         .await?;
 
@@ -692,12 +729,12 @@ impl InventoryService {
                         COUNT(DISTINCT id) as total_transactions,
                         COALESCE(SUM(total_paise), 0) as total_sales_paise,
                         COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'UPI', 'CARD') THEN total_paise ELSE 0 END), 0) as other_paise
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
+                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
                      FROM sales
-                     WHERE status = 'PAID'
+                     WHERE status IN ('PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
                        AND strftime('%Y-%m-%d', created_at) <= ?
                      GROUP BY period
@@ -715,12 +752,12 @@ impl InventoryService {
                         COUNT(DISTINCT id) as total_transactions,
                         COALESCE(SUM(total_paise), 0) as total_sales_paise,
                         COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'UPI', 'CARD') THEN total_paise ELSE 0 END), 0) as other_paise
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
+                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
                      FROM sales
-                     WHERE status = 'PAID'
+                     WHERE status IN ('PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
                        AND strftime('%Y-%m-%d', created_at) <= ?
                      GROUP BY period
@@ -738,12 +775,12 @@ impl InventoryService {
                         COUNT(DISTINCT id) as total_transactions,
                         COALESCE(SUM(total_paise), 0) as total_sales_paise,
                         COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'CASH' THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'UPI' THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN payment_method = 'CARD' THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN payment_method NOT IN ('CASH', 'UPI', 'CARD') THEN total_paise ELSE 0 END), 0) as other_paise
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
+                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
                      FROM sales
-                     WHERE status = 'PAID'
+                     WHERE status IN ('PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
                        AND strftime('%Y-%m-%d', created_at) <= ?
                      GROUP BY period

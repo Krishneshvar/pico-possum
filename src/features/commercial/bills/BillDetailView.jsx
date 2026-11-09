@@ -819,7 +819,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 <div className="flex items-center justify-between">
                   <span className="text-text-muted">Payment Method</span>
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-surface border border-border-default text-text-primary uppercase tracking-wide">
-                    {sale.payment_method}
+                    {sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -884,7 +884,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 {/* Paid & Settlement Details */}
                 <div className="bg-surface rounded-lg p-2.5 border border-border-default space-y-1 text-xs">
                   <div className="flex justify-between text-text-muted">
-                    <span>Paid Amount ({sale.payment_method})</span>
+                    <span>Paid Amount ({sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH'})</span>
                     <span className="financial-value font-semibold text-text-primary">
                       {formatPaise(sale.paid_paise)}
                     </span>

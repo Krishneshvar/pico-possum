@@ -4,11 +4,11 @@ pub struct BusinessRules;
 
 impl BusinessRules {
     pub fn payment_method_code(payment_method: &str) -> &'static str {
-        match payment_method.to_uppercase().as_str() {
-            "CASH" | "CH" => "CH",
-            "CARD" | "CP" => "CP",
-            "UPI" | "UP" => "UP",
-            "GIFT_CARD" | "GC" => "GC",
+        match payment_method.to_uppercase().trim() {
+            "CASH" | "CH" | "C" => "CH",
+            "CARD" | "CP" | "K" => "CP",
+            "UPI" | "UP" | "U" => "UP",
+            "GIFT_CARD" | "GIFT CARD" | "GIFTCARD" | "GC" | "X" => "GC",
             _ => "CH",
         }
     }

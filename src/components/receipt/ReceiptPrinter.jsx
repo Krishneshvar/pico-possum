@@ -125,6 +125,20 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
               <span>Total:</span>
               <span>{formatPaise(sale.total_paise)}</span>
             </div>
+
+            {sale.payment_method && (
+              <div className="flex justify-between text-[11px] pt-0.5">
+                <span>Paid via ({sale.payment_method.replace(/_/g, ' ')}):</span>
+                <span>{formatPaise(sale.paid_paise ?? sale.total_paise)}</span>
+              </div>
+            )}
+
+            {sale.paid_paise > sale.total_paise && (
+              <div className="flex justify-between text-[11px]">
+                <span>Change:</span>
+                <span>{formatPaise(sale.paid_paise - sale.total_paise)}</span>
+              </div>
+            )}
           </div>
         );
       }
