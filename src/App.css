@@ -29,9 +29,9 @@
   --app-navbar-bg: #0F172A;
   --app-navbar-text: #F8FAFC;
   --app-navbar-border: #1E293B;
-  --app-table-header-bg: #0F172A;
-  --app-table-header-border: #1E293B;
-  --app-table-header-text: #F8FAFC;
+  --app-table-header-bg: #6B7280;
+  --app-table-header-border: #4B5563;
+  --app-table-header-text: #FFFFFF;
 
   /* Categorical charts */
   --chart-1: #2563EB;
@@ -69,9 +69,9 @@
   --app-navbar-bg: #080D1A;
   --app-navbar-text: #F1F5F9;
   --app-navbar-border: #1E293B;
-  --app-table-header-bg: #080D1A;
-  --app-table-header-border: #1E293B;
-  --app-table-header-text: #F1F5F9;
+  --app-table-header-bg: #6B7280;
+  --app-table-header-border: #4B5563;
+  --app-table-header-text: #FFFFFF;
 
   /* Categorical charts */
   --chart-1: #60A5FA;

@@ -1285,7 +1285,8 @@ export default function SettingsView() {
                       Columns: name, description
                     </p>
                     <ImportCsvButton
-                      label="Import Categories CSV"
+                      entity="categories"
+                      label="Import Categories"
                       onImport={({ csvContent, filePath }) =>
                         tauriApi.importCsvCategories({ csvContent, filePath })
                       }
@@ -1304,7 +1305,8 @@ export default function SettingsView() {
                       Columns: sku, name, category, price, cost, stock
                     </p>
                     <ImportCsvButton
-                      label="Import Products CSV"
+                      entity="products"
+                      label="Import Products"
                       onImport={({ csvContent, filePath }) =>
                         tauriApi.importCsvProducts({ csvContent, filePath })
                       }
@@ -1323,7 +1325,8 @@ export default function SettingsView() {
                       Columns: name, phone, email, address
                     </p>
                     <ImportCsvButton
-                      label="Import Customers CSV"
+                      entity="customers"
+                      label="Import Customers"
                       onImport={({ csvContent, filePath }) =>
                         tauriApi.importCsvCustomers({ csvContent, filePath })
                       }
@@ -1342,7 +1345,8 @@ export default function SettingsView() {
                       Legacy bill rows, items, and payments
                     </p>
                     <ImportCsvButton
-                      label="Import Bills CSV"
+                      entity="bills"
+                      label="Import Bills"
                       onImport={({ csvContent, filePath, fileName }) =>
                         tauriApi.importCsvBills({ csvContent, filePath, fileName })
                       }

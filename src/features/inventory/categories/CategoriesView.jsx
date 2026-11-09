@@ -46,7 +46,7 @@ function TreeNode({
         className={`group flex items-center justify-between py-1.5 px-2 rounded-lg text-xs cursor-pointer transition-colors ${
           isSelected
             ? 'bg-brand text-white font-semibold shadow-xs'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+            : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
         }`}
         onClick={() => onSelect(node.id)}
       >
@@ -58,7 +58,7 @@ function TreeNode({
                 e.stopPropagation();
                 onToggleExpand(node.id);
               }}
-              className="p-0.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-0.5 text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             >
               {isExpanded ? (
                 <ChevronDown className="w-3.5 h-3.5" />
@@ -71,9 +71,9 @@ function TreeNode({
           )}
 
           {isExpanded ? (
-            <FolderOpen className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <FolderOpen className="w-3.5 h-3.5 text-brand shrink-0" />
           ) : (
-            <Folder className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <Folder className="w-3.5 h-3.5 text-text-muted shrink-0" />
           )}
 
           <span className="truncate">{node.name}</span>
@@ -84,7 +84,7 @@ function TreeNode({
             className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono border ${
               isSelected
                 ? 'bg-white/20 text-white border-white/30'
-                : 'bg-white/10 text-slate-300 border-white/20'
+                : 'bg-surface-secondary text-text-muted border-border-default'
             }`}
           >
             {count}
@@ -98,7 +98,7 @@ function TreeNode({
                 onAddChild(node);
               }}
               title="Add subcategory"
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
+              className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -109,7 +109,7 @@ function TreeNode({
                 onEdit(node);
               }}
               title="Edit category"
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
+              className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             >
               <Edit2 className="w-3 h-3" />
             </button>
@@ -120,7 +120,7 @@ function TreeNode({
                 onDelete(node);
               }}
               title="Delete category"
-              className="p-1 rounded text-slate-400 hover:text-red-300 hover:bg-red-500/20 transition-colors cursor-pointer"
+              className="p-1 rounded text-text-muted hover:text-danger hover:bg-danger-bg transition-colors cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -450,21 +450,21 @@ export default function CategoriesView() {
         {/* Category Tree Pane */}
         {(viewMode === 'split' || viewMode === 'tree') && (
           <div
-            className={`flex flex-col border-r border-navbar-border bg-navbar-bg text-navbar-text overflow-hidden ${
+            className={`flex flex-col border-r border-border-default bg-surface text-text-primary overflow-hidden ${
               viewMode === 'tree' ? 'flex-1' : ''
             }`}
             style={viewMode === 'split' ? { width: splitWidth, shrink: 0 } : undefined}
           >
-            <div className="p-3 border-b border-navbar-border flex items-center justify-between">
+            <div className="p-3 bg-gray-500 border-b border-gray-600 flex items-center justify-between text-white shadow-2xs">
               <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <ListTree className="w-3.5 h-3.5 text-blue-400" />
+                <ListTree className="w-3.5 h-3.5 text-white/90" />
                 Category Tree
               </span>
               {selectedTreeId && (
                 <button
                   type="button"
                   onClick={() => setSelectedTreeId(null)}
-                  className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                  className="text-[11px] text-white/90 hover:text-white hover:underline cursor-pointer font-medium"
                 >
                   Clear Selection
                 </button>
@@ -476,12 +476,12 @@ export default function CategoriesView() {
                 className={`py-1.5 px-2.5 rounded-lg text-xs cursor-pointer flex items-center justify-between transition-colors ${
                   !selectedTreeId
                     ? 'bg-brand text-white font-bold border border-brand/50 shadow-xs'
-                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                    : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
                 }`}
                 onClick={() => setSelectedTreeId(null)}
               >
                 <div className="flex items-center gap-2">
-                  <FolderOpen className="w-3.5 h-3.5 text-blue-400" />
+                  <FolderOpen className="w-3.5 h-3.5 text-brand" />
                   <span>All Categories</span>
                 </div>
               </div>
@@ -502,7 +502,7 @@ export default function CategoriesView() {
               ))}
 
               {categories.length === 0 && !isLoading && (
-                <div className="text-center py-8 text-xs text-slate-400">
+                <div className="text-center py-8 text-xs text-text-muted">
                   No categories created yet. Click "Add Category" above.
                 </div>
               )}

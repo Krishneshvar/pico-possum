@@ -9,6 +9,7 @@ import { formatPaise, formatDate, formatTime, formatDateTime, getCurrencySymbol 
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
+import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function BillsHistoryView() {
@@ -344,8 +345,14 @@ export default function BillsHistoryView() {
           </div>
         </div>
 
-        {/* Export Actions */}
+        {/* Import & Export Actions */}
         <div className="flex items-center gap-2">
+          <ImportCsvButton
+            entity="bills"
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ['sales'] });
+            }}
+          />
           <button
             type="button"
             onClick={handleExportCsv}

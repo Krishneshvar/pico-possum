@@ -1,6 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, Edit2, Trash2, X, ArrowUpDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Package,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  ArrowUpDown,
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  ChevronDown,
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import { tauriApi } from '../../../lib/tauri';
@@ -252,6 +266,125 @@ export default function ProductsView() {
     }
   };
 
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
+
+  const escapeCsv = (val) => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const handleExportCsv = () => {
+    if (!products.length) {
+      toast.warning('No products to export');
+      return;
+    }
+
+    const headers = [
+      'Product Name',
+      'SKU',
+      'Category',
+      'Cost Price (Rs)',
+      'MRP (Rs)',
+      'GST (%)',
+      'Current Stock',
+      'Min Stock Alert',
+      'Unit',
+      'Status',
+    ];
+
+    const rows = products.map((p) => [
+      escapeCsv(p.name || ''),
+      escapeCsv(p.sku || ''),
+      escapeCsv(p.category_name || 'Uncategorized'),
+      escapeCsv((p.cost_price_paise / 100).toFixed(2)),
+      escapeCsv((p.mrp_paise / 100).toFixed(2)),
+      escapeCsv(p.tax_rate ?? 0),
+      escapeCsv(p.current_stock ?? 0),
+      escapeCsv(p.min_stock_alert ?? 5),
+      escapeCsv(p.uom || 'Piece'),
+      escapeCsv(p.status || 'active'),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `products_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${products.length} products to CSV`);
+  };
+
+  const handleExportXlsx = () => {
+    if (!products.length) {
+      toast.warning('No products to export');
+      return;
+    }
+
+    const headers = [
+      'Product Name',
+      'SKU',
+      'Category',
+      'Cost Price (Rs)',
+      'MRP (Rs)',
+      'GST (%)',
+      'Current Stock',
+      'Min Stock Alert',
+      'Unit',
+      'Status',
+    ];
+
+    const rows = products.map((p) => [
+      p.name || '',
+      p.sku || '',
+      p.category_name || 'Uncategorized',
+      parseFloat((p.cost_price_paise / 100).toFixed(2)),
+      parseFloat((p.mrp_paise / 100).toFixed(2)),
+      p.tax_rate ?? 0,
+      p.current_stock ?? 0,
+      p.min_stock_alert ?? 5,
+      p.uom || 'Piece',
+      p.status || 'active',
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 25 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 12 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `products_${dateStr}.xlsx`);
+    toast.success(`Exported ${products.length} products to Excel`);
+  };
+
   const columns = [
     {
       key: 'name',
@@ -281,7 +414,7 @@ export default function ProductsView() {
     },
     {
       key: 'mrp_paise',
-      label: 'Selling Price',
+      label: 'MRP',
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
       render: (r) => formatPaise(r.mrp_paise),
@@ -320,9 +453,8 @@ export default function ProductsView() {
         return (
           <span
             title={isLow ? `Low stock alert (≤ ${alertThreshold})` : isOut ? 'Out of stock' : `Stock: ${s}`}
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}
+            className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}
           >
-            {isLow && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
             {s}
           </span>
         );
@@ -376,6 +508,52 @@ export default function ProductsView() {
               queryClient.invalidateQueries({ queryKey: ['next_sku'] });
             }}
           />
+
+          {/* Export Dropdown Button */}
+          <div ref={exportMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary transition-colors shadow-2xs cursor-pointer"
+              title="Export products catalog as CSV or Excel"
+              aria-haspopup="true"
+              aria-expanded={exportMenuOpen}
+            >
+              <Download className="w-3.5 h-3.5 text-text-muted" />
+              <span>Export</span>
+              <ChevronDown
+                className={`w-3 h-3 text-text-muted transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {exportMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 bg-surface border border-border-default rounded-xl shadow-xl p-1.5 min-w-[170px] space-y-0.5 text-text-primary animate-scale-in">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    handleExportCsv();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  <span>Export as CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    handleExportXlsx();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                  <span>Export as Excel</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={handleOpenCreate}
@@ -490,7 +668,7 @@ export default function ProductsView() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Basmati Rice 5kg / Fresh Milk 500ml"
+                    placeholder="e.g. Fresh Milk 500ml"
                     className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                   />
                 </div>
@@ -550,7 +728,7 @@ export default function ProductsView() {
                   </div>
                   <div>
                     <label className="text-text-secondary block font-semibold mb-1">
-                      Selling Price ({currencySymbol}) <span className="text-danger">*</span>
+                      MRP ({currencySymbol}) <span className="text-danger">*</span>
                     </label>
                     <input
                       type="number"

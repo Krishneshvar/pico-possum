@@ -799,7 +799,7 @@ export default function DataTable({
                       {isSortable && (
                         <span
                           className={`ml-auto shrink-0 flex items-center transition-opacity ${
-                            isSorted ? 'text-brand opacity-100 font-bold' : 'text-table-header-text/40 opacity-0 group-hover/th:opacity-100'
+                            isSorted ? 'text-amber-300 opacity-100 font-bold' : 'text-table-header-text/60 opacity-0 group-hover/th:opacity-100'
                           }`}
                         >
                           <SortIcon className="w-3 h-3" strokeWidth={isSorted ? 2.5 : 1.5} />

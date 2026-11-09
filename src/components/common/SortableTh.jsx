@@ -29,7 +29,7 @@ export default function SortableTh({
         <span>{children}</span>
         <Icon
           className={`w-3 h-3 shrink-0 transition-opacity ${
-            isActive ? 'text-blue-400 opacity-100' : 'text-table-header-text/40 opacity-0 group-hover/th:opacity-100'
+            isActive ? 'text-amber-300 opacity-100' : 'text-table-header-text/60 opacity-0 group-hover/th:opacity-100'
           }`}
           strokeWidth={isActive ? 2.5 : 1.5}
         />

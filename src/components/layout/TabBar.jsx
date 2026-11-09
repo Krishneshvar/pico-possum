@@ -208,12 +208,10 @@ export default function TabBar() {
                   }
                 `}
               >
-                {/* Brand blue accent indicator for active tab */}
-                {isActive ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
-                ) : tab.isDirty ? (
+                {/* Dirty indicator if unsaved changes */}
+                {tab.isDirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" title="Unsaved changes" />
-                ) : null}
+                )}
 
                 {/* Tab title */}
                 <span className="truncate flex-1">{tab.title}</span>

@@ -8,7 +8,6 @@ import {
   Lock,
   Sun,
   Moon,
-  Database,
   Sliders,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -296,32 +295,6 @@ export default function NavBar({ authUser }) {
 
       {/* Spacer */}
       <div className="flex-1" />
-
-      {/* Operational Status Area: DB connection */}
-      <div className="hidden md:flex items-center gap-2 text-[11px] mr-2">
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800/80 border border-slate-700/80 text-slate-300"
-          title="Local SQLite Database Connected"
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <Database className="w-3 h-3 text-slate-400" />
-          <span className="font-medium text-slate-200">DB Connected</span>
-        </div>
-      </div>
-
-      {/* Theme Toggle (Light / Dark) */}
-      <button
-        type="button"
-        onClick={toggleTheme}
-        title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-        className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer border border-slate-700/80 mr-1"
-      >
-        {theme === 'dark' ? (
-          <Sun className="w-3.5 h-3.5 text-amber-400" />
-        ) : (
-          <Moon className="w-3.5 h-3.5 text-slate-300" />
-        )}
-      </button>
 
       {/* Authenticated User & Profile Dropdown */}
       {authUser && (
