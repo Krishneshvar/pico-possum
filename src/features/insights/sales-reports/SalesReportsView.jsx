@@ -2,11 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Calendar,
-  Download,
   RefreshCw,
   SlidersHorizontal,
-  FileSpreadsheet,
-  FileText,
   Check,
   RotateCcw,
   ChevronDown,
@@ -21,6 +18,8 @@ import { toast } from '../../../stores/toast.store';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
+import ExportButton from '../../../components/common/ExportButton';
+import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 
 export default function SalesReportsView() {
   const currencySymbol = getCurrencySymbol();
@@ -236,19 +235,11 @@ export default function SalesReportsView() {
     setMaxAmount('');
   };
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     if (!filteredData.length || !visibleColumns.length) {
       toast.warning('No report data to export');
       return;
     }
-
-    const escapeCsv = (val) => {
-      const str = String(val ?? '');
-      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
 
     const headers = visibleColumns.map((c) => escapeCsv(c.label));
     const rows = filteredData.map((row) =>
@@ -256,19 +247,16 @@ export default function SalesReportsView() {
     );
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `sales_report_${reportType}_${fromDate}_to_${toDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredData.length} rows to CSV`);
+    await exportWithUserLocation({
+      filename: `sales_report_${reportType}_${fromDate}_to_${toDate}.csv`,
+      extension: 'csv',
+      data: csvContent,
+      count: filteredData.length,
+      entityName: 'report rows',
+    });
   };
 
-  const handleExportXlsx = () => {
+  const handleExportXlsx = async () => {
     if (!filteredData.length || !visibleColumns.length) {
       toast.warning('No report data to export');
       return;
@@ -290,8 +278,14 @@ export default function SalesReportsView() {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
-    XLSX.writeFile(wb, `sales_report_${reportType}_${fromDate}_to_${toDate}.xlsx`);
-    toast.success(`Exported ${filteredData.length} rows to Excel`);
+    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    await exportWithUserLocation({
+      filename: `sales_report_${reportType}_${fromDate}_to_${toDate}.xlsx`,
+      extension: 'xlsx',
+      data: xlsxArrayBuffer,
+      count: filteredData.length,
+      entityName: 'report rows',
+    });
   };
 
   return (
@@ -385,25 +379,11 @@ export default function SalesReportsView() {
             <RefreshCw className="w-4 h-4" />
           </button>
 
-          <button
-            type="button"
-            onClick={handleExportCsv}
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
             disabled={!filteredData.length || !visibleColumns.length}
-            className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary font-medium text-xs flex items-center gap-1.5 border border-border-default transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
-          >
-            <FileText className="w-3.5 h-3.5 text-text-muted" />
-            <span>CSV</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportXlsx}
-            disabled={!filteredData.length || !visibleColumns.length}
-            className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary font-medium text-xs flex items-center gap-1.5 border border-border-default transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-text-muted" />
-            <span>Excel</span>
-          </button>
+          />
         </div>
       </div>
 

@@ -101,5 +101,11 @@ export const tauriApi = {
         new_password: newPassword,
       },
     }),
+
+  // Export & File Saving
+  promptSaveFileLocation: (defaultFilename, extension) =>
+    invoke('prompt_save_file_location', { defaultFilename, extension }),
+  saveFileToDisk: (filePath, contents) =>
+    invoke('save_file_to_disk', { filePath, contents }),
 };
 

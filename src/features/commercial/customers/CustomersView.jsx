@@ -5,10 +5,13 @@ import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatDateTime, formatDate, formatPaise } from '../../../lib/formatters';
+import * as XLSX from 'xlsx';
 import DataTable from '../../../components/common/DataTable';
 import SortableTh from '../../../components/common/SortableTh';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import ExportButton from '../../../components/common/ExportButton';
+import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
@@ -138,6 +141,87 @@ export default function CustomersView() {
     );
   };
 
+  const handleExportCsv = async () => {
+    if (!customers.length) {
+      toast.warning('No customers to export');
+      return;
+    }
+
+    const headers = [
+      'Customer Name',
+      'Phone Number',
+      'Address',
+      'Total Bills',
+      'Total Spent (Rs)',
+      'Last Visit',
+    ];
+
+    const rows = customers.map((c) => [
+      escapeCsv(c.name || ''),
+      escapeCsv(c.phone || ''),
+      escapeCsv(c.address || ''),
+      escapeCsv(c.total_sales || 0),
+      escapeCsv(((c.total_spent_paise || 0) / 100).toFixed(2)),
+      escapeCsv(c.last_sale_date ? formatDate(c.last_sale_date) : ''),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const dateStr = new Date().toISOString().split('T')[0];
+    await exportWithUserLocation({
+      filename: `customers_${dateStr}.csv`,
+      extension: 'csv',
+      data: csvContent,
+      count: customers.length,
+      entityName: 'customers',
+    });
+  };
+
+  const handleExportXlsx = async () => {
+    if (!customers.length) {
+      toast.warning('No customers to export');
+      return;
+    }
+
+    const headers = [
+      'Customer Name',
+      'Phone Number',
+      'Address',
+      'Total Bills',
+      'Total Spent (Rs)',
+      'Last Visit',
+    ];
+
+    const rows = customers.map((c) => [
+      c.name || '',
+      c.phone || '',
+      c.address || '',
+      c.total_sales || 0,
+      parseFloat(((c.total_spent_paise || 0) / 100).toFixed(2)),
+      c.last_sale_date ? formatDate(c.last_sale_date) : '—',
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 25 },
+      { wch: 18 },
+      { wch: 30 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 14 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const dateStr = new Date().toISOString().split('T')[0];
+    await exportWithUserLocation({
+      filename: `customers_${dateStr}.xlsx`,
+      extension: 'xlsx',
+      data: xlsxArrayBuffer,
+      count: customers.length,
+      entityName: 'customers',
+    });
+  };
+
   const columns = [
     {
       key: 'name',
@@ -210,6 +294,12 @@ export default function CustomersView() {
               queryClient.invalidateQueries({ queryKey: ['customers'] });
             }}
           />
+
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
+          />
+
           <button
             type="button"
             onClick={handleOpenCreate}

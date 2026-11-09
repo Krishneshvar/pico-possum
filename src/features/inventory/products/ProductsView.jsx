@@ -17,6 +17,8 @@ import {
 import * as XLSX from 'xlsx';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import ExportButton from '../../../components/common/ExportButton';
+import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
@@ -266,27 +268,7 @@ export default function ProductsView() {
     }
   };
 
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const exportMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (!exportMenuOpen) return;
-    const handleClickOutside = (e) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
-        setExportMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [exportMenuOpen]);
-
-  const escapeCsv = (val) => {
-    if (val === null || val === undefined) return '""';
-    const str = String(val).replace(/"/g, '""');
-    return `"${str}"`;
-  };
-
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     if (!products.length) {
       toast.warning('No products to export');
       return;
@@ -319,20 +301,17 @@ export default function ProductsView() {
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
     const dateStr = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `products_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${products.length} products to CSV`);
+    await exportWithUserLocation({
+      filename: `products_${dateStr}.csv`,
+      extension: 'csv',
+      data: csvContent,
+      count: products.length,
+      entityName: 'products',
+    });
   };
 
-  const handleExportXlsx = () => {
+  const handleExportXlsx = async () => {
     if (!products.length) {
       toast.warning('No products to export');
       return;
@@ -380,9 +359,15 @@ export default function ProductsView() {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `products_${dateStr}.xlsx`);
-    toast.success(`Exported ${products.length} products to Excel`);
+    await exportWithUserLocation({
+      filename: `products_${dateStr}.xlsx`,
+      extension: 'xlsx',
+      data: xlsxArrayBuffer,
+      count: products.length,
+      entityName: 'products',
+    });
   };
 
   const columns = [
@@ -509,50 +494,10 @@ export default function ProductsView() {
             }}
           />
 
-          {/* Export Dropdown Button */}
-          <div ref={exportMenuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setExportMenuOpen((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary transition-colors shadow-2xs cursor-pointer"
-              title="Export products catalog as CSV or Excel"
-              aria-haspopup="true"
-              aria-expanded={exportMenuOpen}
-            >
-              <Download className="w-3.5 h-3.5 text-text-muted" />
-              <span>Export</span>
-              <ChevronDown
-                className={`w-3 h-3 text-text-muted transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-
-            {exportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 z-50 bg-surface border border-border-default rounded-xl shadow-xl p-1.5 min-w-[170px] space-y-0.5 text-text-primary animate-scale-in">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExportMenuOpen(false);
-                    handleExportCsv();
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-                >
-                  <FileText className="w-4 h-4 text-blue-500" />
-                  <span>Export as CSV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExportMenuOpen(false);
-                    handleExportXlsx();
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-                  <span>Export as Excel</span>
-                </button>
-              </div>
-            )}
-          </div>
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
+          />
 
           <button
             type="button"

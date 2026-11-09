@@ -2,6 +2,7 @@ pub mod auth;
 pub mod categories;
 pub mod csv_import;
 pub mod customers;
+pub mod export;
 pub mod migration;
 pub mod products;
 pub mod reports;

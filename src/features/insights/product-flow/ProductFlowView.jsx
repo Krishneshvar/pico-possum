@@ -14,11 +14,15 @@ import {
   TrendingUp,
   Tag,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 import { formatPaise, formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
+import ExportButton from '../../../components/common/ExportButton';
+import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 
 export default function ProductFlowView() {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -163,6 +167,110 @@ export default function ProductFlowView() {
     setToDate(todayStr);
   };
 
+  const handleExportCsv = async () => {
+    if (!hasSelectedProduct || !flowItems.length) {
+      toast.warning('Select a product with sales history to export');
+      return;
+    }
+
+    const headers = [
+      'Product',
+      'Date & Time',
+      'Invoice / Bill #',
+      'Customer',
+      'Event Type',
+      'Qty Change',
+      'Unit Price (Rs)',
+      'Revenue Total (Rs)',
+      'Payment Method',
+    ];
+
+    const prodLabel = selectedProduct
+      ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
+      : 'Product';
+
+    const rows = flowItems.map((r) => [
+      escapeCsv(prodLabel),
+      escapeCsv(formatDateTime(r.created_at)),
+      escapeCsv(r.invoice_number || '—'),
+      escapeCsv(r.customer_name || 'Walk-in Customer'),
+      escapeCsv(r.event_type || ''),
+      escapeCsv(r.quantity || 0),
+      escapeCsv(((r.unit_price_paise || 0) / 100).toFixed(2)),
+      escapeCsv(((r.total_paise || 0) / 100).toFixed(2)),
+      escapeCsv(r.payment_method || '—'),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    await exportWithUserLocation({
+      filename: `sales_history_${safeProdName}_${fromDate}_to_${toDate}.csv`,
+      extension: 'csv',
+      data: csvContent,
+      count: flowItems.length,
+      entityName: 'sales records',
+    });
+  };
+
+  const handleExportXlsx = async () => {
+    if (!hasSelectedProduct || !flowItems.length) {
+      toast.warning('Select a product with sales history to export');
+      return;
+    }
+
+    const headers = [
+      'Product',
+      'Date & Time',
+      'Invoice / Bill #',
+      'Customer',
+      'Event Type',
+      'Qty Change',
+      'Unit Price (Rs)',
+      'Revenue Total (Rs)',
+      'Payment Method',
+    ];
+
+    const prodLabel = selectedProduct
+      ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
+      : 'Product';
+
+    const rows = flowItems.map((r) => [
+      prodLabel,
+      formatDateTime(r.created_at),
+      r.invoice_number || '—',
+      r.customer_name || 'Walk-in Customer',
+      r.event_type || '',
+      r.quantity || 0,
+      parseFloat(((r.unit_price_paise || 0) / 100).toFixed(2)),
+      parseFloat(((r.total_paise || 0) / 100).toFixed(2)),
+      r.payment_method || '—',
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 22 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales History');
+    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    await exportWithUserLocation({
+      filename: `sales_history_${safeProdName}_${fromDate}_to_${toDate}.xlsx`,
+      extension: 'xlsx',
+      data: xlsxArrayBuffer,
+      count: flowItems.length,
+      entityName: 'sales records',
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas text-content overflow-hidden">
       {/* Header */}
@@ -192,12 +300,18 @@ export default function ProductFlowView() {
           <button
             onClick={() => refetch()}
             disabled={!hasSelectedProduct}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
             title="Refresh History"
           >
             <RefreshCw className="w-3.5 h-3.5 text-brand" />
             <span>Refresh</span>
           </button>
+
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
+            disabled={!hasSelectedProduct || !flowItems.length}
+          />
         </div>
       </div>
 

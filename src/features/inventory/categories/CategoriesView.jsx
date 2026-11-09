@@ -18,9 +18,12 @@ import {
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
+import * as XLSX from 'xlsx';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import ExportButton from '../../../components/common/ExportButton';
+import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import Select from '../../../components/common/Select';
 
 // Recursive Tree Node Component
@@ -268,6 +271,58 @@ export default function CategoriesView() {
     onError: (err) => toast.error(`Failed to delete category: ${err}`, { title: 'Delete failed' }),
   });
 
+  const handleExportCsv = async () => {
+    if (!categories.length) {
+      toast.warning('No categories to export');
+      return;
+    }
+
+    const headers = ['Category Name', 'Parent Category', 'Product Count'];
+    const rows = categories.map((c) => [
+      escapeCsv(c.name || ''),
+      escapeCsv(categoryMap[c.parent_id]?.name || 'None'),
+      escapeCsv(productCounts[c.id] || 0),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const dateStr = new Date().toISOString().split('T')[0];
+    await exportWithUserLocation({
+      filename: `categories_${dateStr}.csv`,
+      extension: 'csv',
+      data: csvContent,
+      count: categories.length,
+      entityName: 'categories',
+    });
+  };
+
+  const handleExportXlsx = async () => {
+    if (!categories.length) {
+      toast.warning('No categories to export');
+      return;
+    }
+
+    const headers = ['Category Name', 'Parent Category', 'Product Count'];
+    const rows = categories.map((c) => [
+      c.name || '',
+      categoryMap[c.parent_id]?.name || 'None',
+      productCounts[c.id] || 0,
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Categories');
+    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const dateStr = new Date().toISOString().split('T')[0];
+    await exportWithUserLocation({
+      filename: `categories_${dateStr}.xlsx`,
+      extension: 'xlsx',
+      data: xlsxArrayBuffer,
+      count: categories.length,
+      entityName: 'categories',
+    });
+  };
+
   const handleOpenCreate = (parent = null) => {
     setEditingCategory(null);
     setName('');
@@ -432,6 +487,11 @@ export default function CategoriesView() {
             onComplete={() => {
               queryClient.invalidateQueries({ queryKey: ['categories'] });
             }}
+          />
+
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
           />
 
           <button

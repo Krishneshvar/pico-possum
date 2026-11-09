@@ -10,6 +10,8 @@ import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import ExportButton from '../../../components/common/ExportButton';
+import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function BillsHistoryView() {
@@ -88,7 +90,7 @@ export default function BillsHistoryView() {
     return filteredSales ?? sales;
   };
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     const dataToExport = getExportData();
     if (!dataToExport.length) {
       toast.warning('No bills to export');
@@ -132,20 +134,17 @@ export default function BillsHistoryView() {
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
     const dateStr = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `bill_history_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${dataToExport.length} bills to CSV`);
+    await exportWithUserLocation({
+      filename: `bill_history_${dateStr}.csv`,
+      extension: 'csv',
+      data: csvContent,
+      count: dataToExport.length,
+      entityName: 'bills',
+    });
   };
 
-  const handleExportXlsx = () => {
+  const handleExportXlsx = async () => {
     const dataToExport = getExportData();
     if (!dataToExport.length) {
       toast.warning('No bills to export');
@@ -183,9 +182,15 @@ export default function BillsHistoryView() {
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Bills');
+    const xlsxArrayBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
     const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(workbook, `bill_history_${dateStr}.xlsx`);
-    toast.success(`Exported ${dataToExport.length} bills to Excel`);
+    await exportWithUserLocation({
+      filename: `bill_history_${dateStr}.xlsx`,
+      extension: 'xlsx',
+      data: xlsxArrayBuffer,
+      count: dataToExport.length,
+      entityName: 'bills',
+    });
   };
 
   const columns = [
@@ -353,24 +358,11 @@ export default function BillsHistoryView() {
               queryClient.invalidateQueries({ queryKey: ['sales'] });
             }}
           />
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary text-xs font-medium transition-colors cursor-pointer shadow-2xs"
-            title="Export filtered bills to CSV"
-          >
-            <FileText className="w-3.5 h-3.5 text-text-muted" />
-            <span>CSV</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportXlsx}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary text-xs font-medium transition-colors cursor-pointer shadow-2xs"
-            title="Export filtered bills to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-text-muted" />
-            <span>Excel</span>
-          </button>
+
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
+          />
         </div>
       </div>
 

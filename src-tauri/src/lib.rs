@@ -125,6 +125,9 @@ pub fn run() {
             commands::csv_import::import_csv_products,
             commands::csv_import::import_csv_customers,
             commands::csv_import::import_csv_bills,
+            // File Export with User Location Prompt
+            commands::export::prompt_save_file_location,
+            commands::export::save_file_to_disk,
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
