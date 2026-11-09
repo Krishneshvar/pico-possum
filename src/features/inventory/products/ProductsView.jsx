@@ -43,7 +43,7 @@ export default function ProductsView() {
     uom: 'Piece',
   });
   const [stockAdjustment, setStockAdjustment] = useState({
-    quantity_change: 0,
+    quantity_change: '',
     movement_type: 'RESTOCK',
     note: '',
   });
@@ -222,7 +222,7 @@ export default function ProductsView() {
   const handleOpenStock = (p) => {
     setSelectedProduct(p);
     setStockAdjustment({
-      quantity_change: 0,
+      quantity_change: '',
       movement_type: 'RESTOCK',
       note: 'Supplier restock delivery',
     });
@@ -844,87 +844,143 @@ export default function ProductsView() {
               </button>
             </div>
 
-            <div className="bg-surface-secondary p-3 rounded-lg border border-border-default text-xs flex justify-between">
-              <span className="text-text-muted">Current Balance:</span>
-              <strong className="text-text-primary font-mono font-bold text-sm">
-                {selectedProduct.current_stock} units
-              </strong>
-            </div>
+            {(() => {
+              const parsedQty = parseInt(stockAdjustment.quantity_change, 10);
+              const isValidQty = !isNaN(parsedQty) && parsedQty !== 0;
+              const projectedStock = isValidQty ? (selectedProduct.current_stock || 0) + parsedQty : null;
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-text-secondary block font-semibold mb-1">Movement Type</label>
-                <Select
-                  value={stockAdjustment.movement_type}
-                  onChange={(val) =>
-                    setStockAdjustment({ ...stockAdjustment, movement_type: val })
-                  }
-                  options={[
-                    { value: 'RESTOCK', label: 'Supplier Restock Delivery' },
-                    { value: 'PURCHASE', label: 'Wholesale Purchase' },
-                    { value: 'MANUAL_ADJUSTMENT', label: 'Manual Stock Correction / Audit' },
-                    { value: 'RETURN', label: 'Customer Return / Exchange' },
-                  ]}
-                />
-              </div>
+              return (
+                <>
+                  <div className="bg-surface-secondary p-3 rounded-lg border border-border-default text-xs flex items-center justify-between">
+                    <span className="text-text-muted">Current Balance:</span>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-text-primary font-mono font-bold text-sm">
+                        {selectedProduct.current_stock} units
+                      </strong>
+                      {isValidQty && (
+                        <span className="text-[11px] font-mono font-semibold text-brand">
+                          → {projectedStock} units
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-text-secondary block font-semibold mb-1">
-                  Quantity Change (+ to add, − to deduct)
-                </label>
-                <input
-                  type="number"
-                  value={stockAdjustment.quantity_change}
-                  onChange={(e) =>
-                    setStockAdjustment({
-                      ...stockAdjustment,
-                      quantity_change: parseInt(e.target.value, 10) || 0,
-                    })
-                  }
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none font-mono"
-                />
-              </div>
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="text-text-secondary block font-semibold mb-1">Movement Type</label>
+                      <Select
+                        value={stockAdjustment.movement_type}
+                        onChange={(val) =>
+                          setStockAdjustment({ ...stockAdjustment, movement_type: val })
+                        }
+                        options={[
+                          { value: 'RESTOCK', label: 'Supplier Restock Delivery' },
+                          { value: 'PURCHASE', label: 'Wholesale Purchase' },
+                          { value: 'MANUAL_ADJUSTMENT', label: 'Manual Stock Correction / Audit' },
+                          { value: 'RETURN', label: 'Customer Return / Exchange' },
+                        ]}
+                      />
+                    </div>
 
-              <div>
-                <label className="text-text-secondary block font-semibold mb-1">Reason / Note</label>
-                <input
-                  type="text"
-                  value={stockAdjustment.note}
-                  onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
-                  placeholder="e.g. Delivery Challan #882, physical recount"
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
-                />
-              </div>
-            </div>
+                    <div>
+                      <label className="text-text-secondary block font-semibold mb-1">
+                        Quantity Change (+ to add, − to deduct)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={stockAdjustment.quantity_change}
+                          onChange={(e) => {
+                            const val = e.target.value.trim();
+                            if (val === '' || val === '-' || val === '+' || /^[+-]?\d+$/.test(val)) {
+                              setStockAdjustment({
+                                ...stockAdjustment,
+                                quantity_change: val,
+                              });
+                            }
+                          }}
+                          placeholder="e.g. +10 or -5"
+                          className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 pr-16 text-text-primary focus:border-brand focus:outline-none font-mono"
+                        />
+                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
+                              const next = current + 1;
+                              setStockAdjustment({
+                                ...stockAdjustment,
+                                quantity_change: next > 0 ? `+${next}` : String(next),
+                              });
+                            }}
+                            className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
+                            title="Add 1"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
+                              const next = current - 1;
+                              setStockAdjustment({
+                                ...stockAdjustment,
+                                quantity_change: next > 0 ? `+${next}` : String(next),
+                              });
+                            }}
+                            className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
+                            title="Deduct 1"
+                          >
+                            −
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
-              <button
-                type="button"
-                onClick={() => setModalMode(null)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (stockAdjustment.quantity_change === 0) {
-                    toast.warning('Enter a non-zero quantity to adjust stock');
-                    return;
-                  }
-                  adjustStockMutation.mutate({
-                    product_id: selectedProduct.id,
-                    quantity_change: stockAdjustment.quantity_change,
-                    reason: stockAdjustment.movement_type || 'MANUAL_ADJUSTMENT',
-                    note: stockAdjustment.note || null,
-                  });
-                }}
-                disabled={adjustStockMutation.isPending || stockAdjustment.quantity_change === 0}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
-              >
-                Confirm Adjustment
-              </button>
-            </div>
+                    <div>
+                      <label className="text-text-secondary block font-semibold mb-1">Reason / Note</label>
+                      <input
+                        type="text"
+                        value={stockAdjustment.note}
+                        onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
+                        placeholder="e.g. Delivery Challan #882, physical recount"
+                        className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
+                    <button
+                      type="button"
+                      onClick={() => setModalMode(null)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isValidQty) {
+                          toast.warning('Enter a non-zero quantity to adjust stock (e.g. +10 or -5)');
+                          return;
+                        }
+                        adjustStockMutation.mutate({
+                          product_id: selectedProduct.id,
+                          quantity_change: parsedQty,
+                          reason: stockAdjustment.movement_type || 'MANUAL_ADJUSTMENT',
+                          note: stockAdjustment.note || null,
+                        });
+                      }}
+                      disabled={adjustStockMutation.isPending || !isValidQty}
+                      className="px-4 py-1.5 rounded-lg text-xs font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
