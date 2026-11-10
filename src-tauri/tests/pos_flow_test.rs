@@ -291,6 +291,27 @@ async fn test_bill_edit_lifecycle() {
     let a_movements = InventoryService::get_stock_movements(&pool, Some(prod_a.id.clone()), None, None, 10).await.unwrap();
     let a_return = a_movements.iter().find(|m| m.movement_type == "RETURN").expect("A should have a RETURN movement");
     assert_eq!(a_return.quantity_change, 2);
+
+    // Verify Product Flow reflects updated items
+    let a_flow = InventoryService::get_product_flow(&pool, Some(prod_a.id.clone()), None, None, 10).await.unwrap();
+    assert_eq!(a_flow.len(), 1);
+    assert_eq!(a_flow[0].quantity, -1); // 1 unit sold (stored as -1 qty change in flow)
+    assert_eq!(a_flow[0].unit_price_paise, 1000);
+    assert_eq!(a_flow[0].total_paise, 1000);
+
+    let b_flow = InventoryService::get_product_flow(&pool, Some(prod_b.id.clone()), None, None, 10).await.unwrap();
+    assert_eq!(b_flow.len(), 1);
+    assert_eq!(b_flow[0].quantity, -2); // 2 units sold
+    assert_eq!(b_flow[0].unit_price_paise, 1500);
+    assert_eq!(b_flow[0].total_paise, 3000);
+
+    // Cancel bill and verify it drops out of product flow
+    SalesService::cancel_sale(&pool, &updated.sale.id, "Customer returned").await.unwrap();
+    let a_flow_after_cancel = InventoryService::get_product_flow(&pool, Some(prod_a.id.clone()), None, None, 10).await.unwrap();
+    assert_eq!(a_flow_after_cancel.len(), 0, "Cancelled sale items should not show in product flow");
+
+    let b_flow_after_cancel = InventoryService::get_product_flow(&pool, Some(prod_b.id.clone()), None, None, 10).await.unwrap();
+    assert_eq!(b_flow_after_cancel.len(), 0, "Cancelled sale items should not show in product flow");
 }
 
 #[tokio::test]

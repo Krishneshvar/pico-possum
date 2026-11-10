@@ -529,7 +529,7 @@ impl InventoryService {
                 COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_rev,
                 COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_rev
              FROM sales
-             WHERE status IN ('PAID', 'LEGACY') AND created_at >= ? AND created_at <= ?
+             WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY') AND created_at >= ? AND created_at <= ?
                AND (? IS NULL OR upper(replace(payment_method, ' ', '_')) = ? OR upper(payment_method) = ?)"
         )
         .bind(from)
@@ -588,7 +588,7 @@ impl InventoryService {
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
              LEFT JOIN products p ON p.id = si.product_id
-             WHERE s.status IN ('PAID', 'LEGACY')
+             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                AND s.created_at >= ? AND s.created_at <= ?
                AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY si.product_id, si.product_name
@@ -646,7 +646,7 @@ impl InventoryService {
              JOIN sales s ON s.id = si.sale_id
              LEFT JOIN products p ON p.id = si.product_id
              LEFT JOIN categories c ON c.id = p.category_id
-             WHERE s.status IN ('PAID', 'LEGACY')
+             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                AND s.created_at >= ? AND s.created_at <= ?
                AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY COALESCE(c.id, 'uncategorized'), COALESCE(c.name, 'Uncategorized')
@@ -696,7 +696,7 @@ impl InventoryService {
                 COALESCE(SUM(s.total_paise), 0) as total_revenue_paise,
                 COUNT(s.id) as total_transactions
              FROM sales s
-             WHERE s.status IN ('PAID', 'LEGACY')
+             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                AND CAST(strftime('%Y', s.created_at) AS INTEGER) >= (CAST(strftime('%Y', 'now') AS INTEGER) - ?)
                AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY year, month
@@ -734,7 +734,7 @@ impl InventoryService {
                         COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
                         COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
                      FROM sales
-                     WHERE status IN ('PAID', 'LEGACY')
+                     WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
                        AND strftime('%Y-%m-%d', created_at) <= ?
                      GROUP BY period
@@ -757,7 +757,7 @@ impl InventoryService {
                         COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
                         COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
                      FROM sales
-                     WHERE status IN ('PAID', 'LEGACY')
+                     WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
                        AND strftime('%Y-%m-%d', created_at) <= ?
                      GROUP BY period
@@ -780,7 +780,7 @@ impl InventoryService {
                         COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
                         COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
                      FROM sales
-                     WHERE status IN ('PAID', 'LEGACY')
+                     WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
                        AND strftime('%Y-%m-%d', created_at) <= ?
                      GROUP BY period
@@ -822,7 +822,7 @@ impl InventoryService {
                 s.created_at as created_at
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
-             WHERE s.status IN ('PAID', 'LEGACY')
+             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                AND (?1 IS NULL OR si.product_id = ?1)
                AND strftime('%Y-%m-%d', s.created_at) >= ?2
                AND strftime('%Y-%m-%d', s.created_at) <= ?3

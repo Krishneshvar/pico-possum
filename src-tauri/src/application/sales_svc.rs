@@ -91,7 +91,11 @@ impl SalesService {
 
         let mut tx = pool.begin().await?;
 
-        // 1. Resolve or create customer if needed
+        // 1. Resolve or create customer if needed (with phone deduplication)
+        let cust_name = payload.customer_name.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let cust_phone = payload.customer_phone.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let cust_addr = payload.customer_address.as_deref().map(str::trim).filter(|s| !s.is_empty());
+
         let mut resolved_customer_id = None;
         if let Some(ref cust_id) = payload.customer_id {
             if !cust_id.trim().is_empty() {
@@ -110,22 +114,35 @@ impl SalesService {
         }
 
         if resolved_customer_id.is_none() {
-            if let Some(ref name) = payload.customer_name {
-                if !name.trim().is_empty() {
-                    let new_cust_id = Uuid::new_v4().to_string();
-                    sqlx::query(
-                        "INSERT INTO customers (id, name, phone, address, is_deleted)
-                         VALUES (?, ?, ?, ?, 0)"
-                    )
-                    .bind(&new_cust_id)
-                    .bind(name.trim())
-                    .bind(payload.customer_phone.as_deref().unwrap_or("").trim())
-                    .bind(payload.customer_address.as_deref().unwrap_or("").trim())
-                    .execute(&mut *tx)
-                    .await?;
+            if let Some(phone) = cust_phone {
+                let existing_by_phone: Option<String> = sqlx::query_scalar(
+                    "SELECT id FROM customers WHERE phone = ? AND is_deleted = 0 LIMIT 1"
+                )
+                .bind(phone)
+                .fetch_optional(&mut *tx)
+                .await?;
 
-                    resolved_customer_id = Some(new_cust_id);
+                if let Some(existing_id) = existing_by_phone {
+                    resolved_customer_id = Some(existing_id);
                 }
+            }
+        }
+
+        if resolved_customer_id.is_none() {
+            if let Some(name) = cust_name {
+                let new_cust_id = Uuid::new_v4().to_string();
+                sqlx::query(
+                    "INSERT INTO customers (id, name, phone, address, is_deleted)
+                     VALUES (?, ?, ?, ?, 0)"
+                )
+                .bind(&new_cust_id)
+                .bind(name)
+                .bind(cust_phone.unwrap_or(""))
+                .bind(cust_addr.unwrap_or(""))
+                .execute(&mut *tx)
+                .await?;
+
+                resolved_customer_id = Some(new_cust_id);
             }
         }
 
@@ -170,8 +187,9 @@ impl SalesService {
             let cost_price_paise: i64 = prod_row.get("cost_price_paise");
             let tax_rate: f64 = prod_row.get("tax_rate");
 
-            let disc = item_req.discount_paise.unwrap_or(0);
-            let item_total = (item_req.unit_price_paise * item_req.quantity) - disc;
+            let disc = std::cmp::max(0, item_req.discount_paise.unwrap_or(0));
+            let gross = item_req.unit_price_paise * item_req.quantity;
+            let item_total = std::cmp::max(0, gross - disc);
             subtotal_paise += item_total;
 
             let tax_p = ((item_total as f64) * (tax_rate / 100.0)).round() as i64;
@@ -217,9 +235,9 @@ impl SalesService {
             sale_items.push(sale_item);
         }
 
-        let overall_discount = payload.discount_paise.unwrap_or(0);
+        let overall_discount = std::cmp::max(0, payload.discount_paise.unwrap_or(0));
         let total_paise = std::cmp::max(0, subtotal_paise - overall_discount);
-        let paid_paise = payload.paid_paise;
+        let paid_paise = std::cmp::max(0, payload.paid_paise);
         let change_paise = std::cmp::max(0, paid_paise - total_paise);
 
         let status = if paid_paise >= total_paise {
@@ -229,12 +247,13 @@ impl SalesService {
         };
 
         let now_str = chrono::Utc::now().to_rfc3339();
+        let clean_notes = payload.notes.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(String::from);
         let sale = Sale {
             id: sale_id.clone(),
             invoice_number: invoice_number.clone(),
             customer_id: resolved_customer_id,
-            customer_name: payload.customer_name,
-            customer_phone: payload.customer_phone,
+            customer_name: cust_name.map(String::from),
+            customer_phone: cust_phone.map(String::from),
             biller_name: Some("Cashier".to_string()),
             subtotal_paise,
             discount_paise: overall_discount,
@@ -244,7 +263,7 @@ impl SalesService {
             payment_method: payload.payment_method.to_uppercase(),
             status: status.to_string(),
             fulfillment_status: "FULFILLED".to_string(),
-            notes: payload.notes,
+            notes: clean_notes,
             created_at: now_str,
         };
 
@@ -466,8 +485,9 @@ impl SalesService {
             let cost_price_paise: i64 = prod_row.get("cost_price_paise");
             let tax_rate: f64 = prod_row.get("tax_rate");
 
-            let disc = item_req.discount_paise.unwrap_or(0);
-            let item_total = (item_req.unit_price_paise * item_req.quantity) - disc;
+            let disc = std::cmp::max(0, item_req.discount_paise.unwrap_or(0));
+            let gross = item_req.unit_price_paise * item_req.quantity;
+            let item_total = std::cmp::max(0, gross - disc);
             subtotal_paise += item_total;
 
             let tax_p = ((item_total as f64) * (tax_rate / 100.0)).round() as i64;
@@ -510,7 +530,11 @@ impl SalesService {
             new_sale_items.push(sale_item);
         }
 
-        // 7. Resolve customer
+        // 7. Resolve customer (with phone deduplication)
+        let cust_name = payload.customer_name.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let cust_phone = payload.customer_phone.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let cust_addr = payload.customer_address.as_deref().map(str::trim).filter(|s| !s.is_empty());
+
         let mut resolved_customer_id = None;
         if let Some(ref cust_id) = payload.customer_id {
             if !cust_id.trim().is_empty() {
@@ -529,29 +553,42 @@ impl SalesService {
         }
 
         if resolved_customer_id.is_none() {
-            if let Some(ref name) = payload.customer_name {
-                if !name.trim().is_empty() {
-                    let new_cust_id = Uuid::new_v4().to_string();
-                    sqlx::query(
-                        "INSERT INTO customers (id, name, phone, address, is_deleted)
-                         VALUES (?, ?, ?, ?, 0)"
-                    )
-                    .bind(&new_cust_id)
-                    .bind(name.trim())
-                    .bind(payload.customer_phone.as_deref().unwrap_or("").trim())
-                    .bind(payload.customer_address.as_deref().unwrap_or("").trim())
-                    .execute(&mut *tx)
-                    .await?;
+            if let Some(phone) = cust_phone {
+                let existing_by_phone: Option<String> = sqlx::query_scalar(
+                    "SELECT id FROM customers WHERE phone = ? AND is_deleted = 0 LIMIT 1"
+                )
+                .bind(phone)
+                .fetch_optional(&mut *tx)
+                .await?;
 
-                    resolved_customer_id = Some(new_cust_id);
+                if let Some(existing_id) = existing_by_phone {
+                    resolved_customer_id = Some(existing_id);
                 }
             }
         }
 
+        if resolved_customer_id.is_none() {
+            if let Some(name) = cust_name {
+                let new_cust_id = Uuid::new_v4().to_string();
+                sqlx::query(
+                    "INSERT INTO customers (id, name, phone, address, is_deleted)
+                     VALUES (?, ?, ?, ?, 0)"
+                )
+                .bind(&new_cust_id)
+                .bind(name)
+                .bind(cust_phone.unwrap_or(""))
+                .bind(cust_addr.unwrap_or(""))
+                .execute(&mut *tx)
+                .await?;
+
+                resolved_customer_id = Some(new_cust_id);
+            }
+        }
+
         // 8. Financial totals
-        let overall_discount = payload.discount_paise.unwrap_or(0);
+        let overall_discount = std::cmp::max(0, payload.discount_paise.unwrap_or(0));
         let total_paise = std::cmp::max(0, subtotal_paise - overall_discount);
-        let paid_paise = payload.paid_paise;
+        let paid_paise = std::cmp::max(0, payload.paid_paise);
         let change_paise = std::cmp::max(0, paid_paise - total_paise);
 
         let status = if paid_paise >= total_paise {
@@ -561,6 +598,7 @@ impl SalesService {
         };
 
         let payment_method = payload.payment_method.to_uppercase();
+        let clean_notes = payload.notes.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(String::from);
 
         sqlx::query(
             "UPDATE sales SET
@@ -578,8 +616,8 @@ impl SalesService {
              WHERE id = ?"
         )
         .bind(&resolved_customer_id)
-        .bind(&payload.customer_name)
-        .bind(&payload.customer_phone)
+        .bind(cust_name)
+        .bind(cust_phone)
         .bind(subtotal_paise)
         .bind(overall_discount)
         .bind(total_tax_paise)
@@ -587,7 +625,7 @@ impl SalesService {
         .bind(paid_paise)
         .bind(&payment_method)
         .bind(status)
-        .bind(&payload.notes)
+        .bind(&clean_notes)
         .bind(&payload.sale_id)
         .execute(&mut *tx)
         .await?;
@@ -617,8 +655,8 @@ impl SalesService {
             id: payload.sale_id.clone(),
             invoice_number: existing_sale.invoice_number,
             customer_id: resolved_customer_id,
-            customer_name: payload.customer_name,
-            customer_phone: payload.customer_phone,
+            customer_name: cust_name.map(String::from),
+            customer_phone: cust_phone.map(String::from),
             biller_name: existing_sale.biller_name,
             subtotal_paise,
             discount_paise: overall_discount,
@@ -628,7 +666,7 @@ impl SalesService {
             payment_method,
             status: status.to_string(),
             fulfillment_status: existing_sale.fulfillment_status,
-            notes: payload.notes,
+            notes: clean_notes,
             created_at: existing_sale.created_at,
         };
 
@@ -773,11 +811,16 @@ impl SalesService {
             .await?;
         }
 
-        // Update sale status
+        // Update sale status and fulfillment status while preserving existing notes
+        let updated_notes = match &sale.notes {
+            Some(e) if !e.trim().is_empty() => format!("{} | [Cancelled: {}]", e.trim(), reason.trim()),
+            _ => format!("[Cancelled: {}]", reason.trim()),
+        };
+
         sqlx::query(
-            "UPDATE sales SET status = 'CANCELLED', notes = ? WHERE id = ?"
+            "UPDATE sales SET status = 'CANCELLED', fulfillment_status = 'CANCELLED', notes = ? WHERE id = ?"
         )
-        .bind(reason)
+        .bind(&updated_notes)
         .bind(sale_id)
         .execute(&mut *tx)
         .await?;
@@ -799,7 +842,8 @@ impl SalesService {
 
         let mut updated = sale;
         updated.status = "CANCELLED".to_string();
-        updated.notes = Some(reason.to_string());
+        updated.fulfillment_status = "CANCELLED".to_string();
+        updated.notes = Some(updated_notes);
         Ok(updated)
     }
 }

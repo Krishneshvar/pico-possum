@@ -269,18 +269,21 @@ export function computeBillTotals(bill) {
   let totalQty = 0;
 
   for (const it of bill.items) {
-    totalQty += it.quantity;
-    const lineTotal = (it.unitPricePaise * it.quantity) - (it.discountPaise || 0);
+    totalQty += (it.quantity || 0);
+    const lineDisc = Math.max(0, it.discountPaise || 0);
+    const lineTotal = Math.max(0, (it.unitPricePaise * it.quantity) - lineDisc);
     subtotalPaise += lineTotal;
     const tax = Math.round(lineTotal * ((it.taxRate || 0) / 100));
     taxPaise += tax;
   }
 
   let discountPaise = 0;
+  const rawDiscVal = parseFloat(bill.discountValue);
+  const cleanDiscVal = !isNaN(rawDiscVal) && rawDiscVal > 0 ? rawDiscVal : 0;
   if (bill.discountType === 'PERCENT') {
-    discountPaise = Math.round(subtotalPaise * (bill.discountValue / 100));
+    discountPaise = Math.round(subtotalPaise * (cleanDiscVal / 100));
   } else {
-    discountPaise = Math.round(bill.discountValue * 100);
+    discountPaise = Math.round(cleanDiscVal * 100);
   }
   discountPaise = Math.min(subtotalPaise, Math.max(0, discountPaise));
 

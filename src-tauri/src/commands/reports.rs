@@ -36,7 +36,7 @@ pub async fn get_product_flow(
     to_date: Option<String>,
     limit: Option<i64>,
 ) -> Result<Vec<ProductFlowItem>, AppError> {
-    let lim = limit.unwrap_or(200);
+    let lim = limit.unwrap_or(10000);
     InventoryService::get_product_flow(&pool, product_id, from_date, to_date, lim).await
 }
 
@@ -82,7 +82,7 @@ pub async fn get_stock_movements(
     to_date: Option<String>,
     limit: Option<i64>,
 ) -> Result<Vec<StockMovement>, AppError> {
-    let lim = limit.unwrap_or(200);
+    let lim = limit.unwrap_or(10000);
     InventoryService::get_stock_movements(&pool, product_id, from_date, to_date, lim).await
 }
 
@@ -91,7 +91,7 @@ pub async fn get_audit_logs(
     pool: State<'_, SqlitePool>,
     limit: Option<i64>,
 ) -> Result<Vec<AuditLog>, AppError> {
-    let lim = limit.unwrap_or(200);
+    let lim = limit.unwrap_or(10000);
     let logs = sqlx::query_as::<_, AuditLog>(
         "SELECT id, event_type, entity_type, entity_id, description, created_at
          FROM audit_logs

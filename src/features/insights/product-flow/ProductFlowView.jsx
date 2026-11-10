@@ -52,17 +52,17 @@ export default function ProductFlowView() {
   const { data: flowItems = [], isLoading, refetch } = useQuery({
     queryKey: ['product_flow', selectedProductId, fromDate, toDate],
     queryFn: () =>
-      tauriApi.getProductFlow(selectedProductId || null, fromDate || null, toDate || null, 500),
+      tauriApi.getProductFlow(selectedProductId || null, fromDate || null, toDate || null, 10000),
     enabled: hasSelectedProduct,
   });
 
-  // Calculate Product Summary Metrics
+  // Calculate Product Summary Metrics from actual recorded sales transactions
   const summaryMetrics = useMemo(() => {
     if (!flowItems.length) {
       return {
         unitsSold: 0,
         totalRevenue: 0,
-        avgPrice: selectedProduct?.unit_price_paise || 0,
+        avgPrice: 0,
       };
     }
     const salesOnly = flowItems.filter((f) => f.quantity < 0 || f.event_type === 'SALE');
@@ -76,7 +76,7 @@ export default function ProductFlowView() {
       totalRevenue,
       avgPrice,
     };
-  }, [flowItems, selectedProduct]);
+  }, [flowItems]);
 
   const columns = [
     {
@@ -137,7 +137,7 @@ export default function ProductFlowView() {
     },
     {
       key: 'quantity',
-      label: 'Qty Change',
+      label: 'Sold Qty',
       headerClassName: 'text-center',
       className: 'text-center font-medium financial-value',
       render: (r) => {
@@ -156,14 +156,14 @@ export default function ProductFlowView() {
     },
     {
       key: 'unit_price_paise',
-      label: 'Unit Price',
+      label: 'Sold Unit Price',
       headerClassName: 'text-right',
       className: 'text-right text-content-secondary financial-value',
       render: (r) => formatPaise(r.unit_price_paise),
     },
     {
       key: 'total_paise',
-      label: 'Revenue Total',
+      label: 'Sold Total Amount',
       headerClassName: 'text-right',
       className: 'text-right font-medium text-content financial-value',
       render: (r) => formatPaise(r.total_paise),
@@ -199,9 +199,9 @@ export default function ProductFlowView() {
       'Invoice / Bill #',
       'Customer',
       'Event Type',
-      'Qty Change',
-      'Unit Price (Rs)',
-      'Revenue Total (Rs)',
+      'Sold Qty',
+      'Sold Unit Price (Rs)',
+      'Sold Total Amount (Rs)',
       'Payment Method',
     ];
 
@@ -244,9 +244,9 @@ export default function ProductFlowView() {
       'Invoice / Bill #',
       'Customer',
       'Event Type',
-      'Qty Change',
-      'Unit Price (Rs)',
-      'Revenue Total (Rs)',
+      'Sold Qty',
+      'Sold Unit Price (Rs)',
+      'Sold Total Amount (Rs)',
       'Payment Method',
     ];
 
@@ -398,16 +398,41 @@ export default function ProductFlowView() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5 flex-wrap">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
                     <ShoppingBag className="w-3.5 h-3.5 text-brand" />
-                    <span className="text-xs text-content-secondary">Total Units Sold:</span>
+                    <span className="text-xs text-content-secondary">Total Sold:</span>
                     <span className="text-xs font-bold text-content financial-value">
-                      {summaryMetrics.unitsSold}
+                      {summaryMetrics.unitsSold} units
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
+                    <Receipt className="w-3.5 h-3.5 text-success" />
+                    <span className="text-xs text-content-secondary">Total Revenue:</span>
+                    <span className="text-xs font-bold text-content financial-value">
+                      {formatPaise(summaryMetrics.totalRevenue)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
+                    <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
+                    <span className="text-xs text-content-secondary">Avg Sold Price:</span>
+                    <span className="text-xs font-bold text-content financial-value">
+                      {formatPaise(summaryMetrics.avgPrice)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
+                    <Tag className="w-3.5 h-3.5 text-content-muted" />
+                    <span className="text-xs text-content-secondary">MRP:</span>
+                    <span className="text-xs font-semibold text-content financial-value">
+                      {formatPaise(selectedProduct?.mrp_paise || 0)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
+                    <Package className="w-3.5 h-3.5 text-amber-600" />
                     <span className="text-xs text-content-secondary">Current Stock:</span>
                     <span
                       className={`text-xs font-semibold px-2 py-0.5 rounded-full border financial-value ${
@@ -416,7 +441,7 @@ export default function ProductFlowView() {
                           : 'bg-success/10 text-success border-success/30'
                       }`}
                     >
-                      {selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0} units available
+                      {selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0} units
                     </span>
                   </div>
                 </div>

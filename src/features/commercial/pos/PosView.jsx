@@ -97,7 +97,15 @@ export default function PosView() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['sale_details'] });
+      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['product_flow'] });
+      queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
+      queryClient.invalidateQueries({ queryKey: ['top_products'] });
+      queryClient.invalidateQueries({ queryKey: ['top_categories'] });
+      queryClient.invalidateQueries({ queryKey: ['multi_year_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
       setCompletedSale(response);
       setShowPrintModal(true);
       clearCurrentBill();

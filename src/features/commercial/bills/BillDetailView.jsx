@@ -343,14 +343,26 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     setDraftBill((prev) => (prev ? { ...prev, notes } : prev));
   };
 
+  // Invalidate all related caches across sales, stock, reports & product sales history
+  const invalidateSalesAndAnalytics = () => {
+    queryClient.invalidateQueries({ queryKey: ['sales'] });
+    queryClient.invalidateQueries({ queryKey: ['sale_details'] });
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+    queryClient.invalidateQueries({ queryKey: ['product_flow'] });
+    queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
+    queryClient.invalidateQueries({ queryKey: ['top_products'] });
+    queryClient.invalidateQueries({ queryKey: ['top_categories'] });
+    queryClient.invalidateQueries({ queryKey: ['multi_year_sales'] });
+    queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
+    queryClient.invalidateQueries({ queryKey: ['customers'] });
+  };
+
   // Mutations
   const cancelMutation = useMutation({
     mutationFn: ({ id, reason }) => tauriApi.cancelSale(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sale_details'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      invalidateSalesAndAnalytics();
       toast.success('Sale cancelled and items returned to stock');
     },
     onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
@@ -359,10 +371,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const updateMutation = useMutation({
     mutationFn: (payload) => tauriApi.updateSale(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sale_details', lookupKey] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      invalidateSalesAndAnalytics();
       setEditing(false);
       setEditError('');
       setDraftBill(null);

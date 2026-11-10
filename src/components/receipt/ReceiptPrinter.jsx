@@ -157,8 +157,21 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
     }
   };
 
+  const isCancelled = sale.status === 'CANCELLED';
+  const isAmended = !!sale.notes && sale.notes.includes('[Amended:');
+
   return (
     <div id="thermal-receipt" className={`${widthClass} bg-white text-black p-3 font-mono mx-auto leading-tight shadow-md rounded-sm`}>
+      {isCancelled && (
+        <div className="border-2 border-black border-dashed py-1.5 mb-2 text-center font-black text-sm uppercase tracking-wider">
+          *** CANCELLED / VOID ***
+        </div>
+      )}
+      {!isCancelled && isAmended && (
+        <div className="border border-black py-1 mb-2 text-center font-bold text-xs uppercase tracking-wide">
+          * AMENDED INVOICE *
+        </div>
+      )}
       {sections.map(renderSection)}
     </div>
   );

@@ -47,9 +47,9 @@ export default function CustomersView() {
     }
     const validSales = customerSales.filter((s) => s.status !== 'CANCELLED');
     const totalSpent = validSales.reduce((acc, s) => acc + (s.total_paise || 0), 0);
-    const totalOrders = customerSales.length;
+    const totalOrders = validSales.length;
     const avgBill = validSales.length > 0 ? Math.round(totalSpent / validSales.length) : 0;
-    const lastOrder = customerSales[0]?.created_at || null;
+    const lastOrder = validSales[0]?.created_at || customerSales[0]?.created_at || null;
     return { totalOrders, totalSpent, avgBill, lastOrder };
   }, [customerSales]);
 
