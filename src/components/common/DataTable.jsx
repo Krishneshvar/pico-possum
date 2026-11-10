@@ -228,17 +228,21 @@ function RangeFilter({ label, unit, minVal, maxVal, onMinChange, onMaxChange }) 
       <span className="whitespace-nowrap">{label}:</span>
       <input
         type="number"
+        step="any"
         placeholder={`Min${unit ? ` (${unit})` : ''}`}
         value={minVal}
         onChange={(e) => onMinChange(e.target.value)}
+        onInput={(e) => onMinChange(e.target.value)}
         className="w-20 bg-surface border border-border-default text-text-primary rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand font-mono transition-colors"
       />
       <span className="text-text-muted">–</span>
       <input
         type="number"
+        step="any"
         placeholder={`Max${unit ? ` (${unit})` : ''}`}
         value={maxVal}
         onChange={(e) => onMaxChange(e.target.value)}
+        onInput={(e) => onMaxChange(e.target.value)}
         className="w-20 bg-surface border border-border-default text-text-primary rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand font-mono transition-colors"
       />
     </div>
@@ -554,23 +558,23 @@ export default function DataTable({
       const rv = rangeValues[f.key];
       if (!rv) continue;
       const { min, max } = rv;
-      if (min !== '' && min !== undefined) {
-        const minNum = parseFloat(min);
-        if (!isNaN(minNum)) {
-          result = result.filter((row) => {
-            const raw = f.transform ? f.transform(row[f.key]) : row[f.key];
-            return parseFloat(raw) >= minNum;
-          });
-        }
-      }
-      if (max !== '' && max !== undefined) {
-        const maxNum = parseFloat(max);
-        if (!isNaN(maxNum)) {
-          result = result.filter((row) => {
-            const raw = f.transform ? f.transform(row[f.key]) : row[f.key];
-            return parseFloat(raw) <= maxNum;
-          });
-        }
+      const hasMin = min !== '' && min !== undefined && !isNaN(parseFloat(min));
+      const hasMax = max !== '' && max !== undefined && !isNaN(parseFloat(max));
+      const minNum = hasMin ? parseFloat(min) : null;
+      const maxNum = hasMax ? parseFloat(max) : null;
+
+      if (hasMin || hasMax) {
+        result = result.filter((row) => {
+          if (typeof f.filterFn === 'function') {
+            return f.filterFn(row, { min: minNum, max: maxNum, rawMin: min, rawMax: max });
+          }
+          const raw = f.transform ? f.transform(row[f.key], row) : row[f.key];
+          const valNum = parseFloat(raw);
+          if (isNaN(valNum)) return false;
+          if (hasMin && valNum < minNum) return false;
+          if (hasMax && valNum > maxNum) return false;
+          return true;
+        });
       }
     }
 

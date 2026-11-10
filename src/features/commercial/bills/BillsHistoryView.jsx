@@ -352,8 +352,15 @@ export default function BillsHistoryView() {
         toKey: 'created_at',
         label: 'Date Range',
       },
+      {
+        type: 'range',
+        key: 'total_paise',
+        label: 'Amount',
+        unit: currencySymbol,
+        transform: (v) => (v != null ? Number(v) / 100 : 0),
+      },
     ],
-    [statusCounts, pmCounts]
+    [statusCounts, pmCounts, currencySymbol]
   );
 
   return (

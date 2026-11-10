@@ -71,6 +71,11 @@ export default function SalesReportsView() {
 
   const filteredData = useMemo(() => {
     if (!rawData || !rawData.length) return [];
+    const minNum = minAmount !== '' ? parseFloat(minAmount) : null;
+    const maxNum = maxAmount !== '' ? parseFloat(maxAmount) : null;
+    const hasMin = minNum !== null && !isNaN(minNum);
+    const hasMax = maxNum !== null && !isNaN(maxNum);
+
     return rawData.filter((row) => {
       let valPaise = 0;
       if (amountCol === 'gross') valPaise = row.total_sales_paise || 0;
@@ -82,8 +87,8 @@ export default function SalesReportsView() {
       else if (amountCol === 'gift_card') valPaise = row.gift_card_paise || 0;
 
       const valRs = valPaise / 100;
-      if (minAmount !== '' && !isNaN(minAmount) && valRs < parseFloat(minAmount)) return false;
-      if (maxAmount !== '' && !isNaN(maxAmount) && valRs > parseFloat(maxAmount)) return false;
+      if (hasMin && valRs < minNum) return false;
+      if (hasMax && valRs > maxNum) return false;
       return true;
     });
   }, [rawData, amountCol, minAmount, maxAmount]);
@@ -464,17 +469,21 @@ export default function SalesReportsView() {
           <div className="flex items-center gap-1.5">
             <input
               type="number"
+              step="any"
               placeholder={`Min ${currencySymbol}`}
               value={minAmount}
               onChange={(e) => setMinAmount(e.target.value)}
+              onInput={(e) => setMinAmount(e.target.value)}
               className="w-20 bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 font-mono focus:border-brand focus:outline-none"
             />
             <span className="text-text-muted">–</span>
             <input
               type="number"
+              step="any"
               placeholder={`Max ${currencySymbol}`}
               value={maxAmount}
               onChange={(e) => setMaxAmount(e.target.value)}
+              onInput={(e) => setMaxAmount(e.target.value)}
               className="w-20 bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 font-mono focus:border-brand focus:outline-none"
             />
             {(minAmount !== '' || maxAmount !== '') && (

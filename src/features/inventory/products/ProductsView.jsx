@@ -550,7 +550,7 @@ export default function ProductsView() {
               key: 'mrp_paise',
               label: 'Price',
               unit: currencySymbol,
-              transform: (v) => Math.round(parseFloat(v) * 100),
+              transform: (v) => (v != null ? Number(v) / 100 : 0),
             },
           ]}
           isLoading={isLoading}
