@@ -517,16 +517,16 @@ export default function ReportsView() {
                 </div>
               </div>
 
-              <div className="border border-border rounded-lg overflow-hidden">
+              <div className="border border-border rounded-xl overflow-hidden shadow-2xs">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
                     <tr className="h-10">
-                      <th className="px-3 w-10 text-center">#</th>
+                      <th className="py-2.5 px-3 pl-4 w-10 text-center">#</th>
                       <SortableTh
                         sortKey="category_name"
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
-                        className="px-3"
+                        className="py-2.5 px-3"
                       >
                         Category
                       </SortableTh>
@@ -535,7 +535,7 @@ export default function ReportsView() {
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                         align="center"
-                        className="px-3"
+                        className="py-2.5 px-3"
                       >
                         Products
                       </SortableTh>
@@ -544,7 +544,7 @@ export default function ReportsView() {
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                         align="center"
-                        className="px-3"
+                        className="py-2.5 px-3"
                       >
                         Sold
                       </SortableTh>
@@ -553,7 +553,7 @@ export default function ReportsView() {
                         sort={topCatSort}
                         onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                         align="right"
-                        className="px-3"
+                        className="py-2.5 px-3 pr-4"
                       >
                         Total Revenue
                       </SortableTh>
@@ -575,7 +575,7 @@ export default function ReportsView() {
                     ) : (
                       sortedTopCategories.map((c, idx) => (
                         <tr key={c.category_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
-                          <td className="px-3 text-center text-content-muted text-xs">
+                          <td className="px-3 pl-4 text-center text-content-muted text-xs">
                             {idx + 1}
                           </td>
                           <td className="px-3 font-medium text-content">
@@ -587,7 +587,7 @@ export default function ReportsView() {
                           <td className="px-3 text-center font-medium text-content financial-value">
                             {c.total_quantity}
                           </td>
-                          <td className="px-3 text-right font-medium text-content financial-value">
+                          <td className="px-3 pr-4 text-right font-medium text-content financial-value">
                             {formatPaise(c.total_revenue_paise)}
                           </td>
                         </tr>
@@ -623,16 +623,16 @@ export default function ReportsView() {
                 </div>
               </div>
 
-              <div className="border border-border rounded-lg overflow-hidden">
+              <div className="border border-border rounded-xl overflow-hidden shadow-2xs">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
                     <tr className="h-10">
-                      <th className="px-3 w-10 text-center">#</th>
+                      <th className="py-2.5 px-3 pl-4 w-10 text-center">#</th>
                       <SortableTh
                         sortKey="product_name"
                         sort={topProdSort}
                         onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
-                        className="px-3"
+                        className="py-2.5 px-3"
                       >
                         Product
                       </SortableTh>
@@ -641,7 +641,7 @@ export default function ReportsView() {
                         sort={topProdSort}
                         onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                         align="center"
-                        className="px-3"
+                        className="py-2.5 px-3"
                       >
                         Qty Sold
                       </SortableTh>
@@ -650,7 +650,7 @@ export default function ReportsView() {
                         sort={topProdSort}
                         onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                         align="right"
-                        className="px-3"
+                        className="py-2.5 px-3 pr-4"
                       >
                         Total Revenue
                       </SortableTh>
@@ -672,7 +672,7 @@ export default function ReportsView() {
                     ) : (
                       sortedTopProducts.map((p, idx) => (
                         <tr key={p.product_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
-                          <td className="px-3 text-center text-content-muted text-xs">
+                          <td className="px-3 pl-4 text-center text-content-muted text-xs">
                             {idx + 1}
                           </td>
                           <td className="px-3 text-content">
@@ -686,7 +686,7 @@ export default function ReportsView() {
                           <td className="px-3 text-center font-medium text-content financial-value">
                             {p.total_quantity}
                           </td>
-                          <td className="px-3 text-right font-medium text-content financial-value">
+                          <td className="px-3 pr-4 text-right font-medium text-content financial-value">
                             {formatPaise(p.total_revenue_paise)}
                           </td>
                         </tr>

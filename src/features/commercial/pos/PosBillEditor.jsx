@@ -237,7 +237,7 @@ export default function PosBillEditor({
         )}
 
         {/* Cart Items Table: Standardized to 5 columns with expandable row for advanced edits */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-3">
           {bill.items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-text-muted p-8">
               <div className="w-14 h-14 rounded-2xl bg-surface-secondary flex items-center justify-center mb-3 text-text-muted border border-border-default shadow-xs">
@@ -249,18 +249,19 @@ export default function PosBillEditor({
               </p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse select-text">
-              <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
-                <tr className="h-9">
-                  <th className="py-2 px-3 w-10 text-center">#</th>
-                  <th className="py-2 px-3">Product</th>
-                  <th className="py-2 px-3 w-28 text-right">Unit Price</th>
-                  <th className="py-2 px-3 w-32 text-center">Quantity</th>
-                  <th className="py-2 px-3 w-28 text-right">Line Total</th>
-                  <th className="py-2 px-2 w-16 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-default text-xs">
+            <div className="rounded-xl border border-border-default overflow-hidden bg-surface shadow-2xs">
+              <table className="w-full text-left border-collapse select-text">
+                <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
+                  <tr className="h-9">
+                    <th className="py-2 pl-3.5 pr-3 w-10 text-center">#</th>
+                    <th className="py-2 px-3">Product</th>
+                    <th className="py-2 px-3 w-28 text-right">Unit Price</th>
+                    <th className="py-2 px-3 w-32 text-center">Quantity</th>
+                    <th className="py-2 px-3 w-28 text-right">Line Total</th>
+                    <th className="py-2 pl-2 pr-3.5 w-16 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-default text-xs">
                 {bill.items.map((item, index) => {
                   const lineTotal = item.unitPricePaise * item.quantity - (item.discountPaise || 0);
                   const availableStock = availableStockFor(item.productId);
@@ -378,11 +379,12 @@ export default function PosBillEditor({
                 })}
               </tbody>
             </table>
+          </div>
           )}
 
           {/* Row Edit Drawer if a row is expanded */}
           {expandedRowId && (
-            <div className="p-3 bg-surface-secondary border-b border-border-default flex items-center gap-4 text-xs">
+            <div className="mt-3 p-3 bg-surface-secondary rounded-xl border border-border-default flex items-center gap-4 text-xs shadow-2xs">
               <span className="font-semibold text-text-primary">
                 Edit Line: {bill.items.find((it) => it.productId === expandedRowId)?.name}
               </span>

@@ -1158,29 +1158,29 @@ export default function SettingsView() {
                     No backup files found. Click "Create Backup Now" to record a snapshot.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-border text-content-secondary font-medium">
-                          <SortableTh sortKey="filename" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="pb-2">Filename</SortableTh>
-                          <SortableTh sortKey="backup_type" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="pb-2">Type</SortableTh>
-                          <SortableTh sortKey="created_at" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="pb-2">Date</SortableTh>
-                          <SortableTh sortKey="size_bytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="pb-2">Size</SortableTh>
-                          <th className="pb-2 font-medium text-right">Action</th>
+                  <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-2xs">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
+                        <tr className="h-10 text-[11px] uppercase tracking-wider">
+                          <SortableTh sortKey="filename" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5 pl-4">Filename</SortableTh>
+                          <SortableTh sortKey="backup_type" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">Type</SortableTh>
+                          <SortableTh sortKey="created_at" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">Date</SortableTh>
+                          <SortableTh sortKey="size_bytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-3.5">Size</SortableTh>
+                          <th className="py-2.5 pl-3.5 pr-4 font-semibold text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {sortedBackups.map((bk) => (
                           <tr key={bk.filename} className="hover:bg-surface-secondary transition-colors">
-                            <td className="py-2.5 font-medium text-content truncate max-w-xs">{bk.filename}</td>
-                            <td className="py-2.5">
+                            <td className="py-2.5 px-3.5 pl-4 font-medium text-content truncate max-w-xs">{bk.filename}</td>
+                            <td className="py-2.5 px-3.5">
                               <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-secondary text-content-secondary border border-border">
                                 {bk.backup_type}
                               </span>
                             </td>
-                            <td className="py-2.5 text-content-secondary text-xs">{formatDateTime(bk.created_at)}</td>
-                            <td className="py-2.5 text-right text-content financial-value">{Math.round(bk.size_bytes / 1024)} KB</td>
-                            <td className="py-2.5 text-right">
+                            <td className="py-2.5 px-3.5 text-content-secondary text-xs">{formatDateTime(bk.created_at)}</td>
+                            <td className="py-2.5 px-3.5 text-right text-content financial-value">{Math.round(bk.size_bytes / 1024)} KB</td>
+                            <td className="py-2.5 pl-3.5 pr-4 text-right">
                               <button
                                 type="button"
                                 onClick={async () => {

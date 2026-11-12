@@ -654,7 +654,7 @@ export default function DataTable({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-surface">
+    <div className="flex flex-col h-full overflow-hidden bg-canvas">
       {/* ── Standardized Toolbar ── */}
       <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border-default bg-surface shrink-0 flex-wrap">
         {/* Search Input */}
@@ -768,90 +768,93 @@ export default function DataTable({
       </div>
 
       {/* ── Table Container ── */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto">
-        <table className="w-full text-left border-collapse select-text">
-          <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 z-10 border-b border-table-header-border shadow-2xs">
-            <tr className="h-10">
-              {orderedColumns.map((col) => {
-                const widthStyle = colWidths[col.key]
-                  ? { width: `${colWidths[col.key]}px`, minWidth: `${colWidths[col.key]}px` }
-                  : col.minWidth
-                  ? { minWidth: `${col.minWidth}px` }
-                  : {};
+      <div className="flex-1 min-h-0 px-4 py-3 flex flex-col">
+        <div className="flex-1 overflow-x-auto overflow-y-auto rounded-xl border border-border-default bg-surface shadow-2xs">
+          <table className="w-full text-left border-collapse select-text">
+            <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 z-10 border-b border-table-header-border shadow-2xs">
+              <tr className="h-10">
+                {orderedColumns.map((col, colIdx) => {
+                  const widthStyle = colWidths[col.key]
+                    ? { width: `${colWidths[col.key]}px`, minWidth: `${colWidths[col.key]}px` }
+                    : col.minWidth
+                    ? { minWidth: `${col.minWidth}px` }
+                    : {};
 
-                const isDropTarget = dragOverColKey === col.key && draggedColKey !== col.key;
-                const isDraggingThis = draggedColKey === col.key;
-                const isSortable = col.sortable !== false;
-                const isSorted = isSortable && sort.key === col.key && !!sort.dir;
-                const SortIcon =
-                  sort.dir === 'asc' && sort.key === col.key
-                    ? ArrowUp
-                    : sort.dir === 'desc' && sort.key === col.key
-                    ? ArrowDown
-                    : ChevronsUpDown;
+                  const isDropTarget = dragOverColKey === col.key && draggedColKey !== col.key;
+                  const isDraggingThis = draggedColKey === col.key;
+                  const isSortable = col.sortable !== false;
+                  const isSorted = isSortable && sort.key === col.key && !!sort.dir;
+                  const SortIcon =
+                    sort.dir === 'asc' && sort.key === col.key
+                      ? ArrowUp
+                      : sort.dir === 'desc' && sort.key === col.key
+                      ? ArrowDown
+                      : ChevronsUpDown;
 
-                return (
-                  <th
-                    key={col.key}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, col.key)}
-                    onDragOver={(e) => handleDragOver(e, col.key)}
-                    onDrop={(e) => handleDrop(e, col.key)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => {
-                      if (!isSortable || suppressHeaderClick.current) return;
-                      toggleSort(col.key);
-                    }}
-                    title={isSortable ? `Sort by ${col.label}` : undefined}
-                    aria-sort={isSorted ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    style={widthStyle}
-                    className={`relative py-2.5 px-3.5 transition-colors select-none group/th ${
-                      isSortable ? 'cursor-pointer hover:bg-white/10' : ''
-                    } ${col.headerClassName ?? ''} ${isDraggingThis ? 'opacity-30' : ''} ${
-                      isDropTarget ? 'bg-brand-subtle border-l-2 border-brand' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                      <GripVertical className="w-3 h-3 text-table-header-text/40 opacity-40 group-hover/th:opacity-100 transition-opacity shrink-0 cursor-grab active:cursor-grabbing" />
-                      <span className="truncate">{col.label}</span>
-                      {isSortable && (
-                        <span
-                          className={`ml-auto shrink-0 flex items-center transition-opacity ${
-                            isSorted ? 'text-amber-300 opacity-100 font-bold' : 'text-table-header-text/60 opacity-0 group-hover/th:opacity-100'
-                          }`}
-                        >
-                          <SortIcon className="w-3 h-3" strokeWidth={isSorted ? 2.5 : 1.5} />
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Resize Handle */}
-                    <div
-                      onMouseDown={(e) => startResizing(e, col.key)}
-                      onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        setColWidths((p) => {
-                          const next = { ...p };
-                          delete next[col.key];
-                          return next;
-                        });
+                  return (
+                    <th
+                      key={col.key}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, col.key)}
+                      onDragOver={(e) => handleDragOver(e, col.key)}
+                      onDrop={(e) => handleDrop(e, col.key)}
+                      onDragEnd={handleDragEnd}
+                      onClick={() => {
+                        if (!isSortable || suppressHeaderClick.current) return;
+                        toggleSort(col.key);
                       }}
-                      title="Drag to resize, double-click to reset"
-                      className="absolute top-0 right-0 bottom-0 w-3 -mr-1.5 cursor-col-resize select-none flex items-center justify-center group/resize z-20"
+                      title={isSortable ? `Sort by ${col.label}` : undefined}
+                      aria-sort={isSorted ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      style={widthStyle}
+                      className={`relative py-2.5 px-3.5 ${colIdx === 0 ? 'pl-4' : ''} ${
+                        !actions && colIdx === orderedColumns.length - 1 ? 'pr-4' : ''
+                      } transition-colors select-none group/th ${
+                        isSortable ? 'cursor-pointer hover:bg-white/10' : ''
+                      } ${col.headerClassName ?? ''} ${isDraggingThis ? 'opacity-30' : ''} ${
+                        isDropTarget ? 'bg-brand-subtle border-l-2 border-brand' : ''
+                      }`}
                     >
-                      <div className="w-[1.5px] h-3.5 bg-border-strong group-hover/resize:bg-brand group-hover/resize:w-[2px] group-hover/resize:h-full transition-all" />
-                    </div>
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        <GripVertical className="w-3 h-3 text-table-header-text/40 opacity-40 group-hover/th:opacity-100 transition-opacity shrink-0 cursor-grab active:cursor-grabbing" />
+                        <span className="truncate">{col.label}</span>
+                        {isSortable && (
+                          <span
+                            className={`ml-auto shrink-0 flex items-center transition-opacity ${
+                              isSorted ? 'text-amber-300 opacity-100 font-bold' : 'text-table-header-text/60 opacity-0 group-hover/th:opacity-100'
+                            }`}
+                          >
+                            <SortIcon className="w-3 h-3" strokeWidth={isSorted ? 2.5 : 1.5} />
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Resize Handle */}
+                      <div
+                        onMouseDown={(e) => startResizing(e, col.key)}
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setColWidths((p) => {
+                            const next = { ...p };
+                            delete next[col.key];
+                            return next;
+                          });
+                        }}
+                        title="Drag to resize, double-click to reset"
+                        className="absolute top-0 right-0 bottom-0 w-3 -mr-1.5 cursor-col-resize select-none flex items-center justify-center group/resize z-20"
+                      >
+                        <div className="w-[1.5px] h-3.5 bg-border-strong group-hover/resize:bg-brand group-hover/resize:w-[2px] group-hover/resize:h-full transition-all" />
+                      </div>
+                    </th>
+                  );
+                })}
+                {actions && (
+                  <th className="py-2.5 pl-3.5 pr-4 text-right sticky right-0 bg-table-header-bg z-10 w-28 text-table-header-text">
+                    Actions
                   </th>
-                );
-              })}
-              {actions && (
-                <th className="py-2.5 px-3.5 text-right sticky right-0 bg-table-header-bg z-10 w-28 text-table-header-text">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
+                )}
+              </tr>
+            </thead>
           <tbody className="divide-y divide-border-default text-xs">
             {isLoading ? (
               <tr>
@@ -880,7 +883,7 @@ export default function DataTable({
                         : 'hover:bg-surface-secondary/70'
                     } ${onRowClick || onRowDoubleClick ? 'cursor-pointer' : ''}`}
                   >
-                    {orderedColumns.map((col) => {
+                    {orderedColumns.map((col, colIdx) => {
                       const widthStyle = colWidths[col.key]
                         ? { width: `${colWidths[col.key]}px`, minWidth: `${colWidths[col.key]}px` }
                         : col.minWidth
@@ -891,14 +894,16 @@ export default function DataTable({
                         <td
                           key={col.key}
                           style={widthStyle}
-                          className={`py-2 px-3.5 ${col.className ?? ''}`}
+                          className={`py-2 px-3.5 ${colIdx === 0 ? 'pl-4' : ''} ${
+                            !actions && colIdx === orderedColumns.length - 1 ? 'pr-4' : ''
+                          } ${col.className ?? ''}`}
                         >
                           {col.render ? col.render(row) : (row[col.key] ?? '—')}
                         </td>
                       );
                     })}
                     {actions && (
-                      <td className="py-2 px-3.5 text-right sticky right-0 bg-surface/95 z-0">
+                      <td className="py-2 pl-3.5 pr-4 text-right sticky right-0 bg-surface/95 z-0">
                         {actions(row)}
                       </td>
                     )}
@@ -909,6 +914,7 @@ export default function DataTable({
           </tbody>
         </table>
       </div>
+    </div>
 
       {/* ── Standardized Pagination (Always visible) ── */}
       {(() => {
@@ -916,7 +922,7 @@ export default function DataTable({
         const endRecord = Math.min(startIdx + pageSize, sorted.length);
 
         return (
-          <div className="flex items-center justify-between px-4 py-2 border-t border-border-default bg-surface-secondary shrink-0 text-xs text-text-secondary select-none">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border-default bg-surface shrink-0 text-xs text-text-secondary select-none">
             {/* Left: Current Page info */}
             <div className="flex-1 min-w-0 flex items-center">
               <span>

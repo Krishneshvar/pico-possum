@@ -405,15 +405,15 @@ export default function CustomersView() {
             </div>
 
             {/* Invoices List */}
-            <div className="flex-1 overflow-y-auto border border-border-default rounded-xl bg-surface">
+            <div className="flex-1 overflow-y-auto border border-border-default rounded-xl bg-surface shadow-2xs">
               <table className="w-full text-left border-collapse text-xs select-text">
-                <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border">
+                <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
                   <tr>
                     <SortableTh
                       sortKey="invoice_number"
                       sort={historySort}
                       onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
-                      className="py-2 px-3.5"
+                      className="py-2.5 px-3.5 pl-4"
                     >
                       Invoice #
                     </SortableTh>
@@ -421,7 +421,7 @@ export default function CustomersView() {
                       sortKey="created_at"
                       sort={historySort}
                       onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
-                      className="py-2 px-3.5"
+                      className="py-2.5 px-3.5"
                     >
                       Date
                     </SortableTh>
@@ -429,7 +429,7 @@ export default function CustomersView() {
                       sortKey="payment_method"
                       sort={historySort}
                       onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
-                      className="py-2 px-3.5"
+                      className="py-2.5 px-3.5"
                     >
                       Payment
                     </SortableTh>
@@ -438,7 +438,7 @@ export default function CustomersView() {
                       sort={historySort}
                       onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                       align="center"
-                      className="py-2 px-3.5"
+                      className="py-2.5 px-3.5"
                     >
                       Status
                     </SortableTh>
@@ -447,11 +447,11 @@ export default function CustomersView() {
                       sort={historySort}
                       onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                       align="right"
-                      className="py-2 px-3.5"
+                      className="py-2.5 px-3.5"
                     >
                       Amount
                     </SortableTh>
-                    <th className="py-2 px-3.5 text-right w-20">Action</th>
+                    <th className="py-2.5 pl-3.5 pr-4 text-right w-20">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-default">
@@ -470,7 +470,7 @@ export default function CustomersView() {
                   ) : (
                     sortedCustomerSales.map((sale) => (
                       <tr key={sale.id} className="hover:bg-surface-secondary/70 transition-colors">
-                        <td className="py-2 px-3.5 font-bold font-mono text-text-primary">
+                        <td className="py-2 px-3.5 pl-4 font-bold font-mono text-text-primary">
                           {sale.invoice_number}
                         </td>
                         <td className="py-2 px-3.5 text-text-muted text-[11px]">
@@ -495,7 +495,7 @@ export default function CustomersView() {
                         <td className="py-2 px-3.5 text-right font-bold financial-value text-text-primary">
                           {formatPaise(sale.total_paise)}
                         </td>
-                        <td className="py-2 px-3.5 text-right">
+                        <td className="py-2 pl-3.5 pr-4 text-right">
                           <button
                             type="button"
                             onClick={() => {
