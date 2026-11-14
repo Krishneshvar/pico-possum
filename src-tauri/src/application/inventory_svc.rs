@@ -151,7 +151,7 @@ impl InventoryService {
             let movement_id = Uuid::new_v4().to_string();
             sqlx::query(
                 "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
-                 VALUES (?, ?, ?, 'RESTOCK', NULL, 'Initial Stock')"
+                 VALUES (?, ?, ?, 'PURCHASE', NULL, 'Initial Stock')"
             )
             .bind(&movement_id)
             .bind(&id)
@@ -253,11 +253,73 @@ impl InventoryService {
         pool: &SqlitePool,
         payload: StockAdjustmentPayload,
     ) -> Result<Product, AppError> {
+        if payload.quantity_change == 0 {
+            return Err(AppError::Validation("Quantity change cannot be zero".to_string()));
+        }
+
+        let reason_upper = payload.reason.trim().to_uppercase();
+        let movement_type = match reason_upper.as_str() {
+            "PURCHASE" => {
+                if payload.quantity_change < 0 {
+                    return Err(AppError::Validation(
+                        "Cannot select Purchase reason for a negative stock deduction".to_string(),
+                    ));
+                }
+                "PURCHASE"
+            }
+            "MANUAL_STOCK_CORRECTION" | "MANUAL_ADJUSTMENT" | "ADJUSTMENT" | "RESTOCK" => {
+                // If legacy RESTOCK is provided with positive qty, map to PURCHASE; if negative, map to MANUAL_STOCK_CORRECTION
+                if reason_upper == "RESTOCK" && payload.quantity_change > 0 {
+                    "PURCHASE"
+                } else {
+                    "MANUAL_STOCK_CORRECTION"
+                }
+            }
+            "BILL_ADJUSTMENT" => {
+                return Err(AppError::Validation(
+                    "Bill Adjustment reason is automatically assigned by bill amendments and cannot be manually selected".to_string(),
+                ));
+            }
+            "RETURN" => {
+                return Err(AppError::Validation(
+                    "Return reason is automatically assigned when items are returned and cannot be manually selected".to_string(),
+                ));
+            }
+            "CANCELLED" => {
+                return Err(AppError::Validation(
+                    "Cancelled reason is automatically assigned when bills are cancelled and cannot be manually selected".to_string(),
+                ));
+            }
+            other => {
+                return Err(AppError::Validation(format!(
+                    "Invalid stock adjustment reason '{}'. Allowed manual reasons are 'Manual Stock Correction' or 'Purchase'.",
+                    other
+                )));
+            }
+        };
+
         let mut tx = pool.begin().await?;
 
-        let movement_id = Uuid::new_v4().to_string();
-        let movement_type = if payload.quantity_change >= 0 { "RESTOCK" } else { "ADJUSTMENT" };
+        let allow_negative_stock = Self::get_general_settings(pool)
+            .await?
+            .allow_negative_stock;
 
+        if !allow_negative_stock && payload.quantity_change < 0 {
+            let current: i64 = sqlx::query_scalar("SELECT current_stock FROM products WHERE id = ?")
+                .bind(&payload.product_id)
+                .fetch_optional(&mut *tx)
+                .await?
+                .ok_or_else(|| AppError::NotFound(format!("Product {} not found", payload.product_id)))?;
+
+            if current + payload.quantity_change < 0 {
+                return Err(AppError::Validation(format!(
+                    "Cannot deduct {} units: current stock is {} and negative stock is disabled",
+                    -payload.quantity_change, current
+                )));
+            }
+        }
+
+        let movement_id = Uuid::new_v4().to_string();
         sqlx::query(
             "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
              VALUES (?, ?, ?, ?, NULL, ?)"
@@ -275,6 +337,22 @@ impl InventoryService {
         )
         .bind(payload.quantity_change)
         .bind(&payload.product_id)
+        .execute(&mut *tx)
+        .await?;
+
+        // Audit log
+        let audit_id = Uuid::new_v4().to_string();
+        let desc = format!(
+            "Adjusted stock by {} (Reason: {})",
+            payload.quantity_change, movement_type
+        );
+        sqlx::query(
+            "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description)
+             VALUES (?, 'STOCK_ADJUSTED', 'PRODUCT', ?, ?)"
+        )
+        .bind(&audit_id)
+        .bind(&payload.product_id)
+        .bind(&desc)
         .execute(&mut *tx)
         .await?;
 

@@ -6,6 +6,51 @@ import { formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
+const REASON_CONFIG = {
+  MANUAL_STOCK_CORRECTION: {
+    label: 'Manual Stock Correction',
+    badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  },
+  PURCHASE: {
+    label: 'Purchase',
+    badgeClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  },
+  BILL_ADJUSTMENT: {
+    label: 'Bill Adjustment',
+    badgeClass: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  },
+  RETURN: {
+    label: 'Return',
+    badgeClass: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
+  },
+  CANCELLED: {
+    label: 'Cancelled',
+    badgeClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+  },
+  SALE: {
+    label: 'Sale',
+    badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  },
+};
+
+function normalizeMovementType(rawType) {
+  if (!rawType) return 'MANUAL_STOCK_CORRECTION';
+  const upper = String(rawType).toUpperCase();
+  if (upper === 'PURCHASE' || upper === 'RESTOCK') return 'PURCHASE';
+  if (upper === 'BILL_ADJUSTMENT') return 'BILL_ADJUSTMENT';
+  if (upper === 'RETURN') return 'RETURN';
+  if (upper === 'CANCELLED' || upper === 'CANCELED') return 'CANCELLED';
+  if (upper === 'SALE') return 'SALE';
+  if (
+    upper === 'MANUAL_STOCK_CORRECTION' ||
+    upper === 'MANUAL_ADJUSTMENT' ||
+    upper === 'ADJUSTMENT'
+  ) {
+    return 'MANUAL_STOCK_CORRECTION';
+  }
+  return upper;
+}
+
 export default function StockLedgerView() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -16,25 +61,16 @@ export default function StockLedgerView() {
     queryFn: () => tauriApi.getStockMovements(null, fromDate || null, toDate || null, 500),
   });
 
-  const movementCounts = useMemo(() => {
-    const counts = {};
-    for (const m of movements) {
-      if (m.movement_type) {
-        counts[m.movement_type] = (counts[m.movement_type] || 0) + 1;
-      }
-    }
-    return counts;
-  }, [movements]);
-
   const movementTypeOptions = useMemo(
     () => [
-      { value: 'SALE', label: `Sale (${movementCounts.SALE || 0})` },
-      { value: 'PURCHASE', label: `Purchase (${movementCounts.PURCHASE || 0})` },
-      { value: 'RESTOCK', label: `Restock (${movementCounts.RESTOCK || 0})` },
-      { value: 'MANUAL_ADJUSTMENT', label: `Manual Adjustment (${movementCounts.MANUAL_ADJUSTMENT || 0})` },
-      { value: 'RETURN', label: `Return (${movementCounts.RETURN || 0})` },
+      { value: 'MANUAL_STOCK_CORRECTION', label: 'Manual Stock Correction' },
+      { value: 'PURCHASE', label: 'Purchase' },
+      { value: 'BILL_ADJUSTMENT', label: 'Bill Adjustment' },
+      { value: 'RETURN', label: 'Return' },
+      { value: 'CANCELLED', label: 'Cancelled' },
+      { value: 'SALE', label: 'Sale' },
     ],
-    [movementCounts]
+    []
   );
 
   const columns = [
@@ -58,14 +94,23 @@ export default function StockLedgerView() {
     },
     {
       key: 'movement_type',
-      label: 'Movement Type',
+      label: 'Stock Change Reason',
       headerClassName: 'text-center',
       className: 'text-center text-xs',
-      render: (r) => (
-        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-surface-secondary text-text-secondary border border-border-default uppercase">
-          {r.movement_type}
-        </span>
-      ),
+      render: (r) => {
+        const norm = normalizeMovementType(r.movement_type);
+        const config = REASON_CONFIG[norm] || {
+          label: r.movement_type,
+          badgeClass: 'bg-surface-secondary text-text-secondary border-border-default',
+        };
+        return (
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${config.badgeClass}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
     },
     {
       key: 'quantity_change',
@@ -98,7 +143,11 @@ export default function StockLedgerView() {
       className: 'font-mono text-xs',
       render: (r) => {
         const isInvoiceRef =
-          r.reference_id && (r.movement_type === 'SALE' || r.movement_type === 'RETURN');
+          r.reference_id &&
+          (r.movement_type === 'SALE' ||
+            r.movement_type === 'RETURN' ||
+            r.movement_type === 'CANCELLED' ||
+            r.movement_type === 'BILL_ADJUSTMENT');
         if (!r.reference_id) return <span className="text-text-muted">—</span>;
         if (isInvoiceRef) {
           return (
@@ -166,8 +215,13 @@ export default function StockLedgerView() {
             {
               type: 'multiselect',
               key: 'movement_type',
-              label: 'Movement Types',
+              label: 'Stock Change Reasons',
               options: movementTypeOptions,
+              filterFn: (row, selectedValues) => {
+                if (!selectedValues || selectedValues.length === 0) return true;
+                const norm = normalizeMovementType(row.movement_type);
+                return selectedValues.includes(norm);
+              },
             },
             {
               type: 'daterange',

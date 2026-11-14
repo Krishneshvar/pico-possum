@@ -68,7 +68,7 @@ async fn test_full_pos_lifecycle() {
         .expect("Failed to get stock movements");
     assert_eq!(movements.len(), 1);
     assert_eq!(movements[0].quantity_change, 50);
-    assert_eq!(movements[0].movement_type, "RESTOCK");
+    assert_eq!(movements[0].movement_type, "PURCHASE");
 
     // 3. Create a Customer
     let cust = InventoryService::create_customer(
@@ -141,13 +141,13 @@ async fn test_full_pos_lifecycle() {
         .expect("Failed to fetch product");
     assert_eq!(restored_prod.current_stock, 50);
 
-    // Verify stock ledger has +2 RETURN movement
+    // Verify stock ledger has +2 CANCELLED movement
     let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
         .await
         .expect("Failed to get stock movements");
     assert_eq!(movements.len(), 3);
-    let ret_mv = movements.iter().find(|m| m.movement_type == "RETURN").expect("RETURN movement should exist");
-    assert_eq!(ret_mv.quantity_change, 2);
+    let cancel_mv = movements.iter().find(|m| m.movement_type == "CANCELLED").expect("CANCELLED movement should exist");
+    assert_eq!(cancel_mv.quantity_change, 2);
 
     // 8. Manual stock adjustment
     let adjusted_prod = InventoryService::adjust_stock(
@@ -162,6 +162,72 @@ async fn test_full_pos_lifecycle() {
     .await
     .expect("Failed to adjust stock");
     assert_eq!(adjusted_prod.current_stock, 60);
+
+    // Negative stock adjustment with Purchase should be rejected
+    let neg_purchase_err = InventoryService::adjust_stock(
+        &pool,
+        StockAdjustmentPayload {
+            product_id: prod.id.clone(),
+            quantity_change: -5,
+            reason: "PURCHASE".to_string(),
+            note: Some("Invalid negative purchase".to_string()),
+        },
+    )
+    .await;
+    assert!(neg_purchase_err.is_err(), "Negative purchase must be rejected");
+
+    // Bill Adjustment cannot be manually selected
+    let bill_adj_err = InventoryService::adjust_stock(
+        &pool,
+        StockAdjustmentPayload {
+            product_id: prod.id.clone(),
+            quantity_change: 5,
+            reason: "BILL_ADJUSTMENT".to_string(),
+            note: None,
+        },
+    )
+    .await;
+    assert!(bill_adj_err.is_err(), "Bill Adjustment cannot be manually selected");
+
+    // Return cannot be manually selected
+    let return_err = InventoryService::adjust_stock(
+        &pool,
+        StockAdjustmentPayload {
+            product_id: prod.id.clone(),
+            quantity_change: 5,
+            reason: "RETURN".to_string(),
+            note: None,
+        },
+    )
+    .await;
+    assert!(return_err.is_err(), "Return cannot be manually selected");
+
+    // Cancelled cannot be manually selected
+    let cancelled_err = InventoryService::adjust_stock(
+        &pool,
+        StockAdjustmentPayload {
+            product_id: prod.id.clone(),
+            quantity_change: 5,
+            reason: "CANCELLED".to_string(),
+            note: None,
+        },
+    )
+    .await;
+    assert!(cancelled_err.is_err(), "Cancelled cannot be manually selected");
+
+    // Manual stock correction with negative qty succeeds
+    let manual_adj_prod = InventoryService::adjust_stock(
+        &pool,
+        StockAdjustmentPayload {
+            product_id: prod.id.clone(),
+            quantity_change: -5,
+            reason: "MANUAL_STOCK_CORRECTION".to_string(),
+            note: Some("Inventory recount discrepancy".to_string()),
+        },
+    )
+    .await
+    .expect("Manual stock correction must succeed");
+    assert_eq!(manual_adj_prod.current_stock, 55);
 }
 
 #[tokio::test]
@@ -282,9 +348,9 @@ async fn test_bill_edit_lifecycle() {
     let b_after_edit = InventoryService::get_product_by_id(&pool, &prod_b.id).await.unwrap();
     assert_eq!(b_after_edit.current_stock, 48, "Prod B stock should be 48 after adding 2");
 
-    // Verify stock movement audit for B contains a SALE movement
+    // Verify stock movement audit for B contains a BILL_ADJUSTMENT movement
     let b_movements = InventoryService::get_stock_movements(&pool, Some(prod_b.id.clone()), None, None, 10).await.unwrap();
-    let b_sale = b_movements.iter().find(|m| m.movement_type == "SALE").expect("B should have a SALE movement");
+    let b_sale = b_movements.iter().find(|m| m.movement_type == "BILL_ADJUSTMENT").expect("B should have a BILL_ADJUSTMENT movement");
     assert_eq!(b_sale.quantity_change, -2);
 
     // Verify stock movement for A contains a RETURN for 2 units

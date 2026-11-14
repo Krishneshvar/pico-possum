@@ -420,10 +420,10 @@ impl SalesService {
                 .await?;
 
                 let movement_id = Uuid::new_v4().to_string();
-                let note = format!("Bill {} edited: +{} qty", existing_sale.invoice_number, delta_q);
+                let note = format!("Bill {} adjusted: +{} qty", existing_sale.invoice_number, delta_q);
                 sqlx::query(
                     "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
-                     VALUES (?, ?, ?, 'SALE', ?, ?)"
+                     VALUES (?, ?, ?, 'BILL_ADJUSTMENT', ?, ?)"
                 )
                 .bind(&movement_id)
                 .bind(pid)
@@ -792,7 +792,7 @@ impl SalesService {
 
             sqlx::query(
                 "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
-                 VALUES (?, ?, ?, 'RETURN', ?, ?)"
+                 VALUES (?, ?, ?, 'CANCELLED', ?, ?)"
             )
             .bind(&movement_id)
             .bind(&product_id)

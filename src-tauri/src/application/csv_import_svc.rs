@@ -299,7 +299,7 @@ impl CsvImportService {
                     let _ = sqlx::query(
                         r#"
                         INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
-                        VALUES (?, ?, ?, 'RESTOCK', NULL, 'Initial stock from CSV import')
+                        VALUES (?, ?, ?, 'PURCHASE', NULL, 'Initial stock from CSV import')
                         "#,
                     )
                     .bind(sm_id)
@@ -337,7 +337,7 @@ impl CsvImportService {
                     let _ = sqlx::query(
                         r#"
                         INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
-                        VALUES (?, ?, ?, 'RESTOCK', NULL, 'Initial stock from CSV import')
+                        VALUES (?, ?, ?, 'PURCHASE', NULL, 'Initial stock from CSV import')
                         "#,
                     )
                     .bind(sm_id)

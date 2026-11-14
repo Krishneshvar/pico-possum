@@ -13,6 +13,8 @@ import {
   FileText,
   FileSpreadsheet,
   ChevronDown,
+  SlidersHorizontal,
+  ShoppingBag,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import DropdownActions from '../../../components/common/DropdownActions';
@@ -46,7 +48,7 @@ export default function ProductsView() {
   });
   const [stockAdjustment, setStockAdjustment] = useState({
     quantity_change: '',
-    movement_type: 'RESTOCK',
+    movement_type: 'MANUAL_STOCK_CORRECTION',
     note: '',
   });
 
@@ -225,8 +227,8 @@ export default function ProductsView() {
     setSelectedProduct(p);
     setStockAdjustment({
       quantity_change: '',
-      movement_type: 'RESTOCK',
-      note: 'Supplier restock delivery',
+      movement_type: 'MANUAL_STOCK_CORRECTION',
+      note: '',
     });
     setModalMode('stock');
   };
@@ -792,7 +794,28 @@ export default function ProductsView() {
             {(() => {
               const parsedQty = parseInt(stockAdjustment.quantity_change, 10);
               const isValidQty = !isNaN(parsedQty) && parsedQty !== 0;
+              const isNegative = isValidQty && parsedQty < 0;
               const projectedStock = isValidQty ? (selectedProduct.current_stock || 0) + parsedQty : null;
+
+              const handleSelectReason = (reason) => {
+                if (reason === 'PURCHASE' && isNegative) {
+                  toast.warning('Purchase reason cannot be used for negative stock deductions');
+                  return;
+                }
+                setStockAdjustment((prev) => ({ ...prev, movement_type: reason }));
+              };
+
+              const updateQtyVal = (rawVal) => {
+                const nextParsed = parseInt(rawVal, 10);
+                const willBeNegative = !isNaN(nextParsed) && nextParsed < 0;
+                setStockAdjustment((prev) => ({
+                  ...prev,
+                  quantity_change: rawVal,
+                  movement_type: willBeNegative && prev.movement_type === 'PURCHASE'
+                    ? 'MANUAL_STOCK_CORRECTION'
+                    : prev.movement_type,
+                }));
+              };
 
               return (
                 <>
@@ -812,19 +835,53 @@ export default function ProductsView() {
 
                   <div className="space-y-3 text-xs">
                     <div>
-                      <label className="text-text-secondary block font-semibold mb-1">Movement Type</label>
-                      <Select
-                        value={stockAdjustment.movement_type}
-                        onChange={(val) =>
-                          setStockAdjustment({ ...stockAdjustment, movement_type: val })
-                        }
-                        options={[
-                          { value: 'RESTOCK', label: 'Supplier Restock Delivery' },
-                          { value: 'PURCHASE', label: 'Wholesale Purchase' },
-                          { value: 'MANUAL_ADJUSTMENT', label: 'Manual Stock Correction / Audit' },
-                          { value: 'RETURN', label: 'Customer Return / Exchange' },
-                        ]}
-                      />
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-text-secondary font-semibold">
+                          Stock Change Reason <span className="text-danger">*</span>
+                        </label>
+                        {isNegative && (
+                          <span className="text-[10px] text-text-muted font-mono">
+                            Negative stock → Manual Correction only
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Segmented reason selector: Manual Stock Correction (Default) & Purchase */}
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-surface-secondary border border-border-default rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectReason('MANUAL_STOCK_CORRECTION')}
+                          className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            stockAdjustment.movement_type === 'MANUAL_STOCK_CORRECTION'
+                              ? 'bg-brand text-white shadow-xs'
+                              : 'text-text-muted hover:text-text-primary'
+                          }`}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          <span>Manual Stock Correction</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isNegative}
+                          onClick={() => handleSelectReason('PURCHASE')}
+                          title={
+                            isNegative
+                              ? 'Cannot select Purchase for negative stock deductions'
+                              : 'Add purchased stock from supplier'
+                          }
+                          className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                            isNegative
+                              ? 'opacity-40 cursor-not-allowed text-text-muted bg-surface/30'
+                              : stockAdjustment.movement_type === 'PURCHASE'
+                              ? 'bg-brand text-white shadow-xs'
+                              : 'text-text-muted hover:text-text-primary cursor-pointer'
+                          }`}
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>Purchase</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -839,10 +896,7 @@ export default function ProductsView() {
                           onChange={(e) => {
                             const val = e.target.value.trim();
                             if (val === '' || val === '-' || val === '+' || /^[+-]?\d+$/.test(val)) {
-                              setStockAdjustment({
-                                ...stockAdjustment,
-                                quantity_change: val,
-                              });
+                              updateQtyVal(val);
                             }
                           }}
                           placeholder="e.g. +10 or -5"
@@ -854,10 +908,7 @@ export default function ProductsView() {
                             onClick={() => {
                               const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
                               const next = current + 1;
-                              setStockAdjustment({
-                                ...stockAdjustment,
-                                quantity_change: next > 0 ? `+${next}` : String(next),
-                              });
+                              updateQtyVal(next > 0 ? `+${next}` : String(next));
                             }}
                             className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
                             title="Add 1"
@@ -869,10 +920,7 @@ export default function ProductsView() {
                             onClick={() => {
                               const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
                               const next = current - 1;
-                              setStockAdjustment({
-                                ...stockAdjustment,
-                                quantity_change: next > 0 ? `+${next}` : String(next),
-                              });
+                              updateQtyVal(next > 0 ? `+${next}` : String(next));
                             }}
                             className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
                             title="Deduct 1"
@@ -889,7 +937,7 @@ export default function ProductsView() {
                         type="text"
                         value={stockAdjustment.note}
                         onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
-                        placeholder="e.g. Delivery Challan #882, physical recount"
+                        placeholder="e.g. Supplier challan #882, count discrepancy, damaged"
                         className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                       />
                     </div>
@@ -910,10 +958,14 @@ export default function ProductsView() {
                           toast.warning('Enter a non-zero quantity to adjust stock (e.g. +10 or -5)');
                           return;
                         }
+                        if (parsedQty < 0 && stockAdjustment.movement_type === 'PURCHASE') {
+                          toast.warning('Purchase reason cannot be used for negative stock deductions');
+                          return;
+                        }
                         adjustStockMutation.mutate({
                           product_id: selectedProduct.id,
                           quantity_change: parsedQty,
-                          reason: stockAdjustment.movement_type || 'MANUAL_ADJUSTMENT',
+                          reason: stockAdjustment.movement_type || 'MANUAL_STOCK_CORRECTION',
                           note: stockAdjustment.note || null,
                         });
                       }}

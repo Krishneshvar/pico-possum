@@ -73,7 +73,7 @@ async fn test_import_products_csv_with_categories_and_stock() {
     assert_eq!(cat_count, 2);
 
     // Verify stock movements created for initial stock
-    let sm_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM stock_movements WHERE movement_type = 'RESTOCK'")
+    let sm_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM stock_movements WHERE movement_type = 'PURCHASE'")
         .fetch_one(&pool)
         .await
         .unwrap();
