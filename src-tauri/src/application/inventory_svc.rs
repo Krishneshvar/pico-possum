@@ -796,8 +796,28 @@ impl InventoryService {
         from_date: Option<String>,
         to_date: Option<String>,
     ) -> Result<Vec<SalesBreakdownItem>, AppError> {
-        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+        let is_today = period_type.eq_ignore_ascii_case("today");
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+
+        let from = if is_today {
+            from_date
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| today.clone())
+        } else {
+            from_date
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| "1970-01-01".to_string())
+        };
+
+        let to = if is_today {
+            to_date
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| today.clone())
+        } else {
+            to_date
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| "2099-12-31".to_string())
+        };
 
         let items = match period_type.to_lowercase().as_str() {
             "monthly" => {
@@ -881,8 +901,12 @@ impl InventoryService {
         to_date: Option<String>,
         limit: i64,
     ) -> Result<Vec<ProductFlowItem>, AppError> {
-        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
+        let from = from_date
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "1970-01-01".to_string());
+        let to = to_date
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "2099-12-31".to_string());
 
         let rows = sqlx::query_as::<_, ProductFlowItem>(
             "SELECT

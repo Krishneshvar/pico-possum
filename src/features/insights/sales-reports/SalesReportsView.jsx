@@ -17,20 +17,17 @@ import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import { toast } from '../../../stores/toast.store';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
-import DatePicker from '../../../components/common/DatePicker';
+import DatePicker, { formatToIso } from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 
 export default function SalesReportsView() {
   const currencySymbol = getCurrencySymbol();
-  const todayStr = new Date().toISOString().split('T')[0];
-  const firstOfMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString()
-    .split('T')[0];
+  const todayIso = useMemo(() => formatToIso(new Date()), []);
 
-  const [reportType, setReportType] = useState('daily');
-  const [fromDate, setFromDate] = useState(firstOfMonthStr);
-  const [toDate, setToDate] = useState(todayStr);
+  const [reportType, setReportType] = useState('today');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Amount filtering
@@ -64,9 +61,12 @@ export default function SalesReportsView() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const effectiveFromDate = reportType === 'today' ? (fromDate || todayIso) : (fromDate || null);
+  const effectiveToDate = reportType === 'today' ? (toDate || todayIso) : (toDate || null);
+
   const { data: rawData = [], isLoading, refetch } = useQuery({
-    queryKey: ['sales_breakdown', reportType, fromDate, toDate],
-    queryFn: () => tauriApi.getSalesBreakdown(reportType, fromDate || null, toDate || null),
+    queryKey: ['sales_breakdown', reportType, effectiveFromDate, effectiveToDate],
+    queryFn: () => tauriApi.getSalesBreakdown(reportType, effectiveFromDate, effectiveToDate),
   });
 
   const filteredData = useMemo(() => {
@@ -114,7 +114,7 @@ export default function SalesReportsView() {
     () => [
       {
         key: 'period',
-        label: reportType === 'daily' ? 'Date' : reportType === 'monthly' ? 'Month' : 'Year',
+        label: reportType === 'monthly' ? 'Month' : reportType === 'yearly' ? 'Year' : 'Date',
         className: 'font-mono text-text-primary font-semibold text-xs whitespace-nowrap',
         minWidth: 120,
         exportValue: (r) => r.period,
@@ -233,9 +233,9 @@ export default function SalesReportsView() {
   };
 
   const handleReset = () => {
-    setReportType('daily');
-    setFromDate(firstOfMonthStr);
-    setToDate(todayStr);
+    setReportType('today');
+    setFromDate('');
+    setToDate('');
     setAmountCol('gross');
     setMinAmount('');
     setMaxAmount('');
@@ -252,9 +252,19 @@ export default function SalesReportsView() {
       visibleColumns.map((col) => escapeCsv(col.exportValue(row)))
     );
 
+    const dateRangeLabel = fromDate && toDate
+      ? `${fromDate}_to_${toDate}`
+      : fromDate
+        ? `from_${fromDate}`
+        : toDate
+          ? `to_${toDate}`
+          : reportType === 'today'
+            ? todayIso
+            : 'all_time';
+
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     await exportWithUserLocation({
-      filename: `sales_report_${reportType}_${fromDate}_to_${toDate}.csv`,
+      filename: `sales_report_${reportType}_${dateRangeLabel}.csv`,
       extension: 'csv',
       data: csvContent,
       count: filteredData.length,
@@ -285,8 +295,18 @@ export default function SalesReportsView() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
     const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const dateRangeLabel = fromDate && toDate
+      ? `${fromDate}_to_${toDate}`
+      : fromDate
+        ? `from_${fromDate}`
+        : toDate
+          ? `to_${toDate}`
+          : reportType === 'today'
+            ? todayIso
+            : 'all_time';
+
     await exportWithUserLocation({
-      filename: `sales_report_${reportType}_${fromDate}_to_${toDate}.xlsx`,
+      filename: `sales_report_${reportType}_${dateRangeLabel}.xlsx`,
       extension: 'xlsx',
       data: xlsxArrayBuffer,
       count: filteredData.length,
@@ -401,6 +421,7 @@ export default function SalesReportsView() {
             value={reportType}
             onChange={(val) => setReportType(val)}
             options={[
+              { value: 'today', label: 'Today' },
               { value: 'daily', label: 'Daily' },
               { value: 'monthly', label: 'Monthly' },
               { value: 'yearly', label: 'Yearly' },

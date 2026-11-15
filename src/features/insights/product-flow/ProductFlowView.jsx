@@ -28,14 +28,9 @@ import { useWorkspaceStore } from '../../../stores/workspaceStore';
 
 export default function ProductFlowView() {
   const { openOrFocus } = useWorkspaceStore();
-  const todayStr = new Date().toISOString().split('T')[0];
-  const firstOfMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString()
-    .split('T')[0];
-
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [fromDate, setFromDate] = useState(firstOfMonthStr);
-  const [toDate, setToDate] = useState(todayStr);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
@@ -183,8 +178,8 @@ export default function ProductFlowView() {
 
   const handleReset = () => {
     setSelectedProductId('');
-    setFromDate(firstOfMonthStr);
-    setToDate(todayStr);
+    setFromDate('');
+    setToDate('');
   };
 
   const handleExportCsv = async () => {
@@ -223,8 +218,16 @@ export default function ProductFlowView() {
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const dateRangeLabel = fromDate && toDate
+      ? `${fromDate}_to_${toDate}`
+      : fromDate
+        ? `from_${fromDate}`
+        : toDate
+          ? `to_${toDate}`
+          : 'all_time';
+
     await exportWithUserLocation({
-      filename: `sales_history_${safeProdName}_${fromDate}_to_${toDate}.csv`,
+      filename: `sales_history_${safeProdName}_${dateRangeLabel}.csv`,
       extension: 'csv',
       data: csvContent,
       count: flowItems.length,
@@ -282,8 +285,16 @@ export default function ProductFlowView() {
     XLSX.utils.book_append_sheet(wb, ws, 'Sales History');
     const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const dateRangeLabel = fromDate && toDate
+      ? `${fromDate}_to_${toDate}`
+      : fromDate
+        ? `from_${fromDate}`
+        : toDate
+          ? `to_${toDate}`
+          : 'all_time';
+
     await exportWithUserLocation({
-      filename: `sales_history_${safeProdName}_${fromDate}_to_${toDate}.xlsx`,
+      filename: `sales_history_${safeProdName}_${dateRangeLabel}.xlsx`,
       extension: 'xlsx',
       data: xlsxArrayBuffer,
       count: flowItems.length,
@@ -308,10 +319,10 @@ export default function ProductFlowView() {
         </div>
 
         <div className="flex items-center gap-2">
-          {(selectedProductId || fromDate !== firstOfMonthStr || toDate !== todayStr) && (
+          {(selectedProductId || fromDate || toDate) && (
             <button
               onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-content-muted" />
               <span>Reset</span>
