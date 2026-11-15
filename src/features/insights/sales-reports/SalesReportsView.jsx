@@ -376,6 +376,12 @@ export default function SalesReportsView() {
             )}
           </div>
 
+          <ExportButton
+            onExportCsv={handleExportCsv}
+            onExportXlsx={handleExportXlsx}
+            disabled={!filteredData.length || !visibleColumns.length}
+          />
+
           <button
             type="button"
             onClick={() => refetch()}
@@ -384,12 +390,6 @@ export default function SalesReportsView() {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
-
-          <ExportButton
-            onExportCsv={handleExportCsv}
-            onExportXlsx={handleExportXlsx}
-            disabled={!filteredData.length || !visibleColumns.length}
-          />
         </div>
       </div>
 

@@ -60,25 +60,6 @@ function WorkspaceContent() {
             Open the Point of Sale terminal or select a workspace from the navigation bar above.
           </p>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => openOrFocus('Point of Sale', 'pos')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span>Open Point of Sale</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => openOrFocus('Products', 'products')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-surface-secondary border border-border-default text-text-primary text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Package className="w-4 h-4 text-text-muted" />
-            <span>Product Catalog</span>
-          </button>
-        </div>
       </div>
     );
   }

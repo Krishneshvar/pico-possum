@@ -139,6 +139,13 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
                 <span>{formatPaise(sale.paid_paise - sale.total_paise)}</span>
               </div>
             )}
+
+            {sale.paid_paise < sale.total_paise && (
+              <div className="flex justify-between text-[11px] font-bold">
+                <span>Balance Due:</span>
+                <span>{formatPaise(sale.total_paise - sale.paid_paise)}</span>
+              </div>
+            )}
           </div>
         );
       }

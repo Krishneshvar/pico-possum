@@ -206,11 +206,10 @@ export default function ReportsView() {
           </button>
           <button
             onClick={refetchAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
+            className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             title="Refresh analytics data"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-brand" />
-            <span>Refresh</span>
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>

@@ -300,7 +300,7 @@ export default function ProductFlowView() {
             <History className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-content">Product Sales History</h1>
+            <h1 className="text-sm font-semibold text-content">Product Flow</h1>
             <p className="text-xs text-content-secondary">
               Track historical checkout velocity, price movement, and inventory sales flow
             </p>
@@ -317,21 +317,20 @@ export default function ProductFlowView() {
               <span>Reset</span>
             </button>
           )}
-          <button
-            onClick={() => refetch()}
-            disabled={!hasSelectedProduct}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
-            title="Refresh History"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-brand" />
-            <span>Refresh</span>
-          </button>
-
           <ExportButton
             onExportCsv={handleExportCsv}
             onExportXlsx={handleExportXlsx}
             disabled={!hasSelectedProduct || !flowItems.length}
           />
+
+          <button
+            onClick={() => refetch()}
+            disabled={!hasSelectedProduct}
+            className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+            title="Refresh Product Flow"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

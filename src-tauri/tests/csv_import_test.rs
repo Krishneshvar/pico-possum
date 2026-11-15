@@ -94,8 +94,8 @@ async fn test_import_customers_csv() {
     let pool = setup_test_db().await;
 
     let csv = "Customer Code,Customer Name,Contact Number,Customer Address,City,Pin Code\n\
-               13,Sindhu,9876543210,123 Lane,Chennai,600001\n\
-               14,Rajesh,9876543211,456 Cross,,600002\n";
+               13,Someone,9876543210,123 Lane,Somewhere,600001\n\
+               14,Someone Else,9876543211,456 Somewhere Else,,600002\n";
 
     let res = CsvImportService::import_customers(&pool, csv)
         .await

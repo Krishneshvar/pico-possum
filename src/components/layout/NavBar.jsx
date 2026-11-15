@@ -44,7 +44,7 @@ const NAV_MENUS = [
     items: [
       { label: 'Sales Reports',         viewId: 'sales-reports' },
       { label: 'Sales Analytics',       viewId: 'reports' },
-      { label: 'Product Sales History', viewId: 'product-flow' },
+      { label: 'Product Flow',          viewId: 'product-flow' },
     ],
   },
   {

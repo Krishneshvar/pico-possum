@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Printer, Plus, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Printer } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { usePosStore, computeBillTotals } from '../../../stores/pos.store';
 import { toast } from '../../../stores/toast.store';
@@ -13,6 +13,7 @@ import AddCustomerModal from './AddCustomerModal';
 export default function PosView() {
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
+  const amountTenderedInputRef = useRef(null);
   const currencySymbol = getCurrencySymbol();
 
   // Store state
@@ -33,6 +34,7 @@ export default function PosView() {
     setPaymentMethod,
     setFullPayment,
     setAmountTendered,
+    setNotes,
     clearCurrentBill,
   } = usePosStore();
 
@@ -45,7 +47,6 @@ export default function PosView() {
 
   // Local UI state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [completedSale, setCompletedSale] = useState(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -53,13 +54,8 @@ export default function PosView() {
 
   // Data queries
   const { data: products = [] } = useQuery({
-    queryKey: ['products', selectedCategory, searchQuery],
-    queryFn: () => tauriApi.getProducts(selectedCategory, searchQuery || null),
-  });
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => tauriApi.getCategories(),
+    queryKey: ['products', searchQuery],
+    queryFn: () => tauriApi.getProducts(null, searchQuery || null),
   });
 
   const { data: customers = [] } = useQuery({
@@ -171,6 +167,48 @@ export default function PosView() {
       return;
     }
 
+    const requiresTender =
+      !currentBill.paymentMethod ||
+      currentBill.paymentMethod === 'CASH' ||
+      currentBill.paymentMethod === 'GIFT_CARD';
+    const isFull = currentBill.isFullPayment !== false;
+    const tendered = currentBill.amountTenderedPaise || 0;
+    const total = totals.totalPaise;
+
+    // Amount tendered checks apply to cash and gift card payments; digital methods (UPI, Card) settle the exact amount
+    if (requiresTender) {
+      if (isFull) {
+        if (total > 0 && tendered < total) {
+          amountTenderedInputRef.current?.focus();
+          amountTenderedInputRef.current?.select();
+          toast.info(
+            `Enter amount tendered (at least ${formatPaise(total)}) to complete sale.`,
+            { title: 'Tender Amount Required' }
+          );
+          return;
+        }
+      } else {
+        if (tendered <= 0) {
+          amountTenderedInputRef.current?.focus();
+          amountTenderedInputRef.current?.select();
+          toast.info(
+            `Enter partial payment amount (less than ${formatPaise(total)}) to complete sale.`,
+            { title: 'Tender Amount Required' }
+          );
+          return;
+        }
+        if (total > 0 && tendered >= total) {
+          amountTenderedInputRef.current?.focus();
+          amountTenderedInputRef.current?.select();
+          toast.warning(
+            `Partial payment cannot be equal to or greater than the bill amount (${formatPaise(total)}).`,
+            { title: 'Partial Payment Limit' }
+          );
+          return;
+        }
+      }
+    }
+
     if (!allowNegativeStock) {
       for (const item of currentBill.items) {
         const available = productStockById.get(item.productId)?.current_stock;
@@ -198,7 +236,7 @@ export default function PosView() {
       discount_paise: totals.discountPaise,
       payment_method: currentBill.paymentMethod,
       paid_paise: totals.tenderedPaise,
-      notes: null,
+      notes: currentBill.notes?.trim() || null,
     };
 
     saleMutation.mutate(payload);
@@ -223,6 +261,24 @@ export default function PosView() {
       }
     }
     addItem(product);
+  };
+
+  const updateCustomerDetails = async (customer, updates) => {
+    if (!customer) return;
+    const nextCustomer = { ...customer, ...updates };
+    // Update the bill immediately so the checkout payload uses the edited details.
+    setCustomer(nextCustomer);
+    try {
+      const saved = await tauriApi.updateCustomer(customer.id, {
+        name: nextCustomer.name,
+        phone: nextCustomer.phone || null,
+        address: nextCustomer.address || null,
+      });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setCustomer(saved);
+    } catch (err) {
+      toast.error(`Failed to update customer: ${err}`, { title: 'Update failed' });
+    }
   };
 
   const changeItemQty = (productId, nextQty) => {
@@ -271,93 +327,71 @@ export default function PosView() {
     }
   };
 
+  const requiresTender =
+    !currentBill.paymentMethod ||
+    currentBill.paymentMethod === 'CASH' ||
+    currentBill.paymentMethod === 'GIFT_CARD';
+  const isFullPayment = currentBill.isFullPayment !== false;
+  const tenderedPaise = currentBill.amountTenderedPaise || 0;
+  const totalPaise = totals.totalPaise;
+
+  // Amount tendered checks apply to cash and gift card payments; digital methods (UPI, Card) settle the exact amount
+  const isPaymentValid = !requiresTender
+    ? true
+    : isFullPayment
+      ? totalPaise === 0 || tenderedPaise >= totalPaise
+      : totalPaise > 0 && tenderedPaise > 0 && tenderedPaise < totalPaise;
+
+  const canCompleteSale =
+    !saleMutation.isPending &&
+    currentBill.items.length > 0 &&
+    isPaymentValid;
+
   const primaryAction = {
     label: 'Complete Sale [F12]',
     pendingLabel: 'Processing Sale...',
     icon: CheckCircle2,
     onClick: handleCompleteSale,
-    disabled: saleMutation.isPending || currentBill.items.length === 0,
+    disabled: !canCompleteSale,
     pending: saleMutation.isPending,
   };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-canvas">
-      {/* ── POS Bill Tabs Bar ────────────────────────────────────────── */}
-      <div className="h-11 bg-surface border-b border-border-default flex items-center px-4 gap-2 select-none justify-between shrink-0">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {bills.map((b, idx) => {
-            const isActive = idx === activeBillIndex;
-            const itemCount = b.items.length;
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => switchBill(idx)}
-                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-brand text-white shadow-2xs'
-                    : 'bg-surface-secondary text-text-secondary hover:text-text-primary border border-border-default'
-                }`}
-              >
-                <span>Bill {idx + 1}</span>
-                {itemCount > 0 && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-brand-subtle text-brand'
-                    }`}
-                  >
-                    {itemCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="text-xs text-text-muted flex items-center gap-3">
-          <span>
-            Active: <strong className="text-text-primary font-semibold">Bill {activeBillIndex + 1}</strong>
-          </span>
-          <button
-            type="button"
-            onClick={handleClearCart}
-            disabled={currentBill.items.length === 0}
-            className="text-[11px] text-text-secondary hover:text-danger px-2 py-1 rounded bg-surface-secondary hover:bg-danger-bg border border-border-default transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Clear Cart
-          </button>
-        </div>
-      </div>
-
       {/* POS Cart and Checkout Editor */}
       <PosBillEditor
         bill={currentBill}
         totals={totals}
+        bills={bills}
+        activeBillIndex={activeBillIndex}
+        onSwitchBill={switchBill}
+        onClearCart={handleClearCart}
         products={products}
-        categories={categories}
         customers={customers}
         stockProducts={stockProducts}
         allowNegativeStock={allowNegativeStock}
         currencySymbol={currencySymbol}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onSelectedCategoryChange={setSelectedCategory}
         searchFocused={searchFocused}
         onSearchFocusedChange={setSearchFocused}
         searchInputRef={searchInputRef}
+        amountTenderedInputRef={amountTenderedInputRef}
         onAddItem={addProductToCart}
         onUpdateItemQty={changeItemQty}
         onUpdateItemPrice={updateItemPrice}
         onUpdateItemDiscount={updateItemDiscount}
         onRemoveItem={removeItem}
         onSetCustomer={setCustomer}
+        onUpdateCustomer={updateCustomerDetails}
         onSetDiscount={setDiscount}
         onSetPaymentMethod={setPaymentMethod}
         onSetFullPayment={setFullPayment}
         onSetAmountTendered={setAmountTendered}
         onRequestAddCustomer={() => setCustomerModalOpen(true)}
         primaryAction={primaryAction}
+        notes={currentBill.notes || ''}
+        onNotesChange={setNotes}
       />
 
       {/* ── Completion & Receipt Print Modal ───────────────────────────── */}
@@ -401,18 +435,18 @@ export default function PosView() {
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
                 type="button"
-                onClick={handlePrintReceipt}
+                onClick={() => setShowPrintModal(false)}
                 className="py-2 px-3 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-border-default cursor-pointer"
               >
-                <Printer className="w-4 h-4 text-text-muted" />
-                <span>Print Receipt</span>
+                <span>New Sale [Esc]</span>
               </button>
               <button
                 type="button"
-                onClick={() => setShowPrintModal(false)}
+                onClick={handlePrintReceipt}
                 className="py-2 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
               >
-                <span>New Sale [Esc]</span>
+                <Printer className="w-4 h-4" />
+                <span>Print Receipt</span>
               </button>
             </div>
           </div>

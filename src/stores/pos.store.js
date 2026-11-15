@@ -11,6 +11,7 @@ const createEmptyBill = (index) => ({
   paymentMethod: 'CASH',
   isFullPayment: true,
   amountTenderedPaise: 0,
+  notes: '',
 });
 
 // Helper to persist or delete an open bill in SQLite
@@ -143,9 +144,12 @@ export const usePosStore = create((set, get) => ({
   updateItemPrice: (productId, unitPricePaise) => {
     const { bills, activeBillIndex } = get();
     const currentBill = bills[activeBillIndex];
-    const newItems = currentBill.items.map((it) =>
-      it.productId === productId ? { ...it, unitPricePaise: Math.max(0, unitPricePaise) } : it
-    );
+    const newItems = currentBill.items.map((it) => {
+      if (it.productId !== productId) return it;
+      const mrp = it.mrpPaise ?? it.unitPricePaise;
+      const capped = mrp != null ? Math.min(Math.max(0, unitPricePaise), mrp) : Math.max(0, unitPricePaise);
+      return { ...it, unitPricePaise: capped };
+    });
     const updatedBill = { ...currentBill, items: newItems };
     const updatedBills = [...bills];
     updatedBills[activeBillIndex] = updatedBill;
@@ -224,6 +228,16 @@ export const usePosStore = create((set, get) => ({
     syncBillToDb(activeBillIndex, updatedBill);
   },
 
+  setNotes: (notes) => {
+    const { bills, activeBillIndex } = get();
+    const updatedBill = { ...bills[activeBillIndex], notes };
+    const updatedBills = [...bills];
+    updatedBills[activeBillIndex] = updatedBill;
+
+    set({ bills: updatedBills });
+    syncBillToDb(activeBillIndex, updatedBill);
+  },
+
   setAmountTendered: (amountTenderedPaise) => {
     const { bills, activeBillIndex } = get();
     const updatedBill = {
@@ -289,7 +303,8 @@ export function computeBillTotals(bill) {
 
   const totalPaise = Math.max(0, subtotalPaise - discountPaise);
 
-  const tenderedPaise = bill.isFullPayment ? totalPaise : (bill.amountTenderedPaise || 0);
+  const requiresTender = !bill.paymentMethod || bill.paymentMethod === 'CASH' || bill.paymentMethod === 'GIFT_CARD';
+  const tenderedPaise = requiresTender ? (bill.amountTenderedPaise || 0) : totalPaise;
   const diff = tenderedPaise - totalPaise;
   const isChange = diff >= 0;
   const balancePaise = Math.abs(diff);

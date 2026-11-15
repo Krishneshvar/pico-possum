@@ -37,6 +37,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const [lineSort, setLineSort] = useState({ key: null, dir: null });
   const handledEditRequest = useRef(null);
   const searchInputRef = useRef(null);
+  const amountTenderedInputRef = useRef(null);
 
   // ── Edit mode state ──
   const [editing, setEditing] = useState(false);
@@ -194,6 +195,19 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
   const draftTotals = useMemo(() => computeBillTotals(draftBill), [draftBill]);
 
+  const isDraftPaymentValid = useMemo(() => {
+    if (!draftBill) return false;
+    const requiresTender =
+      !draftBill.paymentMethod ||
+      draftBill.paymentMethod === 'CASH' ||
+      draftBill.paymentMethod === 'GIFT_CARD';
+    if (!requiresTender) return true;
+    const isFull = draftBill.isFullPayment !== false;
+    const tendered = draftBill.amountTenderedPaise || 0;
+    const total = draftTotals.totalPaise;
+    return isFull ? total === 0 || tendered >= total : total > 0 && tendered > 0 && tendered < total;
+  }, [draftBill, draftTotals.totalPaise]);
+
   const addProductToDraft = (product) => {
     if (!allowNegativeStock) {
       const available =
@@ -278,11 +292,15 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       prev
         ? {
             ...prev,
-            items: prev.items.map((it) =>
-              it.productId === productId
-                ? { ...it, unitPricePaise: Math.max(0, unitPricePaise || 0) }
-                : it
-            ),
+            items: prev.items.map((it) => {
+              if (it.productId !== productId) return it;
+              const mrp = it.mrpPaise ?? it.unitPricePaise;
+              const capped =
+                mrp != null
+                  ? Math.min(Math.max(0, unitPricePaise || 0), mrp)
+                  : Math.max(0, unitPricePaise || 0);
+              return { ...it, unitPricePaise: capped };
+            }),
           }
         : prev
     );
@@ -396,6 +414,45 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       return;
     }
 
+    const requiresTender =
+      !draftBill.paymentMethod ||
+      draftBill.paymentMethod === 'CASH' ||
+      draftBill.paymentMethod === 'GIFT_CARD';
+    const isFull = draftBill.isFullPayment !== false;
+    const tendered = draftBill.amountTenderedPaise || 0;
+    const total = draftTotals.totalPaise;
+
+    // Amount tendered checks apply to cash and gift card payments; digital methods (UPI, Card) settle the exact amount
+    if (requiresTender) {
+      if (isFull) {
+        if (total > 0 && tendered < total) {
+          amountTenderedInputRef.current?.focus();
+          amountTenderedInputRef.current?.select();
+          const message = `Full payment requires an amount tendered equal to or greater than the bill amount (${formatPaise(total)}).`;
+          setEditError(message);
+          toast.warning(message);
+          return;
+        }
+      } else {
+        if (tendered <= 0) {
+          amountTenderedInputRef.current?.focus();
+          amountTenderedInputRef.current?.select();
+          const message = 'Partial payment requires an amount tendered greater than zero.';
+          setEditError(message);
+          toast.warning(message);
+          return;
+        }
+        if (total > 0 && tendered >= total) {
+          amountTenderedInputRef.current?.focus();
+          amountTenderedInputRef.current?.select();
+          const message = `Partial payment cannot be equal to or greater than the bill amount (${formatPaise(total)}).`;
+          setEditError(message);
+          toast.warning(message);
+          return;
+        }
+      }
+    }
+
     const { confirmed, value: amendmentReason } = await confirmDialog({
       title: 'Confirm Bill Amendment',
       message: `Save changes to invoice #${saleDetails?.sale?.invoice_number}? A structured amendment record will be logged.`,
@@ -427,7 +484,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       })),
       discount_paise: draftTotals.discountPaise,
       payment_method: draftBill.paymentMethod,
-      paid_paise: draftTotals.tenderedPaise,
+      paid_paise: requiresTender ? draftTotals.tenderedPaise : draftTotals.totalPaise,
       notes: amendmentReason
         ? `[Amended: ${amendmentReason}] ${draftBill.notes || ''}`.trim()
         : draftBill.notes || null,
@@ -589,11 +646,11 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
               <button
                 type="button"
                 onClick={handleSaveEdit}
-                disabled={updateMutation.isPending || !draftBill?.items.length}
+                disabled={updateMutation.isPending || !draftBill?.items.length || !isDraftPaymentValid}
                 className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                {updateMutation.isPending ? 'Saving…' : 'Save Amendment'}
+                {updateMutation.isPending ? 'Saving…' : 'Save'}
               </button>
             </>
           )}
@@ -638,6 +695,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             searchFocused={editSearchFocused}
             onSearchFocusedChange={setEditSearchFocused}
             searchInputRef={searchInputRef}
+            amountTenderedInputRef={amountTenderedInputRef}
             onAddItem={addProductToDraft}
             onUpdateItemQty={updateDraftItemQty}
             onUpdateItemPrice={updateDraftItemPrice}
@@ -649,14 +707,13 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             onSetFullPayment={setDraftFullPayment}
             onSetAmountTendered={setDraftAmountTendered}
             onRequestAddCustomer={() => setCustomerModalOpen(true)}
-            showNotes={true}
             notes={draftBill.notes || ''}
             onNotesChange={setDraftNotes}
             primaryAction={{
-              label: 'Save Amendment',
+              label: 'Save',
               pendingLabel: 'Saving Changes…',
               pending: updateMutation.isPending,
-              disabled: updateMutation.isPending || draftBill.items.length === 0,
+              disabled: updateMutation.isPending || draftBill.items.length === 0 || !isDraftPaymentValid,
               icon: Save,
               onClick: handleSaveEdit,
             }}

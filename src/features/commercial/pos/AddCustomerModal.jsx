@@ -64,7 +64,7 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Rajesh Sharma"
+              placeholder="e.g. John Doe"
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
             />
           </div>
