@@ -13,6 +13,7 @@ import {
 import { nextSortState, sortRows } from '../../lib/sort';
 import DatePicker from './DatePicker';
 import Select from './Select';
+import { strings } from '../../lib/strings';
 
 // ── Persisted Table State (column order & widths) ────────────────────────────
 const TABLE_STATE_PREFIX = 'pico-possum:table-state:';
@@ -212,7 +213,7 @@ function MultiSelectDropdown({ label, options = [], selected = [], onChange }) {
                 highlightedIndex === options.length ? 'bg-danger-bg font-semibold' : ''
               }`}
             >
-              <X className="w-3 h-3" /> Clear selected
+              <X className="w-3 h-3" /> {strings.common.table.clearSelected}
             </button>
           )}
         </div>
@@ -229,7 +230,7 @@ function RangeFilter({ label, unit, minVal, maxVal, onMinChange, onMaxChange }) 
       <input
         type="number"
         step="any"
-        placeholder={`Min${unit ? ` (${unit})` : ''}`}
+        placeholder={strings.common.table.minPlaceholder(unit)}
         value={minVal}
         onChange={(e) => onMinChange(e.target.value)}
         onInput={(e) => onMinChange(e.target.value)}
@@ -239,7 +240,7 @@ function RangeFilter({ label, unit, minVal, maxVal, onMinChange, onMaxChange }) 
       <input
         type="number"
         step="any"
-        placeholder={`Max${unit ? ` (${unit})` : ''}`}
+        placeholder={strings.common.table.maxPlaceholder(unit)}
         value={maxVal}
         onChange={(e) => onMaxChange(e.target.value)}
         onInput={(e) => onMaxChange(e.target.value)}
@@ -257,13 +258,13 @@ function DateRangeFilter({ label, fromVal, toVal, onFromChange, onToChange }) {
       <DatePicker
         value={fromVal}
         onChange={onFromChange}
-        placeholder="Start date"
+        placeholder={strings.common.placeholders.startDate}
       />
       <span className="text-text-muted">–</span>
       <DatePicker
         value={toVal}
         onChange={onToChange}
-        placeholder="End date"
+        placeholder={strings.common.placeholders.endDate}
       />
     </div>
   );
@@ -291,7 +292,7 @@ export default function DataTable({
   searchKeys,
   filters = [],
   pageSize = 20,
-  emptyMessage = 'No records found.',
+  emptyMessage = strings.common.states.noRecords,
   actions,
   isLoading = false,
   headerRight,
@@ -676,7 +677,7 @@ export default function DataTable({
             type="text"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search records…"
+            placeholder={strings.common.table.searchRecords}
             className="w-full pl-8 pr-3 py-1.5 bg-surface-secondary border border-border-default rounded-lg text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
           />
         </div>
@@ -693,7 +694,7 @@ export default function DataTable({
                 onChange={(val) => handleSelect(f.key, val)}
                 placeholder={f.label}
                 options={[
-                  { value: '', label: `All ${f.label}` },
+                  { value: '', label: strings.common.table.allFilter(f.label) },
                   ...f.options,
                 ]}
               />
@@ -759,7 +760,7 @@ export default function DataTable({
             onClick={clearAllFilters}
             className="flex items-center gap-1 text-[11px] font-medium text-danger hover:underline transition-colors cursor-pointer px-1 py-0.5"
           >
-            <X className="w-3 h-3" /> Clear filters
+            <X className="w-3 h-3" /> {strings.common.table.clearFilters}
           </button>
         )}
 
@@ -803,7 +804,7 @@ export default function DataTable({
                         if (!isSortable || suppressHeaderClick.current) return;
                         toggleSort(col.key);
                       }}
-                      title={isSortable ? `Sort by ${col.label}` : undefined}
+                      title={isSortable ? strings.common.table.sortBy(col.label) : undefined}
                       aria-sort={isSorted ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                       style={widthStyle}
                       className={`relative py-2.5 px-3.5 ${colIdx === 0 ? 'pl-4' : ''} ${
@@ -840,7 +841,7 @@ export default function DataTable({
                             return next;
                           });
                         }}
-                        title="Drag to resize, double-click to reset"
+                        title={strings.common.table.dragToResize}
                         className="absolute top-0 right-0 bottom-0 w-3 -mr-1.5 cursor-col-resize select-none flex items-center justify-center group/resize z-20"
                       >
                         <div className="w-[1.5px] h-3.5 bg-border-strong group-hover/resize:bg-brand group-hover/resize:w-[2px] group-hover/resize:h-full transition-all" />
@@ -850,7 +851,7 @@ export default function DataTable({
                 })}
                 {actions && (
                   <th className="py-2.5 pl-3.5 pr-4 text-right sticky right-0 bg-table-header-bg z-10 w-28 text-table-header-text">
-                    Actions
+                    {strings.common.table.actions}
                   </th>
                 )}
               </tr>
@@ -898,7 +899,7 @@ export default function DataTable({
                             !actions && colIdx === orderedColumns.length - 1 ? 'pr-4' : ''
                           } ${col.className ?? ''}`}
                         >
-                          {col.render ? col.render(row) : (row[col.key] ?? '—')}
+                          {col.render ? col.render(row) : (row[col.key] ?? strings.common.states.emptyValue)}
                         </td>
                       );
                     })}
@@ -926,7 +927,7 @@ export default function DataTable({
             {/* Left: Current Page info */}
             <div className="flex-1 min-w-0 flex items-center">
               <span>
-                Page <strong className="text-text-primary font-semibold">{safePage}</strong> of{' '}
+                Page <strong className="text-text-primary font-semibold">{safePage}</strong> {strings.common.table.of}{' '}
                 <strong className="text-text-primary font-semibold">{totalPages}</strong>
               </span>
             </div>
@@ -938,7 +939,7 @@ export default function DataTable({
                 onClick={() => goPage(1)}
                 disabled={safePage === 1}
                 className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
-                title="First page"
+                title={strings.common.table.firstPage}
               >
                 «
               </button>
@@ -947,7 +948,7 @@ export default function DataTable({
                 onClick={() => goPage(safePage - 1)}
                 disabled={safePage === 1}
                 className="p-1 rounded disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
-                title="Previous page"
+                title={strings.common.table.previousPage}
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
@@ -958,7 +959,7 @@ export default function DataTable({
                     key={`ellipsis-${idx}`}
                     className="w-7 h-7 flex items-center justify-center text-text-muted font-bold select-none"
                   >
-                    …
+                    {strings.common.table.ellipsis}
                   </span>
                 ) : (
                   <button
@@ -981,7 +982,7 @@ export default function DataTable({
                 onClick={() => goPage(safePage + 1)}
                 disabled={safePage === totalPages}
                 className="p-1 rounded disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
-                title="Next page"
+                title={strings.common.table.nextPage}
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -990,7 +991,7 @@ export default function DataTable({
                 onClick={() => goPage(totalPages)}
                 disabled={safePage === totalPages}
                 className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
-                title="Last page"
+                title={strings.common.table.lastPage}
               >
                 »
               </button>
@@ -999,10 +1000,10 @@ export default function DataTable({
             {/* Right: Record range */}
             <div className="flex-1 min-w-0 flex items-center justify-end text-right">
               <span>
-                from <strong className="text-text-primary font-semibold">{startRecord}</strong> to{' '}
+                {strings.common.table.from} <strong className="text-text-primary font-semibold">{startRecord}</strong> {strings.common.table.to}{' '}
                 <strong className="text-text-primary font-semibold">{endRecord}</strong>
                 {sorted.length > 0 && (
-                  <span className="text-text-muted"> of {sorted.length}</span>
+                  <span className="text-text-muted">{strings.common.table.rangeOf(sorted.length)}</span>
                 )}
               </span>
             </div>

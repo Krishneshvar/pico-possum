@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
+import { strings } from '../../lib/strings';
 
 const VIEWPORT_PADDING = 8;
 const MENU_GAP = 6;
@@ -134,7 +135,7 @@ export default function DropdownActions({ items = [], align = 'right' }) {
               ? 'bg-surface-secondary text-text-primary border-border-strong'
               : 'hover:bg-surface-secondary text-text-muted hover:text-text-primary border-transparent'
           }`}
-          title="Actions"
+          title={strings.common.dropdown.actions}
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>

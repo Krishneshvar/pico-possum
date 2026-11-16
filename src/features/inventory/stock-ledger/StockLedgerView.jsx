@@ -5,30 +5,33 @@ import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { strings } from '../../../lib/strings';
+
+const s = strings.stockLedger;
 
 const REASON_CONFIG = {
   MANUAL_STOCK_CORRECTION: {
-    label: 'Manual Stock Correction',
+    label: s.movementTypes.manualStockCorrection,
     badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
   },
   PURCHASE: {
-    label: 'Purchase',
+    label: s.movementTypes.purchase,
     badgeClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   },
   BILL_ADJUSTMENT: {
-    label: 'Bill Adjustment',
+    label: s.movementTypes.billAdjustment,
     badgeClass: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
   },
   RETURN: {
-    label: 'Return',
+    label: s.movementTypes.return,
     badgeClass: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
   },
   CANCELLED: {
-    label: 'Cancelled',
+    label: s.movementTypes.cancelled,
     badgeClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
   },
   SALE: {
-    label: 'Sale',
+    label: s.movementTypes.sale,
     badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   },
 };
@@ -63,12 +66,12 @@ export default function StockLedgerView() {
 
   const movementTypeOptions = useMemo(
     () => [
-      { value: 'MANUAL_STOCK_CORRECTION', label: 'Manual Stock Correction' },
-      { value: 'PURCHASE', label: 'Purchase' },
-      { value: 'BILL_ADJUSTMENT', label: 'Bill Adjustment' },
-      { value: 'RETURN', label: 'Return' },
-      { value: 'CANCELLED', label: 'Cancelled' },
-      { value: 'SALE', label: 'Sale' },
+      { value: 'MANUAL_STOCK_CORRECTION', label: s.movementTypes.manualStockCorrection },
+      { value: 'PURCHASE', label: s.movementTypes.purchase },
+      { value: 'BILL_ADJUSTMENT', label: s.movementTypes.billAdjustment },
+      { value: 'RETURN', label: s.movementTypes.return },
+      { value: 'CANCELLED', label: s.movementTypes.cancelled },
+      { value: 'SALE', label: s.movementTypes.sale },
     ],
     []
   );
@@ -76,25 +79,25 @@ export default function StockLedgerView() {
   const columns = [
     {
       key: 'created_at',
-      label: 'Date & Time',
+      label: s.columns.dateTime,
       className: 'font-mono text-text-muted text-[11px] whitespace-nowrap',
       render: (r) => formatDateTime(r.created_at),
     },
     {
       key: 'product_sku',
-      label: 'SKU',
+      label: s.columns.sku,
       className: 'font-mono text-text-muted text-[11px]',
       render: (r) => r.product_sku || <span className="text-text-muted">—</span>,
     },
     {
       key: 'product_name',
-      label: 'Product',
+      label: s.columns.product,
       className: 'font-semibold text-text-primary text-xs',
-      render: (r) => r.product_name || <span className="text-text-muted italic">Unknown Item</span>,
+      render: (r) => r.product_name || <span className="text-text-muted italic">{s.unknownItem}</span>,
     },
     {
       key: 'movement_type',
-      label: 'Stock Change Reason',
+      label: s.columns.reason,
       headerClassName: 'text-center',
       className: 'text-center text-xs',
       render: (r) => {
@@ -114,7 +117,7 @@ export default function StockLedgerView() {
     },
     {
       key: 'quantity_change',
-      label: 'Quantity Delta',
+      label: s.columns.quantityDelta,
       headerClassName: 'text-center',
       className: 'text-center financial-value font-bold text-xs',
       render: (r) => {
@@ -139,7 +142,7 @@ export default function StockLedgerView() {
     },
     {
       key: 'reference_id',
-      label: 'Reference / Invoice',
+      label: s.columns.reference,
       className: 'font-mono text-xs',
       render: (r) => {
         const isInvoiceRef =
@@ -154,12 +157,12 @@ export default function StockLedgerView() {
             <button
               type="button"
               onClick={() =>
-                openOrFocus(`Bill #${r.reference_id}`, 'bill-detail', {
+                openOrFocus(s.billTabTitle(r.reference_id), 'bill-detail', {
                   invoiceNumber: r.reference_id,
                 })
               }
               className="inline-flex items-center gap-1 text-brand hover:underline font-mono text-[11px] cursor-pointer"
-              title={`Open bill ${r.reference_id}`}
+              title={s.openBill(r.reference_id)}
             >
               <Receipt className="w-3 h-3 shrink-0" />
               <span>{r.reference_id}</span>
@@ -172,7 +175,7 @@ export default function StockLedgerView() {
     },
     {
       key: 'note',
-      label: 'Audit Reason / Notes',
+      label: s.columns.notes,
       className: 'text-text-secondary text-xs',
       render: (r) => r.note || <span className="text-text-muted">—</span>,
     },
@@ -187,9 +190,9 @@ export default function StockLedgerView() {
             <ArrowRightLeft className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-text-primary">Stock Activity Ledger</h2>
+            <h2 className="text-sm font-bold text-text-primary">{s.title}</h2>
             <p className="text-[11px] text-text-muted">
-              Inventory movements, restocking history, audits, and sales ledger
+              {s.subtitle}
             </p>
           </div>
         </div>
@@ -198,7 +201,7 @@ export default function StockLedgerView() {
           type="button"
           onClick={() => refetch()}
           className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-          title="Refresh Ledger"
+          title={s.refresh}
         >
           <RefreshCw className="w-4 h-4" />
         </button>
@@ -215,7 +218,7 @@ export default function StockLedgerView() {
             {
               type: 'multiselect',
               key: 'movement_type',
-              label: 'Stock Change Reasons',
+              label: s.filters.reasons,
               options: movementTypeOptions,
               filterFn: (row, selectedValues) => {
                 if (!selectedValues || selectedValues.length === 0) return true;
@@ -227,7 +230,7 @@ export default function StockLedgerView() {
               type: 'daterange',
               fromKey: 'created_at',
               toKey: 'created_at',
-              label: 'Date Filter',
+              label: s.filters.date,
               fromVal: fromDate,
               toVal: toDate,
               onFromChange: (val) => setFromDate(val),
@@ -235,7 +238,7 @@ export default function StockLedgerView() {
             },
           ]}
           isLoading={isLoading}
-          emptyMessage="No stock movements found for the selected period."
+          emptyMessage={s.empty}
         />
       </div>
     </div>

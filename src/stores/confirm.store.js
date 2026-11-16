@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { strings } from '../lib/strings';
 
 let _nextId = 1;
 let _resolver = null;
@@ -32,11 +33,11 @@ export const useConfirmStore = create((set) => ({
       set({
         request: {
           id: _nextId++,
-          title: 'Are you sure?',
+          title: strings.common.confirm.promptTitle,
           message: '',
           details: [],
-          confirmLabel: 'Confirm',
-          cancelLabel: 'Cancel',
+          confirmLabel: strings.common.confirm.confirm,
+          cancelLabel: strings.common.confirm.cancel,
           tone: 'danger',
           icon: null,
           input: null,

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { X, UserPlus } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
+import { strings } from '../../../lib/strings';
 
 const EMPTY_FORM = { name: '', phone: '', address: '' };
 
@@ -20,7 +21,7 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
   const handleSave = async (e) => {
     e?.preventDefault();
     if (!form.name.trim()) {
-      toast.warning('Customer name is required');
+      toast.warning(strings.pos.customerModal.nameRequired);
       return;
     }
     try {
@@ -29,9 +30,11 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
       setForm(EMPTY_FORM);
       onCreated?.(saved);
       onClose?.();
-      toast.success(`Customer "${saved.name}" attached to bill`);
+      toast.success(strings.pos.customerModal.attachedToBill(saved.name));
     } catch (err) {
-      toast.error(`Failed to add customer: ${err}`, { title: 'Save failed' });
+      toast.error(strings.pos.customerModal.addFailed(err), {
+        title: strings.pos.customerModal.saveFailedTitle,
+      });
     }
   };
 
@@ -43,7 +46,7 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
             <div className="w-7 h-7 rounded-lg bg-brand-subtle text-brand flex items-center justify-center">
               <UserPlus className="w-4 h-4" />
             </div>
-            <h3 className="font-bold text-sm text-text-primary">Add New Customer</h3>
+            <h3 className="font-bold text-sm text-text-primary">{strings.pos.customerModal.title}</h3>
           </div>
           <button
             type="button"
@@ -57,34 +60,34 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
         <form onSubmit={handleSave} className="space-y-3 text-xs">
           <div>
             <label className="text-text-secondary block font-semibold mb-1">
-              Customer Name <span className="text-danger">*</span>
+              {strings.pos.customerModal.nameLabel} <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. John Doe"
+              placeholder={strings.pos.customerModal.namePlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-text-secondary block font-semibold mb-1">Phone Number</label>
+            <label className="text-text-secondary block font-semibold mb-1">{strings.pos.customerModal.phoneLabel}</label>
             <input
               type="text"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="e.g. 9876543210"
+              placeholder={strings.pos.customerModal.phonePlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-text-secondary block font-semibold mb-1">Address / Notes</label>
+            <label className="text-text-secondary block font-semibold mb-1">{strings.pos.customerModal.addressLabel}</label>
             <textarea
               rows="2"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Street / Locality / GSTIN"
+              placeholder={strings.pos.customerModal.addressPlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none resize-none"
             />
           </div>
@@ -95,13 +98,13 @@ export default function AddCustomerModal({ open, onClose, onCreated }) {
               onClick={handleClose}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-surface-secondary cursor-pointer border border-border-default"
             >
-              Cancel
+              {strings.common.actions.cancel}
             </button>
             <button
               type="submit"
               className="px-4 py-1.5 rounded-lg text-xs font-bold bg-brand text-white hover:bg-brand-hover shadow-xs cursor-pointer"
             >
-              Save Customer
+              {strings.pos.customerModal.saveCustomer}
             </button>
           </div>
         </form>

@@ -1,4 +1,5 @@
 import { ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { strings } from '../../lib/strings';
 
 /**
  * Sortable <th> for plain markup tables.
@@ -22,7 +23,7 @@ export default function SortableTh({
       {...rest}
       onClick={() => onSort(sortKey)}
       aria-sort={isActive ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-      title="Sort by this column"
+      title={strings.common.table.sortByColumn}
       className={`cursor-pointer select-none group/th ${alignClass} ${className}`}
     >
       <span className="inline-flex items-center gap-1">

@@ -9,6 +9,7 @@ import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import PosBillEditor from './PosBillEditor';
 import AddCustomerModal from './AddCustomerModal';
+import { strings } from '../../../lib/strings';
 
 export default function PosView() {
   const queryClient = useQueryClient();
@@ -105,12 +106,15 @@ export default function PosView() {
       setCompletedSale(response);
       setShowPrintModal(true);
       clearCurrentBill();
-      toast.success(`Invoice ${response.sale.invoice_number} completed successfully`, {
-        title: 'Sale Completed',
-      });
+      toast.success(
+        strings.pos.view.saleCompletedMessage(response.sale.invoice_number),
+        { title: strings.pos.view.saleCompletedTitle }
+      );
     },
     onError: (err) => {
-      toast.error(`Sale failed: ${err}`, { title: 'Checkout Failed' });
+      toast.error(strings.pos.view.saleFailed(err), {
+        title: strings.pos.view.checkoutFailedTitle,
+      });
     },
   });
 
@@ -163,7 +167,7 @@ export default function PosView() {
 
   const handleCompleteSale = () => {
     if (!currentBill.items.length) {
-      toast.warning('Please add items to cart before completing checkout.');
+      toast.warning(strings.pos.view.addItemsBeforeCheckout);
       return;
     }
 
@@ -182,8 +186,8 @@ export default function PosView() {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
           toast.info(
-            `Enter amount tendered (at least ${formatPaise(total)}) to complete sale.`,
-            { title: 'Tender Amount Required' }
+            strings.pos.view.enterTenderedAmount(formatPaise(total)),
+            { title: strings.pos.view.tenderRequiredTitle }
           );
           return;
         }
@@ -192,8 +196,8 @@ export default function PosView() {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
           toast.info(
-            `Enter partial payment amount (less than ${formatPaise(total)}) to complete sale.`,
-            { title: 'Tender Amount Required' }
+            strings.pos.view.enterPartialPayment(formatPaise(total)),
+            { title: strings.pos.view.tenderRequiredTitle }
           );
           return;
         }
@@ -201,8 +205,8 @@ export default function PosView() {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
           toast.warning(
-            `Partial payment cannot be equal to or greater than the bill amount (${formatPaise(total)}).`,
-            { title: 'Partial Payment Limit' }
+            strings.pos.toasts.partialPaymentLimit(formatPaise(total)),
+            { title: strings.pos.toasts.partialPaymentLimitTitle }
           );
           return;
         }
@@ -214,8 +218,12 @@ export default function PosView() {
         const available = productStockById.get(item.productId)?.current_stock;
         if (available != null && item.quantity > available) {
           toast.warning(
-            `Cannot complete sale: "${item.name}" has only ${available} unit${available === 1 ? '' : 's'} in stock (cart: ${item.quantity}).`,
-            { title: 'Insufficient Stock' }
+            strings.pos.view.insufficientStock(
+              item.name,
+              available,
+              item.quantity
+            ),
+            { title: strings.pos.view.insufficientStockTitle }
           );
           return;
         }
@@ -249,13 +257,13 @@ export default function PosView() {
       const inCart = currentBill.items.find((it) => it.productId === product.id)?.quantity || 0;
 
       if (available <= 0) {
-        toast.warning(`"${product.name}" is out of stock.`);
+        toast.warning(strings.pos.view.outOfStock(product.name));
         return;
       }
       if (inCart + 1 > available) {
         toast.warning(
-          `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`,
-          { title: 'Stock Limit' }
+          strings.pos.view.stockLimit(available, product.name),
+          { title: strings.pos.view.stockLimitTitle }
         );
         return;
       }
@@ -277,7 +285,9 @@ export default function PosView() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setCustomer(saved);
     } catch (err) {
-      toast.error(`Failed to update customer: ${err}`, { title: 'Update failed' });
+      toast.error(strings.pos.view.updateCustomerFailed(err), {
+        title: strings.pos.view.updateFailedTitle,
+      });
     }
   };
 
@@ -294,8 +304,8 @@ export default function PosView() {
       const available = productStockById.get(productId)?.current_stock;
       if (available != null && nextQty > available) {
         toast.warning(
-          `Only ${available} unit${available === 1 ? '' : 's'} of "${item.name}" available in stock.`,
-          { title: 'Stock Limit' }
+          strings.pos.view.stockLimit(available, item.name),
+          { title: strings.pos.view.stockLimitTitle }
         );
         return;
       }
@@ -305,25 +315,28 @@ export default function PosView() {
   };
 
   const handlePrintReceipt = () => {
-    toast.info('Opening system print dialog');
+    toast.info(strings.pos.view.printDialogOpening);
     window.print();
   };
 
   const handleClearCart = async () => {
     if (currentBill.items.length === 0) {
-      toast.info(`Bill ${activeBillIndex + 1} is already empty`);
+      toast.info(strings.pos.view.billAlreadyEmpty(activeBillIndex + 1));
       return;
     }
     const { confirmed } = await confirmDialog({
-      title: 'Clear Cart',
-      message: `Remove all ${currentBill.items.length} items from Bill ${activeBillIndex + 1}?`,
-      confirmLabel: 'Clear Cart',
-      cancelLabel: 'Keep Items',
+      title: strings.pos.confirms.clearCart.title,
+      message: strings.pos.confirms.clearCart.message(
+        currentBill.items.length,
+        activeBillIndex + 1
+      ),
+      confirmLabel: strings.pos.confirms.clearCart.confirmLabel,
+      cancelLabel: strings.pos.confirms.clearCart.cancelLabel,
       tone: 'danger',
     });
     if (confirmed) {
       clearCurrentBill();
-      toast.info(`Bill ${activeBillIndex + 1} cleared`);
+      toast.info(strings.pos.view.billCleared(activeBillIndex + 1));
     }
   };
 
@@ -348,8 +361,8 @@ export default function PosView() {
     isPaymentValid;
 
   const primaryAction = {
-    label: 'Complete Sale [F12]',
-    pendingLabel: 'Processing Sale...',
+    label: strings.pos.view.completeSale,
+    pendingLabel: strings.pos.view.processingSale,
     icon: CheckCircle2,
     onClick: handleCompleteSale,
     disabled: !canCompleteSale,
@@ -402,9 +415,9 @@ export default function PosView() {
               <div className="w-12 h-12 rounded-full bg-success-bg text-success flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-bold text-text-primary">Sale Completed</h3>
+              <h3 className="text-base font-bold text-text-primary">{strings.pos.view.saleCompletedTitle}</h3>
               <p className="text-xs text-text-muted">
-                Invoice Number:{' '}
+                {strings.pos.view.invoiceNumber}{' '}
                 <strong className="text-text-primary font-mono">{completedSale.sale.invoice_number}</strong>
               </p>
             </div>
@@ -413,7 +426,7 @@ export default function PosView() {
             {completedSale.change_paise > 0 && (
               <div className="bg-surface-secondary p-3.5 rounded-xl border border-border-default text-center">
                 <div className="text-[11px] text-text-muted uppercase font-bold tracking-wider">
-                  Change to Return
+                  {strings.pos.view.changeToReturn}
                 </div>
                 <div className="text-2xl font-black text-text-primary financial-value mt-0.5">
                   {formatPaise(completedSale.change_paise)}
@@ -438,7 +451,7 @@ export default function PosView() {
                 onClick={() => setShowPrintModal(false)}
                 className="py-2 px-3 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-border-default cursor-pointer"
               >
-                <span>New Sale [Esc]</span>
+                <span>{strings.pos.view.newSale}</span>
               </button>
               <button
                 type="button"
@@ -446,7 +459,7 @@ export default function PosView() {
                 className="py-2 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print Receipt</span>
+                <span>{strings.pos.view.printReceipt}</span>
               </button>
             </div>
           </div>

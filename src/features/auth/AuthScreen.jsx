@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import { strings } from '../../lib/strings';
 import iconShell from '../../assets/icon-shell.png';
 
 export default function AuthScreen({ authState, onAuthenticated }) {
@@ -56,17 +57,22 @@ export default function AuthScreen({ authState, onAuthenticated }) {
     mutationFn: (credentials) => tauriApi.login(credentials),
     onSuccess: (res) => {
       toast.success(
-        res?.user?.name ? `Welcome back, ${res.user.name}` : 'Signed in successfully',
-        { title: 'Signed in' }
+        res?.user?.name
+          ? strings.auth.toast.welcomeBack(res.user.name)
+          : strings.auth.toast.signedIn,
+        { title: strings.auth.toast.signedInTitle }
       );
       queryClient.setQueryData(['auth_state'], res);
       if (onAuthenticated) onAuthenticated(res);
     },
     onError: (err) => {
-      const msg = typeof err === 'string' ? err : err?.message || 'Invalid username or password';
+      const msg =
+        typeof err === 'string'
+          ? err
+          : err?.message || strings.auth.errors.invalidCredentials;
       const cleanMsg = msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, '');
       setErrorMessage(cleanMsg);
-      toast.error(cleanMsg, { title: 'Sign in failed' });
+      toast.error(cleanMsg, { title: strings.auth.toast.signInFailedTitle });
     },
   });
 
@@ -74,17 +80,20 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const registerMutation = useMutation({
     mutationFn: (payload) => tauriApi.registerAdmin(payload),
     onSuccess: (res) => {
-      toast.success('Administrator account created. Terminal unlocked.', {
-        title: 'Setup complete',
+      toast.success(strings.auth.toast.accountCreated, {
+        title: strings.auth.toast.setupCompleteTitle,
       });
       queryClient.setQueryData(['auth_state'], res);
       if (onAuthenticated) onAuthenticated(res);
     },
     onError: (err) => {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to complete registration';
+      const msg =
+        typeof err === 'string'
+          ? err
+          : err?.message || strings.auth.errors.registrationFailed;
       const cleanMsg = msg.replace(/^Validation error:\s*|^Forbidden:\s*/, '');
       setErrorMessage(cleanMsg);
-      toast.error(cleanMsg, { title: 'Setup failed' });
+      toast.error(cleanMsg, { title: strings.auth.toast.setupFailedTitle });
     },
   });
 
@@ -94,23 +103,23 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
     if (requiresSetup) {
       if (!name.trim()) {
-        setErrorMessage('Please enter your full name');
+        setErrorMessage(strings.auth.errors.fullNameRequired);
         return;
       }
       if (!username.trim()) {
-        setErrorMessage('Please choose an administrator username');
+        setErrorMessage(strings.auth.errors.usernameRequired);
         return;
       }
       if (!password) {
-        setErrorMessage('Please enter a secure password');
+        setErrorMessage(strings.auth.errors.passwordRequired);
         return;
       }
       if (password.length < 4) {
-        setErrorMessage('Password must be at least 4 characters long');
+        setErrorMessage(strings.auth.errors.passwordTooShort);
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMessage('Passwords do not match');
+        setErrorMessage(strings.auth.errors.passwordMismatch);
         return;
       }
 
@@ -121,7 +130,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
       });
     } else {
       if (!username.trim() || !password) {
-        setErrorMessage('Please enter both username and password');
+        setErrorMessage(strings.auth.errors.credentialsRequired);
         return;
       }
 
@@ -156,7 +165,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
           <div className="w-14 h-14 rounded-xl bg-surface-secondary border border-border-default p-2 mb-3 shadow-xs flex items-center justify-center">
             <img
               src={iconShell}
-              alt="PicoPOSSUM"
+              alt={strings.layout.brand.logoAlt}
               className="w-full h-full object-contain"
             />
           </div>
@@ -165,23 +174,25 @@ export default function AuthScreen({ authState, onAuthenticated }) {
             {requiresSetup ? (
               <>
                 <Sparkles className="w-3 h-3" />
-                <span>First-Time Setup</span>
+                <span>{strings.auth.login.badges.setup}</span>
               </>
             ) : (
               <>
                 <ShieldCheck className="w-3 h-3" />
-                <span>Protected Terminal</span>
+                <span>{strings.auth.login.badges.protected}</span>
               </>
             )}
           </div>
 
           <h1 className="text-xl font-bold text-text-primary tracking-tight">
-            {requiresSetup ? 'System Administrator Setup' : 'Sign In to PicoPOSSUM'}
+            {requiresSetup
+              ? strings.auth.login.titles.setup
+              : strings.auth.login.titles.signIn}
           </h1>
           <p className="text-xs text-text-secondary mt-1 max-w-xs leading-relaxed">
             {requiresSetup
-              ? "Create your master administrator account to secure your store's database and data."
-              : 'Enter your credentials to unlock terminal sales and operations.'}
+              ? strings.auth.login.subtitles.setup
+              : strings.auth.login.subtitles.signIn}
           </p>
         </div>
 
@@ -198,7 +209,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
           {requiresSetup && (
             <div>
               <label className="block text-text-secondary text-xs font-semibold mb-1">
-                Administrator Name
+                {strings.auth.fields.administratorName}
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -206,7 +217,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Store Owner / Manager"
+                  placeholder={strings.auth.placeholders.administratorName}
                   disabled={isPending}
                   required
                   className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-3.5 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
@@ -217,7 +228,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
           <div>
             <label className="block text-text-secondary text-xs font-semibold mb-1">
-              Username
+              {strings.auth.fields.username}
             </label>
             <div className="relative">
               <AtSign className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -225,7 +236,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder={strings.auth.placeholders.username}
                 disabled={isPending}
                 required
                 className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-3.5 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
@@ -235,7 +246,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
           <div>
             <label className="block text-text-secondary text-xs font-semibold mb-1">
-              Password
+              {strings.auth.fields.password}
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -244,7 +255,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={strings.auth.placeholders.password}
                 disabled={isPending}
                 required
                 className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-9 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
@@ -274,9 +285,15 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                   />
                 </div>
                 <div className="flex justify-between text-[10px] text-text-muted">
-                  <span>Password strength</span>
+                  <span>{strings.auth.password.strengthLabel}</span>
                   <span className="font-semibold text-text-secondary">
-                    {strength <= 1 ? 'Weak' : strength === 2 ? 'Moderate' : strength === 3 ? 'Good' : 'Strong'}
+                    {strength <= 1
+                      ? strings.auth.password.levels.weak
+                      : strength === 2
+                      ? strings.auth.password.levels.moderate
+                      : strength === 3
+                      ? strings.auth.password.levels.good
+                      : strings.auth.password.levels.strong}
                   </span>
                 </div>
               </div>
@@ -286,7 +303,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
           {requiresSetup && (
             <div>
               <label className="block text-text-secondary text-xs font-semibold mb-1">
-                Confirm Password
+                {strings.auth.fields.confirmPassword}
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -294,7 +311,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={strings.auth.placeholders.password}
                   disabled={isPending}
                   required
                   className="w-full bg-surface-secondary border border-border-strong rounded-xl pl-9 pr-9 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
@@ -315,11 +332,19 @@ export default function AuthScreen({ authState, onAuthenticated }) {
             {isPending ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>{requiresSetup ? 'Setting up account...' : 'Authenticating...'}</span>
+                <span>
+                  {requiresSetup
+                    ? strings.auth.actions.settingUpAccount
+                    : strings.auth.actions.authenticating}
+                </span>
               </>
             ) : (
               <>
-                <span>{requiresSetup ? 'Create Account & Open Terminal' : 'Sign In'}</span>
+                <span>
+                  {requiresSetup
+                    ? strings.auth.actions.createAccount
+                    : strings.auth.actions.signIn}
+                </span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
@@ -328,8 +353,8 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
         {/* Footer with App Version */}
         <div className="mt-6 pt-4 border-t border-border-default flex items-center justify-between text-[11px] text-text-muted">
-          <span>PicoPOSSUM</span>
-          <span className="font-mono">v1.0.0</span>
+          <span>{strings.layout.brand.name}</span>
+          <span className="font-mono">{strings.auth.footer.version}</span>
         </div>
       </div>
     </div>

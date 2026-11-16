@@ -25,6 +25,7 @@ import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import Select from '../../../components/common/Select';
+import { strings } from '../../../lib/strings';
 
 // Recursive Tree Node Component
 function TreeNode({
@@ -100,7 +101,7 @@ function TreeNode({
                 e.stopPropagation();
                 onAddChild(node);
               }}
-              title="Add subcategory"
+              title={strings.categories.tree.addSubcategory}
               className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
@@ -111,7 +112,7 @@ function TreeNode({
                 e.stopPropagation();
                 onEdit(node);
               }}
-              title="Edit category"
+              title={strings.categories.tree.editCategory}
               className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             >
               <Edit2 className="w-3 h-3" />
@@ -122,7 +123,7 @@ function TreeNode({
                 e.stopPropagation();
                 onDelete(node);
               }}
-              title="Delete category"
+              title={strings.categories.tree.deleteCategory}
               className="p-1 rounded text-text-muted hover:text-danger hover:bg-danger-bg transition-colors cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />
@@ -244,9 +245,12 @@ export default function CategoriesView() {
       setModalOpen(false);
       setName('');
       setParentId('');
-      toast.success('Category created successfully');
+      toast.success(strings.categories.toasts.created);
     },
-    onError: (err) => toast.error(`Failed to create category: ${err}`, { title: 'Create failed' }),
+    onError: (err) =>
+      toast.error(strings.categories.toasts.createFailed(err), {
+        title: strings.categories.toasts.createFailedTitle,
+      }),
   });
 
   const updateMutation = useMutation({
@@ -257,30 +261,40 @@ export default function CategoriesView() {
       setEditingCategory(null);
       setName('');
       setParentId('');
-      toast.success('Category updated successfully');
+      toast.success(strings.categories.toasts.updated);
     },
-    onError: (err) => toast.error(`Failed to update category: ${err}`, { title: 'Update failed' }),
+    onError: (err) =>
+      toast.error(strings.categories.toasts.updateFailed(err), {
+        title: strings.categories.toasts.updateFailedTitle,
+      }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => tauriApi.deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Category deleted successfully');
+      toast.success(strings.categories.toasts.deleted);
     },
-    onError: (err) => toast.error(`Failed to delete category: ${err}`, { title: 'Delete failed' }),
+    onError: (err) =>
+      toast.error(strings.categories.toasts.deleteFailed(err), {
+        title: strings.categories.toasts.deleteFailedTitle,
+      }),
   });
 
   const handleExportCsv = async () => {
     if (!categories.length) {
-      toast.warning('No categories to export');
+      toast.warning(strings.categories.toasts.noCategoriesToExport);
       return;
     }
 
-    const headers = ['Category Name', 'Parent Category', 'Product Count'];
+    const headers = [
+      strings.categories.export.headers.name,
+      strings.categories.export.headers.parent,
+      strings.categories.export.headers.productCount,
+    ];
     const rows = categories.map((c) => [
       escapeCsv(c.name || ''),
-      escapeCsv(categoryMap[c.parent_id]?.name || 'None'),
+      escapeCsv(categoryMap[c.parent_id]?.name || strings.common.states.none),
       escapeCsv(productCounts[c.id] || 0),
     ]);
 
@@ -291,27 +305,31 @@ export default function CategoriesView() {
       extension: 'csv',
       data: csvContent,
       count: categories.length,
-      entityName: 'categories',
+      entityName: strings.categories.export.entityName,
     });
   };
 
   const handleExportXlsx = async () => {
     if (!categories.length) {
-      toast.warning('No categories to export');
+      toast.warning(strings.categories.toasts.noCategoriesToExport);
       return;
     }
 
-    const headers = ['Category Name', 'Parent Category', 'Product Count'];
+    const headers = [
+      strings.categories.export.headers.name,
+      strings.categories.export.headers.parent,
+      strings.categories.export.headers.productCount,
+    ];
     const rows = categories.map((c) => [
       c.name || '',
-      categoryMap[c.parent_id]?.name || 'None',
+      categoryMap[c.parent_id]?.name || strings.common.states.none,
       productCounts[c.id] || 0,
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     ws['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 16 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Categories');
+    XLSX.utils.book_append_sheet(wb, ws, strings.categories.export.sheetName);
     const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const dateStr = new Date().toISOString().split('T')[0];
     await exportWithUserLocation({
@@ -319,7 +337,7 @@ export default function CategoriesView() {
       extension: 'xlsx',
       data: xlsxArrayBuffer,
       count: categories.length,
-      entityName: 'categories',
+      entityName: strings.categories.export.entityName,
     });
   };
 
@@ -340,17 +358,15 @@ export default function CategoriesView() {
   const handleDelete = async (c) => {
     const count = productCounts[c.id] || 0;
     if (count > 0) {
-      toast.warning(
-        `Cannot delete "${c.name}" because it still contains ${count} product${count === 1 ? '' : 's'}. Reassign those products first.`
-      );
+      toast.warning(strings.categories.toasts.deleteHasProducts(c.name, count));
       return;
     }
 
     const { confirmed } = await confirmDialog({
-      title: `Delete Category "${c.name}"?`,
-      message: `Are you sure you want to delete category "${c.name}"? This action cannot be undone.`,
-      confirmLabel: 'Delete Category',
-      cancelLabel: 'Cancel',
+      title: strings.categories.dialogs.deleteTitle(c.name),
+      message: strings.categories.dialogs.deleteMessage(c.name),
+      confirmLabel: strings.categories.dialogs.deleteConfirm,
+      cancelLabel: strings.common.actions.cancel,
       tone: 'danger',
     });
     if (confirmed) {
@@ -361,7 +377,7 @@ export default function CategoriesView() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast.warning('Category name is required');
+      toast.warning(strings.categories.toasts.nameRequired);
       return;
     }
 
@@ -398,7 +414,7 @@ export default function CategoriesView() {
   const columns = [
     {
       key: 'name',
-      label: 'Category Name',
+      label: strings.categories.columns.name,
       className: 'font-semibold text-text-primary text-xs',
       render: (r) => (
         <div className="flex items-center gap-2">
@@ -409,13 +425,13 @@ export default function CategoriesView() {
     },
     {
       key: 'parent_name',
-      label: 'Parent Category',
+      label: strings.categories.columns.parent,
       className: 'text-text-muted text-xs',
-      render: (r) => r.parent_name || '—',
+      render: (r) => r.parent_name || strings.common.states.emptyValue,
     },
     {
       key: 'product_count',
-      label: 'Products',
+      label: strings.categories.columns.products,
       className: 'text-text-muted font-mono text-xs',
       sortValue: (r) => productCounts[r.id] || 0,
       render: (r) => {
@@ -423,7 +439,7 @@ export default function CategoriesView() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary border border-border-default">
             <Tag className="w-2.5 h-2.5 text-text-muted" />
-            {count} {count === 1 ? 'item' : 'items'}
+            {count} {count === 1 ? strings.common.labels.item : strings.common.labels.items}
           </span>
         );
       },
@@ -439,8 +455,8 @@ export default function CategoriesView() {
             <FolderTree className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-text-primary">Categories Hierarchy</h2>
-            <p className="text-[11px] text-text-muted">Organize catalog hierarchy and class mappings</p>
+            <h2 className="text-sm font-bold text-text-primary">{strings.categories.view.title}</h2>
+            <p className="text-[11px] text-text-muted">{strings.categories.view.subtitle}</p>
           </div>
         </div>
 
@@ -453,10 +469,10 @@ export default function CategoriesView() {
               className={`p-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer ${
                 viewMode === 'split' ? 'bg-brand text-white font-semibold shadow-2xs' : 'text-text-muted hover:text-text-primary'
               }`}
-              title="Split View (Tree + Table)"
+              title={strings.categories.view.viewModes.splitTitle}
             >
               <Columns className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Split</span>
+              <span className="hidden sm:inline">{strings.categories.view.viewModes.split}</span>
             </button>
             <button
               type="button"
@@ -464,10 +480,10 @@ export default function CategoriesView() {
               className={`p-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer ${
                 viewMode === 'tree' ? 'bg-brand text-white font-semibold shadow-2xs' : 'text-text-muted hover:text-text-primary'
               }`}
-              title="Tree View"
+              title={strings.categories.view.viewModes.treeTitle}
             >
               <ListTree className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Tree</span>
+              <span className="hidden sm:inline">{strings.categories.view.viewModes.tree}</span>
             </button>
             <button
               type="button"
@@ -475,10 +491,10 @@ export default function CategoriesView() {
               className={`p-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer ${
                 viewMode === 'table' ? 'bg-brand text-white font-semibold shadow-2xs' : 'text-text-muted hover:text-text-primary'
               }`}
-              title="Table View"
+              title={strings.categories.view.viewModes.tableTitle}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Table</span>
+              <span className="hidden sm:inline">{strings.categories.view.viewModes.table}</span>
             </button>
           </div>
 
@@ -500,7 +516,7 @@ export default function CategoriesView() {
             className="px-3.5 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Category</span>
+            <span>{strings.categories.view.addCategory}</span>
           </button>
         </div>
       </div>
@@ -518,7 +534,7 @@ export default function CategoriesView() {
             <div className="p-3 bg-gray-500 border-b border-gray-600 flex items-center justify-between text-white shadow-2xs">
               <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <ListTree className="w-3.5 h-3.5 text-white/90" />
-                Category Tree
+                {strings.categories.view.treePaneTitle}
               </span>
               {selectedTreeId && (
                 <button
@@ -526,7 +542,7 @@ export default function CategoriesView() {
                   onClick={() => setSelectedTreeId(null)}
                   className="text-[11px] text-white/90 hover:text-white hover:underline cursor-pointer font-medium"
                 >
-                  Clear Selection
+                  {strings.categories.view.clearSelection}
                 </button>
               )}
             </div>
@@ -542,7 +558,7 @@ export default function CategoriesView() {
               >
                 <div className="flex items-center gap-2">
                   <FolderOpen className="w-3.5 h-3.5 text-brand" />
-                  <span>All Categories</span>
+                  <span>{strings.categories.view.allCategories}</span>
                 </div>
               </div>
 
@@ -563,7 +579,7 @@ export default function CategoriesView() {
 
               {categories.length === 0 && !isLoading && (
                 <div className="text-center py-8 text-xs text-text-muted">
-                  No categories created yet. Click "Add Category" above.
+                  {strings.categories.view.emptyTree}
                 </div>
               )}
             </div>
@@ -575,7 +591,7 @@ export default function CategoriesView() {
           <div
             onMouseDown={handleDividerMouseDown}
             className="w-1 shrink-0 bg-border-default hover:bg-brand cursor-col-resize transition-colors group relative"
-            title="Drag to resize pane"
+            title={strings.categories.view.resizePane}
           >
             <div className="absolute inset-y-0 -left-1 -right-1" />
           </div>
@@ -587,7 +603,7 @@ export default function CategoriesView() {
             {selectedTreeId && (
               <div className="px-4 py-2 bg-brand-subtle border-b border-brand/20 text-xs text-brand flex items-center justify-between">
                 <span>
-                  Filtering category and subcategories for:{' '}
+                  {strings.categories.view.filteringFor}{' '}
                   <strong>{categories.find((c) => c.id === selectedTreeId)?.name}</strong>
                 </span>
                 <button
@@ -595,7 +611,7 @@ export default function CategoriesView() {
                   onClick={() => setSelectedTreeId(null)}
                   className="text-[11px] underline hover:opacity-80 cursor-pointer"
                 >
-                  Show all
+                  {strings.categories.view.showAll}
                 </button>
               </div>
             )}
@@ -608,24 +624,24 @@ export default function CategoriesView() {
                 keyFn={(r) => r.id}
                 searchKeys={['name', 'parent_name']}
                 pageSize={20}
-                emptyMessage="No categories found."
+                emptyMessage={strings.categories.view.emptyTable}
                 isLoading={isLoading}
                 actions={(c) => (
                   <DropdownActions
                     items={[
                       {
-                        label: 'Add Subcategory',
+                        label: strings.categories.actions.addSubcategory,
                         icon: <Plus className="w-3.5 h-3.5" />,
                         onClick: () => handleOpenCreate(c),
                       },
                       {
-                        label: 'Edit Category',
+                        label: strings.categories.actions.editCategory,
                         icon: <Edit2 className="w-3.5 h-3.5" />,
                         onClick: () => handleOpenEdit(c),
                       },
                       'divider',
                       {
-                        label: 'Delete Category',
+                        label: strings.categories.actions.deleteCategory,
                         icon: <Trash2 className="w-3.5 h-3.5" />,
                         danger: true,
                         onClick: () => handleDelete(c),
@@ -645,7 +661,9 @@ export default function CategoriesView() {
           <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-text-primary animate-scale-in">
             <div className="flex justify-between items-center border-b border-border-default pb-3">
               <h3 className="font-bold text-sm text-text-primary">
-                {editingCategory ? 'Edit Category' : 'Create Category'}
+                {editingCategory
+                  ? strings.categories.form.editTitle
+                  : strings.categories.form.createTitle}
               </h3>
               <button
                 type="button"
@@ -659,33 +677,35 @@ export default function CategoriesView() {
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
-                  Category Name <span className="text-danger">*</span>
+                  {strings.categories.form.nameLabel} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Beverages, Dairy, Snacks"
+                  placeholder={strings.categories.form.namePlaceholder}
                   className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-text-secondary block font-semibold mb-1">Parent Category (Optional)</label>
+                <label className="text-text-secondary block font-semibold mb-1">
+                  {strings.categories.form.parentLabel}
+                </label>
                 <Select
                   value={parentId}
                   onChange={(val) => setParentId(val)}
-                  placeholder="None (Top-Level Category)"
+                  placeholder={strings.categories.form.noneTopLevel}
                   options={[
-                    { value: '', label: 'None (Top-Level Category)' },
+                    { value: '', label: strings.categories.form.noneTopLevel },
                     ...categories
                       .filter((c) => !editingCategory || c.id !== editingCategory.id)
                       .map((c) => ({ value: String(c.id), label: c.name })),
                   ]}
                 />
                 <p className="text-[10px] text-text-muted mt-1">
-                  Nest this category under an existing parent class
+                  {strings.categories.form.parentHint}
                 </p>
               </div>
 
@@ -695,14 +715,14 @@ export default function CategoriesView() {
                   onClick={() => setModalOpen(false)}
                   className="px-3 py-1.5 rounded-lg font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
                 >
-                  Cancel
+                  {strings.common.actions.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                   className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {editingCategory ? 'Save' : 'Create'}
+                  {editingCategory ? strings.common.actions.save : strings.common.actions.create}
                 </button>
               </div>
             </form>

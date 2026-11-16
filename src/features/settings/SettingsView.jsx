@@ -37,6 +37,7 @@ import { nextSortState, sortRows } from '../../lib/sort';
 import SortableTh from '../../components/common/SortableTh';
 import ReceiptPrinter from '../../components/receipt/ReceiptPrinter';
 import ImportCsvButton from '../../components/common/ImportCsvButton';
+import { strings } from '../../lib/strings';
 
 export default function SettingsView() {
   const queryClient = useQueryClient();
@@ -75,20 +76,20 @@ export default function SettingsView() {
   const defaultSections = [
     {
       id: 'storeHeader',
-      name: 'Store Header',
+      name: strings.settings.receipt.sectionNames.storeHeader,
       visible: true,
       options: {
         alignment: 'center',
         fontSize: 'medium',
-        storeName: 'Pico POS Store',
-        storeDetails: '123 Main St, Tech City',
-        phone: '9876543210',
-        gst: '22AAAAA0000A1Z5',
+        storeName: strings.settings.sampleData.storeName,
+        storeDetails: strings.settings.sampleData.address,
+        phone: strings.settings.sampleData.phone,
+        gst: strings.settings.sampleData.gstin,
       },
     },
     {
       id: 'billMetadata',
-      name: 'Bill Metadata',
+      name: strings.settings.receipt.sectionNames.billMetadata,
       visible: true,
       options: {
         alignment: 'left',
@@ -97,7 +98,7 @@ export default function SettingsView() {
     },
     {
       id: 'itemsTable',
-      name: 'Items Table',
+      name: strings.settings.receipt.sectionNames.itemsTable,
       visible: true,
       options: {
         fontSize: 'medium',
@@ -106,7 +107,7 @@ export default function SettingsView() {
     },
     {
       id: 'totals',
-      name: 'Totals & Payments',
+      name: strings.settings.receipt.sectionNames.totals,
       visible: true,
       options: {
         alignment: 'right',
@@ -115,24 +116,24 @@ export default function SettingsView() {
     },
     {
       id: 'footer',
-      name: 'Footer Message',
+      name: strings.settings.receipt.sectionNames.footer,
       visible: true,
       options: {
         alignment: 'center',
         fontSize: 'small',
-        text: 'Thank you for your visit!',
+        text: strings.settings.sampleData.footer,
       },
     },
   ];
 
   const [bill, setBill] = useState({
     paper_width: '80mm',
-    store_name: 'Pico POS Store',
-    store_details: '123 Main St, Tech City',
-    phone: '9876543210',
-    gst: '22AAAAA0000A1Z5',
+    store_name: strings.settings.sampleData.storeName,
+    store_details: strings.settings.sampleData.address,
+    phone: strings.settings.sampleData.phone,
+    gst: strings.settings.sampleData.gstin,
     show_tax: false,
-    footer_text: 'Thank you for your visit!',
+    footer_text: strings.settings.sampleData.footer,
     sections: defaultSections,
   });
 
@@ -219,28 +220,32 @@ export default function SettingsView() {
       queryClient.invalidateQueries({ queryKey: ['general_settings'] });
       queryClient.invalidateQueries({ queryKey: ['next_sku'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      showNotification('Settings saved successfully');
+      showNotification(strings.settings.toasts.settingsSaved);
     },
-    onError: (err) => showNotification(`Failed to save settings: ${err}`, 'error'),
+    onError: (err) => showNotification(strings.settings.toasts.saveSettingsFailed(err), 'error'),
   });
 
   const updateBillMutation = useMutation({
     mutationFn: (data) => tauriApi.updateBillSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bill_settings'] });
-      showNotification('Receipt settings saved successfully');
+      showNotification(strings.settings.toasts.receiptSaved);
     },
-    onError: (err) => showNotification(`Failed to save receipt settings: ${err}`, 'error'),
+    onError: (err) => showNotification(strings.settings.toasts.saveReceiptFailed(err), 'error'),
   });
 
   const testPrintMutation = useMutation({
     mutationFn: (printerName) => tauriApi.testPrint(printerName),
     onSuccess: () => {
-      showNotification(`Test print sent to ${general.default_printer_name || 'default printer'}`);
+      showNotification(
+        strings.settings.toasts.testPrintSent(
+          general.default_printer_name || strings.settings.toasts.defaultPrinter
+        )
+      );
     },
     onError: () => {
       window.print();
-      showNotification('Opened system print dialog for test receipt', 'info');
+      showNotification(strings.settings.toasts.systemPrintDialog, 'info');
     },
   });
 
@@ -249,9 +254,9 @@ export default function SettingsView() {
     onSuccess: (info) => {
       refreshBackupStatus();
       refreshBackupsList();
-      showNotification(`Backup snapshot created: ${info.filename}`);
+      showNotification(strings.settings.toasts.backupCreated(info.filename));
     },
-    onError: (err) => showNotification(`Failed to create backup: ${err}`, 'error'),
+    onError: (err) => showNotification(strings.settings.toasts.createBackupFailed(err), 'error'),
   });
 
   const restoreBackupMutation = useMutation({
@@ -267,7 +272,7 @@ export default function SettingsView() {
       queryClient.invalidateQueries();
       showNotification(msg, 'success');
     },
-    onError: (err) => showNotification(`Restore failed: ${err}`, 'error'),
+    onError: (err) => showNotification(strings.settings.toasts.restoreFailed(err), 'error'),
   });
 
   const migrationMutation = useMutation({
@@ -275,9 +280,9 @@ export default function SettingsView() {
     onSuccess: (summary) => {
       setMigrationResult(summary);
       queryClient.invalidateQueries();
-      showNotification('Legacy database migrated successfully');
+      showNotification(strings.settings.toasts.migrationComplete);
     },
-    onError: (err) => showNotification(`Migration failed: ${err}`, 'error'),
+    onError: (err) => showNotification(strings.settings.toasts.migrationFailed(err), 'error'),
   });
 
   const updatePasswordMutation = useMutation({
@@ -285,10 +290,11 @@ export default function SettingsView() {
       tauriApi.updatePassword({ currentPassword, newPassword }),
     onSuccess: (msg) => {
       setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      showNotification(msg || 'Password updated successfully!');
+      showNotification(msg || strings.settings.security.updated);
     },
     onError: (err) => {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update password';
+      const msg =
+        typeof err === 'string' ? err : err?.message || strings.settings.security.updateFailed;
       showNotification(
         msg.replace(/^Unauthorized:\s*|^Validation error:\s*|^Forbidden:\s*/, ''),
         'error'
@@ -347,15 +353,15 @@ export default function SettingsView() {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (!passwordState.currentPassword || !passwordState.newPassword || !passwordState.confirmPassword) {
-      showNotification('Please fill in all password fields.', 'warning');
+      showNotification(strings.settings.security.fillAllFields, 'warning');
       return;
     }
     if (passwordState.newPassword.length < 4) {
-      showNotification('New password must be at least 4 characters long.', 'warning');
+      showNotification(strings.settings.security.passwordTooShort, 'warning');
       return;
     }
     if (passwordState.newPassword !== passwordState.confirmPassword) {
-      showNotification('New passwords do not match.', 'warning');
+      showNotification(strings.settings.security.passwordsDoNotMatch, 'warning');
       return;
     }
 
@@ -367,33 +373,33 @@ export default function SettingsView() {
 
   // Sample data for Live Receipt Preview
   const sampleSale = {
-    invoice_number: 'S26CH0000001',
+    invoice_number: strings.settings.sampleData.invoiceNumber,
     created_at: new Date().toISOString(),
-    customer_name: 'Walk-in Customer',
-    biller_name: 'Cashier',
+    customer_name: strings.settings.sampleData.customerName,
+    biller_name: strings.settings.sampleData.billerName,
     subtotal_paise: 25000,
     discount_paise: 2000,
     tax_paise: 1250,
     total_paise: 24250,
     paid_paise: 25000,
-    payment_method: 'CASH',
+    payment_method: strings.settings.sampleData.paymentMethod,
   };
 
   const sampleItems = [
-    { product_name: 'Cadbury Silk 150g', quantity: 2, unit_price_paise: 10000, discount_paise: 0, tax_rate: 5.0 },
-    { product_name: 'Greeting Card Premium', quantity: 1, unit_price_paise: 5000, discount_paise: 2000, tax_rate: 18.0 },
+    { product_name: strings.settings.sampleData.productCadbury, quantity: 2, unit_price_paise: 10000, discount_paise: 0, tax_rate: 5.0 },
+    { product_name: strings.settings.sampleData.productGreetingCard, quantity: 1, unit_price_paise: 5000, discount_paise: 2000, tax_rate: 18.0 },
   ];
 
   // Navigation Items
   const navItems = [
-    { id: 'general', label: 'General', icon: Sliders, description: 'Store identity and date formats' },
-    { id: 'store_tax', label: 'Store & Tax', icon: Store, description: 'Currency, GSTIN, and stock rules' },
-    { id: 'receipt', label: 'Receipt Designer', icon: Receipt, description: 'Thermal layout and print design' },
-    { id: 'printing', label: 'Devices & Printing', icon: Printer, description: 'Printer selection and testing' },
-    { id: 'backup', label: 'Backup & Restore', icon: ShieldCheck, description: 'Safety snapshots and data recovery' },
-    { id: 'migration', label: 'Imports & Migration', icon: Database, description: 'CSV imports and Java POS conversion' },
-    { id: 'security', label: 'Security & Access', icon: Lock, description: 'Master administrator credentials' },
-    { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Theme mode and visual display' },
+    { id: 'general', label: strings.settings.nav.general.label, icon: Sliders, description: strings.settings.nav.general.description },
+    { id: 'store_tax', label: strings.settings.nav.storeTax.label, icon: Store, description: strings.settings.nav.storeTax.description },
+    { id: 'receipt', label: strings.settings.nav.receipt.label, icon: Receipt, description: strings.settings.nav.receipt.description },
+    { id: 'printing', label: strings.settings.nav.printing.label, icon: Printer, description: strings.settings.nav.printing.description },
+    { id: 'backup', label: strings.settings.nav.backup.label, icon: ShieldCheck, description: strings.settings.nav.backup.description },
+    { id: 'migration', label: strings.settings.nav.migration.label, icon: Database, description: strings.settings.nav.migration.description },
+    { id: 'security', label: strings.settings.nav.security.label, icon: Lock, description: strings.settings.nav.security.description },
+    { id: 'appearance', label: strings.settings.nav.appearance.label, icon: Palette, description: strings.settings.nav.appearance.description },
   ];
 
   return (
@@ -405,9 +411,11 @@ export default function SettingsView() {
             <Sliders className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-content">System Settings</h1>
+            <h1 className="text-sm font-semibold text-content">
+              {strings.settings.header.title}
+            </h1>
             <p className="text-xs text-content-secondary">
-              Terminal configuration, receipt layout, peripheral hardware, and database maintenance
+              {strings.settings.header.subtitle}
             </p>
           </div>
         </div>
@@ -418,7 +426,7 @@ export default function SettingsView() {
         {/* Left Vertical Navigation Sidebar (240px) */}
         <aside className="w-60 border-r border-border bg-surface flex flex-col p-3 space-y-1 overflow-y-auto shrink-0">
           <div className="px-3 py-2 text-[11px] font-semibold text-content-muted uppercase tracking-wider">
-            Configuration
+            {strings.settings.header.navHeading}
           </div>
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -451,45 +459,53 @@ export default function SettingsView() {
           {activeNav === 'general' && (
             <div className="max-w-3xl space-y-6">
               <div>
-                <h2 className="text-base font-semibold text-content">General Settings</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.general.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Configure store identity, contact details, and display formats
+                  {strings.settings.general.subtitle}
                 </p>
               </div>
 
               {/* Store Identity */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
-                <h3 className="text-sm font-semibold text-content">Store Profile</h3>
+                <h3 className="text-sm font-semibold text-content">
+                  {strings.settings.general.storeProfile}
+                </h3>
                 <div className="space-y-4 text-xs">
                   <div>
-                    <label className="text-content font-medium block mb-1">Store / Business Name</label>
+                    <label className="text-content font-medium block mb-1">
+                      {strings.settings.general.storeName}
+                    </label>
                     <input
                       type="text"
                       value={general.store_name}
                       onChange={(e) => setGeneral({ ...general, store_name: e.target.value })}
-                      placeholder="e.g. Acme Retailers"
+                      placeholder={strings.settings.general.storeNamePlaceholder}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-content font-medium block mb-1">Phone Number</label>
+                      <label className="text-content font-medium block mb-1">
+                        {strings.settings.general.phone}
+                      </label>
                       <input
                         type="text"
                         value={general.phone}
                         onChange={(e) => setGeneral({ ...general, phone: e.target.value })}
-                        placeholder="e.g. +91 9876543210"
+                        placeholder={strings.settings.general.phonePlaceholder}
                         className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-mono"
                       />
                     </div>
                     <div>
-                      <label className="text-content font-medium block mb-1">Address / Location</label>
+                      <label className="text-content font-medium block mb-1">
+                        {strings.settings.general.address}
+                      </label>
                       <input
                         type="text"
                         value={general.address}
                         onChange={(e) => setGeneral({ ...general, address: e.target.value })}
-                        placeholder="e.g. Shop #4, Commercial Complex"
+                        placeholder={strings.settings.general.addressPlaceholder}
                         className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
                       />
                     </div>
@@ -499,31 +515,37 @@ export default function SettingsView() {
 
               {/* Date & Time Formats */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
-                <h3 className="text-sm font-semibold text-content">Date & Time Formats</h3>
+                <h3 className="text-sm font-semibold text-content">
+                  {strings.settings.general.dateTimeFormats}
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
-                    <label className="text-content font-medium block mb-1.5">Date Display Format</label>
+                    <label className="text-content font-medium block mb-1.5">
+                      {strings.settings.general.dateDisplayFormat}
+                    </label>
                     <Select
                       value={general.date_format}
                       onChange={(val) => setGeneral({ ...general, date_format: val })}
                       options={[
-                        { value: 'DD-MM-YYYY', label: 'DD-MM-YYYY (e.g. 26-10-2026)' },
-                        { value: 'MM-DD-YYYY', label: 'MM-DD-YYYY (e.g. 10-26-2026)' },
-                        { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (e.g. 2026-10-26)' },
-                        { value: 'Month Date, Year', label: 'Month Date, Year (e.g. Oct 26, 2026)' },
-                        { value: 'Date Month, Year', label: 'Date Month, Year (e.g. 26 Oct, 2026)' },
+                        { value: 'DD-MM-YYYY', label: strings.settings.general.dateFormats.dayFirst },
+                        { value: 'MM-DD-YYYY', label: strings.settings.general.dateFormats.monthFirst },
+                        { value: 'YYYY-MM-DD', label: strings.settings.general.dateFormats.iso },
+                        { value: 'Month Date, Year', label: strings.settings.general.dateFormats.monthNameFirst },
+                        { value: 'Date Month, Year', label: strings.settings.general.dateFormats.dayBeforeMonthName },
                       ]}
                     />
                   </div>
 
                   <div>
-                    <label className="text-content font-medium block mb-1.5">Time Display Format</label>
+                    <label className="text-content font-medium block mb-1.5">
+                      {strings.settings.general.timeDisplayFormat}
+                    </label>
                     <Select
                       value={general.time_format}
                       onChange={(val) => setGeneral({ ...general, time_format: val })}
                       options={[
-                        { value: '12 hour format', label: '12 hour format (e.g. 02:45 PM)' },
-                        { value: '24 hour format', label: '24 hour format (e.g. 14:45)' },
+                        { value: '12 hour format', label: strings.settings.general.timeFormats.twelveHour },
+                        { value: '24 hour format', label: strings.settings.general.timeFormats.twentyFourHour },
                       ]}
                     />
                   </div>
@@ -543,7 +565,7 @@ export default function SettingsView() {
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>Save General Settings</span>
+                  <span>{strings.settings.general.save}</span>
                 </button>
               </div>
             </div>
@@ -555,41 +577,47 @@ export default function SettingsView() {
           {activeNav === 'store_tax' && (
             <div className="max-w-3xl space-y-6">
               <div>
-                <h2 className="text-base font-semibold text-content">Store & Tax Settings</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.storeTax.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Tax registration, currency configuration, and inventory behavior controls
+                  {strings.settings.storeTax.subtitle}
                 </p>
               </div>
 
               {/* Currency & Tax Registration */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
-                <h3 className="text-sm font-semibold text-content">Currency & GSTIN</h3>
+                <h3 className="text-sm font-semibold text-content">
+                  {strings.settings.storeTax.currencyGstin}
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
-                    <label className="text-content font-medium block mb-1">Currency Symbol</label>
+                    <label className="text-content font-medium block mb-1">
+                      {strings.settings.storeTax.currencySymbol}
+                    </label>
                     <input
                       type="text"
                       value={general.currency_symbol}
                       onChange={(e) => setGeneral({ ...general, currency_symbol: e.target.value })}
-                      placeholder="e.g. $, €, £"
+                      placeholder={strings.settings.storeTax.currencySymbolPlaceholder}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-medium"
                     />
                     <span className="text-[11px] text-content-muted mt-1 block">
-                      Displayed across POS checkout and financial reports
+                      {strings.settings.storeTax.currencySymbolHint}
                     </span>
                   </div>
 
                   <div>
-                    <label className="text-content font-medium block mb-1">GSTIN / Tax ID</label>
+                    <label className="text-content font-medium block mb-1">
+                      {strings.settings.storeTax.gstin}
+                    </label>
                     <input
                       type="text"
                       value={general.gstin}
                       onChange={(e) => setGeneral({ ...general, gstin: e.target.value })}
-                      placeholder="e.g. 22AAAAA0000A1Z5"
+                      placeholder={strings.settings.storeTax.gstinPlaceholder}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-mono"
                     />
                     <span className="text-[11px] text-content-muted mt-1 block">
-                      Printed on customer receipts and tax invoices
+                      {strings.settings.storeTax.gstinHint}
                     </span>
                   </div>
                 </div>
@@ -597,7 +625,9 @@ export default function SettingsView() {
 
               {/* Inventory Guard Rails */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
-                <h3 className="text-sm font-semibold text-content">Inventory Behavior</h3>
+                <h3 className="text-sm font-semibold text-content">
+                  {strings.settings.storeTax.inventoryBehavior}
+                </h3>
                 <div className="space-y-3 text-xs">
                   <label
                     className={`flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
@@ -613,9 +643,11 @@ export default function SettingsView() {
                       className="w-4 h-4 mt-0.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
                     />
                     <div className="space-y-1">
-                      <span className="font-semibold text-content block">Automatic Numerical SKU</span>
+                      <span className="font-semibold text-content block">
+                        {strings.settings.storeTax.autoSkuTitle}
+                      </span>
                       <span className="text-content-secondary block">
-                        New products automatically receive the next sequential numerical SKU. After importing legacy data, numbering continues from the highest existing SKU.
+                        {strings.settings.storeTax.autoSkuDescription}
                       </span>
                     </div>
                   </label>
@@ -635,10 +667,10 @@ export default function SettingsView() {
                     />
                     <div className="space-y-1">
                       <span className="font-semibold text-content block">
-                        Allow Negative Stock (Ignore Stock Limits)
+                        {strings.settings.storeTax.negativeStockTitle}
                       </span>
                       <span className="text-content-secondary block">
-                        Allows cashiers to bill items even if current stock is zero or negative. Leave unchecked to prevent sales when stock is depleted.
+                        {strings.settings.storeTax.negativeStockDescription}
                       </span>
                     </div>
                   </label>
@@ -658,7 +690,7 @@ export default function SettingsView() {
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>Save Store &amp; Tax Settings</span>
+                  <span>{strings.settings.storeTax.save}</span>
                 </button>
               </div>
             </div>
@@ -672,16 +704,16 @@ export default function SettingsView() {
               {/* Left Column: Receipt Controls (7 cols) */}
               <div className="xl:col-span-7 space-y-6">
                 <div>
-                  <h2 className="text-base font-semibold text-content">Receipt Designer</h2>
+                  <h2 className="text-base font-semibold text-content">{strings.settings.receipt.title}</h2>
                   <p className="text-xs text-content-secondary">
-                    Configure thermal paper width, rearrange receipt sections, and preview live
+                    {strings.settings.receipt.subtitle}
                   </p>
                 </div>
 
                 {/* Paper Roll Width */}
                 <div className="p-6 rounded-xl bg-surface border border-border space-y-3">
                   <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-                    Paper Roll Width
+                    {strings.settings.receipt.paperRollWidth}
                   </h3>
                   <div className="grid grid-cols-2 gap-3 max-w-sm">
                     {['80mm', '58mm'].map((w) => (
@@ -696,7 +728,11 @@ export default function SettingsView() {
                         }`}
                       >
                         <Receipt className="w-4 h-4" />
-                        <span>{w === '80mm' ? '3 inch (80 mm)' : '2 inch (58 mm)'}</span>
+                        <span>
+                          {w === '80mm'
+                            ? strings.settings.receipt.paperWidths.wide
+                            : strings.settings.receipt.paperWidths.narrow}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -706,10 +742,10 @@ export default function SettingsView() {
                 <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
                   <div>
                     <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-                      Receipt Sections
+                      {strings.settings.receipt.sectionsHeading}
                     </h3>
                     <p className="text-xs text-content-secondary mt-1">
-                      Toggle section visibility and adjust position using up/down arrows
+                      {strings.settings.receipt.sectionsHint}
                     </p>
                   </div>
 
@@ -745,7 +781,7 @@ export default function SettingsView() {
                                 disabled={isFirst}
                                 onClick={() => moveSection(idx, -1)}
                                 className="p-1 rounded hover:bg-surface border border-transparent hover:border-border text-content-secondary hover:text-content disabled:opacity-30 disabled:pointer-events-none"
-                                title="Move up"
+                                title={strings.settings.receipt.moveUp}
                               >
                                 <ArrowUp className="w-3.5 h-3.5" />
                               </button>
@@ -754,7 +790,7 @@ export default function SettingsView() {
                                 disabled={isLast}
                                 onClick={() => moveSection(idx, 1)}
                                 className="p-1 rounded hover:bg-surface border border-transparent hover:border-border text-content-secondary hover:text-content disabled:opacity-30 disabled:pointer-events-none"
-                                title="Move down"
+                                title={strings.settings.receipt.moveDown}
                               >
                                 <ArrowDown className="w-3.5 h-3.5" />
                               </button>
@@ -767,7 +803,7 @@ export default function SettingsView() {
                               {opts.alignment !== undefined && (
                                 <div>
                                   <label className="text-[11px] text-content-secondary block mb-1">
-                                    Alignment
+                                    {strings.settings.receipt.alignment}
                                   </label>
                                   <select
                                     value={opts.alignment}
@@ -776,9 +812,9 @@ export default function SettingsView() {
                                     }
                                     className="w-full bg-surface border border-border-strong rounded p-1.5 text-content"
                                   >
-                                    <option value="left">Left</option>
-                                    <option value="center">Center</option>
-                                    <option value="right">Right</option>
+                                    <option value="left">{strings.settings.receipt.alignmentOptions.left}</option>
+                                    <option value="center">{strings.settings.receipt.alignmentOptions.center}</option>
+                                    <option value="right">{strings.settings.receipt.alignmentOptions.right}</option>
                                   </select>
                                 </div>
                               )}
@@ -786,7 +822,7 @@ export default function SettingsView() {
                               {opts.fontSize !== undefined && (
                                 <div>
                                   <label className="text-[11px] text-content-secondary block mb-1">
-                                    Font Size
+                                    {strings.settings.receipt.fontSize}
                                   </label>
                                   <select
                                     value={opts.fontSize}
@@ -795,9 +831,9 @@ export default function SettingsView() {
                                     }
                                     className="w-full bg-surface border border-border-strong rounded p-1.5 text-content"
                                   >
-                                    <option value="small">Compact</option>
-                                    <option value="medium">Standard</option>
-                                    <option value="large">Prominent</option>
+                                    <option value="small">{strings.settings.receipt.fontSizeOptions.small}</option>
+                                    <option value="medium">{strings.settings.receipt.fontSizeOptions.medium}</option>
+                                    <option value="large">{strings.settings.receipt.fontSizeOptions.large}</option>
                                   </select>
                                 </div>
                               )}
@@ -814,7 +850,7 @@ export default function SettingsView() {
                                       className="w-3.5 h-3.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
                                     />
                                     <span className="text-[11px] text-content-secondary">
-                                      Print tax rate column on receipt
+                                      {strings.settings.receipt.printTaxColumn}
                                     </span>
                                   </label>
                                 </div>
@@ -823,7 +859,7 @@ export default function SettingsView() {
                               {section.id === 'footer' && (
                                 <div className="col-span-2">
                                   <label className="text-[11px] text-content-secondary block mb-1">
-                                    Footer Message Text
+                                    {strings.settings.receipt.footerText}
                                   </label>
                                   <input
                                     type="text"
@@ -831,7 +867,7 @@ export default function SettingsView() {
                                     onChange={(e) =>
                                       updateSectionOption(section.id, 'text', e.target.value)
                                     }
-                                    placeholder="e.g. Thank you for your business!"
+                                    placeholder={strings.settings.receipt.footerPlaceholder}
                                     className="w-full bg-surface border border-border-strong rounded p-2 text-content text-xs"
                                   />
                                 </div>
@@ -857,7 +893,7 @@ export default function SettingsView() {
                     ) : (
                       <Check className="w-4 h-4" />
                     )}
-                    <span>Save Receipt Settings</span>
+                    <span>{strings.settings.receipt.save}</span>
                   </button>
                 </div>
               </div>
@@ -867,9 +903,9 @@ export default function SettingsView() {
                 <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-                      Thermal Preview ({bill.paper_width})
+                      {strings.settings.receipt.previewTitle(bill.paper_width)}
                     </h3>
-                    <span className="text-[11px] text-content-muted">Sample Transaction</span>
+                    <span className="text-[11px] text-content-muted">{strings.settings.receipt.sampleTransaction}</span>
                   </div>
 
                   {/* Simulated White Paper Surface with drop shadow */}
@@ -894,9 +930,9 @@ export default function SettingsView() {
           {activeNav === 'printing' && (
             <div className="max-w-3xl space-y-6">
               <div>
-                <h2 className="text-base font-semibold text-content">Devices &amp; Printing</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.printing.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Detected hardware printers and receipt output routing
+                  {strings.settings.printing.subtitle}
                 </p>
               </div>
 
@@ -908,19 +944,23 @@ export default function SettingsView() {
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-content">
-                      {printers.length > 0 ? `${printers.length} Printer(s) Detected` : 'No Printers Detected'}
+                      {printers.length > 0
+                        ? strings.settings.printing.printersDetected(printers.length)
+                        : strings.settings.printing.noPrintersDetected}
                     </div>
                     <p className="text-[11px] text-content-secondary">
                       {general.default_printer_name
-                        ? `Active Default: ${general.default_printer_name}`
-                        : 'Using OS default print routing'}
+                        ? strings.settings.printing.activeDefault(general.default_printer_name)
+                        : strings.settings.printing.usingOsDefault}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${printers.length > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                   <span className="text-xs text-content-secondary font-medium">
-                    {printers.length > 0 ? 'Hardware Ready' : 'Check USB / Cable'}
+                    {printers.length > 0
+                      ? strings.settings.printing.hardwareReady
+                      : strings.settings.printing.checkCable}
                   </span>
                 </div>
               </div>
@@ -928,7 +968,7 @@ export default function SettingsView() {
               {/* Hardware Selection */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
-                  <h3 className="text-sm font-semibold text-content">Connected Printers</h3>
+                  <h3 className="text-sm font-semibold text-content">{strings.settings.printing.connectedPrinters}</h3>
                   <button
                     type="button"
                     onClick={() => refreshPrinters()}
@@ -936,27 +976,27 @@ export default function SettingsView() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border text-content-secondary hover:text-content text-xs font-medium transition-colors"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 text-brand ${scanningPrinters ? 'animate-spin' : ''}`} />
-                    <span>Scan Printers</span>
+                    <span>{strings.settings.printing.scanPrinters}</span>
                   </button>
                 </div>
 
                 <div className="space-y-4 text-xs">
                   <div>
-                    <label className="text-content font-medium block mb-1.5">Default Thermal Printer</label>
+                    <label className="text-content font-medium block mb-1.5">{strings.settings.printing.defaultPrinter}</label>
                     <Select
                       value={general.default_printer_name}
                       onChange={(val) => setGeneral({ ...general, default_printer_name: val })}
-                      placeholder="-- Use OS Default Printer --"
+                      placeholder={strings.settings.printing.osDefaultOption}
                       options={[
-                        { value: '', label: '-- Use OS Default Printer --' },
+                        { value: '', label: strings.settings.printing.osDefaultOption },
                         ...printers.map((p) => ({
                           value: p.name,
-                          label: `${p.name} ${p.is_default ? '(System Default)' : ''}`,
+                          label: strings.settings.printing.printerOption(p.name, p.is_default),
                         })),
                       ]}
                     />
                     <span className="text-[11px] text-content-muted mt-1 block">
-                      Receipts printed during POS checkout will be automatically routed to this printer
+                      {strings.settings.printing.printerHint}
                     </span>
                   </div>
 
@@ -972,7 +1012,7 @@ export default function SettingsView() {
                       ) : (
                         <Check className="w-4 h-4" />
                       )}
-                      <span>Save Default Printer</span>
+                      <span>{strings.settings.printing.saveDefaultPrinter}</span>
                     </button>
 
                     <button
@@ -986,10 +1026,10 @@ export default function SettingsView() {
                       ) : (
                         <Printer className="w-4 h-4 text-brand" />
                       )}
-                      <span>Send Test Print</span>
+                      <span>{strings.settings.printing.sendTestPrint}</span>
                     </button>
                     <span className="text-xs text-content-secondary">
-                      Verifies ESC/POS driver connection and line feed
+                      {strings.settings.printing.testPrintHint}
                     </span>
                   </div>
                 </div>
@@ -998,12 +1038,12 @@ export default function SettingsView() {
               {/* Hardware Tips */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-3 text-xs text-content-secondary">
                 <h3 className="text-sm font-semibold text-content flex items-center gap-2">
-                  <Info className="w-4 h-4 text-brand" /> Thermal Printer Guidelines
+                  <Info className="w-4 h-4 text-brand" /> {strings.settings.printing.guidelinesTitle}
                 </h3>
                 <ul className="space-y-2 list-disc pl-4 leading-relaxed">
-                  <li>ESC/POS thermal printers (TVS, Epson, Xprinter, Rongta) connect seamlessly over USB or Network.</li>
-                  <li>Ensure zero-margin paper settings are selected in the printer driver properties for smooth continuous cutting.</li>
-                  <li>If plugging in a new printer via USB, click "Scan Printers" above to register it immediately.</li>
+                  {strings.settings.printing.guidelines.map((g, i) => (
+                    <li key={i}>{g}</li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -1025,13 +1065,10 @@ export default function SettingsView() {
                   if (!file) return;
 
                   const { confirmed } = await confirmDialog({
-                    title: 'Restore Database',
-                    message: `Are you sure you want to restore from "${file.name}"?`,
-                    details: [
-                      'Supports both native PicoPOSSUM backups and Java app database files.',
-                      'An automatic safety pre-restore backup will be created first.',
-                    ],
-                    confirmLabel: 'Restore Database',
+                    title: strings.settings.backup.confirmFileRestore.title,
+                    message: strings.settings.backup.confirmFileRestore.message(file.name),
+                    details: strings.settings.backup.confirmFileRestore.details,
+                    confirmLabel: strings.settings.backup.confirmFileRestore.confirmLabel,
                     tone: 'warning',
                   });
                   if (!confirmed) return;
@@ -1044,16 +1081,16 @@ export default function SettingsView() {
                       const bytes = Array.from(new Uint8Array(buffer));
                       restoreBackupMutation.mutate({ filename: file.name, bytes });
                     } catch (err) {
-                      showNotification('Failed to read file: ' + err.message, 'error');
+                      showNotification(strings.settings.backup.readFileFailed(err.message), 'error');
                     }
                   }
                 }}
               />
 
               <div>
-                <h2 className="text-base font-semibold text-content">Backup &amp; Data Recovery</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.backup.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Automated snapshots, on-demand archive backups, and safe point-in-time restore
+                  {strings.settings.backup.subtitle}
                 </p>
               </div>
 
@@ -1061,9 +1098,9 @@ export default function SettingsView() {
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
                   <div>
-                    <h3 className="text-sm font-semibold text-content">Database Maintenance</h3>
+                    <h3 className="text-sm font-semibold text-content">{strings.settings.backup.maintenance}</h3>
                     <p className="text-xs text-content-secondary">
-                      Mandatory backups occur on daily launch and app close
+                      {strings.settings.backup.maintenanceHint}
                     </p>
                   </div>
 
@@ -1079,7 +1116,7 @@ export default function SettingsView() {
                       ) : (
                         <HardDrive className="w-3.5 h-3.5" />
                       )}
-                      <span>Create Backup Now</span>
+                      <span>{strings.settings.backup.createBackup}</span>
                     </button>
                     <button
                       type="button"
@@ -1092,10 +1129,10 @@ export default function SettingsView() {
                         }
                       }}
                       className="px-3 py-2 rounded-lg bg-surface-secondary border border-border text-content-secondary hover:text-content font-medium text-xs flex items-center gap-1.5 transition-colors"
-                      title="Open local folder"
+                      title={strings.settings.backup.openFolderTitle}
                     >
                       <FolderOpen className="w-3.5 h-3.5 text-content-muted" />
-                      <span>Open Folder</span>
+                      <span>{strings.settings.backup.openFolder}</span>
                     </button>
                   </div>
                 </div>
@@ -1103,16 +1140,16 @@ export default function SettingsView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-3.5 rounded-lg bg-surface-secondary border border-border">
                     <span className="text-[11px] text-content-muted font-medium block mb-1">
-                      Backup Storage Path
+                      {strings.settings.backup.storagePath}
                     </span>
                     <div className="font-mono text-content text-xs break-all select-all">
-                      {backupStatus?.backup_location || 'Loading location...'}
+                      {backupStatus?.backup_location || strings.settings.backup.loadingLocation}
                     </div>
                   </div>
 
                   <div className="p-3.5 rounded-lg bg-surface-secondary border border-border">
                     <span className="text-[11px] text-content-muted font-medium block mb-1">
-                      Latest Automated Snapshot
+                      {strings.settings.backup.latestSnapshot}
                     </span>
                     <div className="text-content font-medium text-xs">
                       {backupStatus?.latest_backup ? (
@@ -1121,7 +1158,7 @@ export default function SettingsView() {
                           {Math.round(backupStatus.latest_backup.size_bytes / 1024)} KB)
                         </span>
                       ) : (
-                        <span className="text-content-muted">No snapshots created yet</span>
+                        <span className="text-content-muted">{strings.settings.backup.noSnapshots}</span>
                       )}
                     </div>
                     {backupStatus?.latest_backup?.created_at && (
@@ -1137,7 +1174,7 @@ export default function SettingsView() {
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-border">
                   <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-                    Available Backups ({backupsList.length})
+                    {strings.settings.backup.availableBackups(backupsList.length)}
                   </h3>
                   <button
                     type="button"
@@ -1150,24 +1187,24 @@ export default function SettingsView() {
                     className="text-xs text-brand hover:underline font-medium flex items-center gap-1"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    <span>Upload External .db File</span>
+                    <span>{strings.settings.backup.uploadExternal}</span>
                   </button>
                 </div>
 
                 {backupsList.length === 0 ? (
                   <div className="text-center py-8 text-xs text-content-muted">
-                    No backup files found. Click "Create Backup Now" to record a snapshot.
+                    {strings.settings.backup.emptyState}
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-2xs">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
                         <tr className="h-10 text-[11px] uppercase tracking-wider">
-                          <SortableTh sortKey="filename" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5 pl-4">Filename</SortableTh>
-                          <SortableTh sortKey="backup_type" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">Type</SortableTh>
-                          <SortableTh sortKey="created_at" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">Date</SortableTh>
-                          <SortableTh sortKey="size_bytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-3.5">Size</SortableTh>
-                          <th className="py-2.5 pl-3.5 pr-4 font-semibold text-right">Action</th>
+                          <SortableTh sortKey="filename" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5 pl-4">{strings.settings.backup.table.filename}</SortableTh>
+                          <SortableTh sortKey="backup_type" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">{strings.settings.backup.table.type}</SortableTh>
+                          <SortableTh sortKey="created_at" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">{strings.settings.backup.table.date}</SortableTh>
+                          <SortableTh sortKey="size_bytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-3.5">{strings.settings.backup.table.size}</SortableTh>
+                          <th className="py-2.5 pl-3.5 pr-4 font-semibold text-right">{strings.settings.backup.table.action}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -1186,12 +1223,10 @@ export default function SettingsView() {
                                 type="button"
                                 onClick={async () => {
                                   const { confirmed } = await confirmDialog({
-                                    title: 'Restore Database',
-                                    message: `Restore the database from "${bk.filename}"?`,
-                                    details: [
-                                      'A safety pre-restore backup will be created automatically before current data is replaced.',
-                                    ],
-                                    confirmLabel: 'Restore',
+                                    title: strings.settings.backup.confirmBackupRestore.title,
+                                    message: strings.settings.backup.confirmBackupRestore.message(bk.filename),
+                                    details: strings.settings.backup.confirmBackupRestore.details,
+                                    confirmLabel: strings.settings.backup.confirmBackupRestore.confirmLabel,
                                     tone: 'warning',
                                   });
                                   if (confirmed) {
@@ -1201,7 +1236,7 @@ export default function SettingsView() {
                                 disabled={restoreBackupMutation.isPending}
                                 className="px-3 py-1 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content text-xs font-medium transition-colors"
                               >
-                                Restore
+                                {strings.settings.backup.restore}
                               </button>
                             </td>
                           </tr>
@@ -1220,9 +1255,9 @@ export default function SettingsView() {
           {activeNav === 'migration' && (
             <div className="max-w-3xl space-y-6">
               <div>
-                <h2 className="text-base font-semibold text-content">Imports &amp; Migration</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.migration.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Batch import product, category, customer, and historical invoice data via CSV or legacy databases
+                  {strings.settings.migration.subtitle}
                 </p>
               </div>
 
@@ -1235,9 +1270,9 @@ export default function SettingsView() {
                         <Database className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-content">Previous Java POS Database Detected</h3>
+                        <h3 className="text-sm font-semibold text-content">{strings.settings.migration.legacyDetectedTitle}</h3>
                         <p className="text-xs text-content-secondary">
-                          Found local installation: <code className="font-mono text-content font-medium">{detectedLegacyDb}</code>
+                          {strings.settings.migration.legacyFound} <code className="font-mono text-content font-medium">{detectedLegacyDb}</code>
                         </p>
                       </div>
                     </div>
@@ -1245,10 +1280,9 @@ export default function SettingsView() {
                       type="button"
                       onClick={async () => {
                         const { confirmed } = await confirmDialog({
-                          title: 'Import Previous POS Data',
-                          message:
-                            'Import all categories, products, customers, and sales history from your previous Java POS installation?',
-                          confirmLabel: 'Import Data',
+                          title: strings.settings.migration.confirmImport.title,
+                          message: strings.settings.migration.confirmImport.message,
+                          confirmLabel: strings.settings.migration.confirmImport.confirmLabel,
                           tone: 'warning',
                         });
                         if (confirmed) {
@@ -1259,7 +1293,7 @@ export default function SettingsView() {
                       className="px-4 py-2 rounded-lg bg-brand hover:bg-brand-hover text-white font-medium text-xs flex items-center gap-2 transition-colors shrink-0"
                     >
                       {migrationMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
-                      <span>Import Previous POS Data</span>
+                      <span>{strings.settings.migration.importPrevious}</span>
                     </button>
                   </div>
                   {migrationResult && (
@@ -1272,9 +1306,9 @@ export default function SettingsView() {
 
               {/* CSV Import Wizards */}
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
-                <h3 className="text-sm font-semibold text-content">Spreadsheet (CSV) Data Import</h3>
+                <h3 className="text-sm font-semibold text-content">{strings.settings.migration.csvHeading}</h3>
                 <p className="text-xs text-content-secondary">
-                  Upload standard UTF-8 formatted CSV files to import master records into PicoPOSSUM
+                  {strings.settings.migration.csvDescription}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -1368,9 +1402,9 @@ export default function SettingsView() {
           {activeNav === 'security' && (
             <div className="max-w-2xl space-y-6">
               <div>
-                <h2 className="text-base font-semibold text-content">Security &amp; Credentials</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.security.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Manage administrator terminal password and credential safeguards
+                  {strings.settings.security.subtitle}
                 </p>
               </div>
 
@@ -1380,49 +1414,55 @@ export default function SettingsView() {
                     <Lock className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-content">Update Administrator Password</h3>
+                    <h3 className="text-sm font-semibold text-content">{strings.settings.security.updateTitle}</h3>
                     <p className="text-[11px] text-content-secondary">
-                      Used for unlocking the terminal, sensitive returns, and administrative operations
+                      {strings.settings.security.updateHint}
                     </p>
                   </div>
                 </div>
 
                 <form onSubmit={handlePasswordSubmit} className="space-y-4 text-xs">
                   <div>
-                    <label className="text-content font-medium block mb-1">Current Password</label>
+                    <label className="text-content font-medium block mb-1">
+                      {strings.settings.security.currentPassword}
+                    </label>
                     <input
                       type="password"
                       value={passwordState.currentPassword}
                       onChange={(e) =>
                         setPasswordState({ ...passwordState, currentPassword: e.target.value })
                       }
-                      placeholder="Enter current password"
+                      placeholder={strings.settings.security.currentPasswordPlaceholder}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-content font-medium block mb-1">New Password</label>
+                    <label className="text-content font-medium block mb-1">
+                      {strings.settings.security.newPassword}
+                    </label>
                     <input
                       type="password"
                       value={passwordState.newPassword}
                       onChange={(e) =>
                         setPasswordState({ ...passwordState, newPassword: e.target.value })
                       }
-                      placeholder="Enter new password (min. 4 characters)"
+                      placeholder={strings.settings.security.newPasswordPlaceholder}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-content font-medium block mb-1">Confirm New Password</label>
+                    <label className="text-content font-medium block mb-1">
+                      {strings.settings.security.confirmPassword}
+                    </label>
                     <input
                       type="password"
                       value={passwordState.confirmPassword}
                       onChange={(e) =>
                         setPasswordState({ ...passwordState, confirmPassword: e.target.value })
                       }
-                      placeholder="Repeat new password"
+                      placeholder={strings.settings.security.confirmPasswordPlaceholder}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
                     />
                   </div>
@@ -1438,7 +1478,7 @@ export default function SettingsView() {
                       ) : (
                         <Check className="w-3.5 h-3.5" />
                       )}
-                      <span>Update Password</span>
+                      <span>{strings.settings.security.updatePassword}</span>
                     </button>
                   </div>
                 </form>
@@ -1452,16 +1492,16 @@ export default function SettingsView() {
           {activeNav === 'appearance' && (
             <div className="max-w-2xl space-y-6">
               <div>
-                <h2 className="text-base font-semibold text-content">Appearance &amp; Display</h2>
+                <h2 className="text-base font-semibold text-content">{strings.settings.appearance.title}</h2>
                 <p className="text-xs text-content-secondary">
-                  Configure visual theme and interface density for retail lighting environments
+                  {strings.settings.appearance.subtitle}
                 </p>
               </div>
 
               <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
-                <h3 className="text-sm font-semibold text-content">Color Theme</h3>
+                <h3 className="text-sm font-semibold text-content">{strings.settings.appearance.colorTheme}</h3>
                 <p className="text-xs text-content-secondary">
-                  Choose between the default high-readability light operational theme or the deep navy dark theme.
+                  {strings.settings.appearance.colorThemeHint}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -1477,7 +1517,7 @@ export default function SettingsView() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 font-medium text-xs text-content">
                         <Sun className="w-4 h-4 text-warning" />
-                        <span>Light Theme (Recommended)</span>
+                        <span>{strings.settings.appearance.lightTitle}</span>
                       </div>
                       {theme === 'light' && (
                         <div className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center">
@@ -1493,7 +1533,7 @@ export default function SettingsView() {
                       <div className="flex-1 bg-[#17212F]" title="#17212F Content" />
                     </div>
                     <p className="text-[11px] text-content-secondary">
-                      Optimal contrast for bright store lighting, cashier counters, and all display types.
+                      {strings.settings.appearance.lightDescription}
                     </p>
                   </div>
 
@@ -1509,7 +1549,7 @@ export default function SettingsView() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 font-medium text-xs text-content">
                         <Moon className="w-4 h-4 text-brand" />
-                        <span>Deep Navy Dark</span>
+                        <span>{strings.settings.appearance.darkTitle}</span>
                       </div>
                       {theme === 'dark' && (
                         <div className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center">
@@ -1525,7 +1565,7 @@ export default function SettingsView() {
                       <div className="flex-1 bg-[#E5EDF7]" title="#E5EDF7 Content" />
                     </div>
                     <p className="text-[11px] text-content-secondary">
-                      Designed for evening shifts and dimmer low-light retail terminals.
+                      {strings.settings.appearance.darkDescription}
                     </p>
                   </div>
                 </div>

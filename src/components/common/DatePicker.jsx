@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { strings } from '../../lib/strings';
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
+const MONTH_NAMES = strings.common.datePicker.months;
 
-const SHORT_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const SHORT_DAYS = strings.common.datePicker.weekdays;
 
 /**
  * Format Date to YYYY-MM-DD in local time
@@ -50,7 +48,7 @@ export function formatDisplayDate(isoStr) {
 export default function DatePicker({
   value = '',
   onChange,
-  placeholder = 'Select date',
+  placeholder = strings.common.placeholders.selectDate,
   minDate = null,
   maxDate = null,
   disabled = false,
@@ -179,7 +177,7 @@ export default function DatePicker({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-2 px-2.5 py-1.5 text-xs bg-surface border border-border-default rounded-lg text-text-primary hover:border-border-strong focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${buttonClassName}`}
-        title={value ? `Selected: ${value}` : 'Pick a date'}
+        title={value ? strings.common.datePicker.selected(value) : strings.common.datePicker.pickDate}
       >
         <CalendarIcon className="w-3.5 h-3.5 text-text-muted shrink-0" />
         <span className={`font-mono ${value ? 'text-text-primary font-medium' : 'text-text-muted'}`}>
@@ -188,7 +186,7 @@ export default function DatePicker({
         {value && (
           <span
             onClick={handleClear}
-            title="Clear date"
+            title={strings.common.datePicker.clearDate}
             className="p-0.5 rounded hover:bg-surface-secondary text-text-muted hover:text-danger cursor-pointer ml-auto"
           >
             <X className="w-3 h-3" />
@@ -205,7 +203,7 @@ export default function DatePicker({
               type="button"
               onClick={handlePrevMonth}
               className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-              title="Previous Month"
+              title={strings.common.datePicker.previousMonth}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -240,7 +238,7 @@ export default function DatePicker({
               type="button"
               onClick={handleNextMonth}
               className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-              title="Next Month"
+              title={strings.common.datePicker.nextMonth}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -301,7 +299,7 @@ export default function DatePicker({
               onClick={handleToday}
               className="px-2 py-0.5 rounded text-[11px] font-semibold text-brand hover:bg-brand-subtle transition-colors cursor-pointer"
             >
-              Today
+              {strings.common.datePicker.today}
             </button>
             {value && (
               <button
@@ -309,7 +307,7 @@ export default function DatePicker({
                 onClick={handleClear}
                 className="px-2 py-0.5 rounded text-[11px] font-medium text-danger hover:bg-danger-bg transition-colors cursor-pointer"
               >
-                Clear
+                {strings.common.datePicker.clear}
               </button>
             )}
             <button
@@ -317,7 +315,7 @@ export default function DatePicker({
               onClick={() => setOpen(false)}
               className="px-2 py-0.5 rounded text-[11px] font-medium text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             >
-              Close
+              {strings.common.datePicker.close}
             </button>
           </div>
         </div>
@@ -330,7 +328,7 @@ export default function DatePicker({
  * Pre-built Date Range Selector (From & To)
  */
 export function DateRangePicker({
-  label = 'Date Range',
+  label = strings.common.datePicker.dateRange,
   fromVal = '',
   toVal = '',
   onFromChange,
@@ -341,20 +339,20 @@ export function DateRangePicker({
     <div className="flex items-center gap-1.5 text-xs text-text-secondary flex-wrap">
       {label && <span className="font-medium text-text-primary whitespace-nowrap">{label}:</span>}
       <div className="flex items-center gap-1">
-        <span className="text-[11px] text-text-muted">From</span>
+        <span className="text-[11px] text-text-muted">{strings.common.datePicker.from}</span>
         <DatePicker
           value={fromVal}
           onChange={onFromChange}
-          placeholder="Start date"
+          placeholder={strings.common.placeholders.startDate}
         />
       </div>
       <span className="text-text-muted">–</span>
       <div className="flex items-center gap-1">
-        <span className="text-[11px] text-text-muted">To</span>
+        <span className="text-[11px] text-text-muted">{strings.common.datePicker.to}</span>
         <DatePicker
           value={toVal}
           onChange={onToChange}
-          placeholder="End date"
+          placeholder={strings.common.placeholders.endDate}
         />
       </div>
       {(fromVal || toVal) && onClear && (
@@ -363,7 +361,7 @@ export function DateRangePicker({
           onClick={onClear}
           className="text-xs text-brand hover:underline px-1 cursor-pointer"
         >
-          Clear
+          {strings.common.datePicker.clear}
         </button>
       )}
     </div>

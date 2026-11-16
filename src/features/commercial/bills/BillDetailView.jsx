@@ -27,6 +27,10 @@ import { computeBillTotals } from '../../../stores/pos.store';
 import PosBillEditor from '../pos/PosBillEditor';
 import AddCustomerModal from '../pos/AddCustomerModal';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { strings } from '../../../lib/strings';
+
+const b = strings.bills;
+const c = strings.common;
 
 export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const currencySymbol = getCurrencySymbol();
@@ -216,13 +220,13 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       const inCart = draftBill?.items.find((it) => it.productId === product.id)?.quantity || 0;
 
       if (available <= 0) {
-        toast.warning(`"${product.name}" is out of stock.`);
+        toast.warning(b.toasts.outOfStock(product.name));
         return;
       }
       if (inCart + 1 > available) {
         toast.warning(
-          `Only ${available} unit${available === 1 ? '' : 's'} of "${product.name}" available in stock.`,
-          { title: 'Stock limit reached' }
+          b.toasts.stockLimit(available, product.name),
+          { title: b.toasts.stockLimitTitle }
         );
         return;
       }
@@ -266,10 +270,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         (productStockById.get(productId)?.current_stock || 0) +
         (stockAllowanceByProduct.get(productId) || 0);
       if (quantity > available) {
-        const name = draftBill?.items.find((it) => it.productId === productId)?.name || 'item';
+        const name = draftBill?.items.find((it) => it.productId === productId)?.name || b.labels.itemFallback;
         toast.warning(
-          `Only ${available} unit${available === 1 ? '' : 's'} of "${name}" available in stock.`,
-          { title: 'Stock limit reached' }
+          b.toasts.stockLimit(available, name),
+          { title: b.toasts.stockLimitTitle }
         );
         return;
       }
@@ -381,9 +385,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     mutationFn: ({ id, reason }) => tauriApi.cancelSale(id, reason),
     onSuccess: () => {
       invalidateSalesAndAnalytics();
-      toast.success('Sale cancelled and items returned to stock');
+      toast.success(b.toasts.saleCancelledReturned);
     },
-    onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
+    onError: (err) =>
+      toast.error(b.toasts.cancelFailed(err), { title: b.toasts.cancelFailedTitle }),
   });
 
   const updateMutation = useMutation({
@@ -396,19 +401,19 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       setCustomerModalOpen(false);
       setEditSearchQuery('');
       setEditSelectedCategory(null);
-      toast.success('Bill amended and inventory adjustments logged');
+      toast.success(b.toasts.amended);
     },
     onError: (err) => {
-      const message = `Save failed: ${String(err)}`;
+      const message = b.toasts.saveFailed(String(err));
       setEditError(message);
-      toast.error(message, { title: 'Update failed' });
+      toast.error(message, { title: b.toasts.saveFailedTitle });
     },
   });
 
   const handleSaveEdit = async () => {
     setEditError('');
     if (!draftBill || draftBill.items.length === 0) {
-      const message = 'A bill must have at least one item.';
+      const message = b.validation.emptyBill;
       setEditError(message);
       toast.warning(message);
       return;
@@ -428,7 +433,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         if (total > 0 && tendered < total) {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
-          const message = `Full payment requires an amount tendered equal to or greater than the bill amount (${formatPaise(total)}).`;
+          const message = b.validation.fullPaymentRequired(formatPaise(total));
           setEditError(message);
           toast.warning(message);
           return;
@@ -437,7 +442,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         if (tendered <= 0) {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
-          const message = 'Partial payment requires an amount tendered greater than zero.';
+          const message = b.validation.partialPaymentRequired;
           setEditError(message);
           toast.warning(message);
           return;
@@ -445,7 +450,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
         if (total > 0 && tendered >= total) {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
-          const message = `Partial payment cannot be equal to or greater than the bill amount (${formatPaise(total)}).`;
+          const message = b.validation.partialPaymentTooHigh(formatPaise(total));
           setEditError(message);
           toast.warning(message);
           return;
@@ -454,16 +459,16 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     }
 
     const { confirmed, value: amendmentReason } = await confirmDialog({
-      title: 'Confirm Bill Amendment',
-      message: `Save changes to invoice #${saleDetails?.sale?.invoice_number}? A structured amendment record will be logged.`,
+      title: b.dialogs.amend.title,
+      message: b.dialogs.amend.message(saleDetails?.sale?.invoice_number),
       input: {
-        label: 'Amendment Reason (Audit Trail)',
-        defaultValue: 'Correction of line item / rate amendment',
-        placeholder: 'Reason for change',
+        label: b.dialogs.amend.reasonLabel,
+        defaultValue: b.dialogs.amend.reasonDefault,
+        placeholder: b.dialogs.amend.reasonPlaceholder,
         required: true,
       },
-      confirmLabel: 'Save Changes',
-      cancelLabel: 'Keep Editing',
+      confirmLabel: b.dialogs.amend.confirm,
+      cancelLabel: b.dialogs.amend.cancel,
       tone: 'primary',
       icon: Save,
     });
@@ -495,12 +500,12 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const handleReprint = () => {
     if (!saleDetails) return;
     setReprintSale(saleDetails);
-    toast.info('Preparing receipt for printing');
+    toast.info(b.toasts.receiptPreparing);
     setTimeout(() => window.print(), 100);
   };
 
   const handleBack = () => {
-    openOrFocus('Bill History', 'bills');
+    openOrFocus(b.history.title, 'bills');
     if (activeTabId) closeTab(activeTabId);
   };
 
@@ -509,7 +514,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       <div className="flex-1 flex items-center justify-center bg-canvas text-text-muted">
         <div className="flex items-center gap-3">
           <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Loading bill details…</span>
+          <span className="text-sm">{b.detail.loading}</span>
         </div>
       </div>
     );
@@ -519,13 +524,13 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-canvas text-text-secondary gap-3">
         <Receipt className="w-10 h-10 text-text-muted" />
-        <p className="text-sm">Could not find bill details for ID: {saleId}</p>
+        <p className="text-sm">{b.detail.notFound(saleId)}</p>
         <button
           type="button"
           onClick={handleBack}
           className="px-3.5 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary border border-border-default text-text-primary text-xs font-semibold cursor-pointer"
         >
-          Return to Bill History
+          {b.actions.returnToHistory}
         </button>
       </div>
     );
@@ -538,16 +543,16 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
   const handleCancelSale = async () => {
     const { confirmed, value } = await confirmDialog({
-      title: `Cancel Bill #${sale.invoice_number}?`,
-      message: `Are you sure you want to cancel invoice #${sale.invoice_number}? All items will be returned to inventory.`,
+      title: b.dialogs.cancelBill.title(sale.invoice_number),
+      message: b.dialogs.cancelBill.message(sale.invoice_number),
       input: {
-        label: 'Cancellation Reason',
-        defaultValue: 'Customer return / refund',
-        placeholder: 'Reason for return',
+        label: b.dialogs.cancelBill.reasonLabel,
+        defaultValue: b.dialogs.cancelBill.reasonDefault,
+        placeholder: b.dialogs.cancelBill.reasonPlaceholder,
         required: true,
       },
-      confirmLabel: 'Cancel Bill',
-      cancelLabel: 'Keep Active',
+      confirmLabel: b.dialogs.cancelBill.confirm,
+      cancelLabel: b.dialogs.cancelBill.cancel,
       tone: 'danger',
       icon: RotateCcw,
     });
@@ -555,7 +560,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     if (confirmed) {
       cancelMutation.mutate({
         id: sale.id,
-        reason: value || 'Customer return / refund',
+        reason: value || b.dialogs.cancelBill.reasonDefault,
       });
     }
   };
@@ -569,7 +574,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             type="button"
             onClick={editing ? cancelEdit : handleBack}
             className="p-1.5 rounded-lg bg-surface-secondary hover:bg-surface border border-border-default text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-            title={editing ? 'Discard edit' : 'Back to Bill History'}
+            title={editing ? b.detail.discardEdit : b.detail.backToHistory}
           >
             {editing ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
           </button>
@@ -580,11 +585,11 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             <div>
               <div className="flex items-center gap-2.5">
                 <h2 className="text-sm font-bold text-text-primary font-mono tracking-wide">
-                  Bill #{sale.invoice_number || invoiceNumber}
+                  {b.detail.heading(sale.invoice_number || invoiceNumber)}
                 </h2>
                 {editing ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-warning-bg text-warning border-warning/30">
-                    <Pencil className="w-3 h-3" /> Editing Mode
+                    <Pencil className="w-3 h-3" /> {b.detail.editingMode}
                   </span>
                 ) : (
                   <span
@@ -599,11 +604,11 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                     {isCancelled ? (
                       <XCircle className="w-3 h-3" />
                     ) : isLegacy ? (
-                      <History className="w-3 h-3" />
+                      <Clock className="w-3 h-3" />
                     ) : (
                       <CheckCircle2 className="w-3 h-3" />
                     )}
-                    {isLegacy ? 'Legacy' : sale.status}
+                    {isLegacy ? b.status.legacy : sale.status}
                   </span>
                 )}
               </div>
@@ -621,7 +626,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 className="px-3.5 py-1.5 rounded-lg text-text-secondary hover:text-text-primary bg-surface hover:bg-surface-secondary text-xs font-semibold flex items-center gap-1.5 transition-colors border border-border-default cursor-pointer shadow-2xs"
               >
                 <Pencil className="w-3.5 h-3.5 text-text-muted" />
-                Amend Bill
+                {b.actions.amendBill}
               </button>
               <button
                 type="button"
@@ -629,7 +634,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 className="px-3.5 py-1.5 rounded-lg text-danger hover:bg-danger-bg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-danger/30 cursor-pointer shadow-2xs"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Cancel / Return
+                {b.actions.cancelReturn}
               </button>
             </>
           )}
@@ -641,7 +646,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 onClick={cancelEdit}
                 className="px-3.5 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-secondary text-xs font-medium border border-border-default transition-colors cursor-pointer"
               >
-                Discard
+                {b.actions.discard}
               </button>
               <button
                 type="button"
@@ -650,7 +655,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                {updateMutation.isPending ? 'Saving…' : 'Save'}
+                {updateMutation.isPending ? b.actions.saving : b.actions.save}
               </button>
             </>
           )}
@@ -662,7 +667,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
               className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              Reprint Receipt
+              {b.actions.reprintReceipt}
             </button>
           )}
         </div>
@@ -710,8 +715,8 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             notes={draftBill.notes || ''}
             onNotesChange={setDraftNotes}
             primaryAction={{
-              label: 'Save',
-              pendingLabel: 'Saving Changes…',
+              label: b.actions.save,
+              pendingLabel: b.actions.savingChanges,
               pending: updateMutation.isPending,
               disabled: updateMutation.isPending || draftBill.items.length === 0 || !isDraftPaymentValid,
               icon: Save,
@@ -737,9 +742,9 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
               <div className="p-4 rounded-xl bg-danger-bg border border-danger/30 flex items-start gap-3 shrink-0">
                 <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <h4 className="font-bold text-danger">This bill has been cancelled</h4>
+                  <h4 className="font-bold text-danger">{b.detail.cancelledBanner.title}</h4>
                   <p className="text-text-secondary mt-0.5">
-                    Items were returned to inventory and transaction recorded as voided.
+                    {b.detail.cancelledBanner.message}
                   </p>
                 </div>
               </div>
@@ -749,13 +754,15 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             <div className="rounded-xl border border-border-default overflow-hidden bg-surface shadow-xs flex-1 flex flex-col">
               <div className="px-4 py-3 border-b border-border-default bg-surface-secondary flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-text-primary">Itemized Bill</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-primary">
+                    {b.detail.items.heading}
+                  </span>
                   <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-surface border border-border-default text-text-muted">
-                    {items.length} line{items.length !== 1 ? 's' : ''}
+                    {b.detail.items.lineCount(items.length)}
                   </span>
                 </div>
                 <span className="text-xs text-text-muted font-mono">
-                  {items.reduce((acc, it) => acc + (it.quantity || 0), 0)} total units
+                  {b.detail.items.totalUnits(items.reduce((acc, it) => acc + (it.quantity || 0), 0))}
                 </span>
               </div>
 
@@ -763,14 +770,14 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 <table className="w-full text-left border-collapse text-xs select-text">
                   <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
                     <tr>
-                      <th className="py-2.5 px-4 w-12 text-center">#</th>
+                      <th className="py-2.5 px-4 w-12 text-center">{b.columns.index}</th>
                       <SortableTh
                         sortKey="product_name"
                         sort={lineSort}
                         onSort={(key) => setLineSort((p) => nextSortState(p, key))}
                         className="py-2.5 px-4"
                       >
-                        Product Name
+                        {b.columns.productName}
                       </SortableTh>
                       <SortableTh
                         sortKey="unit_price_paise"
@@ -779,7 +786,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="right"
                         className="py-2.5 px-4"
                       >
-                        Unit Rate
+                        {b.columns.unitRate}
                       </SortableTh>
                       <SortableTh
                         sortKey="quantity"
@@ -788,7 +795,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="center"
                         className="py-2.5 px-4"
                       >
-                        Quantity
+                        {b.columns.quantity}
                       </SortableTh>
                       <SortableTh
                         sortKey="discount_paise"
@@ -797,7 +804,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="right"
                         className="py-2.5 px-4"
                       >
-                        Discount
+                        {b.columns.discount}
                       </SortableTh>
                       <SortableTh
                         sortKey="tax_rate"
@@ -806,7 +813,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="right"
                         className="py-2.5 px-4"
                       >
-                        Tax %
+                        {b.columns.taxPercent}
                       </SortableTh>
                       <SortableTh
                         sortKey="total_paise"
@@ -815,7 +822,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                         align="right"
                         className="py-2.5 px-4"
                       >
-                        Total
+                        {b.columns.total}
                       </SortableTh>
                     </tr>
                   </thead>
@@ -858,16 +865,16 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             <div className="p-3.5 rounded-xl bg-surface-secondary border border-border-default space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-text-primary">
                 <User className="w-4 h-4 text-brand" />
-                <span className="uppercase tracking-wider text-[11px]">Customer Details</span>
+                <span className="uppercase tracking-wider text-[11px]">{b.detail.customer.heading}</span>
               </div>
               <div className="pt-2 border-t border-border-default space-y-1">
                 <div className="text-sm font-bold text-text-primary">
-                  {sale.customer_name || 'Walk-in Customer'}
+                  {sale.customer_name || b.labels.walkInCustomer}
                 </div>
                 {sale.customer_phone ? (
                   <div className="text-xs text-text-muted font-mono">{sale.customer_phone}</div>
                 ) : (
-                  <div className="text-xs text-text-muted italic">No phone provided</div>
+                  <div className="text-xs text-text-muted italic">{b.detail.customer.noPhone}</div>
                 )}
                 {sale.customer_address && (
                   <div className="text-xs text-text-secondary mt-1">{sale.customer_address}</div>
@@ -879,24 +886,24 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             <div className="p-3.5 rounded-xl bg-surface-secondary border border-border-default space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-text-primary">
                 <CreditCard className="w-4 h-4 text-brand" />
-                <span className="uppercase tracking-wider text-[11px]">Payment & Transaction</span>
+                <span className="uppercase tracking-wider text-[11px]">{b.detail.payment.heading}</span>
               </div>
               <div className="pt-2 border-t border-border-default space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Payment Method</span>
+                  <span className="text-text-muted">{c.labels.paymentMethod}</span>
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-surface border border-border-default text-text-primary uppercase tracking-wide">
                     {sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Cashier / Operator</span>
+                  <span className="text-text-muted">{b.detail.payment.cashier}</span>
                   <span className="font-medium text-text-primary">
-                    {sale.biller_name || 'Counter Terminal'}
+                    {sale.biller_name || b.detail.payment.operatorDefault}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-border-default">
                   <span className="text-text-muted flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" /> Date & Time
+                    <Calendar className="w-3.5 h-3.5" /> {c.labels.dateTime}
                   </span>
                   <span className="font-mono text-text-primary">
                     {formatDateTime(sale.created_at)}
@@ -910,12 +917,12 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2 text-xs font-semibold text-text-primary">
                   <Receipt className="w-4 h-4 text-brand" />
-                  <span className="uppercase tracking-wider text-[11px]">Financial Summary</span>
+                  <span className="uppercase tracking-wider text-[11px]">{b.detail.summary.heading}</span>
                 </div>
 
                 <div className="space-y-1.5 pt-2 border-t border-border-default text-xs text-text-secondary">
                   <div className="flex justify-between">
-                    <span className="text-text-muted">Subtotal</span>
+                    <span className="text-text-muted">{c.labels.subtotal}</span>
                     <span className="financial-value font-medium text-text-primary">
                       {formatPaise(sale.subtotal_paise)}
                     </span>
@@ -923,7 +930,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
                   {sale.discount_paise > 0 && (
                     <div className="flex justify-between text-amber-600">
-                      <span>Discount</span>
+                      <span>{c.labels.discount}</span>
                       <span className="financial-value font-medium">
                         -{formatPaise(sale.discount_paise)}
                       </span>
@@ -932,7 +939,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
                   {sale.tax_paise > 0 && (
                     <div className="flex justify-between text-text-muted">
-                      <span>GST Tax</span>
+                      <span>{b.detail.summary.gst}</span>
                       <span className="financial-value font-medium text-text-primary">
                         {formatPaise(sale.tax_paise)}
                       </span>
@@ -940,7 +947,9 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                   )}
 
                   <div className="pt-2 border-t border-border-default flex justify-between items-baseline">
-                    <span className="text-sm font-bold text-text-primary uppercase tracking-wide">Grand Total</span>
+                    <span className="text-sm font-bold text-text-primary uppercase tracking-wide">
+                      {b.detail.summary.grandTotal}
+                    </span>
                     <span className="text-xl font-bold financial-value text-text-primary">
                       {formatPaise(sale.total_paise)}
                     </span>
@@ -950,25 +959,25 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 {/* Paid & Settlement Details */}
                 <div className="bg-surface rounded-lg p-2.5 border border-border-default space-y-1 text-xs">
                   <div className="flex justify-between text-text-muted">
-                    <span>Paid Amount ({sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH'})</span>
+                    <span>{b.detail.summary.paidAmount(sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH')}</span>
                     <span className="financial-value font-semibold text-text-primary">
                       {formatPaise(sale.paid_paise)}
                     </span>
                   </div>
                   {sale.paid_paise > sale.total_paise ? (
                     <div className="flex justify-between text-success font-semibold">
-                      <span>Change Returned</span>
+                      <span>{b.detail.summary.changeReturned}</span>
                       <span className="financial-value">{formatPaise(sale.paid_paise - sale.total_paise)}</span>
                     </div>
                   ) : sale.paid_paise < sale.total_paise ? (
                     <div className="flex justify-between text-danger font-semibold">
-                      <span>Balance Due</span>
+                      <span>{b.detail.summary.balanceDue}</span>
                       <span className="financial-value">{formatPaise(sale.total_paise - sale.paid_paise)}</span>
                     </div>
                   ) : (
                     <div className="flex justify-between text-text-muted text-[11px]">
-                      <span>Balance Status</span>
-                      <span>Settled</span>
+                      <span>{b.detail.summary.balanceStatus}</span>
+                      <span>{b.detail.summary.settled}</span>
                     </div>
                   )}
                 </div>
@@ -977,7 +986,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                 {sale.notes && (
                   <div className="pt-2 border-t border-border-default text-xs">
                     <span className="text-[10px] uppercase font-bold text-text-muted block mb-0.5">
-                      Transaction Notes:
+                      {b.detail.summary.notesLabel}
                     </span>
                     <p className="bg-surface p-2 rounded-lg border border-border-default text-text-primary leading-relaxed">
                       {sale.notes}
@@ -994,7 +1003,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                   className="w-full py-2 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary font-semibold text-xs flex items-center justify-center gap-2 border border-border-default transition-colors cursor-pointer shadow-2xs"
                 >
                   <Printer className="w-3.5 h-3.5 text-text-muted" />
-                  <span>Reprint Receipt</span>
+                  <span>{b.actions.reprintReceipt}</span>
                 </button>
               </div>
             </div>

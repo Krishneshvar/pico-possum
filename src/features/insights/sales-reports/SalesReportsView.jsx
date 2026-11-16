@@ -20,6 +20,7 @@ import Select from '../../../components/common/Select';
 import DatePicker, { formatToIso } from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
+import { strings } from '../../../lib/strings';
 
 export default function SalesReportsView() {
   const currencySymbol = getCurrencySymbol();
@@ -114,7 +115,7 @@ export default function SalesReportsView() {
     () => [
       {
         key: 'period',
-        label: reportType === 'monthly' ? 'Month' : reportType === 'yearly' ? 'Year' : 'Date',
+        label: strings.salesReports.columns.periodLabel(reportType),
         className: 'font-mono text-text-primary font-semibold text-xs whitespace-nowrap',
         minWidth: 120,
         exportValue: (r) => r.period,
@@ -122,7 +123,7 @@ export default function SalesReportsView() {
       },
       {
         key: 'total_transactions',
-        label: 'Bills Count',
+        label: strings.salesReports.columns.billsCount,
         headerClassName: 'text-center',
         className: 'text-center text-xs font-mono',
         minWidth: 90,
@@ -133,7 +134,7 @@ export default function SalesReportsView() {
       },
       {
         key: 'cash_paise',
-        label: 'Cash Settled',
+        label: strings.salesReports.columns.cashSettled,
         headerClassName: 'text-right',
         className: 'text-right financial-value text-text-secondary text-xs',
         minWidth: 110,
@@ -144,7 +145,7 @@ export default function SalesReportsView() {
       },
       {
         key: 'upi_paise',
-        label: 'UPI / QR',
+        label: strings.salesReports.columns.upiQr,
         headerClassName: 'text-right',
         className: 'text-right financial-value text-text-secondary text-xs',
         minWidth: 110,
@@ -155,7 +156,7 @@ export default function SalesReportsView() {
       },
       {
         key: 'card_paise',
-        label: 'Card Terminal',
+        label: strings.salesReports.columns.cardTerminal,
         headerClassName: 'text-right',
         className: 'text-right financial-value text-text-secondary text-xs',
         minWidth: 110,
@@ -166,7 +167,7 @@ export default function SalesReportsView() {
       },
       {
         key: 'gift_card_paise',
-        label: 'Gift Card',
+        label: strings.salesReports.columns.giftCard,
         headerClassName: 'text-right',
         className: 'text-right financial-value text-text-secondary text-xs',
         minWidth: 100,
@@ -177,18 +178,18 @@ export default function SalesReportsView() {
       },
       {
         key: 'total_discount_paise',
-        label: 'Discounts',
+        label: strings.salesReports.columns.discounts,
         headerClassName: 'text-right',
         className: 'text-right financial-value text-amber-600 text-xs',
         minWidth: 100,
         exportValue: (r) => (r.total_discount_paise / 100).toFixed(2),
-        render: (r) => (r.total_discount_paise > 0 ? `-${formatPaise(r.total_discount_paise)}` : '—'),
+        render: (r) => (r.total_discount_paise > 0 ? `-${formatPaise(r.total_discount_paise)}` : strings.common.states.emptyValue),
         isNumeric: true,
         totalKey: 'discount',
       },
       {
         key: 'total_sales_paise',
-        label: 'Gross Sales',
+        label: strings.salesReports.columns.grossSales,
         headerClassName: 'text-right',
         className: 'text-right financial-value text-text-primary font-medium text-xs',
         minWidth: 120,
@@ -199,7 +200,7 @@ export default function SalesReportsView() {
       },
       {
         key: 'net_sales',
-        label: 'Net Sales',
+        label: strings.salesReports.columns.netSales,
         headerClassName: 'text-right',
         className: 'text-right financial-value font-bold text-text-primary text-xs',
         minWidth: 120,
@@ -243,7 +244,7 @@ export default function SalesReportsView() {
 
   const handleExportCsv = async () => {
     if (!filteredData.length || !visibleColumns.length) {
-      toast.warning('No report data to export');
+      toast.warning(strings.salesReports.export.noData);
       return;
     }
 
@@ -264,17 +265,17 @@ export default function SalesReportsView() {
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     await exportWithUserLocation({
-      filename: `sales_report_${reportType}_${dateRangeLabel}.csv`,
+      filename: strings.salesReports.export.filename(reportType, dateRangeLabel, 'csv'),
       extension: 'csv',
       data: csvContent,
       count: filteredData.length,
-      entityName: 'report rows',
+      entityName: strings.salesReports.export.entityName,
     });
   };
 
   const handleExportXlsx = async () => {
     if (!filteredData.length || !visibleColumns.length) {
-      toast.warning('No report data to export');
+      toast.warning(strings.salesReports.export.noData);
       return;
     }
 
@@ -293,7 +294,7 @@ export default function SalesReportsView() {
     }));
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
+    XLSX.utils.book_append_sheet(wb, ws, strings.salesReports.export.sheetName);
     const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const dateRangeLabel = fromDate && toDate
       ? `${fromDate}_to_${toDate}`
@@ -306,11 +307,11 @@ export default function SalesReportsView() {
             : 'all_time';
 
     await exportWithUserLocation({
-      filename: `sales_report_${reportType}_${dateRangeLabel}.xlsx`,
+      filename: strings.salesReports.export.filename(reportType, dateRangeLabel, 'xlsx'),
       extension: 'xlsx',
       data: xlsxArrayBuffer,
       count: filteredData.length,
-      entityName: 'report rows',
+      entityName: strings.salesReports.export.entityName,
     });
   };
 
@@ -323,8 +324,8 @@ export default function SalesReportsView() {
             <Calendar className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-text-primary">Financial Sales Reports</h2>
-            <p className="text-[11px] text-text-muted">Periodic reconciliation and payment collection audits</p>
+            <h2 className="text-sm font-bold text-text-primary">{strings.salesReports.view.title}</h2>
+            <p className="text-[11px] text-text-muted">{strings.salesReports.view.subtitle}</p>
           </div>
         </div>
 
@@ -337,7 +338,7 @@ export default function SalesReportsView() {
               className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary font-medium text-xs flex items-center gap-1.5 border border-border-default transition-colors cursor-pointer shadow-2xs"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-text-muted" />
-              <span>Columns ({visibleColKeys.length})</span>
+              <span>{strings.salesReports.view.columnPicker(visibleColKeys.length)}</span>
               <ChevronDown
                 className={`w-3 h-3 text-text-muted transition-transform ${colMenuOpen ? 'rotate-180' : ''}`}
               />
@@ -346,7 +347,7 @@ export default function SalesReportsView() {
             {colMenuOpen && (
               <div className="absolute right-0 top-full mt-1.5 z-50 bg-surface border border-border-default rounded-xl shadow-xl p-2.5 min-w-[210px] space-y-1 text-text-primary animate-scale-in">
                 <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border-default text-[11px]">
-                  <span className="font-semibold text-text-primary">Visible Columns</span>
+                  <span className="font-semibold text-text-primary">{strings.salesReports.view.visibleColumns}</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -406,7 +407,7 @@ export default function SalesReportsView() {
             type="button"
             onClick={() => refetch()}
             className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-            title="Refresh Report"
+            title={strings.salesReports.view.refreshReport}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -416,34 +417,34 @@ export default function SalesReportsView() {
       {/* ── Row 2: Period & Date Range Toolbar ── */}
       <div className="px-5 py-2.5 border-b border-border-default bg-surface flex items-center gap-3 flex-wrap text-xs shrink-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-text-muted font-medium">Period:</span>
+          <span className="text-text-muted font-medium">{strings.salesReports.filters.period}</span>
           <Select
             value={reportType}
             onChange={(val) => setReportType(val)}
             options={[
-              { value: 'today', label: 'Today' },
-              { value: 'daily', label: 'Daily' },
-              { value: 'monthly', label: 'Monthly' },
-              { value: 'yearly', label: 'Yearly' },
+              { value: 'today', label: strings.salesReports.filters.reportTypes.today },
+              { value: 'daily', label: strings.salesReports.filters.reportTypes.daily },
+              { value: 'monthly', label: strings.salesReports.filters.reportTypes.monthly },
+              { value: 'yearly', label: strings.salesReports.filters.reportTypes.yearly },
             ]}
           />
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-text-muted font-medium">From:</span>
+          <span className="text-text-muted font-medium">{strings.salesReports.filters.from}</span>
           <DatePicker
             value={fromDate}
             onChange={(val) => setFromDate(val)}
-            placeholder="From date"
+            placeholder={strings.salesReports.filters.fromDatePlaceholder}
           />
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-text-muted font-medium">To:</span>
+          <span className="text-text-muted font-medium">{strings.salesReports.filters.to}</span>
           <DatePicker
             value={toDate}
             onChange={(val) => setToDate(val)}
-            placeholder="To date"
+            placeholder={strings.salesReports.filters.toDatePlaceholder}
           />
         </div>
 
@@ -457,7 +458,7 @@ export default function SalesReportsView() {
           }`}
         >
           <Filter className="w-3 h-3" />
-          <span>Advanced Filters</span>
+          <span>{strings.salesReports.filters.advancedFilters}</span>
           {advancedOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
 
@@ -467,7 +468,7 @@ export default function SalesReportsView() {
           className="text-text-muted hover:text-text-primary px-2 py-1 rounded hover:bg-surface-secondary transition-colors ml-auto flex items-center gap-1 cursor-pointer"
         >
           <RotateCcw className="w-3 h-3" />
-          <span>Reset</span>
+          <span>{strings.common.actions.reset}</span>
         </button>
       </div>
 
@@ -540,7 +541,9 @@ export default function SalesReportsView() {
       {/* ── Sticky Financial Totals Bar ── */}
       <div className="border-t border-border-default bg-surface px-5 py-2.5 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 text-xs shrink-0 shadow-xs z-20">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-text-primary uppercase tracking-wide">Totals</span>
+          <span className="font-bold text-text-primary uppercase tracking-wide">
+            {strings.salesReports.summary.totals}
+          </span>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
@@ -549,7 +552,7 @@ export default function SalesReportsView() {
             let displayVal = '';
 
             if (col.totalKey === 'transactions') {
-              displayVal = `${totals.transactions} txns`;
+              displayVal = strings.salesReports.summary.transactions(totals.transactions);
             } else if (col.totalKey === 'cash') {
               displayVal = formatPaise(totals.cash);
             } else if (col.totalKey === 'upi') {

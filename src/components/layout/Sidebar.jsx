@@ -10,16 +10,19 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 
+import { strings } from '../../lib/strings';
+
 export default function Sidebar({ activeRoute, onNavigate }) {
+  const nav = strings.layout.sidebar.nav;
   const navItems = [
-    { id: 'pos', label: 'Point of Sale', icon: ShoppingCart, badge: 'POS' },
-    { id: 'bills', label: 'Bill History', icon: History },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'categories', label: 'Categories', icon: FolderTree },
-    { id: 'stock-ledger', label: 'Stock Activity', icon: ArrowRightLeft },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'reports', label: 'Analytics & Reports', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'pos', label: nav.pointOfSale, icon: ShoppingCart, badge: strings.layout.sidebar.badgePos },
+    { id: 'bills', label: nav.billHistory, icon: History },
+    { id: 'products', label: nav.products, icon: Package },
+    { id: 'categories', label: nav.categories, icon: FolderTree },
+    { id: 'stock-ledger', label: nav.stockActivity, icon: ArrowRightLeft },
+    { id: 'customers', label: nav.customers, icon: Users },
+    { id: 'reports', label: nav.analyticsReports, icon: BarChart3 },
+    { id: 'settings', label: nav.settings, icon: Settings },
   ];
 
   return (
@@ -31,8 +34,8 @@ export default function Sidebar({ activeRoute, onNavigate }) {
             P
           </div>
           <div>
-            <h1 className="font-bold text-slate-100 text-base leading-tight tracking-tight">PicoPOSSUM</h1>
-            <p className="text-xs text-emerald-400/90 font-medium">Retail Terminal</p>
+            <h1 className="font-bold text-slate-100 text-base leading-tight tracking-tight">{strings.layout.brand.name}</h1>
+            <p className="text-xs text-emerald-400/90 font-medium">{strings.layout.brand.tagline}</p>
           </div>
         </div>
 
@@ -69,15 +72,15 @@ export default function Sidebar({ activeRoute, onNavigate }) {
       {/* Footer shortcut help */}
       <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 text-xs text-slate-400 space-y-1.5">
         <div className="flex justify-between items-center text-[11px]">
-          <span>Search Products</span>
+          <span>{strings.layout.sidebar.shortcuts.searchProducts}</span>
           <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">Ctrl+K</kbd>
         </div>
         <div className="flex justify-between items-center text-[11px]">
-          <span>Complete Checkout</span>
+          <span>{strings.layout.sidebar.shortcuts.completeCheckout}</span>
           <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">F12</kbd>
         </div>
         <div className="flex justify-between items-center text-[11px]">
-          <span>Switch Bills</span>
+          <span>{strings.layout.sidebar.shortcuts.switchBills}</span>
           <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">Ctrl+1-9</kbd>
         </div>
       </div>

@@ -22,6 +22,7 @@ import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import { tauriApi } from '../../../lib/tauri';
+import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
@@ -96,7 +97,7 @@ export default function ProductsView() {
     () =>
       categories.map((c) => ({
         value: String(c.id),
-        label: `${c.name} (${categoryCounts[c.id] || 0})`,
+        label: strings.common.table.filterCount(c.name, categoryCounts[c.id] || 0),
       })),
     [categories, categoryCounts]
   );
@@ -118,9 +119,12 @@ export default function ProductsView() {
 
   const stockFilterOptions = useMemo(
     () => [
-      { value: 'in_stock', label: `In stock (${stockCounts.inStock})` },
-      { value: 'low_stock', label: `Low stock (${stockCounts.lowStock})` },
-      { value: 'out_of_stock', label: `Out of stock (${stockCounts.outOfStock})` },
+      { value: 'in_stock', label: strings.products.filters.inStock(stockCounts.inStock) },
+      { value: 'low_stock', label: strings.products.filters.lowStock(stockCounts.lowStock) },
+      {
+        value: 'out_of_stock',
+        label: strings.products.filters.outOfStock(stockCounts.outOfStock),
+      },
     ],
     [stockCounts]
   );
@@ -137,9 +141,12 @@ export default function ProductsView() {
 
   const statusFilterOptions = useMemo(
     () => [
-      { value: 'active', label: `Active (${statusCounts.active || 0})` },
-      { value: 'inactive', label: `Inactive (${statusCounts.inactive || 0})` },
-      { value: 'discontinued', label: `Discontinued (${statusCounts.discontinued || 0})` },
+      { value: 'active', label: strings.products.filters.active(statusCounts.active || 0) },
+      { value: 'inactive', label: strings.products.filters.inactive(statusCounts.inactive || 0) },
+      {
+        value: 'discontinued',
+        label: strings.products.filters.discontinued(statusCounts.discontinued || 0),
+      },
     ],
     [statusCounts]
   );
@@ -150,9 +157,12 @@ export default function ProductsView() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['next_sku'] });
       setModalMode(null);
-      toast.success(`Product "${product.name}" added to catalog`);
+      toast.success(strings.products.toasts.created(product.name));
     },
-    onError: (err) => toast.error(`Failed to create product: ${err}`, { title: 'Create failed' }),
+    onError: (err) =>
+      toast.error(strings.products.toasts.createFailed(err), {
+        title: strings.products.toasts.createFailedTitle,
+      }),
   });
 
   const updateMutation = useMutation({
@@ -160,18 +170,24 @@ export default function ProductsView() {
     onSuccess: (_data, { payload }) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setModalMode(null);
-      toast.success(`Product "${payload.name}" updated successfully`);
+      toast.success(strings.products.toasts.updated(payload.name));
     },
-    onError: (err) => toast.error(`Failed to update product: ${err}`, { title: 'Update failed' }),
+    onError: (err) =>
+      toast.error(strings.products.toasts.updateFailed(err), {
+        title: strings.products.toasts.updateFailedTitle,
+      }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => tauriApi.deleteProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Product removed from active catalog');
+      toast.success(strings.products.toasts.deleted);
     },
-    onError: (err) => toast.error(`Failed to delete product: ${err}`, { title: 'Delete failed' }),
+    onError: (err) =>
+      toast.error(strings.products.toasts.deleteFailed(err), {
+        title: strings.products.toasts.deleteFailedTitle,
+      }),
   });
 
   const adjustStockMutation = useMutation({
@@ -182,12 +198,16 @@ export default function ProductsView() {
       setModalMode(null);
       const delta = adjustment.quantity_change;
       toast.success(
-        `${delta > 0 ? 'Added' : 'Removed'} ${Math.abs(delta)} unit${Math.abs(delta) === 1 ? '' : 's'} ${
-          delta > 0 ? 'to' : 'from'
-        } "${selectedProduct?.name ?? 'product'}"`
+        strings.products.toasts.stockAdjusted(
+          delta,
+          selectedProduct?.name ?? strings.products.stock.fallbackProductName
+        )
       );
     },
-    onError: (err) => toast.error(`Failed to adjust stock: ${err}`, { title: 'Stock update failed' }),
+    onError: (err) =>
+      toast.error(strings.products.toasts.stockUpdateFailed(err), {
+        title: strings.products.toasts.stockUpdateFailedTitle,
+      }),
   });
 
   const handleOpenCreate = () => {
@@ -235,10 +255,13 @@ export default function ProductsView() {
 
   const handleDelete = async (product) => {
     const { confirmed } = await confirmDialog({
-      title: `Delete "${product.name}"?`,
-      message: `Are you sure you want to delete "${product.name}" (SKU: ${product.sku || 'N/A'})? This item will be removed from the active catalog.`,
-      confirmLabel: 'Delete Product',
-      cancelLabel: 'Cancel',
+      title: strings.products.dialog.deleteTitle(product.name),
+      message: strings.products.dialog.deleteMessage(
+        product.name,
+        product.sku || strings.common.states.notAvailable
+      ),
+      confirmLabel: strings.products.dialog.deleteConfirm,
+      cancelLabel: strings.common.actions.cancel,
       tone: 'danger',
     });
     if (confirmed) {
@@ -249,7 +272,7 @@ export default function ProductsView() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.warning('Product name is required');
+      toast.warning(strings.products.validation.nameRequired);
       return;
     }
     const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
@@ -272,27 +295,27 @@ export default function ProductsView() {
 
   const handleExportCsv = async () => {
     if (!products.length) {
-      toast.warning('No products to export');
+      toast.warning(strings.products.export.noProducts);
       return;
     }
 
     const headers = [
-      'Product Name',
-      'SKU',
-      'Category',
-      `Cost Price (${currencySymbol})`,
-      `MRP (${currencySymbol})`,
-      'GST (%)',
-      'Current Stock',
-      'Min Stock Alert',
-      'Unit',
-      'Status',
+      strings.products.form.productName,
+      strings.common.labels.sku,
+      strings.common.labels.category,
+      strings.products.form.costPrice(currencySymbol),
+      strings.products.form.mrp(currencySymbol),
+      strings.products.export.headers.gst,
+      strings.products.export.headers.currentStock,
+      strings.products.export.headers.minStockAlert,
+      strings.common.labels.unit,
+      strings.common.labels.status,
     ];
 
     const rows = products.map((p) => [
       escapeCsv(p.name || ''),
       escapeCsv(p.sku || ''),
-      escapeCsv(p.category_name || 'Uncategorized'),
+      escapeCsv(p.category_name || strings.products.export.uncategorized),
       escapeCsv((p.cost_price_paise / 100).toFixed(2)),
       escapeCsv((p.mrp_paise / 100).toFixed(2)),
       escapeCsv(p.tax_rate ?? 0),
@@ -481,8 +504,8 @@ export default function ProductsView() {
             <Package className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-text-primary">Product Catalog</h2>
-            <p className="text-[11px] text-text-muted">Manage items, rates, categories, and inventory</p>
+            <h2 className="text-sm font-bold text-text-primary">{strings.products.view.title}</h2>
+            <p className="text-[11px] text-text-muted">{strings.products.view.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -642,13 +665,15 @@ export default function ProductsView() {
                     />
                   </div>
                   <div>
-                    <label className="text-text-secondary block font-semibold mb-1">Category</label>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      {strings.products.form.category}
+                    </label>
                     <Select
                       value={formData.category_id}
                       onChange={(val) => setFormData({ ...formData, category_id: val })}
-                      placeholder="No Category"
+                      placeholder={strings.products.form.noCategory}
                       options={[
-                        { value: '', label: 'No Category' },
+                        { value: '', label: strings.products.form.noCategory },
                         ...categories.map((c) => ({ value: String(c.id), label: c.name })),
                       ]}
                     />
@@ -659,23 +684,25 @@ export default function ProductsView() {
               {/* Group 2: Pricing and Tax */}
               <div className="space-y-2.5 pt-2 border-t border-border-default">
                 <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
-                  Pricing & Taxation
+                  {strings.products.form.sections.pricing}
                 </span>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="text-text-secondary block font-semibold mb-1">Cost Price ({currencySymbol})</label>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      {strings.products.form.costPrice(currencySymbol)}
+                    </label>
                     <input
                       type="number"
                       step="0.01"
                       value={formData.cost_price_rupees}
                       onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })}
-                      placeholder="0.00"
+                      placeholder={strings.products.form.placeholders.zeroDecimal}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
                     />
                   </div>
                   <div>
                     <label className="text-text-secondary block font-semibold mb-1">
-                      MRP ({currencySymbol}) <span className="text-danger">*</span>
+                      {strings.products.form.mrp(currencySymbol)} <span className="text-danger">*</span>
                     </label>
                     <input
                       type="number"
@@ -683,18 +710,20 @@ export default function ProductsView() {
                       required
                       value={formData.mrp_rupees}
                       onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })}
-                      placeholder="100.00"
+                      placeholder={strings.products.form.placeholders.mrp}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono font-semibold focus:border-brand focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-text-secondary block font-semibold mb-1">GST Tax Rate (%)</label>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      {strings.products.form.gstTaxRate}
+                    </label>
                     <input
                       type="number"
                       step="0.1"
                       value={formData.tax_rate}
                       onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
-                      placeholder="0"
+                      placeholder={strings.products.form.placeholders.zero}
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
                     />
                   </div>
@@ -704,32 +733,36 @@ export default function ProductsView() {
               {/* Group 3: Inventory Configuration */}
               <div className="space-y-2.5 pt-2 border-t border-border-default">
                 <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
-                  Inventory Configuration
+                  {strings.products.form.sections.inventory}
                 </span>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-text-secondary block font-semibold mb-1">Low-Stock Alert Threshold</label>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      {strings.products.form.lowStockAlert}
+                    </label>
                     <input
                       type="number"
                       min="0"
                       value={formData.min_stock_alert}
                       onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
                       disabled={allowNegativeStock}
-                      placeholder="5"
+                      placeholder={strings.products.form.placeholders.five}
                       className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
                         allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     />
                   </div>
                   <div>
-                    <label className="text-text-secondary block font-semibold mb-1">Product Status</label>
+                    <label className="text-text-secondary block font-semibold mb-1">
+                      {strings.products.form.productStatus}
+                    </label>
                     <Select
                       value={formData.status}
                       onChange={(val) => setFormData({ ...formData, status: val })}
                       options={[
-                        { value: 'active', label: 'Active (Available for POS)' },
-                        { value: 'inactive', label: 'Inactive (Hidden)' },
-                        { value: 'discontinued', label: 'Discontinued' },
+                        { value: 'active', label: strings.products.form.statusOptions.active },
+                        { value: 'inactive', label: strings.products.form.statusOptions.inactive },
+                        { value: 'discontinued', label: strings.products.form.statusOptions.discontinued },
                       ]}
                     />
                   </div>
@@ -779,7 +812,7 @@ export default function ProductsView() {
           <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-text-primary animate-scale-in">
             <div className="flex justify-between items-center border-b border-border-default pb-3">
               <div>
-                <h3 className="font-bold text-sm text-text-primary">Adjust Stock</h3>
+                <h3 className="font-bold text-sm text-text-primary">{strings.products.actions.adjustStock}</h3>
                 <p className="text-[11px] text-text-muted truncate max-w-[200px]">{selectedProduct.name}</p>
               </div>
               <button
@@ -799,7 +832,7 @@ export default function ProductsView() {
 
               const handleSelectReason = (reason) => {
                 if (reason === 'PURCHASE' && isNegative) {
-                  toast.warning('Purchase reason cannot be used for negative stock deductions');
+                  toast.warning(strings.products.stock.purchaseNegativeWarning);
                   return;
                 }
                 setStockAdjustment((prev) => ({ ...prev, movement_type: reason }));
@@ -820,14 +853,14 @@ export default function ProductsView() {
               return (
                 <>
                   <div className="bg-surface-secondary p-3 rounded-lg border border-border-default text-xs flex items-center justify-between">
-                    <span className="text-text-muted">Current Balance:</span>
+                    <span className="text-text-muted">{strings.products.stock.currentBalance}</span>
                     <div className="flex items-center gap-2">
                       <strong className="text-text-primary font-mono font-bold text-sm">
-                        {selectedProduct.current_stock} units
+                        {strings.products.stock.units(selectedProduct.current_stock)}
                       </strong>
                       {isValidQty && (
                         <span className="text-[11px] font-mono font-semibold text-brand">
-                          → {projectedStock} units
+                          {strings.products.stock.projectedUnits(projectedStock)}
                         </span>
                       )}
                     </div>
@@ -837,11 +870,11 @@ export default function ProductsView() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-text-secondary font-semibold">
-                          Stock Change Reason <span className="text-danger">*</span>
+                          {strings.products.stock.reason} <span className="text-danger">*</span>
                         </label>
                         {isNegative && (
                           <span className="text-[10px] text-text-muted font-mono">
-                            Negative stock → Manual Correction only
+                            {strings.products.stock.negativeHint}
                           </span>
                         )}
                       </div>
@@ -858,7 +891,7 @@ export default function ProductsView() {
                           }`}
                         >
                           <SlidersHorizontal className="w-3.5 h-3.5" />
-                          <span>Manual Stock Correction</span>
+                          <span>{strings.products.stock.manualCorrection}</span>
                         </button>
 
                         <button
@@ -867,8 +900,8 @@ export default function ProductsView() {
                           onClick={() => handleSelectReason('PURCHASE')}
                           title={
                             isNegative
-                              ? 'Cannot select Purchase for negative stock deductions'
-                              : 'Add purchased stock from supplier'
+                              ? strings.products.stock.purchaseDisabledTooltip
+                              : strings.products.stock.purchaseTooltip
                           }
                           className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                             isNegative
@@ -879,14 +912,14 @@ export default function ProductsView() {
                           }`}
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Purchase</span>
+                          <span>{strings.products.stock.purchase}</span>
                         </button>
                       </div>
                     </div>
 
                     <div>
                       <label className="text-text-secondary block font-semibold mb-1">
-                        Quantity Change (+ to add, − to deduct)
+                        {strings.products.stock.quantityChange}
                       </label>
                       <div className="relative">
                         <input
@@ -899,7 +932,7 @@ export default function ProductsView() {
                               updateQtyVal(val);
                             }
                           }}
-                          placeholder="e.g. +10 or -5"
+                          placeholder={strings.products.stock.placeholders.quantity}
                           className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 pr-16 text-text-primary focus:border-brand focus:outline-none font-mono"
                         />
                         <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -911,7 +944,7 @@ export default function ProductsView() {
                               updateQtyVal(next > 0 ? `+${next}` : String(next));
                             }}
                             className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
-                            title="Add 1"
+                            title={strings.products.stock.addOne}
                           >
                             +
                           </button>
@@ -923,7 +956,7 @@ export default function ProductsView() {
                               updateQtyVal(next > 0 ? `+${next}` : String(next));
                             }}
                             className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
-                            title="Deduct 1"
+                            title={strings.products.stock.deductOne}
                           >
                             −
                           </button>
@@ -932,12 +965,14 @@ export default function ProductsView() {
                     </div>
 
                     <div>
-                      <label className="text-text-secondary block font-semibold mb-1">Reason / Note</label>
+                      <label className="text-text-secondary block font-semibold mb-1">
+                        {strings.products.stock.noteLabel}
+                      </label>
                       <input
                         type="text"
                         value={stockAdjustment.note}
                         onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
-                        placeholder="e.g. Supplier challan #882, count discrepancy, damaged"
+                        placeholder={strings.products.stock.placeholders.note}
                         className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
                       />
                     </div>

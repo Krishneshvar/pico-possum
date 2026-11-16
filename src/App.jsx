@@ -9,6 +9,7 @@ import { tauriApi } from './lib/tauri';
 import { applyGeneralSettings } from './lib/formatters';
 import { RefreshCw, ShoppingCart, Package, BarChart3 } from 'lucide-react';
 import AuthScreen from './features/auth/AuthScreen';
+import { strings } from './lib/strings';
 
 // Feature views
 import PosView from './features/commercial/pos/PosView';
@@ -50,14 +51,14 @@ function WorkspaceContent() {
         <div className="w-16 h-16 rounded-2xl bg-surface border border-border-default flex items-center justify-center shadow-xs">
           <img
             src="/src/assets/icon-shell.png"
-            alt="PicoPOSSUM"
+            alt={strings.layout.brand.logoAlt}
             className="w-10 h-10 rounded-xl"
           />
         </div>
         <div className="text-center max-w-sm">
-          <h2 className="text-base font-bold text-text-primary">No workspace tabs open</h2>
+          <h2 className="text-base font-bold text-text-primary">{strings.layout.workspace.noTabsTitle}</h2>
           <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-            Open the Point of Sale terminal or select a workspace from the navigation bar above.
+            {strings.layout.workspace.noTabsDescription}
           </p>
         </div>
       </div>
@@ -119,7 +120,7 @@ function AppRoot() {
         <div className="w-12 h-12 rounded-xl bg-surface border border-border-default flex items-center justify-center shadow-xs">
           <RefreshCw className="w-6 h-6 animate-spin text-brand" />
         </div>
-        <span className="text-xs font-medium text-text-muted">Initializing Pico POS...</span>
+        <span className="text-xs font-medium text-text-muted">{strings.layout.workspace.initializing}</span>
       </div>
     );
   }

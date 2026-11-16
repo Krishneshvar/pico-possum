@@ -24,6 +24,7 @@ import SortableTh from '../../../components/common/SortableTh';
 import MultiYearComparisonChart from './MultiYearComparisonChart';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
+import { strings } from '../../../lib/strings';
 
 export default function ReportsView() {
   const [fromDate, setFromDate] = useState('');
@@ -187,9 +188,9 @@ export default function ReportsView() {
             <BarChart3 className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-content">Sales Analytics</h1>
+            <h1 className="text-sm font-semibold text-content">{strings.reports.view.title}</h1>
             <p className="text-xs text-content-secondary">
-              Revenue summaries, growth comparisons, and categorical breakdown
+              {strings.reports.view.subtitle}
             </p>
           </div>
         </div>
@@ -199,15 +200,15 @@ export default function ReportsView() {
           <button
             onClick={handleResetFilters}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
-            title="Reset filters"
+            title={strings.reports.view.resetFilters}
           >
             <RotateCcw className="w-3.5 h-3.5 text-content-muted" />
-            <span>Reset</span>
+            <span>{strings.common.actions.reset}</span>
           </button>
           <button
             onClick={refetchAll}
             className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-            title="Refresh analytics data"
+            title={strings.reports.view.refreshData}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -220,17 +221,17 @@ export default function ReportsView() {
         <div className="flex items-center justify-between bg-surface p-3.5 rounded-xl border border-border flex-wrap gap-3">
           {/* Date Pickers */}
           <div className="flex items-center gap-2 text-xs text-content-secondary flex-wrap">
-            <span className="font-medium text-content">Reporting Period:</span>
+            <span className="font-medium text-content">{strings.reports.view.reportingPeriod}</span>
             <DatePicker
               value={fromDate}
               onChange={(val) => setFromDate(val)}
-              placeholder="From date"
+              placeholder={strings.reports.view.fromDatePlaceholder}
             />
-            <span className="text-content-muted">to</span>
+            <span className="text-content-muted">{strings.reports.view.rangeSeparator}</span>
             <DatePicker
               value={toDate}
               onChange={(val) => setToDate(val)}
-              placeholder="To date"
+              placeholder={strings.reports.view.toDatePlaceholder}
             />
 
             {/* Quick Date Presets */}
@@ -240,14 +241,14 @@ export default function ReportsView() {
                 onClick={setRangeToday}
                 className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-content-secondary hover:text-content font-medium transition-colors text-[11px]"
               >
-                Today
+                {strings.common.datePicker.today}
               </button>
               <button
                 type="button"
                 onClick={setRangeMonth}
                 className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-content-secondary hover:text-content font-medium transition-colors text-[11px]"
               >
-                This Month
+                {strings.reports.view.thisMonth}
               </button>
               <button
                 type="button"
@@ -257,7 +258,7 @@ export default function ReportsView() {
                 }}
                 className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-content-secondary hover:text-content font-medium transition-colors text-[11px]"
               >
-                All Time
+                {strings.reports.view.allTime}
               </button>
             </div>
           </div>
@@ -266,17 +267,17 @@ export default function ReportsView() {
           <div className="flex items-center gap-2 text-xs">
             <span className="text-content-secondary font-medium flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-content-muted" />
-              <span>Payment Method:</span>
+              <span>{strings.reports.view.paymentMethod}</span>
             </span>
             <Select
               value={paymentMethod}
               onChange={(val) => setPaymentMethod(val)}
               options={[
-                { value: 'ALL', label: `All Methods (${pmCounts.ALL})` },
-                { value: 'CASH', label: `Cash (${pmCounts.CASH})` },
-                { value: 'UPI', label: `UPI / QR (${pmCounts.UPI})` },
-                { value: 'CARD', label: `Card (${pmCounts.CARD})` },
-                { value: 'GIFT_CARD', label: `Gift Card (${pmCounts.GIFT_CARD})` },
+                { value: 'ALL', label: strings.reports.view.paymentOptions.all(pmCounts.ALL) },
+                { value: 'CASH', label: strings.reports.view.paymentOptions.cash(pmCounts.CASH) },
+                { value: 'UPI', label: strings.reports.view.paymentOptions.upiQr(pmCounts.UPI) },
+                { value: 'CARD', label: strings.reports.view.paymentOptions.card(pmCounts.CARD) },
+                { value: 'GIFT_CARD', label: strings.reports.view.paymentOptions.giftCard(pmCounts.GIFT_CARD) },
               ]}
             />
           </div>
@@ -288,8 +289,9 @@ export default function ReportsView() {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-brand" />
               <span>
-                Filtered by payment method: <strong className="font-semibold uppercase">{paymentMethod.replace(/_/g, ' ')}</strong>.
-                Method distribution breakdown is scoped to this selection.
+                {strings.reports.view.filterBannerPrefix}{' '}
+                <strong className="font-semibold uppercase">{paymentMethod.replace(/_/g, ' ')}</strong>
+                {strings.reports.view.filterBannerSuffix}
               </span>
             </div>
             <button
@@ -297,7 +299,7 @@ export default function ReportsView() {
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-brand/40 hover:bg-surface-secondary text-brand font-medium transition-colors"
             >
               <X className="w-3 h-3" />
-              <span>Show All Methods</span>
+              <span>{strings.reports.view.showAllMethods}</span>
             </button>
           </div>
         )}
@@ -307,7 +309,7 @@ export default function ReportsView() {
           {/* Revenue */}
           <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
             <div className="flex items-center justify-between text-xs text-content-secondary">
-              <span className="font-medium">Total Revenue</span>
+              <span className="font-medium">{strings.reports.kpis.totalRevenue}</span>
               <div className="w-7 h-7 rounded-lg bg-brand-subtle text-brand flex items-center justify-center">
                 <TrendingUp className="w-3.5 h-3.5" />
               </div>
@@ -316,14 +318,16 @@ export default function ReportsView() {
               {formatPaise(totalRev)}
             </div>
             <p className="text-[11px] text-content-muted">
-              {paymentMethod === 'ALL' ? 'Gross transaction volume' : `${paymentMethod.replace(/_/g, ' ')} volume`}
+              {paymentMethod === 'ALL'
+                ? strings.reports.kpis.grossTransactionVolume
+                : strings.reports.kpis.methodVolume(paymentMethod.replace(/_/g, ' '))}
             </p>
           </div>
 
           {/* Bills Issued */}
           <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
             <div className="flex items-center justify-between text-xs text-content-secondary">
-              <span className="font-medium">Total Invoices</span>
+              <span className="font-medium">{strings.reports.kpis.totalInvoices}</span>
               <div className="w-7 h-7 rounded-lg bg-surface-secondary text-content-secondary flex items-center justify-center border border-border">
                 <Receipt className="w-3.5 h-3.5" />
               </div>
@@ -331,13 +335,13 @@ export default function ReportsView() {
             <div className="text-2xl font-semibold text-content financial-value">
               {totalCount}
             </div>
-            <p className="text-[11px] text-content-muted">Customer transactions</p>
+            <p className="text-[11px] text-content-muted">{strings.reports.kpis.customerTransactions}</p>
           </div>
 
           {/* Average Bill Value */}
           <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
             <div className="flex items-center justify-between text-xs text-content-secondary">
-              <span className="font-medium">Average Bill Value</span>
+              <span className="font-medium">{strings.reports.kpis.averageBillValue}</span>
               <div className="w-7 h-7 rounded-lg bg-surface-secondary text-content-secondary flex items-center justify-center border border-border">
                 <BarChart3 className="w-3.5 h-3.5" />
               </div>
@@ -345,13 +349,13 @@ export default function ReportsView() {
             <div className="text-2xl font-semibold text-content financial-value">
               {formatPaise(avgBill)}
             </div>
-            <p className="text-[11px] text-content-muted">Per checkout average</p>
+            <p className="text-[11px] text-content-muted">{strings.reports.kpis.perCheckoutAverage}</p>
           </div>
 
           {/* Discounts Given */}
           <div className="p-4 rounded-xl bg-surface border border-border space-y-1.5">
             <div className="flex items-center justify-between text-xs text-content-secondary">
-              <span className="font-medium">Total Discounts</span>
+              <span className="font-medium">{strings.reports.kpis.totalDiscounts}</span>
               <div className="w-7 h-7 rounded-lg bg-warning/10 text-warning flex items-center justify-center">
                 <Tag className="w-3.5 h-3.5" />
               </div>
@@ -359,7 +363,7 @@ export default function ReportsView() {
             <div className="text-2xl font-semibold text-content financial-value">
               {formatPaise(totalDiscount)}
             </div>
-            <p className="text-[11px] text-content-muted">Customer savings awarded</p>
+            <p className="text-[11px] text-content-muted">{strings.reports.kpis.customerSavings}</p>
           </div>
         </div>
 
@@ -377,11 +381,11 @@ export default function ReportsView() {
           <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-content">Revenue by Payment Method</h2>
-                <p className="text-xs text-content-secondary">Distribution across payment collection channels</p>
+                <h2 className="text-sm font-semibold text-content">{strings.reports.payments.title}</h2>
+                <p className="text-xs text-content-secondary">{strings.reports.payments.subtitle}</p>
               </div>
               <span className="text-xs font-semibold text-content financial-value">
-                Total: {formatPaise(totalRev)}
+                {strings.reports.payments.total(formatPaise(totalRev))}
               </span>
             </div>
 
@@ -393,14 +397,14 @@ export default function ReportsView() {
                     <div
                       style={{ width: `${cashPct}%`, backgroundColor: '#2563EB' }}
                       className="h-full transition-all"
-                      title={`Cash: ${formatPaise(cashRev)} (${cashPct.toFixed(1)}%)`}
+                      title={strings.reports.payments.barTooltip(strings.reports.payments.cash, formatPaise(cashRev), cashPct.toFixed(1))}
                     />
                   )}
                   {upiPct > 0 && (
                     <div
                       style={{ width: `${upiPct}%`, backgroundColor: '#0F766E' }}
                       className="h-full transition-all"
-                      title={`UPI / QR: ${formatPaise(upiRev)} (${upiPct.toFixed(1)}%)`}
+                      title={strings.reports.payments.barTooltip(strings.reports.payments.upiQr, formatPaise(upiRev), upiPct.toFixed(1))}
                     />
                   )}
                   {cardPct > 0 && (
@@ -512,7 +516,7 @@ export default function ReportsView() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FolderTree className="w-4 h-4 text-brand" />
-                  <h2 className="text-sm font-semibold text-content">Top Selling Categories</h2>
+                  <h2 className="text-sm font-semibold text-content">{strings.reports.tables.topCategories}</h2>
                 </div>
               </div>
 
@@ -618,7 +622,7 @@ export default function ReportsView() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Flame className="w-4 h-4 text-warning" />
-                  <h2 className="text-sm font-semibold text-content">Top Selling Products</h2>
+                  <h2 className="text-sm font-semibold text-content">{strings.reports.tables.topProducts}</h2>
                 </div>
               </div>
 

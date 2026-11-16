@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle2, Trash2, Info } from 'lucide-react';
 import { useConfirmStore } from '../../stores/confirm.store';
+import { strings } from '../../lib/strings';
 
 const TONE_STYLES = {
   danger: {
@@ -31,11 +32,11 @@ const TONE_ICONS = {
  * - Escape key dismisses
  */
 export default function ConfirmDialog({
-  title = 'Confirm Action',
+  title = strings.common.confirm.title,
   message,
   details = [],
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel = strings.common.confirm.confirm,
+  cancelLabel = strings.common.confirm.cancel,
   tone = 'danger',
   icon,
   input = null,
@@ -168,7 +169,7 @@ export default function ConfirmDialog({
               disabled={cannotConfirm}
               className={`rounded-lg px-4 py-1.5 text-xs font-bold shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer ${styles.button}`}
             >
-              {isPending ? 'Please wait…' : confirmLabel}
+              {isPending ? strings.common.confirm.pleaseWait : confirmLabel}
             </button>
           </div>
         </form>

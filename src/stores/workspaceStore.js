@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { toast } from './toast.store';
+import { strings } from '../lib/strings';
 
 let _nextId = 1;
 
@@ -33,8 +34,8 @@ export const useWorkspaceStore = create((set, get) => ({
     const { tabs } = get();
     if (tabs.length >= 10) {
       toast.warning(
-        'Maximum limit of 10 open tabs reached. Please close a tab before opening another workspace.',
-        { title: 'Tab Limit Reached' }
+        strings.layout.workspace.tabLimitMessage,
+        { title: strings.layout.workspace.tabLimitTitle }
       );
       return;
     }

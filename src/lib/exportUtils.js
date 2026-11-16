@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { tauriApi } from './tauri';
 import { toast } from '../stores/toast.store';
+import { strings } from './strings';
 
 /**
  * Escapes a cell value for standard CSV (RFC 4180).
@@ -59,9 +60,7 @@ export async function exportWithUserLocation({
       if (chosenPath) {
         await tauriApi.saveFileToDisk(chosenPath, Array.from(bytes));
         const displayName = chosenPath.split(/[/\\]/).pop() || filename;
-        toast.success(
-          `Exported ${count != null ? `${count} ${entityName} ` : ''}to ${displayName}`
-        );
+        toast.success(strings.common.exportUtils.exportedCountTo(count, entityName, displayName));
         return true;
       } else {
         // User explicitly cancelled the dialog
@@ -76,7 +75,9 @@ export async function exportWithUserLocation({
           suggestedName: filename,
           types: [
             {
-              description: isXlsx ? 'Excel Workbook (.xlsx)' : 'CSV Spreadsheet (.csv)',
+              description: isXlsx
+                ? strings.common.exportUtils.excelWorkbook
+                : strings.common.exportUtils.csvSpreadsheet,
               accept: isXlsx
                 ? { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
                 : { 'text/csv': ['.csv'] },
@@ -87,7 +88,11 @@ export async function exportWithUserLocation({
         await writable.write(bytes);
         await writable.close();
         toast.success(
-          `Exported ${count != null ? `${count} ${entityName} ` : ''}to ${handle.name || filename}`
+          strings.common.exportUtils.exportedCountTo(
+            count,
+            entityName,
+            handle.name || filename
+          )
         );
         return true;
       } catch (pickerErr) {
@@ -110,11 +115,11 @@ export async function exportWithUserLocation({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${count != null ? `${count} ${entityName}` : filename}`);
+    toast.success(strings.common.exportUtils.exportedTo(filename));
     return true;
   } catch (err) {
-    const msg = typeof err === 'string' ? err : err?.message || 'Failed to export file';
-    toast.error(msg, { title: 'Export Failed' });
+    const msg = typeof err === 'string' ? err : err?.message || strings.common.exportUtils.failedToExport;
+    toast.error(msg, { title: strings.common.exportUtils.exportFailed });
     return false;
   }
 }

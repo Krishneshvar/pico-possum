@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Calendar, Layers, Eye, EyeOff } from 'lucide-react';
 import { formatPaise } from '../../../lib/formatters';
+import { strings } from '../../../lib/strings';
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_LABELS = strings.reports.multiYear.months || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Recommended Categorical Chart Palette */
 const SERIES_PALETTE = [
@@ -101,19 +102,21 @@ export default function MultiYearComparisonChart({
             <span className="p-1.5 rounded-lg bg-brand-subtle text-brand">
               <Calendar className="w-4 h-4" />
             </span>
-            <h3 className="text-sm font-bold text-text-primary">Multi-Year Revenue Comparison</h3>
+            <h3 className="text-sm font-bold text-text-primary">{strings.reports.multiYear.title}</h3>
           </div>
           <p className="text-xs text-text-muted">
-            Monthly revenue performance trends across comparison years
+            {strings.reports.multiYear.subtitle}
             {paymentMethod !== 'ALL' && (
-              <span className="ml-1 text-brand font-semibold">({paymentMethod.replace(/_/g, ' ')})</span>
+              <span className="ml-1 text-brand font-semibold">
+                {strings.reports.multiYear.methodSuffix(paymentMethod.replace(/_/g, ' '))}
+              </span>
             )}
           </p>
         </div>
 
         {/* Years back selector */}
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-text-muted">Comparison Range:</span>
+          <span className="text-text-muted">{strings.reports.multiYear.comparisonRange}</span>
           <div className="flex bg-surface-secondary border border-border-default rounded-lg p-0.5">
             {[2, 3, 4, 5].map((y) => (
               <button
@@ -126,7 +129,7 @@ export default function MultiYearComparisonChart({
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
-                {y} Years
+                {strings.reports.multiYear.yearsOption(y)}
               </button>
             ))}
           </div>
@@ -139,7 +142,7 @@ export default function MultiYearComparisonChart({
           <div className="absolute inset-0 bg-surface/80 flex items-center justify-center z-20 backdrop-blur-xs">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-              <span>Updating comparison data…</span>
+              <span>{strings.reports.multiYear.updating}</span>
             </div>
           </div>
         )}
@@ -298,13 +301,13 @@ export default function MultiYearComparisonChart({
             </div>
             <div className="space-y-0.5">
               <div className="flex justify-between gap-4">
-                <span className="text-text-muted">Revenue:</span>
+                <span className="text-text-muted">{strings.reports.multiYear.revenue}</span>
                 <span className="font-bold financial-value text-text-primary">
                   {formatPaise(hoveredPoint.value)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-text-muted">Transactions:</span>
+                <span className="text-text-muted">{strings.reports.multiYear.transactions}</span>
                 <span className="font-mono text-text-secondary">{hoveredPoint.transactions}</span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { X, MoreVertical, Circle } from 'lucide-react';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { confirmDialog } from '../../stores/confirm.store';
+import { strings } from '../../lib/strings';
 
 /**
  * Browser-style workspace tab strip.
@@ -145,10 +146,10 @@ export default function TabBar() {
     if (!tab) return;
     if (tab.isDirty) {
       const { confirmed } = await confirmDialog({
-        title: 'Unsaved Changes',
-        message: `"${tab.title}" has unsaved changes. Are you sure you want to close it?`,
-        confirmLabel: 'Discard & Close',
-        cancelLabel: 'Keep Tab Open',
+        title: strings.layout.tabs.unsavedTitle,
+        message: strings.layout.tabs.unsavedMessage(tab.title),
+        confirmLabel: strings.layout.tabs.discardAndClose,
+        cancelLabel: strings.layout.tabs.keepTabOpen,
         tone: 'warning',
       });
       if (!confirmed) return;
@@ -170,7 +171,7 @@ export default function TabBar() {
       {tabs.length === 0 ? (
         <div className="flex-1 flex items-center justify-between px-4 pb-1.5">
           <span className="text-xs text-content-muted italic">
-            No tabs open — select a workspace from the Sales or Inventory menus above
+            {strings.layout.tabs.noTabs}
           </span>
         </div>
       ) : (
@@ -210,7 +211,7 @@ export default function TabBar() {
               >
                 {/* Dirty indicator if unsaved changes */}
                 {tab.isDirty && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" title="Unsaved changes" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" title={strings.layout.tabs.unsavedIndicator} />
                 )}
 
                 {/* Tab title */}
@@ -225,7 +226,7 @@ export default function TabBar() {
                       e.stopPropagation();
                       handleAttemptCloseTab(tab.id);
                     }}
-                    title="Close tab (Ctrl+W)"
+                    title={strings.layout.tabs.closeTabTitle}
                     className={`
                       p-0.5 rounded-md text-content-muted hover:text-content hover:bg-surface-tertiary transition-colors cursor-pointer
                       ${isActive ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-100'}
@@ -262,7 +263,7 @@ export default function TabBar() {
             }}
             className="w-full text-left px-3 py-1.5 rounded-lg text-content hover:bg-surface-secondary transition-colors cursor-pointer"
           >
-            Close Tab
+            {strings.layout.tabs.closeTab}
           </button>
           <button
             type="button"
@@ -272,7 +273,7 @@ export default function TabBar() {
             }}
             className="w-full text-left px-3 py-1.5 rounded-lg text-content hover:bg-surface-secondary transition-colors cursor-pointer"
           >
-            Close Others
+            {strings.layout.tabs.closeOthers}
           </button>
           <button
             type="button"
@@ -282,7 +283,7 @@ export default function TabBar() {
             }}
             className="w-full text-left px-3 py-1.5 rounded-lg text-content hover:bg-surface-secondary transition-colors cursor-pointer"
           >
-            Close All
+            {strings.layout.tabs.closeAll}
           </button>
         </div>
       )}

@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Download, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { strings } from '../../lib/strings';
 
 export default function ExportButton({
   onExportCsv,
   onExportXlsx,
   disabled = false,
   className = '',
-  label = 'Export',
+  label = strings.common.exportButton.export,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -36,7 +37,7 @@ export default function ExportButton({
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary transition-colors shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Export data as CSV or Excel"
+        title={strings.common.exportButton.tooltip}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
@@ -59,7 +60,7 @@ export default function ExportButton({
               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             >
               <FileText className="w-4 h-4 text-blue-500" />
-              <span>Export as CSV (.csv)</span>
+              <span>{strings.common.exportButton.exportCsv}</span>
             </button>
           )}
 
@@ -73,7 +74,7 @@ export default function ExportButton({
               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-              <span>Export as Excel (.xlsx)</span>
+              <span>{strings.common.exportButton.exportXlsx}</span>
             </button>
           )}
         </div>

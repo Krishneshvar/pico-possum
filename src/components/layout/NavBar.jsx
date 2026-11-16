@@ -17,42 +17,44 @@ import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
 import { confirmDialog } from '../../stores/confirm.store';
 import iconShell from '../../assets/icon-shell.png';
+import { strings } from '../../lib/strings';
 
 /** Navigation menus: Inventory, Sales (POS, Bills, Customers), Reports, System */
+const nav = strings.layout.nav;
 const NAV_MENUS = [
   {
-    label: 'Inventory',
+    label: nav.menus.inventory,
     icon: Package,
     items: [
-      { label: 'Products',       viewId: 'products' },
-      { label: 'Categories',     viewId: 'categories' },
-      { label: 'Stock Activity', viewId: 'stock-ledger' },
+      { label: nav.items.products,       viewId: 'products' },
+      { label: nav.items.categories,     viewId: 'categories' },
+      { label: nav.items.stockActivity, viewId: 'stock-ledger' },
     ],
   },
   {
-    label: 'Sales',
+    label: nav.menus.sales,
     icon: ShoppingCart,
     items: [
-      { label: 'Point of Sale',  viewId: 'pos' },
-      { label: 'Bill History',   viewId: 'bills' },
-      { label: 'Customers',      viewId: 'customers' },
+      { label: nav.items.pointOfSale,  viewId: 'pos' },
+      { label: nav.items.billHistory,   viewId: 'bills' },
+      { label: nav.items.customers,      viewId: 'customers' },
     ],
   },
   {
-    label: 'Reports',
+    label: nav.menus.reports,
     icon: BarChart3,
     items: [
-      { label: 'Sales Reports',         viewId: 'sales-reports' },
-      { label: 'Sales Analytics',       viewId: 'reports' },
-      { label: 'Product Flow',          viewId: 'product-flow' },
+      { label: nav.items.salesReports,         viewId: 'sales-reports' },
+      { label: nav.items.salesAnalytics,       viewId: 'reports' },
+      { label: nav.items.productFlow,          viewId: 'product-flow' },
     ],
   },
   {
-    label: 'System',
+    label: nav.menus.system,
     icon: Sliders,
     items: [
-      { label: 'Audit Log', viewId: 'audit-log' },
-      { label: 'Settings',  viewId: 'settings' },
+      { label: nav.items.auditLog, viewId: 'audit-log' },
+      { label: nav.items.settings,  viewId: 'settings' },
     ],
   },
 ];
@@ -194,9 +196,9 @@ export default function NavBar({ authUser }) {
         session_token: null,
       });
       queryClient.invalidateQueries({ queryKey: ['auth_state'] });
-      toast.info('Terminal locked. Sign in to continue.');
+      toast.info(strings.layout.nav.toast.locked);
     },
-    onError: (err) => toast.error(`Failed to lock terminal: ${err}`, { title: 'Lock failed' }),
+    onError: (err) => toast.error(strings.layout.nav.toast.lockFailedMessage(err), { title: strings.layout.nav.toast.lockFailedTitle }),
   });
 
   useEffect(() => {
@@ -237,7 +239,7 @@ export default function NavBar({ authUser }) {
         e.preventDefault();
         if (profileIndex === 0) {
           setProfileOpen(false);
-          openOrFocus('Settings', 'settings');
+          openOrFocus(strings.layout.nav.items.settings, 'settings');
           profileTriggerRef.current?.focus();
         } else if (profileIndex === 1) {
           toggleTheme();
@@ -260,10 +262,10 @@ export default function NavBar({ authUser }) {
 
   const handleLockTerminal = async () => {
     const { confirmed } = await confirmDialog({
-      title: 'Lock Terminal',
-      message: 'Lock the point of sale terminal and require password to re-enter?',
-      confirmLabel: 'Lock Terminal',
-      cancelLabel: 'Cancel',
+      title: strings.layout.nav.confirm.lockTitle,
+      message: strings.layout.nav.confirm.lockMessage,
+      confirmLabel: strings.layout.nav.confirm.lockConfirm,
+      cancelLabel: strings.layout.nav.confirm.cancel,
       tone: 'warning',
       icon: Lock,
     });
@@ -276,8 +278,8 @@ export default function NavBar({ authUser }) {
     <header className="h-12 bg-navbar-bg text-navbar-text border-b border-navbar-border flex items-center px-4 gap-2 select-none shrink-0 z-30 shadow-xs">
       {/* Brand */}
       <div className="flex items-center gap-2.5 mr-3">
-        <img src={iconShell} alt="PicoPOSSUM" className="w-7 h-7 rounded-lg shadow-xs" />
-        <span className="font-bold text-white text-sm tracking-tight">PicoPOSSUM</span>
+        <img src={iconShell} alt={strings.layout.brand.logoAlt} className="w-7 h-7 rounded-lg shadow-xs" />
+        <span className="font-bold text-white text-sm tracking-tight">{strings.layout.brand.name}</span>
       </div>
 
       {/* Primary Navigation Menus */}
@@ -324,8 +326,8 @@ export default function NavBar({ authUser }) {
               className="absolute right-0 top-full mt-1.5 w-52 bg-surface text-text-primary border border-border-default rounded-xl shadow-xl p-1.5 z-50 animate-scale-in"
             >
               <div className="px-3 py-2 border-b border-border-default mb-1">
-                <div style={{ color: 'var(--app-text-primary)' }} className="text-xs font-bold">{authUser.name || 'Store Operator'}</div>
-                <div style={{ color: 'var(--app-text-secondary)' }} className="text-[11px]">Administrator Session</div>
+                <div style={{ color: 'var(--app-text-primary)' }} className="text-xs font-bold">{authUser.name || strings.layout.nav.profile.defaultUser}</div>
+                <div style={{ color: 'var(--app-text-secondary)' }} className="text-[11px]">{strings.layout.nav.profile.sessionLabel}</div>
               </div>
 
               <button
@@ -333,7 +335,7 @@ export default function NavBar({ authUser }) {
                 role="menuitem"
                 onClick={() => {
                   setProfileOpen(false);
-                  openOrFocus('Settings', 'settings');
+                  openOrFocus(strings.layout.nav.profile.settings, 'settings');
                   profileTriggerRef.current?.focus();
                 }}
                 onMouseEnter={() => setProfileIndex(0)}
@@ -343,7 +345,7 @@ export default function NavBar({ authUser }) {
                 }`}
               >
                 <Settings className="w-3.5 h-3.5" />
-                <span style={{ color: 'inherit' }}>Settings</span>
+                <span style={{ color: 'inherit' }}>{strings.layout.nav.profile.settings}</span>
               </button>
 
               <button
@@ -360,7 +362,7 @@ export default function NavBar({ authUser }) {
               >
                 <div className="flex items-center gap-2">
                   {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-                  <span style={{ color: 'inherit' }}>Appearance</span>
+                  <span style={{ color: 'inherit' }}>{strings.layout.nav.profile.appearance}</span>
                 </div>
                 <span style={{ color: 'var(--app-text-muted)' }} className="text-[10px] font-semibold capitalize">{theme}</span>
               </button>
@@ -380,7 +382,7 @@ export default function NavBar({ authUser }) {
                 }`}
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>Lock Terminal</span>
+                <span>{strings.layout.nav.profile.lockTerminal}</span>
               </button>
             </div>
           )}

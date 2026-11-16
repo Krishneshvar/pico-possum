@@ -12,20 +12,22 @@ import {
 } from 'lucide-react';
 import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import Select from '../../../components/common/Select';
+import { toast } from '../../../stores/toast.store';
+import { strings } from '../../../lib/strings';
 
 const EMPTY_STOCK_ALLOWANCE = new Map();
 
 const POS_TABLE_WIDTHS_KEY = 'pico_possum_pos_table_widths';
 
 const POS_COLUMNS = [
-  { key: 'index', label: '#', defaultWidth: 48, minWidth: 36, align: 'center' },
-  { key: 'sku', label: 'SKU', defaultWidth: 120, minWidth: 60, align: 'left' },
-  { key: 'product', label: 'Product', defaultWidth: 260, minWidth: 140, align: 'left' },
-  { key: 'qty', label: 'Qty', defaultWidth: 110, minWidth: 70, align: 'center' },
-  { key: 'unitPrice', label: 'Unit Price', defaultWidth: 120, minWidth: 75, align: 'right' },
-  { key: 'mrp', label: 'MRP', defaultWidth: 110, minWidth: 70, align: 'right' },
-  { key: 'discount', label: 'Discount', defaultWidth: 110, minWidth: 70, align: 'right' },
-  { key: 'lineTotal', label: 'Line Total', defaultWidth: 130, minWidth: 80, align: 'right' },
+  { key: 'index', label: strings.pos.editor.columns.index, defaultWidth: 48, minWidth: 36, align: 'center' },
+  { key: 'sku', label: strings.common.labels.sku, defaultWidth: 120, minWidth: 60, align: 'left' },
+  { key: 'product', label: strings.common.labels.product, defaultWidth: 260, minWidth: 140, align: 'left' },
+  { key: 'qty', label: strings.pos.editor.columns.qty, defaultWidth: 110, minWidth: 70, align: 'center' },
+  { key: 'unitPrice', label: strings.pos.editor.columns.unitPrice, defaultWidth: 120, minWidth: 75, align: 'right' },
+  { key: 'mrp', label: strings.pos.editor.columns.mrp, defaultWidth: 110, minWidth: 70, align: 'right' },
+  { key: 'discount', label: strings.common.labels.discount, defaultWidth: 110, minWidth: 70, align: 'right' },
+  { key: 'lineTotal', label: strings.pos.editor.columns.lineTotal, defaultWidth: 130, minWidth: 80, align: 'right' },
 ];
 
 /**
@@ -628,8 +630,8 @@ export default function PosBillEditor({
       if (found) {
         handleSelectProduct(found);
       } else {
-        toast.warning(`No product found with SKU "${emptyRowSku.trim()}"`, {
-          title: 'SKU Not Found',
+        toast.warning(strings.pos.editor.skuNotFound(emptyRowSku.trim()), {
+          title: strings.pos.editor.skuNotFoundTitle,
         });
       }
       return;
@@ -792,7 +794,7 @@ export default function PosBillEditor({
         {/* Grand Total pinned above the table headers */}
         <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-surface border-b border-border-default">
           <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">
-            Grand Total
+            {strings.pos.editor.grandTotal}
           </span>
           <span className="text-2xl font-extrabold text-text-primary financial-value">
             {formatPaise(totals.totalPaise)}
@@ -832,7 +834,7 @@ export default function PosBillEditor({
                               return next;
                             });
                           }}
-                          title="Drag to resize, double-click to reset"
+                          title={strings.common.table.dragToResize}
                           className="absolute top-0 right-0 bottom-0 w-3 -mr-1.5 cursor-col-resize select-none flex items-center justify-center group/resize z-20"
                         >
                           <div className="w-[1.5px] h-3.5 bg-border-strong group-hover/resize:bg-brand group-hover/resize:w-[2px] group-hover/resize:h-full transition-all" />
@@ -955,12 +957,12 @@ export default function PosBillEditor({
                           <div className="text-[10px] flex items-center gap-2 mt-0.5 font-sans">
                             {item.discountPaise > 0 && (
                               <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                Disc: -{formatPaise(item.discountPaise)}
+                                {strings.pos.editor.lineDiscount(formatPaise(item.discountPaise))}
                               </span>
                             )}
                             {exceedsStock && (
                               <span className="text-danger font-semibold">
-                                Only {availableStock} in stock
+                                {strings.pos.editor.onlyInStock(availableStock)}
                               </span>
                             )}
                           </div>
@@ -1041,8 +1043,8 @@ export default function PosBillEditor({
                               const parsedPaise = rupeesToPaise(val);
                               if (mrpPaise != null && parsedPaise > mrpPaise) {
                                 toast.warning(
-                                  `Unit price cannot exceed MRP (${formatPaise(mrpPaise)}).`,
-                                  { title: 'Price Exceeds MRP' }
+                                  strings.pos.editor.priceExceedsMrp(formatPaise(mrpPaise)),
+                                  { title: strings.pos.editor.priceExceedsMrpTitle }
                                 );
                                 const cappedVal = (mrpPaise / 100).toFixed(2);
                                 setPriceInputs((prev) => ({ ...prev, [item.productId]: cappedVal }));
@@ -1449,10 +1451,12 @@ export default function PosBillEditor({
           {expandedRowId && (
             <div className="bg-surface-secondary border-t border-border-default px-4 py-2.5 flex items-center gap-4 text-xs shadow-inner shrink-0">
               <span className="font-semibold text-text-primary">
-                Edit Line: {bill.items.find((it) => it.productId === expandedRowId)?.name}
+                {strings.pos.editor.editLine(
+                  bill.items.find((it) => it.productId === expandedRowId)?.name || ''
+                )}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-text-muted">Unit Rate ({currencySymbol}):</span>
+                <span className="text-text-muted">{strings.pos.editor.unitRate(currencySymbol)}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -1473,8 +1477,8 @@ export default function PosBillEditor({
                     const parsed = rupeesToPaise(e.target.value);
                     if (mrpPaise != null && parsed > mrpPaise) {
                       toast.warning(
-                        `Unit price cannot exceed MRP (${formatPaise(mrpPaise)}).`,
-                        { title: 'Price Exceeds MRP' }
+                        strings.pos.editor.priceExceedsMrp(formatPaise(mrpPaise)),
+                        { title: strings.pos.editor.priceExceedsMrpTitle }
                       );
                       onUpdateItemPrice(expandedRowId, mrpPaise);
                       return;
@@ -1485,11 +1489,11 @@ export default function PosBillEditor({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-text-muted">Line Disc ({currencySymbol}):</span>
+                <span className="text-text-muted">{strings.pos.editor.lineDiscountLabel(currencySymbol)}</span>
                 <input
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder={strings.pos.editor.amountPlaceholder}
                   value={
                     (bill.items.find((it) => it.productId === expandedRowId)?.discountPaise || 0) / 100 || ''
                   }
@@ -1559,7 +1563,7 @@ export default function PosBillEditor({
                     type="button"
                     onClick={() => onSetCustomer(null)}
                     className="text-text-muted hover:text-danger cursor-pointer p-1 shrink-0"
-                    title="Remove customer"
+                    title={strings.pos.editor.removeCustomer}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1568,7 +1572,7 @@ export default function PosBillEditor({
                 <div className="space-y-1.5">
                   <label className="block">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                      Phone
+                      {strings.common.labels.phone}
                     </span>
                     <input
                       type="tel"
@@ -1578,13 +1582,13 @@ export default function PosBillEditor({
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') e.currentTarget.blur();
                       }}
-                      placeholder="Phone number"
+                      placeholder={strings.pos.editor.phonePlaceholder}
                       className="mt-0.5 w-full bg-surface border border-border-default rounded-md px-2 py-1 text-[11px] font-mono text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                     />
                   </label>
                   <label className="block">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                      Address
+                      {strings.common.labels.address}
                     </span>
                     <input
                       type="text"
@@ -1594,7 +1598,7 @@ export default function PosBillEditor({
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') e.currentTarget.blur();
                       }}
-                      placeholder="Address / Notes"
+                      placeholder={strings.pos.editor.addressNotesPlaceholder}
                       className="mt-0.5 w-full bg-surface border border-border-default rounded-md px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                     />
                   </label>
@@ -1607,9 +1611,9 @@ export default function PosBillEditor({
                   const c = customers.find((cust) => String(cust.id) === String(val));
                   onSetCustomer(c || null);
                 }}
-                placeholder="Walk-in Customer"
+                placeholder={strings.pos.editor.walkInCustomer}
                 options={[
-                  { value: '', label: 'Walk-in Customer' },
+                  { value: '', label: strings.pos.editor.walkInCustomer },
                   ...customers.map((c) => ({
                     value: String(c.id),
                     label: `${c.name}${c.phone ? ` (${c.phone})` : ''}`,
@@ -1621,21 +1625,23 @@ export default function PosBillEditor({
 
           {/* 2. Payment Method Selector */}
           <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
-            <label className="text-xs font-semibold text-text-primary block">Payment Method</label>
+            <label className="text-xs font-semibold text-text-primary block">
+              {strings.common.labels.paymentMethod}
+            </label>
             <Select
               value={bill.paymentMethod}
               onChange={(val) => onSetPaymentMethod(val)}
               options={[
-                { value: 'CASH', label: 'Cash' },
-                { value: 'UPI', label: 'UPI / QR' },
-                { value: 'CARD', label: 'Card' },
-                { value: 'GIFT_CARD', label: 'Gift Card' },
+                { value: 'CASH', label: strings.pos.editor.paymentMethods.cash },
+                { value: 'UPI', label: strings.pos.editor.paymentMethods.upi },
+                { value: 'CARD', label: strings.pos.editor.paymentMethods.card },
+                { value: 'GIFT_CARD', label: strings.pos.editor.paymentMethods.giftCard },
               ]}
               className="w-full"
             />
             {!requiresTender && (
               <div className="pt-1.5 border-t border-border-default/60 flex items-center justify-between text-xs text-text-muted">
-                <span>Exact amount payable</span>
+                <span>{strings.pos.editor.exactAmountPayable}</span>
                 <span className="font-semibold text-text-primary financial-value">
                   {formatPaise(totals.totalPaise)}
                 </span>
@@ -1651,7 +1657,7 @@ export default function PosBillEditor({
                   htmlFor={`amount-tendered-${bill.index}`}
                   className="font-semibold text-text-primary block"
                 >
-                  Amount Tendered
+                  {strings.pos.editor.amountTendered}
                 </label>
                 <div className="flex bg-surface-secondary rounded-lg p-0.5 border border-border-default shrink-0">
                   <button
@@ -1663,7 +1669,7 @@ export default function PosBillEditor({
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
-                    Full
+                    {strings.pos.editor.fullPayment}
                   </button>
                   <button
                     type="button"
@@ -1681,7 +1687,7 @@ export default function PosBillEditor({
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
-                    Partial
+                    {strings.pos.editor.partialPayment}
                   </button>
                 </div>
               </div>
@@ -1695,7 +1701,7 @@ export default function PosBillEditor({
                   id={`amount-tendered-${bill.index}`}
                   type="text"
                   inputMode="decimal"
-                  placeholder="0.00"
+                  placeholder={strings.pos.editor.amountPlaceholder}
                   value={cashTenderedInput}
                   onFocus={() => {
                     cashInputFocusedRef.current = true;
@@ -1721,8 +1727,8 @@ export default function PosBillEditor({
                     // Partial payment should not take in any amount equal to or greater than the bill amount
                     if (!isFull && totals.totalPaise > 0 && inputPaise >= totals.totalPaise) {
                       toast.warning(
-                        `Partial payment cannot be equal to or greater than the bill amount (${formatPaise(totals.totalPaise)}).`,
-                        { title: 'Partial Payment Limit' }
+                        strings.pos.toasts.partialPaymentLimit(formatPaise(totals.totalPaise)),
+                        { title: strings.pos.toasts.partialPaymentLimitTitle }
                       );
                       return;
                     }
@@ -1745,7 +1751,7 @@ export default function PosBillEditor({
                   {bill.isFullPayment !== false ? (
                     (bill.amountTenderedPaise || 0) >= totals.totalPaise ? (
                       <div className="flex items-center justify-between text-xs font-semibold text-success">
-                        <span>Change to return</span>
+                        <span>{strings.pos.editor.changeToReturn}</span>
                         <span className="financial-value">
                           {formatPaise((bill.amountTenderedPaise || 0) - totals.totalPaise)}
                         </span>
@@ -1753,27 +1759,26 @@ export default function PosBillEditor({
                     ) : (
                       <div className="space-y-0.5">
                         <div className="flex items-center justify-between text-xs font-medium text-warning">
-                          <span>Balance due</span>
+                          <span>{strings.pos.editor.balanceDue}</span>
                           <span className="financial-value">
                             {formatPaise(totals.totalPaise - (bill.amountTenderedPaise || 0))}
                           </span>
                         </div>
                         <p className="text-[10px] text-text-muted">
-                          Tender at least {formatPaise(totals.totalPaise)} to complete sale.
+                          {strings.pos.editor.tenderAtLeast(formatPaise(totals.totalPaise))}
                         </p>
                       </div>
                     )
                   ) : (
                     <div className="space-y-0.5">
                       <div className="flex items-center justify-between text-xs font-medium text-warning">
-                        <span>Remaining balance due</span>
+                        <span>{strings.pos.editor.remainingBalanceDue}</span>
                         <span className="financial-value">
                           {formatPaise(totals.totalPaise - (bill.amountTenderedPaise || 0))}
                         </span>
                       </div>
                       <p className="text-[10px] text-text-muted">
-                        Partial payment must be greater than zero and less than{' '}
-                        {formatPaise(totals.totalPaise)}.
+                        {strings.pos.editor.partialPaymentHint(formatPaise(totals.totalPaise))}
                       </p>
                     </div>
                   )}
@@ -1785,7 +1790,7 @@ export default function PosBillEditor({
           {/* 4. Bill-Level Discount */}
           <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-text-primary">Bill Discount</span>
+              <span className="font-semibold text-text-primary">{strings.pos.editor.billDiscount}</span>
               <div className="flex bg-surface-secondary rounded-lg p-0.5 border border-border-default">
                 <button
                   type="button"
@@ -1796,7 +1801,7 @@ export default function PosBillEditor({
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
-                  {currencySymbol} Flat
+                  {strings.pos.editor.flatDiscount(currencySymbol)}
                 </button>
                 <button
                   type="button"
@@ -1815,7 +1820,7 @@ export default function PosBillEditor({
               type="number"
               min="0"
               step="0.01"
-              placeholder="0.00"
+              placeholder={strings.pos.editor.amountPlaceholder}
               value={bill.discountValue || ''}
               onChange={(e) => onSetDiscount(bill.discountType, e.target.value)}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg px-3 py-1.5 text-xs financial-value text-text-primary focus:outline-none focus:border-brand"
@@ -1825,13 +1830,13 @@ export default function PosBillEditor({
           {/* 5. Bill Notes */}
           <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
             <label className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-              <StickyNote className="w-3.5 h-3.5 text-brand" /> Notes
+              <StickyNote className="w-3.5 h-3.5 text-brand" /> {strings.common.labels.notes}
             </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => onNotesChange?.(e.target.value)}
-              placeholder="Internal remarks or delivery notes…"
+              placeholder={strings.pos.editor.notesPlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand resize-none"
             />
           </div>
@@ -1840,7 +1845,7 @@ export default function PosBillEditor({
           {bills.length > 0 && onSwitchBill && (
             <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-primary">Bills</span>
+                <span className="text-xs font-semibold text-text-primary">{strings.pos.editor.bills}</span>
                 {onClearCart && (
                   <button
                     type="button"
@@ -1848,7 +1853,7 @@ export default function PosBillEditor({
                     disabled={bill.items.length === 0}
                     className="text-[11px] text-text-secondary hover:text-danger px-2 py-0.5 rounded bg-surface-secondary hover:bg-danger-bg border border-border-default transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Clear Cart
+                    {strings.pos.editor.clearCart}
                   </button>
                 )}
               </div>

@@ -7,6 +7,7 @@ import {
   X,
 } from 'lucide-react';
 import { useToastStore } from '../../stores/toast.store';
+import { strings } from '../../lib/strings';
 
 const TOAST_STYLES = {
   success: {
@@ -47,12 +48,7 @@ const TOAST_STYLES = {
   },
 };
 
-const TYPE_LABELS = {
-  success: 'Success',
-  error: 'Error',
-  warning: 'Warning',
-  info: 'Information',
-};
+const TYPE_LABELS = strings.common.toast.types;
 
 export function Toast({ toast: item, onDismiss }) {
   const style = TOAST_STYLES[item.type] || TOAST_STYLES.info;
@@ -69,7 +65,7 @@ export function Toast({ toast: item, onDismiss }) {
         <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${style.iconColor}`} />
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-bold ${style.titleColor}`}>
-            {item.title || TYPE_LABELS[item.type] || 'Notice'}
+            {item.title || TYPE_LABELS[item.type] || strings.common.toast.notice}
           </p>
           {item.message && (
             <p className={`mt-0.5 text-xs leading-relaxed ${style.messageColor} break-words`}>
@@ -82,7 +78,7 @@ export function Toast({ toast: item, onDismiss }) {
       <button
         type="button"
         onClick={() => onDismiss(item.id)}
-        aria-label="Dismiss notification"
+        aria-label={strings.common.toast.dismiss}
         className={`absolute right-2 top-2 p-1 rounded-md ${style.closeColor} transition-colors cursor-pointer`}
       >
         <X className="w-3.5 h-3.5" />
@@ -106,7 +102,7 @@ export default function ToastContainer() {
 
   return createPortal(
     <div
-      aria-label="Notifications"
+      aria-label={strings.common.toast.notifications}
       className="pointer-events-none fixed top-4 right-4 z-[9999] flex w-full max-w-sm flex-col gap-2 p-2"
     >
       {toasts.map((item) => (

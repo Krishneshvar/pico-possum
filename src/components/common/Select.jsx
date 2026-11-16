@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
+import { strings } from '../../lib/strings';
 
 /**
  * Standard Modern Select Component
@@ -11,7 +12,7 @@ export default function Select({
   value,
   onChange,
   options = [],
-  placeholder = 'Select option…',
+  placeholder = strings.common.placeholders.selectOption,
   disabled = false,
   className = '',
   buttonClassName = '',

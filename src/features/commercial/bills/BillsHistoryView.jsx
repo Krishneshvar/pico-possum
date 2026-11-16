@@ -13,6 +13,7 @@ import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { strings } from '../../../lib/strings';
 
 export default function BillsHistoryView() {
   const queryClient = useQueryClient();
@@ -54,14 +55,17 @@ export default function BillsHistoryView() {
     mutationFn: ({ id, reason }) => tauriApi.cancelSale(id, reason),
     onSuccess: () => {
       invalidateSalesAndAnalytics();
-      toast.success('Sale marked as cancelled and inventory restored');
+      toast.success(strings.bills.toasts.saleCancelled);
     },
-    onError: (err) => toast.error(`Failed to cancel sale: ${err}`, { title: 'Cancellation failed' }),
+    onError: (err) =>
+      toast.error(strings.bills.toasts.cancelFailed(err), {
+        title: strings.bills.toasts.cancelFailedTitle,
+      }),
   });
 
   const handleOpenDetail = (row) => {
     openOrFocus(
-      `Bill #${row.invoice_number}`,
+      strings.bills.history.tabTitle(row.invoice_number),
       'bill-detail',
       { saleId: row.id, invoiceNumber: row.invoice_number },
       `bill-${row.id}`
@@ -70,21 +74,21 @@ export default function BillsHistoryView() {
 
   const handleReprint = (details) => {
     setReprintSale(details);
-    toast.info('Preparing receipt for printing');
+    toast.info(strings.bills.toasts.receiptPreparing);
     setTimeout(() => window.print(), 100);
   };
 
   const handleCancelSale = async (saleId, invoiceNumber) => {
     const { confirmed, value } = await confirmDialog({
-      title: `Cancel Invoice ${invoiceNumber || ''}?`,
-      message: `Are you sure you want to cancel invoice #${invoiceNumber}? This will mark the transaction as CANCELLED and restore the items to inventory.`,
+      title: strings.bills.dialogs.cancelInvoice.title(invoiceNumber),
+      message: strings.bills.dialogs.cancelInvoice.message(invoiceNumber),
       input: {
-        label: 'Reason for Cancellation / Return',
-        defaultValue: 'Customer returned items / cancelled',
-        placeholder: 'Reason for cancellation',
+        label: strings.bills.dialogs.cancelInvoice.reasonLabel,
+        defaultValue: strings.bills.dialogs.cancelInvoice.reasonDefault,
+        placeholder: strings.bills.dialogs.cancelInvoice.reasonPlaceholder,
       },
-      confirmLabel: 'Cancel Invoice',
-      cancelLabel: 'Keep Active',
+      confirmLabel: strings.bills.dialogs.cancelInvoice.confirm,
+      cancelLabel: strings.bills.dialogs.cancelInvoice.cancel,
       tone: 'danger',
       icon: RotateCcw,
     });
@@ -92,7 +96,7 @@ export default function BillsHistoryView() {
     if (confirmed) {
       cancelMutation.mutate({
         id: saleId,
-        reason: value || 'Customer returned items / cancelled',
+        reason: value || strings.bills.dialogs.cancelInvoice.reasonDefault,
       });
     }
   };
@@ -104,7 +108,7 @@ export default function BillsHistoryView() {
   const handleExportCsv = async () => {
     const dataToExport = getExportData();
     if (!dataToExport.length) {
-      toast.warning('No bills to export');
+      toast.warning(strings.bills.toasts.noBillsToExport);
       return;
     }
 
@@ -117,24 +121,24 @@ export default function BillsHistoryView() {
     };
 
     const headers = [
-      'Invoice #',
-      'Date',
-      'Time',
-      'Customer Name',
-      'Customer Phone',
-      'Payment Method',
-      `Subtotal (${currencySymbol})`,
-      `Discount (${currencySymbol})`,
-      `Tax (${currencySymbol})`,
-      `Net Total (${currencySymbol})`,
-      'Status',
+      strings.common.labels.invoiceNumber,
+      strings.common.labels.date,
+      strings.common.labels.time,
+      strings.bills.export.headers.customerName,
+      strings.bills.export.headers.customerPhone,
+      strings.common.labels.paymentMethod,
+      strings.bills.export.headers.subtotal(currencySymbol),
+      strings.bills.export.headers.discount(currencySymbol),
+      strings.bills.export.headers.tax(currencySymbol),
+      strings.bills.export.headers.netTotal(currencySymbol),
+      strings.common.labels.status,
     ];
 
     const rows = dataToExport.map((s) => [
       escapeCsv(s.invoice_number || ''),
       escapeCsv(formatDate(s.created_at)),
       escapeCsv(formatTime(s.created_at)),
-      escapeCsv(s.customer_name || 'Walk-in Customer'),
+      escapeCsv(s.customer_name || strings.bills.labels.walkInCustomer),
       escapeCsv(s.customer_phone || ''),
       escapeCsv(s.payment_method || ''),
       escapeCsv((s.subtotal_paise / 100).toFixed(2)),
@@ -151,36 +155,36 @@ export default function BillsHistoryView() {
       extension: 'csv',
       data: csvContent,
       count: dataToExport.length,
-      entityName: 'bills',
+      entityName: strings.bills.export.entityName,
     });
   };
 
   const handleExportXlsx = async () => {
     const dataToExport = getExportData();
     if (!dataToExport.length) {
-      toast.warning('No bills to export');
+      toast.warning(strings.bills.toasts.noBillsToExport);
       return;
     }
 
     const headers = [
-      'Invoice #',
-      'Date',
-      'Time',
-      'Customer Name',
-      'Customer Phone',
-      'Payment Method',
-      `Subtotal (${currencySymbol})`,
-      `Discount (${currencySymbol})`,
-      `Tax (${currencySymbol})`,
-      `Net Total (${currencySymbol})`,
-      'Status',
+      strings.common.labels.invoiceNumber,
+      strings.common.labels.date,
+      strings.common.labels.time,
+      strings.bills.export.headers.customerName,
+      strings.bills.export.headers.customerPhone,
+      strings.common.labels.paymentMethod,
+      strings.bills.export.headers.subtotal(currencySymbol),
+      strings.bills.export.headers.discount(currencySymbol),
+      strings.bills.export.headers.tax(currencySymbol),
+      strings.bills.export.headers.netTotal(currencySymbol),
+      strings.common.labels.status,
     ];
 
     const rows = dataToExport.map((s) => [
       s.invoice_number || '',
       formatDate(s.created_at),
       formatTime(s.created_at),
-      s.customer_name || 'Walk-in Customer',
+      s.customer_name || strings.bills.labels.walkInCustomer,
       s.customer_phone || '',
       s.payment_method || '',
       parseFloat((s.subtotal_paise / 100).toFixed(2)),
@@ -192,7 +196,7 @@ export default function BillsHistoryView() {
 
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Bills');
+    XLSX.utils.book_append_sheet(workbook, worksheet, strings.bills.export.sheetName);
     const xlsxArrayBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
     const dateStr = new Date().toISOString().split('T')[0];
     await exportWithUserLocation({
@@ -200,14 +204,14 @@ export default function BillsHistoryView() {
       extension: 'xlsx',
       data: xlsxArrayBuffer,
       count: dataToExport.length,
-      entityName: 'bills',
+      entityName: strings.bills.export.entityName,
     });
   };
 
   const columns = [
     {
       key: 'invoice_number',
-      label: 'Invoice #',
+      label: strings.common.labels.invoiceNumber,
       className: 'font-mono text-brand font-semibold text-xs',
       render: (r) => (
         <span
@@ -223,17 +227,17 @@ export default function BillsHistoryView() {
     },
     {
       key: 'created_at',
-      label: 'Date & Time',
+      label: strings.common.labels.dateTime,
       className: 'text-text-muted text-xs whitespace-nowrap',
       render: (r) => formatDateTime(r.created_at),
     },
     {
       key: 'customer_name',
-      label: 'Customer',
+      label: strings.common.labels.customer,
       className: 'font-medium text-text-primary text-xs',
       render: (r) => (
         <div>
-          <span>{r.customer_name || 'Walk-in Customer'}</span>
+          <span>{r.customer_name || strings.bills.labels.walkInCustomer}</span>
           {r.customer_phone && (
             <div className="text-[10px] text-text-muted font-mono">{r.customer_phone}</div>
           )}
@@ -242,7 +246,7 @@ export default function BillsHistoryView() {
     },
     {
       key: 'payment_method',
-      label: 'Payment',
+      label: strings.bills.columns.payment,
       headerClassName: 'text-center',
       className: 'text-center text-xs',
       render: (r) => (
@@ -253,14 +257,14 @@ export default function BillsHistoryView() {
     },
     {
       key: 'total_paise',
-      label: 'Total Amount',
+      label: strings.bills.columns.totalAmount,
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
       render: (r) => formatPaise(r.total_paise),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: strings.common.labels.status,
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => {
@@ -276,7 +280,11 @@ export default function BillsHistoryView() {
                 : 'bg-success-bg text-success border-success/30'
             }`}
           >
-            {isCancelled ? 'Cancelled' : isLegacy ? 'Legacy' : 'Paid'}
+            {isCancelled
+              ? strings.bills.status.cancelled
+              : isLegacy
+              ? strings.bills.status.legacy
+              : strings.bills.status.paid}
           </span>
         );
       },
@@ -319,11 +327,20 @@ export default function BillsHistoryView() {
       {
         type: 'multiselect',
         key: 'status',
-        label: 'Status',
+        label: strings.common.labels.status,
         options: [
-          { value: 'COMPLETED', label: `Paid (${statusCounts.completed})` },
-          { value: 'LEGACY', label: `Legacy (${statusCounts.legacy})` },
-          { value: 'CANCELLED', label: `Cancelled (${statusCounts.cancelled})` },
+          {
+            value: 'COMPLETED',
+            label: strings.bills.filters.statusOptions.paid(statusCounts.completed),
+          },
+          {
+            value: 'LEGACY',
+            label: strings.bills.filters.statusOptions.legacy(statusCounts.legacy),
+          },
+          {
+            value: 'CANCELLED',
+            label: strings.bills.filters.statusOptions.cancelled(statusCounts.cancelled),
+          },
         ],
         filterFn: (row, vals) => {
           const rowStatus =
@@ -338,12 +355,15 @@ export default function BillsHistoryView() {
       {
         type: 'multiselect',
         key: 'payment_method',
-        label: 'Payment Method',
+        label: strings.common.labels.paymentMethod,
         options: [
-          { value: 'CASH', label: `Cash (${pmCounts.CASH})` },
-          { value: 'UPI', label: `UPI / QR (${pmCounts.UPI})` },
-          { value: 'CARD', label: `Card (${pmCounts.CARD})` },
-          { value: 'GIFT_CARD', label: `Gift Card (${pmCounts.GIFT_CARD})` },
+          { value: 'CASH', label: strings.bills.filters.paymentOptions.cash(pmCounts.CASH) },
+          { value: 'UPI', label: strings.bills.filters.paymentOptions.upi(pmCounts.UPI) },
+          { value: 'CARD', label: strings.bills.filters.paymentOptions.card(pmCounts.CARD) },
+          {
+            value: 'GIFT_CARD',
+            label: strings.bills.filters.paymentOptions.giftCard(pmCounts.GIFT_CARD),
+          },
         ],
         filterFn: (row, vals) => {
           const pm = (row.payment_method || 'CASH').toUpperCase().replace(/\s+/g, '_');
@@ -361,12 +381,12 @@ export default function BillsHistoryView() {
         type: 'daterange',
         fromKey: 'created_at',
         toKey: 'created_at',
-        label: 'Date Range',
+        label: strings.common.datePicker.dateRange,
       },
       {
         type: 'range',
         key: 'total_paise',
-        label: 'Amount',
+        label: strings.common.labels.amount,
         unit: currencySymbol,
         transform: (v) => (v != null ? Number(v) / 100 : 0),
       },
@@ -383,9 +403,9 @@ export default function BillsHistoryView() {
             <History className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-text-primary">Bill History</h2>
+            <h2 className="text-sm font-bold text-text-primary">{strings.bills.history.title}</h2>
             <p className="text-[11px] text-text-muted">
-              Search, reprint receipts, inspect audits, and manage past sales
+              {strings.bills.history.subtitle}
             </p>
           </div>
         </div>

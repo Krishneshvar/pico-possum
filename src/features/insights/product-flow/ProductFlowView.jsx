@@ -25,6 +25,7 @@ import DatePicker from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
 import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { strings } from '../../../lib/strings';
 
 export default function ProductFlowView() {
   const { openOrFocus } = useWorkspaceStore();
@@ -82,30 +83,30 @@ export default function ProductFlowView() {
   const columns = [
     {
       key: 'created_at',
-      label: 'Date & Time',
+      label: strings.common.labels.dateTime,
       className: 'text-content-secondary text-xs whitespace-nowrap',
       render: (r) => formatDateTime(r.created_at),
     },
     {
       key: 'invoice_number',
-      label: 'Invoice / Bill #',
+      label: strings.productFlow.columns.invoice,
       className: 'font-mono text-content font-medium',
       render: (r) => {
-        if (!r.invoice_number) return <span className="text-content-muted">—</span>;
+        if (!r.invoice_number) return <span className="text-content-muted">{strings.common.states.emptyValue}</span>;
         return (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               openOrFocus(
-                `Bill #${r.invoice_number}`,
+                strings.productFlow.productFlow.billTabTitle(r.invoice_number),
                 'bill-detail',
                 { invoiceNumber: r.invoice_number },
                 `bill-${r.invoice_number}`
               );
             }}
             className="inline-flex items-center gap-1.5 text-brand hover:underline font-mono text-xs font-semibold cursor-pointer transition-colors"
-            title={`View bill #${r.invoice_number}`}
+            title={strings.productFlow.productFlow.viewBillTitle(r.invoice_number)}
           >
             <Receipt className="w-3.5 h-3.5 text-brand shrink-0" />
             <span>{r.invoice_number}</span>
@@ -116,18 +117,20 @@ export default function ProductFlowView() {
     },
     {
       key: 'customer_name',
-      label: 'Customer',
+      label: strings.common.labels.customer,
       className: 'text-content-secondary',
       render: (r) => (
         <span className="inline-flex items-center gap-1.5 text-content-secondary">
           <User className="w-3 h-3 text-content-muted shrink-0" />
-          <span className="truncate max-w-[160px]">{r.customer_name || 'Walk-in Customer'}</span>
+          <span className="truncate max-w-[160px]">
+            {r.customer_name || strings.productFlow.productFlow.walkInCustomer}
+          </span>
         </span>
       ),
     },
     {
       key: 'event_type',
-      label: 'Event Type',
+      label: strings.productFlow.columns.eventType,
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => (
@@ -138,7 +141,7 @@ export default function ProductFlowView() {
     },
     {
       key: 'quantity',
-      label: 'Sold Qty',
+      label: strings.productFlow.columns.soldQty,
       headerClassName: 'text-center',
       className: 'text-center font-medium financial-value',
       render: (r) => {
@@ -157,26 +160,26 @@ export default function ProductFlowView() {
     },
     {
       key: 'unit_price_paise',
-      label: 'Sold Unit Price',
+      label: strings.productFlow.columns.soldUnitPrice,
       headerClassName: 'text-right',
       className: 'text-right text-content-secondary financial-value',
       render: (r) => formatPaise(r.unit_price_paise),
     },
     {
       key: 'total_paise',
-      label: 'Sold Total Amount',
+      label: strings.productFlow.columns.soldTotalAmount,
       headerClassName: 'text-right',
       className: 'text-right font-medium text-content financial-value',
       render: (r) => formatPaise(r.total_paise),
     },
     {
       key: 'payment_method',
-      label: 'Payment',
+      label: strings.productFlow.columns.payment,
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => (
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-surface-secondary text-content-secondary border border-border">
-          {r.payment_method ? r.payment_method.replace(/_/g, ' ') : '—'}
+          {r.payment_method ? r.payment_method.replace(/_/g, ' ') : strings.common.states.emptyValue}
         </span>
       ),
     },
@@ -190,36 +193,36 @@ export default function ProductFlowView() {
 
   const handleExportCsv = async () => {
     if (!hasSelectedProduct || !flowItems.length) {
-      toast.warning('Select a product with sales history to export');
+      toast.warning(strings.productFlow.export.selectProductWarning);
       return;
     }
 
     const headers = [
-      'Product',
-      'Date & Time',
-      'Invoice / Bill #',
-      'Customer',
-      'Event Type',
-      'Sold Qty',
-      `Sold Unit Price (${currencySymbol})`,
-      `Sold Total Amount (${currencySymbol})`,
-      'Payment Method',
+      strings.common.labels.product,
+      strings.common.labels.dateTime,
+      strings.productFlow.export.headers.invoice,
+      strings.common.labels.customer,
+      strings.productFlow.export.headers.eventType,
+      strings.productFlow.export.headers.soldQty,
+      strings.productFlow.export.headers.soldUnitPrice(currencySymbol),
+      strings.productFlow.export.headers.soldTotalAmount(currencySymbol),
+      strings.common.labels.paymentMethod,
     ];
 
     const prodLabel = selectedProduct
       ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
-      : 'Product';
+      : strings.common.labels.product;
 
     const rows = flowItems.map((r) => [
       escapeCsv(prodLabel),
       escapeCsv(formatDateTime(r.created_at)),
-      escapeCsv(r.invoice_number || '—'),
-      escapeCsv(r.customer_name || 'Walk-in Customer'),
+      escapeCsv(r.invoice_number || strings.common.states.emptyValue),
+      escapeCsv(r.customer_name || strings.productFlow.productFlow.walkInCustomer),
       escapeCsv(r.event_type || ''),
       escapeCsv(r.quantity || 0),
       escapeCsv(((r.unit_price_paise || 0) / 100).toFixed(2)),
       escapeCsv(((r.total_paise || 0) / 100).toFixed(2)),
-      escapeCsv(r.payment_method || '—'),
+      escapeCsv(r.payment_method || strings.common.states.emptyValue),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
@@ -237,42 +240,42 @@ export default function ProductFlowView() {
       extension: 'csv',
       data: csvContent,
       count: flowItems.length,
-      entityName: 'sales records',
+      entityName: strings.productFlow.export.salesRecords,
     });
   };
 
   const handleExportXlsx = async () => {
     if (!hasSelectedProduct || !flowItems.length) {
-      toast.warning('Select a product with sales history to export');
+      toast.warning(strings.productFlow.export.selectProductWarning);
       return;
     }
 
     const headers = [
-      'Product',
-      'Date & Time',
-      'Invoice / Bill #',
-      'Customer',
-      'Event Type',
-      'Sold Qty',
-      `Sold Unit Price (${currencySymbol})`,
-      `Sold Total Amount (${currencySymbol})`,
-      'Payment Method',
+      strings.common.labels.product,
+      strings.common.labels.dateTime,
+      strings.productFlow.export.headers.invoice,
+      strings.common.labels.customer,
+      strings.productFlow.export.headers.eventType,
+      strings.productFlow.export.headers.soldQty,
+      strings.productFlow.export.headers.soldUnitPrice(currencySymbol),
+      strings.productFlow.export.headers.soldTotalAmount(currencySymbol),
+      strings.common.labels.paymentMethod,
     ];
 
     const prodLabel = selectedProduct
       ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
-      : 'Product';
+      : strings.common.labels.product;
 
     const rows = flowItems.map((r) => [
       prodLabel,
       formatDateTime(r.created_at),
-      r.invoice_number || '—',
-      r.customer_name || 'Walk-in Customer',
+      r.invoice_number || strings.common.states.emptyValue,
+      r.customer_name || strings.productFlow.productFlow.walkInCustomer,
       r.event_type || '',
       r.quantity || 0,
       parseFloat(((r.unit_price_paise || 0) / 100).toFixed(2)),
       parseFloat(((r.total_paise || 0) / 100).toFixed(2)),
-      r.payment_method || '—',
+      r.payment_method || strings.common.states.emptyValue,
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -288,7 +291,7 @@ export default function ProductFlowView() {
       { wch: 14 },
     ];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Sales History');
+    XLSX.utils.book_append_sheet(wb, ws, strings.productFlow.export.salesHistorySheet);
     const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const dateRangeLabel = fromDate && toDate
@@ -304,7 +307,7 @@ export default function ProductFlowView() {
       extension: 'xlsx',
       data: xlsxArrayBuffer,
       count: flowItems.length,
-      entityName: 'sales records',
+      entityName: strings.productFlow.export.salesRecords,
     });
   };
 
@@ -317,9 +320,9 @@ export default function ProductFlowView() {
             <History className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-content">Product Flow</h1>
+            <h1 className="text-sm font-semibold text-content">{strings.productFlow.productFlow.title}</h1>
             <p className="text-xs text-content-secondary">
-              Track historical checkout velocity, price movement, and inventory sales flow
+              {strings.productFlow.productFlow.subtitle}
             </p>
           </div>
         </div>
@@ -331,7 +334,7 @@ export default function ProductFlowView() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-content-muted" />
-              <span>Reset</span>
+              <span>{strings.common.actions.reset}</span>
             </button>
           )}
           <ExportButton
@@ -344,7 +347,7 @@ export default function ProductFlowView() {
             onClick={() => refetch()}
             disabled={!hasSelectedProduct}
             className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
-            title="Refresh Product Flow"
+            title={strings.productFlow.productFlow.refreshTitle}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -355,16 +358,18 @@ export default function ProductFlowView() {
       <div className="px-6 py-3.5 border-b border-border bg-surface flex items-center gap-4 flex-wrap text-xs">
         {/* Product Picker */}
         <div className="flex items-center gap-2 min-w-64 flex-1 max-w-md">
-          <span className="text-content-secondary font-medium shrink-0">Select Product:</span>
+          <span className="text-content-secondary font-medium shrink-0">
+            {strings.productFlow.productFlow.selectProduct}
+          </span>
           <Select
             value={selectedProductId}
             onChange={(val) => setSelectedProductId(val)}
-            placeholder="-- Choose a product to inspect history --"
+            placeholder={strings.productFlow.productFlow.selectProductPlaceholder}
             options={[
-              { value: '', label: '-- Choose a product to inspect history --' },
+              { value: '', label: strings.productFlow.productFlow.selectProductPlaceholder },
               ...products.map((p) => ({
                 value: String(p.id),
-                label: `${p.name}${p.sku ? ` (SKU: ${p.sku})` : ''}`,
+                label: strings.productFlow.productFlow.productOption(p.name, p.sku),
               })),
             ]}
             className="w-full"
@@ -373,20 +378,20 @@ export default function ProductFlowView() {
 
         {/* Date Filters */}
         <div className="flex items-center gap-2">
-          <span className="text-content-secondary font-medium">From:</span>
+          <span className="text-content-secondary font-medium">{strings.productFlow.filters.fromLabel}</span>
           <DatePicker
             value={fromDate}
             onChange={(val) => setFromDate(val)}
-            placeholder="From date"
+            placeholder={strings.productFlow.filters.fromPlaceholder}
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-content-secondary font-medium">To:</span>
+          <span className="text-content-secondary font-medium">{strings.productFlow.filters.toLabel}</span>
           <DatePicker
             value={toDate}
             onChange={(val) => setToDate(val)}
-            placeholder="To date"
+            placeholder={strings.productFlow.filters.toPlaceholder}
           />
         </div>
       </div>
@@ -405,27 +410,31 @@ export default function ProductFlowView() {
                     </h2>
                     {selectedProduct?.sku && (
                       <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-secondary border border-border text-content-secondary">
-                        SKU: {selectedProduct.sku}
+                        {strings.productFlow.productFlow.skuBadge(selectedProduct.sku)}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-content-secondary">
-                    Transaction audit and historical customer sales records
+                    {strings.productFlow.productFlow.summarySubtitle}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
                     <ShoppingBag className="w-3.5 h-3.5 text-brand" />
-                    <span className="text-xs text-content-secondary">Total Sold:</span>
+                    <span className="text-xs text-content-secondary">
+                      {strings.productFlow.productFlow.totalSold}
+                    </span>
                     <span className="text-xs font-bold text-content financial-value">
-                      {summaryMetrics.unitsSold} units
+                      {strings.productFlow.productFlow.units(summaryMetrics.unitsSold)}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
                     <Receipt className="w-3.5 h-3.5 text-success" />
-                    <span className="text-xs text-content-secondary">Total Revenue:</span>
+                    <span className="text-xs text-content-secondary">
+                      {strings.productFlow.productFlow.totalRevenue}
+                    </span>
                     <span className="text-xs font-bold text-content financial-value">
                       {formatPaise(summaryMetrics.totalRevenue)}
                     </span>
@@ -433,7 +442,9 @@ export default function ProductFlowView() {
 
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
                     <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
-                    <span className="text-xs text-content-secondary">Avg Sold Price:</span>
+                    <span className="text-xs text-content-secondary">
+                      {strings.productFlow.productFlow.avgSoldPrice}
+                    </span>
                     <span className="text-xs font-bold text-content financial-value">
                       {formatPaise(summaryMetrics.avgPrice)}
                     </span>
@@ -441,7 +452,9 @@ export default function ProductFlowView() {
 
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
                     <Tag className="w-3.5 h-3.5 text-content-muted" />
-                    <span className="text-xs text-content-secondary">MRP:</span>
+                    <span className="text-xs text-content-secondary">
+                      {strings.productFlow.productFlow.mrp}
+                    </span>
                     <span className="text-xs font-semibold text-content financial-value">
                       {formatPaise(selectedProduct?.mrp_paise || 0)}
                     </span>
@@ -449,7 +462,9 @@ export default function ProductFlowView() {
 
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
                     <Package className="w-3.5 h-3.5 text-amber-600" />
-                    <span className="text-xs text-content-secondary">Current Stock:</span>
+                    <span className="text-xs text-content-secondary">
+                      {strings.productFlow.productFlow.currentStock}
+                    </span>
                     <span
                       className={`text-xs font-semibold px-2 py-0.5 rounded-full border financial-value ${
                         (selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0) <= 5
@@ -457,7 +472,9 @@ export default function ProductFlowView() {
                           : 'bg-success/10 text-success border-success/30'
                       }`}
                     >
-                      {selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0} units
+                      {strings.productFlow.productFlow.units(
+                        selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0
+                      )}
                     </span>
                   </div>
                 </div>
@@ -468,7 +485,7 @@ export default function ProductFlowView() {
             <div className="flex-1 overflow-hidden border border-border rounded-xl bg-surface flex flex-col">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-                  Transaction Records
+                  {strings.productFlow.productFlow.transactionRecords}
                 </h3>
               </div>
               <div className="flex-1 overflow-hidden">
@@ -479,7 +496,7 @@ export default function ProductFlowView() {
                   keyFn={(r) => r.id}
                   searchKeys={['invoice_number', 'customer_name', 'payment_method']}
                   pageSize={25}
-                  emptyMessage="No transaction events found for this product in the selected period."
+                  emptyMessage={strings.productFlow.productFlow.emptyTable}
                   isLoading={isLoading}
                 />
               </div>
@@ -490,10 +507,11 @@ export default function ProductFlowView() {
             <div className="w-12 h-12 rounded-xl bg-surface-secondary border border-border flex items-center justify-center text-content-muted mb-3">
               <Package className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-semibold text-content mb-1">No Product Selected</h3>
+            <h3 className="text-sm font-semibold text-content mb-1">
+              {strings.productFlow.productFlow.noProductTitle}
+            </h3>
             <p className="text-xs text-content-secondary max-w-sm">
-              Please choose a product from the dropdown above to inspect its transaction history,
-              sales velocity, and average selling price.
+              {strings.productFlow.productFlow.noProductDescription}
             </p>
           </div>
         )}

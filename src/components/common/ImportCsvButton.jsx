@@ -16,123 +16,13 @@ import * as XLSX from 'xlsx';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
 import { getCurrencySymbol } from '../../lib/formatters';
+import { strings } from '../../lib/strings';
 
-const getEntitySchemas = (sym) => ({
-  products: {
-    title: 'Import Products',
-    singular: 'product',
-    required: [
-      { name: 'Product Name', aliases: 'Name', desc: 'Product title / description' },
-      { name: 'Product Code / SKU', aliases: 'SKU, Product Code', desc: 'Unique barcode or SKU identifier' },
-      { name: 'MRP', aliases: 'Price, MRP/Price', desc: `Maximum Retail Price / MRP (${sym})` },
-    ],
-    optional: [
-      { name: 'Category Name', aliases: 'Category, Division Name', desc: 'Category name (auto-created if new)' },
-      { name: 'Cost Price', aliases: 'Avg Item Cost, Cost', desc: `Wholesale purchase / cost price (${sym})` },
-      { name: 'Current Stock', aliases: 'Opening Stock, Stock', desc: 'Initial inventory quantity' },
-      { name: 'Tax Rate', aliases: 'Tax%', desc: 'GST percentage rate (e.g. 5, 12, 18)' },
-      { name: 'Stock Alert', aliases: 'Minimum Stock Level', desc: 'Low stock warning threshold' },
-      { name: 'Division Code', aliases: 'Category Code', desc: 'Numeric division code to map category' },
-    ],
-  },
-  categories: {
-    title: 'Import Categories',
-    singular: 'category',
-    required: [
-      { name: 'Category Name', aliases: 'Division Name, Name', desc: 'Unique category or division name' },
-    ],
-    optional: [
-      { name: 'Division Code', aliases: 'Category Code, Code', desc: 'Numeric division identifier' },
-    ],
-  },
-  customers: {
-    title: 'Import Customers',
-    singular: 'customer',
-    required: [
-      { name: 'Customer Name', aliases: 'Name', desc: 'Full name of customer or account' },
-    ],
-    optional: [
-      { name: 'Contact Number', aliases: 'Phone, Mobile', desc: 'Primary contact or mobile number' },
-      { name: 'Customer Address', aliases: 'Address', desc: 'Billing or street address' },
-      { name: 'City', aliases: 'City', desc: 'City or district' },
-      { name: 'Pin Code', aliases: 'Postal Code, Pincode', desc: 'Postal PIN code' },
-      { name: 'Customer Code', aliases: 'Code, ID', desc: 'Customer account identifier' },
-    ],
-  },
-  bills: {
-    title: 'Import Bill History',
-    singular: 'bill',
-    compatibility: 'Supports both this application\'s own export files (CSV & Excel) and legacy billing data from external POS systems.',
-    required: [
-      {
-        name: 'Invoice # / Bill Number',
-        aliases: 'Invoice #, Invoice Number, Bill Number, Bill No, Invoice No',
-        desc: 'Unique bill or invoice number (matches this app\'s export "Invoice #" and legacy formats)',
-      },
-      {
-        name: 'Date / Bill Date',
-        aliases: 'Date, Bill Date, Sale Date',
-        desc: 'Sale date (DD/MM/YYYY, YYYY-MM-DD, or Month Date, Year)',
-      },
-      {
-        name: `Net Total (${sym}) / Net Amount`,
-        aliases: `Net Total (${sym}), Net Total, Net Amount, Total Amount, Total, Amount, Net Total (Rs)`,
-        desc: `Final bill total in ${sym} (matches this app's export "Net Total (${sym})")`,
-      },
-    ],
-    optional: [
-      {
-        name: 'Time / Bill Time',
-        aliases: 'Time, Bill Time',
-        desc: 'Sale time (12-hour AM/PM or 24-hour HH:MM, defaults to 00:00:00)',
-      },
-      {
-        name: 'Customer Name',
-        aliases: 'Customer Name, Customer, Client',
-        desc: 'Customer name (defaults to Walk-in Customer)',
-      },
-      {
-        name: 'Customer Phone',
-        aliases: 'Customer Phone, Phone, Mobile, Contact Number',
-        desc: 'Customer contact phone (auto-linked to customer directory if found)',
-      },
-      {
-        name: 'Payment Method',
-        aliases: 'Payment Method, Payment Mode, Mode',
-        desc: 'Payment mode (e.g. Cash, UPI, Card; inferred from bill # if omitted)',
-      },
-      {
-        name: `Subtotal (${sym})`,
-        aliases: `Subtotal (${sym}), Subtotal, Sub Total, Subtotal (Rs)`,
-        desc: 'Pre-tax gross subtotal (defaults to Net Total if omitted)',
-      },
-      {
-        name: `Discount (${sym})`,
-        aliases: `Discount (${sym}), Discount, Disc, Discount (Rs)`,
-        desc: `Total discount amount in ${sym} (defaults to 0.00)`,
-      },
-      {
-        name: `Tax (${sym})`,
-        aliases: `Tax (${sym}), Tax, GST, Tax (Rs)`,
-        desc: `Total tax amount in ${sym} (defaults to 0.00)`,
-      },
-      {
-        name: 'Status',
-        aliases: 'Status, Bill Status',
-        desc: 'Sale status (PAID, PARTIALLY_PAID, CANCELLED, REFUNDED; defaults to PAID)',
-      },
-      {
-        name: 'Notes',
-        aliases: 'Notes, Note, Remarks',
-        desc: 'Optional bill memo or remarks',
-      },
-    ],
-  },
-});
+const getEntitySchemas = (sym) => strings.common.importSchemas(sym);
 
 export default function ImportCsvButton({
   entity = 'products',
-  label = 'Import',
+  label = strings.common.actions.import,
   onComplete,
   onImport,
   onSuccess,
@@ -189,7 +79,7 @@ export default function ImportCsvButton({
     const isXlsx = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
 
     if (!isCsv && !isXlsx) {
-      setError('Unsupported file type. Please upload a .csv, .xlsx, or .xls file.');
+      setError(strings.common.importCsv.unsupportedFileType);
       return;
     }
 
@@ -209,13 +99,13 @@ export default function ImportCsvButton({
           dateNF: 'yyyy-mm-dd',
         });
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-          throw new Error('The uploaded Excel workbook contains no sheets.');
+          throw new Error(strings.common.importCsv.noSheets);
         }
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         csvContent = XLSX.utils.sheet_to_csv(worksheet);
         if (!csvContent || !csvContent.trim()) {
-          throw new Error(`Sheet "${firstSheetName}" is empty.`);
+          throw new Error(strings.common.importCsv.emptySheet(firstSheetName));
         }
       } else {
         csvContent = await file.text();
@@ -243,13 +133,13 @@ export default function ImportCsvButton({
       }
 
       setResult(res);
-      toast.success(`Import complete: ${res?.imported ?? 0} records imported.`);
+      toast.success(strings.common.importCsv.importComplete(res?.imported ?? 0));
       if (onComplete) onComplete(res);
       if (onSuccess) onSuccess(res);
     } catch (err) {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to parse and import file';
+      const msg = typeof err === 'string' ? err : err?.message || strings.common.importCsv.parseFailed;
       setError(msg);
-      toast.error(msg, { title: 'Import failed' });
+      toast.error(msg, { title: strings.common.importCsv.importFailedTitle });
     } finally {
       setIsProcessing(false);
     }
@@ -284,7 +174,7 @@ export default function ImportCsvButton({
         type="button"
         onClick={handleOpenModal}
         className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary transition-colors shadow-2xs cursor-pointer ${className}`}
-        title={`Import ${resolvedKey} from CSV or Excel`}
+        title={strings.common.importCsv.triggerTooltip(resolvedKey)}
       >
         <Upload className="w-3.5 h-3.5 text-text-muted" />
         <span>{label}</span>
@@ -303,7 +193,7 @@ export default function ImportCsvButton({
                 <div>
                   <h3 className="font-bold text-text-primary text-base">{schema.title}</h3>
                   <p className="text-xs text-text-muted">
-                    Batch import {schema.singular} records from CSV or Excel
+                    {strings.common.importCsv.modalSubtitle(schema.singular)}
                   </p>
                 </div>
               </div>
@@ -312,7 +202,7 @@ export default function ImportCsvButton({
                   type="button"
                   onClick={handleClose}
                   className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-                  title="Close modal"
+                  title={strings.common.importCsv.closeModal}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -335,7 +225,7 @@ export default function ImportCsvButton({
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-brand/40 transition-colors cursor-pointer group"
                   >
                     <FileText className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
-                    <span>Import from CSV (.csv)</span>
+                    <span>{strings.common.importCsv.importFromCsv}</span>
                   </button>
 
                   <button
@@ -349,7 +239,7 @@ export default function ImportCsvButton({
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-emerald-500/40 transition-colors cursor-pointer group"
                   >
                     <FileSpreadsheet className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-                    <span>Import from Excel (.xlsx)</span>
+                    <span>{strings.common.importCsv.importFromExcel}</span>
                   </button>
                 </div>
               )}
@@ -360,13 +250,13 @@ export default function ImportCsvButton({
                 <div className="text-xs leading-relaxed space-y-1">
                   {schema.compatibility && (
                     <div className="pb-1 border-b border-amber-500/20">
-                      <span className="font-semibold">Format Support: </span>
+                      <span className="font-semibold">{strings.common.importCsv.formatSupport}</span>
                       <span>{schema.compatibility}</span>
                     </div>
                   )}
                   <div>
-                    <span className="font-semibold block mb-0.5">Strict Schema Notice</span>
-                    Only the supported fields listed below will be taken into the application and stored in the database. Any other columns or extra data present in your file will not be taken in or stored anywhere in the app.
+                    <span className="font-semibold block mb-0.5">{strings.common.importCsv.strictSchemaTitle}</span>
+                    {strings.common.importCsv.strictSchemaBody}
                   </div>
                 </div>
               </div>
@@ -375,10 +265,10 @@ export default function ImportCsvButton({
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
-                    Supported Fields
+                    {strings.common.importCsv.supportedFields}
                   </h4>
                   <span className="text-[11px] text-text-muted">
-                    Headers are case-insensitive
+                    {strings.common.importCsv.headersCaseInsensitive}
                   </span>
                 </div>
 
@@ -390,11 +280,11 @@ export default function ImportCsvButton({
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-text-primary font-mono">{col.name}</span>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger-bg text-danger border border-danger/30">
-                            Required
+                            {strings.common.importCsv.required}
                           </span>
                         </div>
                         <div className="text-[11px] text-text-muted mt-0.5">
-                          {col.desc} {col.aliases && <span className="text-text-secondary font-mono text-[10px] ml-1">(or {col.aliases})</span>}
+                          {col.desc} {col.aliases && <span className="text-text-secondary font-mono text-[10px] ml-1">{strings.common.importCsv.aliases(col.aliases)}</span>}
                         </div>
                       </div>
                     </div>
@@ -407,11 +297,11 @@ export default function ImportCsvButton({
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-text-secondary font-mono">{col.name}</span>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-secondary text-text-muted border border-border-default">
-                            Optional
+                            {strings.common.importCsv.optional}
                           </span>
                         </div>
                         <div className="text-[11px] text-text-muted mt-0.5">
-                          {col.desc} {col.aliases && <span className="text-text-secondary font-mono text-[10px] ml-1">(or {col.aliases})</span>}
+                          {col.desc} {col.aliases && <span className="text-text-secondary font-mono text-[10px] ml-1">{strings.common.importCsv.aliases(col.aliases)}</span>}
                         </div>
                       </div>
                     </div>
@@ -423,9 +313,9 @@ export default function ImportCsvButton({
               {isProcessing && (
                 <div className="flex flex-col items-center justify-center py-8 text-center bg-surface-secondary/30 rounded-xl border border-border-default">
                   <Loader2 className="w-8 h-8 text-brand animate-spin mb-3" />
-                  <p className="text-xs font-bold text-text-primary">Processing {selectedFile?.name}...</p>
+                  <p className="text-xs font-bold text-text-primary">{strings.common.importCsv.processingFile(selectedFile?.name)}</p>
                   <p className="text-[11px] text-text-muted mt-1 max-w-sm">
-                    Parsing worksheet data, validating schema headers, and saving records to database...
+                    {strings.common.importCsv.processingDetail}
                   </p>
                 </div>
               )}
@@ -435,7 +325,7 @@ export default function ImportCsvButton({
                 <div className="p-4 rounded-xl bg-danger-bg border border-danger/30 text-danger space-y-2">
                   <div className="flex items-center gap-2">
                     <XCircle className="w-5 h-5 shrink-0" />
-                    <span className="font-bold text-xs">Import Failed</span>
+                    <span className="font-bold text-xs">{strings.common.importCsv.importFailed}</span>
                   </div>
                   <p className="text-xs text-text-secondary whitespace-pre-wrap font-mono bg-surface p-2.5 rounded-lg border border-border-default">
                     {error}
@@ -449,7 +339,7 @@ export default function ImportCsvButton({
                       }}
                       className="text-xs font-semibold hover:underline cursor-pointer"
                     >
-                      Try another file
+                      {strings.common.importCsv.tryAnotherFile}
                     </button>
                   </div>
                 </div>
@@ -462,10 +352,10 @@ export default function ImportCsvButton({
                     <CheckCircle2 className="w-6 h-6 shrink-0" />
                     <div>
                       <div className="font-bold text-sm">
-                        Successfully imported {result.imported} {schema.singular}{result.imported === 1 ? '' : 's'}
+                        {strings.common.importCsv.successTitle(result.imported, schema.singular)}
                       </div>
                       <div className="text-[11px] opacity-80 mt-0.5">
-                        {result.total_rows} total rows processed from <span className="font-mono">{selectedFile?.name}</span>
+                        {strings.common.importCsv.totalRows(result.total_rows)}<span className="font-mono">{selectedFile?.name}</span>
                       </div>
                     </div>
                   </div>
@@ -476,7 +366,7 @@ export default function ImportCsvButton({
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 shrink-0" />
                           <span className="text-xs font-semibold">
-                            {result.skipped} row{result.skipped === 1 ? '' : 's'} skipped
+                            {strings.common.importCsv.skippedRows(result.skipped)}
                           </span>
                         </div>
                         {result.errors && result.errors.length > 0 && (
@@ -485,7 +375,7 @@ export default function ImportCsvButton({
                             onClick={() => setShowErrorsList(!showErrorsList)}
                             className="inline-flex items-center gap-1 text-xs hover:underline cursor-pointer"
                           >
-                            <span>{showErrorsList ? 'Hide details' : 'View details'}</span>
+                            <span>{showErrorsList ? strings.common.actions.hideDetails : strings.common.actions.viewDetails}</span>
                             {showErrorsList ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
                         )}
@@ -518,7 +408,7 @@ export default function ImportCsvButton({
                   }}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary cursor-pointer transition-colors"
                 >
-                  Import Another File
+                  {strings.common.importCsv.importAnotherFile}
                 </button>
               ) : (
                 <div />
@@ -531,7 +421,7 @@ export default function ImportCsvButton({
                     onClick={handleClose}
                     className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand hover:bg-brand-hover text-white transition-colors cursor-pointer shadow-xs"
                   >
-                    {result ? 'Done' : 'Cancel'}
+                    {result ? strings.common.importCsv.done : strings.common.actions.cancel}
                   </button>
                 )}
               </div>
