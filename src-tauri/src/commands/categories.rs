@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::application::{AuthSessionManager, InventoryService};
+use crate::application::{AuthSessionManager, CategoryService};
 use crate::domain::models::{Category, CreateCategoryPayload, UpdateCategoryPayload};
 use crate::errors::AppError;
 
@@ -14,7 +14,7 @@ async fn require_auth(session_mgr: &AuthSessionManager) -> Result<(), AppError> 
 
 #[tauri::command]
 pub async fn get_categories(pool: State<'_, SqlitePool>) -> Result<Vec<Category>, AppError> {
-    InventoryService::get_categories(&pool).await
+    CategoryService::get_categories(&pool).await
 }
 
 #[tauri::command]
@@ -24,7 +24,7 @@ pub async fn create_category(
     payload: CreateCategoryPayload,
 ) -> Result<Category, AppError> {
     require_auth(&session_mgr).await?;
-    InventoryService::create_category(&pool, payload).await
+    CategoryService::create_category(&pool, payload).await
 }
 
 #[tauri::command]
@@ -35,7 +35,7 @@ pub async fn update_category(
     payload: UpdateCategoryPayload,
 ) -> Result<Category, AppError> {
     require_auth(&session_mgr).await?;
-    InventoryService::update_category(&pool, &id, payload).await
+    CategoryService::update_category(&pool, &id, payload).await
 }
 
 #[tauri::command]
@@ -45,5 +45,5 @@ pub async fn delete_category(
     id: String,
 ) -> Result<(), AppError> {
     require_auth(&session_mgr).await?;
-    InventoryService::delete_category(&pool, &id).await
+    CategoryService::delete_category(&pool, &id).await
 }

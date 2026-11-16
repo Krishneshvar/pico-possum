@@ -1,6 +1,7 @@
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
+use crate::application::{CategoryService, CustomerService, ReportsService, SettingsService};
 use crate::domain::models::{
     BillSettings, Category, CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
     Customer, GeneralSettings, MultiYearSalesPoint, Product, ProductFlowItem, SalesBreakdownItem,
@@ -361,191 +362,66 @@ impl InventoryService {
         Self::get_product_by_id(pool, &payload.product_id).await
     }
 
-    // ── Categories ───────────────────────────────────────────────────────────
+    // ── Delegated Facades (Maintains Full Backwards Compatibility) ────────────
 
+    #[inline]
     pub async fn get_categories(pool: &SqlitePool) -> Result<Vec<Category>, AppError> {
-        let categories = sqlx::query_as::<_, Category>(
-            "SELECT c.id, c.name, c.parent_id, p.name as parent_name, c.is_deleted, c.created_at, c.updated_at
-             FROM categories c
-             LEFT JOIN categories p ON p.id = c.parent_id
-             WHERE c.is_deleted = 0
-             ORDER BY c.name ASC"
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(categories)
+        CategoryService::get_categories(pool).await
     }
 
+    #[inline]
     pub async fn create_category(
         pool: &SqlitePool,
         payload: CreateCategoryPayload,
     ) -> Result<Category, AppError> {
-        let id = Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO categories (id, name, parent_id, is_deleted)
-             VALUES (?, ?, ?, 0)"
-        )
-        .bind(&id)
-        .bind(&payload.name)
-        .bind(&payload.parent_id)
-        .execute(pool)
-        .await?;
-
-        let cat = sqlx::query_as::<_, Category>(
-            "SELECT c.id, c.name, c.parent_id, p.name as parent_name, c.is_deleted, c.created_at, c.updated_at
-             FROM categories c
-             LEFT JOIN categories p ON p.id = c.parent_id
-             WHERE c.id = ?"
-        )
-        .bind(&id)
-        .fetch_one(pool)
-        .await?;
-
-        Ok(cat)
+        CategoryService::create_category(pool, payload).await
     }
 
+    #[inline]
     pub async fn update_category(
         pool: &SqlitePool,
         id: &str,
         payload: UpdateCategoryPayload,
     ) -> Result<Category, AppError> {
-        sqlx::query(
-            "UPDATE categories SET name = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-        )
-        .bind(&payload.name)
-        .bind(&payload.parent_id)
-        .bind(id)
-        .execute(pool)
-        .await?;
-
-        let cat = sqlx::query_as::<_, Category>(
-            "SELECT c.id, c.name, c.parent_id, p.name as parent_name, c.is_deleted, c.created_at, c.updated_at
-             FROM categories c
-             LEFT JOIN categories p ON p.id = c.parent_id
-             WHERE c.id = ?"
-        )
-        .bind(id)
-        .fetch_one(pool)
-        .await?;
-
-        Ok(cat)
+        CategoryService::update_category(pool, id, payload).await
     }
 
+    #[inline]
     pub async fn delete_category(pool: &SqlitePool, id: &str) -> Result<(), AppError> {
-        sqlx::query(
-            "UPDATE categories SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-        )
-        .bind(id)
-        .execute(pool)
-        .await?;
-
-        Ok(())
+        CategoryService::delete_category(pool, id).await
     }
 
-    // ── Customers ────────────────────────────────────────────────────────────
-
+    #[inline]
     pub async fn get_customers(
         pool: &SqlitePool,
         search: Option<String>,
     ) -> Result<Vec<Customer>, AppError> {
-        let pattern = search.map(|s| format!("%{}%", s.trim()));
-
-        let customers = sqlx::query_as::<_, Customer>(
-            "SELECT id, name, phone, address, is_deleted, created_at, updated_at
-             FROM customers
-             WHERE is_deleted = 0
-               AND (?1 IS NULL OR name LIKE ?1 OR phone LIKE ?1)
-             ORDER BY name ASC"
-        )
-        .bind(pattern)
-        .fetch_all(pool)
-        .await?;
-
-        Ok(customers)
+        CustomerService::get_customers(pool, search).await
     }
 
+    #[inline]
     pub async fn create_customer(
         pool: &SqlitePool,
         payload: CreateCustomerPayload,
     ) -> Result<Customer, AppError> {
-        let id = Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO customers (id, name, phone, address, is_deleted)
-             VALUES (?, ?, ?, ?, 0)"
-        )
-        .bind(&id)
-        .bind(&payload.name)
-        .bind(&payload.phone)
-        .bind(&payload.address)
-        .execute(pool)
-        .await?;
-
-        let cust = sqlx::query_as::<_, Customer>(
-            "SELECT id, name, phone, address, is_deleted, created_at, updated_at
-             FROM customers WHERE id = ?"
-        )
-        .bind(&id)
-        .fetch_one(pool)
-        .await?;
-
-        Ok(cust)
+        CustomerService::create_customer(pool, payload).await
     }
 
+    #[inline]
     pub async fn update_customer(
         pool: &SqlitePool,
         id: &str,
         payload: UpdateCustomerPayload,
     ) -> Result<Customer, AppError> {
-        let rows_affected = sqlx::query(
-            "UPDATE customers
-             SET name = ?, phone = ?, address = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND is_deleted = 0"
-        )
-        .bind(&payload.name)
-        .bind(&payload.phone)
-        .bind(&payload.address)
-        .bind(id)
-        .execute(pool)
-        .await?
-        .rows_affected();
-
-        if rows_affected == 0 {
-            return Err(AppError::NotFound(format!("Customer {id} not found")));
-        }
-
-        let cust = sqlx::query_as::<_, Customer>(
-            "SELECT id, name, phone, address, is_deleted, created_at, updated_at
-             FROM customers WHERE id = ?"
-        )
-        .bind(id)
-        .fetch_one(pool)
-        .await?;
-
-        Ok(cust)
+        CustomerService::update_customer(pool, id, payload).await
     }
 
-    pub async fn delete_customer(
-        pool: &SqlitePool,
-        id: &str,
-    ) -> Result<(), AppError> {
-        let rows_affected = sqlx::query(
-            "UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-        )
-        .bind(id)
-        .execute(pool)
-        .await?
-        .rows_affected();
-
-        if rows_affected == 0 {
-            return Err(AppError::NotFound(format!("Customer {id} not found")));
-        }
-
-        Ok(())
+    #[inline]
+    pub async fn delete_customer(pool: &SqlitePool, id: &str) -> Result<(), AppError> {
+        CustomerService::delete_customer(pool, id).await
     }
 
-    // ── Stock Movements ──────────────────────────────────────────────────────
-
+    #[inline]
     pub async fn get_stock_movements(
         pool: &SqlitePool,
         product_id: Option<String>,
@@ -553,92 +429,20 @@ impl InventoryService {
         to_date: Option<String>,
         limit: i64,
     ) -> Result<Vec<StockMovement>, AppError> {
-        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
-
-        let movements = sqlx::query_as::<_, StockMovement>(
-            "SELECT sm.id, sm.product_id, p.name as product_name, p.sku as product_sku, sm.quantity_change,
-                    sm.movement_type, sm.reference_id, sm.note, sm.created_at
-             FROM stock_movements sm
-             LEFT JOIN products p ON p.id = sm.product_id
-             WHERE (?1 IS NULL OR sm.product_id = ?1)
-               AND strftime('%Y-%m-%d', sm.created_at) >= ?2
-               AND strftime('%Y-%m-%d', sm.created_at) <= ?3
-             ORDER BY sm.created_at DESC LIMIT ?4"
-        )
-        .bind(product_id)
-        .bind(from)
-        .bind(to)
-        .bind(limit)
-        .fetch_all(pool)
-        .await?;
-
-        Ok(movements)
+        ReportsService::get_stock_movements(pool, product_id, from_date, to_date, limit).await
     }
 
-    // ── Reports & Analytics ──────────────────────────────────────────────────
-
+    #[inline]
     pub async fn get_sales_report_summary(
         pool: &SqlitePool,
         from_date: Option<String>,
         to_date: Option<String>,
         payment_method: Option<String>,
     ) -> Result<SalesReportSummary, AppError> {
-        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
-        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
-        let pm_norm = pm.as_deref().map(|m| {
-            let u = m.to_uppercase();
-            if u.contains("GIFT") || u == "GC" {
-                "GIFT_CARD".to_string()
-            } else {
-                u
-            }
-        });
-
-        let row = sqlx::query(
-            "SELECT
-                COALESCE(SUM(total_paise), 0) as total_revenue,
-                COALESCE(SUM(discount_paise), 0) as total_discount,
-                COALESCE(SUM(tax_paise), 0) as total_tax,
-                COUNT(id) as total_count,
-                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_rev,
-                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_rev,
-                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_rev,
-                COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_rev
-             FROM sales
-             WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY') AND created_at >= ? AND created_at <= ?
-               AND (? IS NULL OR upper(replace(payment_method, ' ', '_')) = ? OR upper(payment_method) = ?)"
-        )
-        .bind(from)
-        .bind(to)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .fetch_one(pool)
-        .await?;
-
-        let total_revenue_paise: i64 = row.get("total_revenue");
-        let total_discount_paise: i64 = row.get("total_discount");
-        let total_tax_paise: i64 = row.get("total_tax");
-        let total_sales_count: i64 = row.get("total_count");
-        let cash_revenue_paise: i64 = row.get("cash_rev");
-        let card_revenue_paise: i64 = row.get("card_rev");
-        let upi_revenue_paise: i64 = row.get("upi_rev");
-        let gift_card_revenue_paise: i64 = row.get("gift_card_rev");
-
-        Ok(SalesReportSummary {
-            total_revenue_paise,
-            total_discount_paise,
-            total_tax_paise,
-            total_sales_count,
-            cash_revenue_paise,
-            card_revenue_paise,
-            upi_revenue_paise,
-            gift_card_revenue_paise,
-        })
+        ReportsService::get_sales_report_summary(pool, from_date, to_date, payment_method).await
     }
 
+    #[inline]
     pub async fn get_top_selling_products(
         pool: &SqlitePool,
         from_date: Option<String>,
@@ -646,54 +450,10 @@ impl InventoryService {
         payment_method: Option<String>,
         limit: i64,
     ) -> Result<Vec<TopSellingProduct>, AppError> {
-        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
-        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
-        let pm_norm = pm.as_deref().map(|m| {
-            let u = m.to_uppercase();
-            if u.contains("GIFT") || u == "GC" {
-                "GIFT_CARD".to_string()
-            } else {
-                u
-            }
-        });
-
-        let rows = sqlx::query(
-            "SELECT si.product_id, si.product_name,
-                    p.sku as product_sku,
-                    SUM(si.quantity) as total_quantity,
-                    SUM(si.total_paise) as total_revenue_paise
-             FROM sale_items si
-             JOIN sales s ON s.id = si.sale_id
-             LEFT JOIN products p ON p.id = si.product_id
-             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-               AND s.created_at >= ? AND s.created_at <= ?
-               AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
-             GROUP BY si.product_id, si.product_name
-             ORDER BY total_quantity DESC LIMIT ?"
-        )
-        .bind(from)
-        .bind(to)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .bind(limit)
-        .fetch_all(pool)
-        .await?;
-
-        let items = rows.into_iter().map(|r| {
-            TopSellingProduct {
-                product_id: r.get("product_id"),
-                product_name: r.get("product_name"),
-                sku: r.get("product_sku"),
-                total_quantity: r.get("total_quantity"),
-                total_revenue_paise: r.get("total_revenue_paise"),
-            }
-        }).collect();
-
-        Ok(items)
+        ReportsService::get_top_selling_products(pool, from_date, to_date, payment_method, limit).await
     }
 
+    #[inline]
     pub async fn get_top_selling_categories(
         pool: &SqlitePool,
         from_date: Option<String>,
@@ -701,199 +461,29 @@ impl InventoryService {
         payment_method: Option<String>,
         limit: i64,
     ) -> Result<Vec<TopSellingCategory>, AppError> {
-        let from = from_date.unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date.unwrap_or_else(|| "2099-12-31".to_string());
-        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
-        let pm_norm = pm.as_deref().map(|m| {
-            let u = m.to_uppercase();
-            if u.contains("GIFT") || u == "GC" {
-                "GIFT_CARD".to_string()
-            } else {
-                u
-            }
-        });
-
-        let rows = sqlx::query(
-            "SELECT
-                COALESCE(c.id, 'uncategorized') as category_id,
-                COALESCE(c.name, 'Uncategorized') as category_name,
-                COUNT(DISTINCT si.product_id) as distinct_products_sold,
-                COALESCE(SUM(si.quantity), 0) as total_quantity,
-                COALESCE(SUM(si.total_paise), 0) as total_revenue_paise
-             FROM sale_items si
-             JOIN sales s ON s.id = si.sale_id
-             LEFT JOIN products p ON p.id = si.product_id
-             LEFT JOIN categories c ON c.id = p.category_id
-             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-               AND s.created_at >= ? AND s.created_at <= ?
-               AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
-             GROUP BY COALESCE(c.id, 'uncategorized'), COALESCE(c.name, 'Uncategorized')
-             ORDER BY total_revenue_paise DESC LIMIT ?"
-        )
-        .bind(from)
-        .bind(to)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .bind(limit)
-        .fetch_all(pool)
-        .await?;
-
-        let items = rows.into_iter().map(|r| {
-            TopSellingCategory {
-                category_id: r.get("category_id"),
-                category_name: r.get("category_name"),
-                distinct_products_sold: r.get("distinct_products_sold"),
-                total_quantity: r.get("total_quantity"),
-                total_revenue_paise: r.get("total_revenue_paise"),
-            }
-        }).collect();
-
-        Ok(items)
+        ReportsService::get_top_selling_categories(pool, from_date, to_date, payment_method, limit).await
     }
 
+    #[inline]
     pub async fn get_multi_year_sales(
         pool: &SqlitePool,
         years_back: i64,
         payment_method: Option<String>,
     ) -> Result<Vec<MultiYearSalesPoint>, AppError> {
-        let pm = payment_method.filter(|m| !m.is_empty() && m != "ALL");
-        let pm_norm = pm.as_deref().map(|m| {
-            let u = m.to_uppercase();
-            if u.contains("GIFT") || u == "GC" {
-                "GIFT_CARD".to_string()
-            } else {
-                u
-            }
-        });
-
-        let rows = sqlx::query_as::<_, MultiYearSalesPoint>(
-            "SELECT
-                strftime('%Y', s.created_at) as year,
-                strftime('%m', s.created_at) as month,
-                COALESCE(SUM(s.total_paise), 0) as total_revenue_paise,
-                COUNT(s.id) as total_transactions
-             FROM sales s
-             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-               AND CAST(strftime('%Y', s.created_at) AS INTEGER) >= (CAST(strftime('%Y', 'now') AS INTEGER) - ?)
-               AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
-             GROUP BY year, month
-             ORDER BY year ASC, month ASC"
-        )
-        .bind(years_back)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .bind(&pm_norm)
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows)
+        ReportsService::get_multi_year_sales(pool, years_back, payment_method).await
     }
 
+    #[inline]
     pub async fn get_sales_breakdown(
         pool: &SqlitePool,
         period_type: &str,
         from_date: Option<String>,
         to_date: Option<String>,
     ) -> Result<Vec<SalesBreakdownItem>, AppError> {
-        let is_today = period_type.eq_ignore_ascii_case("today");
-        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-
-        let from = if is_today {
-            from_date
-                .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| today.clone())
-        } else {
-            from_date
-                .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| "1970-01-01".to_string())
-        };
-
-        let to = if is_today {
-            to_date
-                .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| today.clone())
-        } else {
-            to_date
-                .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| "2099-12-31".to_string())
-        };
-
-        let items = match period_type.to_lowercase().as_str() {
-            "monthly" => {
-                sqlx::query_as::<_, SalesBreakdownItem>(
-                    "SELECT
-                        strftime('%Y-%m', created_at) as period,
-                        COUNT(DISTINCT id) as total_transactions,
-                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
-                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
-                     FROM sales
-                     WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-                       AND strftime('%Y-%m-%d', created_at) >= ?
-                       AND strftime('%Y-%m-%d', created_at) <= ?
-                     GROUP BY period
-                     ORDER BY period DESC"
-                )
-                .bind(&from)
-                .bind(&to)
-                .fetch_all(pool)
-                .await?
-            }
-            "yearly" => {
-                sqlx::query_as::<_, SalesBreakdownItem>(
-                    "SELECT
-                        strftime('%Y', created_at) as period,
-                        COUNT(DISTINCT id) as total_transactions,
-                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
-                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
-                     FROM sales
-                     WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-                       AND strftime('%Y-%m-%d', created_at) >= ?
-                       AND strftime('%Y-%m-%d', created_at) <= ?
-                     GROUP BY period
-                     ORDER BY period DESC"
-                )
-                .bind(&from)
-                .bind(&to)
-                .fetch_all(pool)
-                .await?
-            }
-            _ => {
-                sqlx::query_as::<_, SalesBreakdownItem>(
-                    "SELECT
-                        strftime('%Y-%m-%d', created_at) as period,
-                        COUNT(DISTINCT id) as total_transactions,
-                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
-                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
-                     FROM sales
-                     WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-                       AND strftime('%Y-%m-%d', created_at) >= ?
-                       AND strftime('%Y-%m-%d', created_at) <= ?
-                     GROUP BY period
-                     ORDER BY period DESC"
-                )
-                .bind(&from)
-                .bind(&to)
-                .fetch_all(pool)
-                .await?
-            }
-        };
-
-        Ok(items)
+        ReportsService::get_sales_breakdown(pool, period_type, from_date, to_date).await
     }
 
+    #[inline]
     pub async fn get_product_flow(
         pool: &SqlitePool,
         product_id: Option<String>,
@@ -901,126 +491,32 @@ impl InventoryService {
         to_date: Option<String>,
         limit: i64,
     ) -> Result<Vec<ProductFlowItem>, AppError> {
-        let from = from_date
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| "1970-01-01".to_string());
-        let to = to_date
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| "2099-12-31".to_string());
-
-        let rows = sqlx::query_as::<_, ProductFlowItem>(
-            "SELECT
-                si.id as id,
-                si.product_id as product_id,
-                si.product_name as product_name,
-                si.product_sku as product_sku,
-                s.invoice_number as invoice_number,
-                COALESCE(s.customer_name, 'Walk-in Customer') as customer_name,
-                s.payment_method as payment_method,
-                'SALE' as event_type,
-                -si.quantity as quantity,
-                si.unit_price_paise as unit_price_paise,
-                si.total_paise as total_paise,
-                s.created_at as created_at
-             FROM sale_items si
-             JOIN sales s ON s.id = si.sale_id
-             WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
-               AND (?1 IS NULL OR si.product_id = ?1)
-               AND strftime('%Y-%m-%d', s.created_at) >= ?2
-               AND strftime('%Y-%m-%d', s.created_at) <= ?3
-             ORDER BY s.created_at DESC
-             LIMIT ?4"
-        )
-        .bind(product_id)
-        .bind(from)
-        .bind(to)
-        .bind(limit)
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows)
+        ReportsService::get_product_flow(pool, product_id, from_date, to_date, limit).await
     }
 
-    // ── Settings ─────────────────────────────────────────────────────────────
-
+    #[inline]
     pub async fn get_general_settings(pool: &SqlitePool) -> Result<GeneralSettings, AppError> {
-        let row = sqlx::query("SELECT value FROM app_settings WHERE key = 'general_settings'")
-            .fetch_optional(pool)
-            .await?;
-
-        if let Some(r) = row {
-            let val: String = r.get("value");
-            let s: GeneralSettings = serde_json::from_str(&val)?;
-            Ok(s)
-        } else {
-            Ok(GeneralSettings {
-                store_name: "Pico POS".to_string(),
-                phone: "".to_string(),
-                address: "".to_string(),
-                gstin: "".to_string(),
-                currency_symbol: "₹".to_string(),
-                currency_code: "INR".to_string(),
-                date_format: "DD/MM/YYYY".to_string(),
-                time_format: "12h".to_string(),
-                default_printer_name: "".to_string(),
-                auto_numeric_sku: true,
-                allow_negative_stock: false,
-            })
-        }
+        SettingsService::get_general_settings(pool).await
     }
 
+    #[inline]
     pub async fn update_general_settings(
         pool: &SqlitePool,
         settings: GeneralSettings,
     ) -> Result<(), AppError> {
-        let val = serde_json::to_string(&settings)?;
-        sqlx::query(
-            "INSERT INTO app_settings (key, value, updated_at) VALUES ('general_settings', ?, CURRENT_TIMESTAMP)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"
-        )
-        .bind(val)
-        .execute(pool)
-        .await?;
-
-        Ok(())
+        SettingsService::update_general_settings(pool, settings).await
     }
 
+    #[inline]
     pub async fn get_bill_settings(pool: &SqlitePool) -> Result<BillSettings, AppError> {
-        let row = sqlx::query("SELECT value FROM app_settings WHERE key = 'bill_settings'")
-            .fetch_optional(pool)
-            .await?;
-
-        if let Some(r) = row {
-            let val: String = r.get("value");
-            let s: BillSettings = serde_json::from_str(&val)?;
-            Ok(s)
-        } else {
-            Ok(BillSettings {
-                paper_width: "80mm".to_string(),
-                store_name: "Pico POS".to_string(),
-                store_details: "Retail".to_string(),
-                phone: "".to_string(),
-                gst: "".to_string(),
-                show_tax: false,
-                footer_text: "Thank you for shopping!".to_string(),
-                sections: None,
-            })
-        }
+        SettingsService::get_bill_settings(pool).await
     }
 
+    #[inline]
     pub async fn update_bill_settings(
         pool: &SqlitePool,
         settings: BillSettings,
     ) -> Result<(), AppError> {
-        let val = serde_json::to_string(&settings)?;
-        sqlx::query(
-            "INSERT INTO app_settings (key, value, updated_at) VALUES ('bill_settings', ?, CURRENT_TIMESTAMP)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"
-        )
-        .bind(val)
-        .execute(pool)
-        .await?;
-
-        Ok(())
+        SettingsService::update_bill_settings(pool, settings).await
     }
 }

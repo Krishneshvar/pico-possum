@@ -4,24 +4,21 @@ import {
   BarChart3,
   TrendingUp,
   CreditCard,
-  Banknote,
-  QrCode,
-  Flame,
   Calendar,
   RefreshCw,
-  FolderTree,
   RotateCcw,
   X,
   Filter,
   Receipt,
   Tag,
-  Gift,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise } from '../../../lib/formatters';
-import { nextSortState, sortRows } from '../../../lib/sort';
-import SortableTh from '../../../components/common/SortableTh';
+import { sortRows } from '../../../lib/sort';
 import MultiYearComparisonChart from './MultiYearComparisonChart';
+import PaymentDistributionSection from './PaymentDistributionSection';
+import TopSellingCategoriesCard from './TopSellingCategoriesCard';
+import TopSellingProductsCard from './TopSellingProductsCard';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
 import { strings } from '../../../lib/strings';
@@ -376,344 +373,41 @@ export default function ReportsView() {
           paymentMethod={paymentMethod}
         />
 
-        {/* 5. Payment Distribution Bar: Show BOTH absolute amounts and percentages */}
-        {paymentMethod === 'ALL' && (
-          <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-content">{strings.reports.payments.title}</h2>
-                <p className="text-xs text-content-secondary">{strings.reports.payments.subtitle}</p>
-              </div>
-              <span className="text-xs font-semibold text-content financial-value">
-                {strings.reports.payments.total(formatPaise(totalRev))}
-              </span>
-            </div>
-
-            {/* Visual Stacked Distribution Bar */}
-            {totalRev > 0 && (
-              <div className="space-y-2">
-                <div className="w-full h-3 bg-surface-secondary rounded-full overflow-hidden flex border border-border">
-                  {cashPct > 0 && (
-                    <div
-                      style={{ width: `${cashPct}%`, backgroundColor: '#2563EB' }}
-                      className="h-full transition-all"
-                      title={strings.reports.payments.barTooltip(strings.reports.payments.cash, formatPaise(cashRev), cashPct.toFixed(1))}
-                    />
-                  )}
-                  {upiPct > 0 && (
-                    <div
-                      style={{ width: `${upiPct}%`, backgroundColor: '#0F766E' }}
-                      className="h-full transition-all"
-                      title={strings.reports.payments.barTooltip(strings.reports.payments.upiQr, formatPaise(upiRev), upiPct.toFixed(1))}
-                    />
-                  )}
-                  {cardPct > 0 && (
-                    <div
-                      style={{ width: `${cardPct}%`, backgroundColor: '#7C3AED' }}
-                      className="h-full transition-all"
-                      title={strings.reports.payments.barTooltip(strings.reports.payments.card, formatPaise(cardRev), cardPct.toFixed(1))}
-                    />
-                  )}
-                  {giftCardPct > 0 && (
-                    <div
-                      style={{ width: `${giftCardPct}%`, backgroundColor: '#D97706' }}
-                      className="h-full transition-all"
-                      title={strings.reports.payments.barTooltip(strings.reports.payments.giftCard, formatPaise(giftCardRev), giftCardPct.toFixed(1))}
-                    />
-                  )}
-                </div>
-
-                {/* Legend with BOTH absolute amounts and % */}
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-content-secondary pt-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#2563EB' }} />
-                    <span className="font-medium text-content">{strings.reports.payments.cash}:</span>
-                    <span className="financial-value">{formatPaise(cashRev)}</span>
-                    <span className="text-content-muted">({cashPct.toFixed(1)}%)</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#0F766E' }} />
-                    <span className="font-medium text-content">{strings.reports.payments.upiQr}:</span>
-                    <span className="financial-value">{formatPaise(upiRev)}</span>
-                    <span className="text-content-muted">({upiPct.toFixed(1)}%)</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#7C3AED' }} />
-                    <span className="font-medium text-content">{strings.reports.payments.card}:</span>
-                    <span className="financial-value">{formatPaise(cardRev)}</span>
-                    <span className="text-content-muted">({cardPct.toFixed(1)}%)</span>
-                  </span>
-                  {giftCardPct > 0 && (
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
-                      <span className="font-medium text-content">{strings.reports.payments.giftCard}:</span>
-                      <span className="financial-value">{formatPaise(giftCardRev)}</span>
-                      <span className="text-content-muted">({giftCardPct.toFixed(1)}%)</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Individual Method Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
-                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
-                  <Banknote className="w-4 h-4 text-brand" /> Cash
-                </div>
-                <div className="text-lg font-semibold text-content financial-value">
-                  {formatPaise(cashRev)}
-                </div>
-                <div className="text-[11px] text-content-muted">
-                  {cashPct.toFixed(1)}% of total revenue
-                </div>
-              </div>
-
-              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
-                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
-                  <QrCode className="w-4 h-4 text-teal-600" /> UPI / QR
-                </div>
-                <div className="text-lg font-semibold text-content financial-value">
-                  {formatPaise(upiRev)}
-                </div>
-                <div className="text-[11px] text-content-muted">
-                  {upiPct.toFixed(1)}% of total revenue
-                </div>
-              </div>
-
-              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
-                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
-                  <CreditCard className="w-4 h-4 text-purple-600" /> Card
-                </div>
-                <div className="text-lg font-semibold text-content financial-value">
-                  {formatPaise(cardRev)}
-                </div>
-                <div className="text-[11px] text-content-muted">
-                  {cardPct.toFixed(1)}% of total revenue
-                </div>
-              </div>
-
-              <div className="bg-surface-secondary p-3.5 rounded-lg border border-border space-y-1">
-                <div className="flex items-center gap-2 text-xs font-medium text-content-secondary">
-                  <Gift className="w-4 h-4 text-amber-600" /> Gift Card
-                </div>
-                <div className="text-lg font-semibold text-content financial-value">
-                  {formatPaise(giftCardRev)}
-                </div>
-                <div className="text-[11px] text-content-muted">
-                  {giftCardPct.toFixed(1)}% of total revenue
-                </div>
-              </div>
-            </div>
-          </div>
+        {paymentMethod === "ALL" && (
+          <PaymentDistributionSection
+            totalRev={totalRev}
+            cashRev={cashRev}
+            upiRev={upiRev}
+            cardRev={cardRev}
+            giftCardRev={giftCardRev}
+            cashPct={cashPct}
+            upiPct={upiPct}
+            cardPct={cardPct}
+            giftCardPct={giftCardPct}
+          />
         )}
 
         {/* 6. Bottom Tables: Top Selling Categories & Products */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Top Categories */}
-          <div className="p-5 rounded-xl bg-surface border border-border space-y-3.5 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FolderTree className="w-4 h-4 text-brand" />
-                  <h2 className="text-sm font-semibold text-content">{strings.reports.tables.topCategories}</h2>
-                </div>
-              </div>
+          <TopSellingCategoriesCard
+            topCategories={topCategories}
+            sortedTopCategories={sortedTopCategories}
+            loadingTopCategories={loadingTopCategories}
+            topCatSort={topCatSort}
+            setTopCatSort={setTopCatSort}
+            totalCategoryUnits={totalCategoryUnits}
+            totalCategoryRevenue={totalCategoryRevenue}
+          />
 
-              <div className="border border-border rounded-xl overflow-hidden shadow-2xs">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
-                    <tr className="h-10">
-                      <th className="py-2.5 px-3 pl-4 w-10 text-center">#</th>
-                      <SortableTh
-                        sortKey="category_name"
-                        sort={topCatSort}
-                        onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
-                        className="py-2.5 px-3"
-                      >
-                        Category
-                      </SortableTh>
-                      <SortableTh
-                        sortKey="distinct_products_sold"
-                        sort={topCatSort}
-                        onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
-                        align="center"
-                        className="py-2.5 px-3"
-                      >
-                        Products
-                      </SortableTh>
-                      <SortableTh
-                        sortKey="total_quantity"
-                        sort={topCatSort}
-                        onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
-                        align="center"
-                        className="py-2.5 px-3"
-                      >
-                        Sold
-                      </SortableTh>
-                      <SortableTh
-                        sortKey="total_revenue_paise"
-                        sort={topCatSort}
-                        onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
-                        align="right"
-                        className="py-2.5 px-3 pr-4"
-                      >
-                        Total Revenue
-                      </SortableTh>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {loadingTopCategories ? (
-                      <tr>
-                        <td colSpan="5" className="py-8 text-center text-content-muted">
-                          Loading categories...
-                        </td>
-                      </tr>
-                    ) : topCategories.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="py-8 text-center text-content-muted">
-                          No category sales in this period.
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedTopCategories.map((c, idx) => (
-                        <tr key={c.category_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
-                          <td className="px-3 pl-4 text-center text-content-muted text-xs">
-                            {idx + 1}
-                          </td>
-                          <td className="px-3 font-medium text-content">
-                            {c.category_name}
-                          </td>
-                          <td className="px-3 text-center text-content-secondary financial-value">
-                            {c.distinct_products_sold}
-                          </td>
-                          <td className="px-3 text-center font-medium text-content financial-value">
-                            {c.total_quantity}
-                          </td>
-                          <td className="px-3 pr-4 text-right font-medium text-content financial-value">
-                            {formatPaise(c.total_revenue_paise)}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Category Totals Footer */}
-            {topCategories.length > 0 && (
-              <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-content-secondary bg-surface-secondary px-3.5 py-2 rounded-lg">
-                <div>
-                  <span className="text-content-muted mr-1.5">Total Sold:</span>
-                  <span className="font-semibold text-content financial-value">{totalCategoryUnits}</span>
-                </div>
-                <div>
-                  <span className="text-content-muted mr-1.5">Total Revenue:</span>
-                  <span className="font-semibold text-content financial-value">{formatPaise(totalCategoryRevenue)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Top Products */}
-          <div className="p-5 rounded-xl bg-surface border border-border space-y-3.5 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-warning" />
-                  <h2 className="text-sm font-semibold text-content">{strings.reports.tables.topProducts}</h2>
-                </div>
-              </div>
-
-              <div className="border border-border rounded-xl overflow-hidden shadow-2xs">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
-                    <tr className="h-10">
-                      <th className="py-2.5 px-3 pl-4 w-10 text-center">#</th>
-                      <SortableTh
-                        sortKey="product_name"
-                        sort={topProdSort}
-                        onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
-                        className="py-2.5 px-3"
-                      >
-                        Product
-                      </SortableTh>
-                      <SortableTh
-                        sortKey="total_quantity"
-                        sort={topProdSort}
-                        onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
-                        align="center"
-                        className="py-2.5 px-3"
-                      >
-                        Qty Sold
-                      </SortableTh>
-                      <SortableTh
-                        sortKey="total_revenue_paise"
-                        sort={topProdSort}
-                        onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
-                        align="right"
-                        className="py-2.5 px-3 pr-4"
-                      >
-                        Total Revenue
-                      </SortableTh>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {loadingTopProducts ? (
-                      <tr>
-                        <td colSpan="4" className="py-8 text-center text-content-muted">
-                          Loading products...
-                        </td>
-                      </tr>
-                    ) : topProducts.length === 0 ? (
-                      <tr>
-                        <td colSpan="4" className="py-8 text-center text-content-muted">
-                          No product sales in this period.
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedTopProducts.map((p, idx) => (
-                        <tr key={p.product_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
-                          <td className="px-3 pl-4 text-center text-content-muted text-xs">
-                            {idx + 1}
-                          </td>
-                          <td className="px-3 text-content">
-                            <div className="font-medium">{p.product_name}</div>
-                            {p.sku && (
-                              <div className="text-[10px] text-content-muted font-mono">
-                                SKU: {p.sku}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 text-center font-medium text-content financial-value">
-                            {p.total_quantity}
-                          </td>
-                          <td className="px-3 pr-4 text-right font-medium text-content financial-value">
-                            {formatPaise(p.total_revenue_paise)}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Product Totals Footer */}
-            {topProducts.length > 0 && (
-              <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-content-secondary bg-surface-secondary px-3.5 py-2 rounded-lg">
-                <div>
-                  <span className="text-content-muted mr-1.5">Total Qty:</span>
-                  <span className="font-semibold text-content financial-value">{totalProductUnits}</span>
-                </div>
-                <div>
-                  <span className="text-content-muted mr-1.5">Total Revenue:</span>
-                  <span className="font-semibold text-content financial-value">{formatPaise(totalProductRevenue)}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          <TopSellingProductsCard
+            topProducts={topProducts}
+            sortedTopProducts={sortedTopProducts}
+            loadingTopProducts={loadingTopProducts}
+            topProdSort={topProdSort}
+            setTopProdSort={setTopProdSort}
+            totalProductUnits={totalProductUnits}
+            totalProductRevenue={totalProductRevenue}
+          />
         </div>
       </div>
     </div>

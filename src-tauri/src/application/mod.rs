@@ -1,17 +1,23 @@
 pub mod auth_svc;
 pub mod backup_svc;
+pub mod category_svc;
 pub mod csv_import_svc;
+pub mod customer_svc;
 pub mod inventory_svc;
 pub mod migration_svc;
 pub mod printer_svc;
+pub mod reports_svc;
 pub mod sales_svc;
+pub mod settings_svc;
 
 pub use auth_svc::{AuthService, AuthSessionManager};
 pub use backup_svc::BackupService;
+pub use category_svc::CategoryService;
 pub use csv_import_svc::CsvImportService;
+pub use customer_svc::CustomerService;
 pub use inventory_svc::InventoryService;
 pub use migration_svc::MigrationService;
 pub use printer_svc::PrinterService;
+pub use reports_svc::ReportsService;
 pub use sales_svc::SalesService;
-
-
+pub use settings_svc::SettingsService;

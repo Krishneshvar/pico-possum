@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::application::InventoryService;
+use crate::application::ReportsService;
 use crate::domain::models::{
     AuditLog, MultiYearSalesPoint, ProductFlowItem, SalesBreakdownItem, SalesReportSummary,
     StockMovement, TopSellingCategory, TopSellingProduct,
@@ -15,7 +15,7 @@ pub async fn get_sales_report_summary(
     to_date: Option<String>,
     payment_method: Option<String>,
 ) -> Result<SalesReportSummary, AppError> {
-    InventoryService::get_sales_report_summary(&pool, from_date, to_date, payment_method).await
+    ReportsService::get_sales_report_summary(&pool, from_date, to_date, payment_method).await
 }
 
 #[tauri::command]
@@ -25,7 +25,7 @@ pub async fn get_sales_breakdown(
     from_date: Option<String>,
     to_date: Option<String>,
 ) -> Result<Vec<SalesBreakdownItem>, AppError> {
-    InventoryService::get_sales_breakdown(&pool, &period_type, from_date, to_date).await
+    ReportsService::get_sales_breakdown(&pool, &period_type, from_date, to_date).await
 }
 
 #[tauri::command]
@@ -37,7 +37,7 @@ pub async fn get_product_flow(
     limit: Option<i64>,
 ) -> Result<Vec<ProductFlowItem>, AppError> {
     let lim = limit.unwrap_or(10000);
-    InventoryService::get_product_flow(&pool, product_id, from_date, to_date, lim).await
+    ReportsService::get_product_flow(&pool, product_id, from_date, to_date, lim).await
 }
 
 #[tauri::command]
@@ -49,7 +49,7 @@ pub async fn get_top_selling_products(
     limit: Option<i64>,
 ) -> Result<Vec<TopSellingProduct>, AppError> {
     let lim = limit.unwrap_or(10);
-    InventoryService::get_top_selling_products(&pool, from_date, to_date, payment_method, lim).await
+    ReportsService::get_top_selling_products(&pool, from_date, to_date, payment_method, lim).await
 }
 
 #[tauri::command]
@@ -61,7 +61,7 @@ pub async fn get_top_selling_categories(
     limit: Option<i64>,
 ) -> Result<Vec<TopSellingCategory>, AppError> {
     let lim = limit.unwrap_or(10);
-    InventoryService::get_top_selling_categories(&pool, from_date, to_date, payment_method, lim).await
+    ReportsService::get_top_selling_categories(&pool, from_date, to_date, payment_method, lim).await
 }
 
 #[tauri::command]
@@ -71,7 +71,7 @@ pub async fn get_multi_year_sales(
     payment_method: Option<String>,
 ) -> Result<Vec<MultiYearSalesPoint>, AppError> {
     let yb = years_back.unwrap_or(3);
-    InventoryService::get_multi_year_sales(&pool, yb, payment_method).await
+    ReportsService::get_multi_year_sales(&pool, yb, payment_method).await
 }
 
 #[tauri::command]
@@ -83,7 +83,7 @@ pub async fn get_stock_movements(
     limit: Option<i64>,
 ) -> Result<Vec<StockMovement>, AppError> {
     let lim = limit.unwrap_or(10000);
-    InventoryService::get_stock_movements(&pool, product_id, from_date, to_date, lim).await
+    ReportsService::get_stock_movements(&pool, product_id, from_date, to_date, lim).await
 }
 
 #[tauri::command]

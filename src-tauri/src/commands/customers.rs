@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::application::{AuthSessionManager, InventoryService};
+use crate::application::{AuthSessionManager, CustomerService};
 use crate::domain::models::{CreateCustomerPayload, Customer, Sale, UpdateCustomerPayload};
 use crate::errors::AppError;
 
@@ -17,7 +17,7 @@ pub async fn get_customers(
     pool: State<'_, SqlitePool>,
     search: Option<String>,
 ) -> Result<Vec<Customer>, AppError> {
-    InventoryService::get_customers(&pool, search).await
+    CustomerService::get_customers(&pool, search).await
 }
 
 #[tauri::command]
@@ -27,7 +27,7 @@ pub async fn create_customer(
     payload: CreateCustomerPayload,
 ) -> Result<Customer, AppError> {
     require_auth(&session_mgr).await?;
-    InventoryService::create_customer(&pool, payload).await
+    CustomerService::create_customer(&pool, payload).await
 }
 
 #[tauri::command]
@@ -38,7 +38,7 @@ pub async fn update_customer(
     payload: UpdateCustomerPayload,
 ) -> Result<Customer, AppError> {
     require_auth(&session_mgr).await?;
-    InventoryService::update_customer(&pool, &id, payload).await
+    CustomerService::update_customer(&pool, &id, payload).await
 }
 
 #[tauri::command]
@@ -48,7 +48,7 @@ pub async fn delete_customer(
     id: String,
 ) -> Result<(), AppError> {
     require_auth(&session_mgr).await?;
-    InventoryService::delete_customer(&pool, &id).await
+    CustomerService::delete_customer(&pool, &id).await
 }
 
 #[tauri::command]
