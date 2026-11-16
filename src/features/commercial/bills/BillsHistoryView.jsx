@@ -17,7 +17,6 @@ import { useWorkspaceStore } from '../../../stores/workspaceStore';
 export default function BillsHistoryView() {
   const queryClient = useQueryClient();
   const { openOrFocus } = useWorkspaceStore();
-  const currencySymbol = getCurrencySymbol();
   const [reprintSale, setReprintSale] = useState(null);
   const [filteredSales, setFilteredSales] = useState(null);
 
@@ -35,6 +34,7 @@ export default function BillsHistoryView() {
     queryKey: ['general_settings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
+  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
 
   const invalidateSalesAndAnalytics = () => {
     queryClient.invalidateQueries({ queryKey: ['sales'] });
@@ -123,10 +123,10 @@ export default function BillsHistoryView() {
       'Customer Name',
       'Customer Phone',
       'Payment Method',
-      'Subtotal (Rs)',
-      'Discount (Rs)',
-      'Tax (Rs)',
-      'Net Total (Rs)',
+      `Subtotal (${currencySymbol})`,
+      `Discount (${currencySymbol})`,
+      `Tax (${currencySymbol})`,
+      `Net Total (${currencySymbol})`,
       'Status',
     ];
 
@@ -169,10 +169,10 @@ export default function BillsHistoryView() {
       'Customer Name',
       'Customer Phone',
       'Payment Method',
-      'Subtotal (Rs)',
-      'Discount (Rs)',
-      'Tax (Rs)',
-      'Net Total (Rs)',
+      `Subtotal (${currencySymbol})`,
+      `Discount (${currencySymbol})`,
+      `Tax (${currencySymbol})`,
+      `Net Total (${currencySymbol})`,
       'Status',
     ];
 

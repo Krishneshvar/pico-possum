@@ -10,7 +10,7 @@ import {
   ChevronUp,
   StickyNote,
 } from 'lucide-react';
-import { formatPaise, rupeesToPaise } from '../../../lib/formatters';
+import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
 import Select from '../../../components/common/Select';
 
 const EMPTY_STOCK_ALLOWANCE = new Map();
@@ -45,7 +45,7 @@ export default function PosBillEditor({
   stockProducts = [],
   allowNegativeStock = false,
   stockAllowanceByProduct = EMPTY_STOCK_ALLOWANCE,
-  currencySymbol = '₹',
+  currencySymbol = getCurrencySymbol(),
   searchQuery,
   onSearchQueryChange,
   searchFocused,
@@ -1452,7 +1452,7 @@ export default function PosBillEditor({
                 Edit Line: {bill.items.find((it) => it.productId === expandedRowId)?.name}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-text-muted">Unit Rate (₹):</span>
+                <span className="text-text-muted">Unit Rate ({currencySymbol}):</span>
                 <input
                   type="number"
                   step="0.01"
@@ -1485,7 +1485,7 @@ export default function PosBillEditor({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-text-muted">Line Disc (₹):</span>
+                <span className="text-text-muted">Line Disc ({currencySymbol}):</span>
                 <input
                   type="number"
                   step="0.01"

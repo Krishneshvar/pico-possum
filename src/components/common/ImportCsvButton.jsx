@@ -15,19 +15,20 @@ import {
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import { getCurrencySymbol } from '../../lib/formatters';
 
-const ENTITY_SCHEMAS = {
+const getEntitySchemas = (sym) => ({
   products: {
     title: 'Import Products',
     singular: 'product',
     required: [
       { name: 'Product Name', aliases: 'Name', desc: 'Product title / description' },
       { name: 'Product Code / SKU', aliases: 'SKU, Product Code', desc: 'Unique barcode or SKU identifier' },
-      { name: 'MRP', aliases: 'Price, MRP/Price', desc: 'Maximum Retail Price / MRP (in ₹)' },
+      { name: 'MRP', aliases: 'Price, MRP/Price', desc: `Maximum Retail Price / MRP (${sym})` },
     ],
     optional: [
       { name: 'Category Name', aliases: 'Category, Division Name', desc: 'Category name (auto-created if new)' },
-      { name: 'Cost Price', aliases: 'Avg Item Cost, Cost', desc: 'Wholesale purchase / cost price (in ₹)' },
+      { name: 'Cost Price', aliases: 'Avg Item Cost, Cost', desc: `Wholesale purchase / cost price (${sym})` },
       { name: 'Current Stock', aliases: 'Opening Stock, Stock', desc: 'Initial inventory quantity' },
       { name: 'Tax Rate', aliases: 'Tax%', desc: 'GST percentage rate (e.g. 5, 12, 18)' },
       { name: 'Stock Alert', aliases: 'Minimum Stock Level', desc: 'Low stock warning threshold' },
@@ -74,9 +75,9 @@ const ENTITY_SCHEMAS = {
         desc: 'Sale date (DD/MM/YYYY, YYYY-MM-DD, or Month Date, Year)',
       },
       {
-        name: 'Net Total (Rs) / Net Amount',
-        aliases: 'Net Total (Rs), Net Total, Net Amount, Total Amount, Total, Amount',
-        desc: 'Final bill total in ₹ (matches this app\'s export "Net Total (Rs)")',
+        name: `Net Total (${sym}) / Net Amount`,
+        aliases: `Net Total (${sym}), Net Total, Net Amount, Total Amount, Total, Amount, Net Total (Rs)`,
+        desc: `Final bill total in ${sym} (matches this app's export "Net Total (${sym})")`,
       },
     ],
     optional: [
@@ -101,19 +102,19 @@ const ENTITY_SCHEMAS = {
         desc: 'Payment mode (e.g. Cash, UPI, Card; inferred from bill # if omitted)',
       },
       {
-        name: 'Subtotal (Rs)',
-        aliases: 'Subtotal (Rs), Subtotal, Sub Total',
+        name: `Subtotal (${sym})`,
+        aliases: `Subtotal (${sym}), Subtotal, Sub Total, Subtotal (Rs)`,
         desc: 'Pre-tax gross subtotal (defaults to Net Total if omitted)',
       },
       {
-        name: 'Discount (Rs)',
-        aliases: 'Discount (Rs), Discount, Disc',
-        desc: 'Total discount amount in ₹ (defaults to 0.00)',
+        name: `Discount (${sym})`,
+        aliases: `Discount (${sym}), Discount, Disc, Discount (Rs)`,
+        desc: `Total discount amount in ${sym} (defaults to 0.00)`,
       },
       {
-        name: 'Tax (Rs)',
-        aliases: 'Tax (Rs), Tax, GST',
-        desc: 'Total tax amount in ₹ (defaults to 0.00)',
+        name: `Tax (${sym})`,
+        aliases: `Tax (${sym}), Tax, GST, Tax (Rs)`,
+        desc: `Total tax amount in ${sym} (defaults to 0.00)`,
       },
       {
         name: 'Status',
@@ -127,7 +128,7 @@ const ENTITY_SCHEMAS = {
       },
     ],
   },
-};
+});
 
 export default function ImportCsvButton({
   entity = 'products',
@@ -148,8 +149,10 @@ export default function ImportCsvButton({
   const fileInputXlsxRef = useRef(null);
 
   // Resolve schema configuration
+  const sym = getCurrencySymbol();
+  const schemas = getEntitySchemas(sym);
   const resolvedKey =
-    entity in ENTITY_SCHEMAS
+    entity in schemas
       ? entity
       : label?.toLowerCase().includes('categor')
       ? 'categories'
@@ -159,7 +162,7 @@ export default function ImportCsvButton({
       ? 'bills'
       : 'products';
 
-  const schema = ENTITY_SCHEMAS[resolvedKey] || ENTITY_SCHEMAS.products;
+  const schema = schemas[resolvedKey] || schemas.products;
 
   const handleOpenModal = () => {
     setSelectedFile(null);

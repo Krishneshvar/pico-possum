@@ -372,7 +372,7 @@ export default function ReportsView() {
           paymentMethod={paymentMethod}
         />
 
-        {/* 5. Payment Distribution Bar: Show BOTH absolute ₹ values and percentages */}
+        {/* 5. Payment Distribution Bar: Show BOTH absolute amounts and percentages */}
         {paymentMethod === 'ALL' && (
           <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
             <div className="flex items-center justify-between">
@@ -419,7 +419,7 @@ export default function ReportsView() {
                   )}
                 </div>
 
-                {/* Legend with BOTH absolute ₹ and % */}
+                {/* Legend with BOTH absolute amounts and % */}
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-content-secondary pt-1">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#2563EB' }} />

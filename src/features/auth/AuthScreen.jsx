@@ -328,8 +328,8 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
         {/* Footer with App Version */}
         <div className="mt-6 pt-4 border-t border-border-default flex items-center justify-between text-[11px] text-text-muted">
-          <span>PicoPOSSUM POS</span>
-          <span className="font-mono">v0.1.0</span>
+          <span>PicoPOSSUM</span>
+          <span className="font-mono">v1.0.0</span>
         </div>
       </div>
     </div>

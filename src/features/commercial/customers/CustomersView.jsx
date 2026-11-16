@@ -4,7 +4,7 @@ import { Users, Plus, Phone, MapPin, X, Edit2, Trash2, Receipt, ArrowRight, Shop
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatDateTime, formatDate, formatPaise } from '../../../lib/formatters';
+import { formatDateTime, formatDate, formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import * as XLSX from 'xlsx';
 import DataTable from '../../../components/common/DataTable';
 import SortableTh from '../../../components/common/SortableTh';
@@ -24,6 +24,12 @@ export default function CustomersView() {
   const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
   const [viewingCustomer, setViewingCustomer] = useState(null);
   const [historySort, setHistorySort] = useState({ key: null, dir: null });
+
+  const { data: generalSettings } = useQuery({
+    queryKey: ['general_settings'],
+    queryFn: () => tauriApi.getGeneralSettings(),
+  });
+  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['customers'],
@@ -152,7 +158,7 @@ export default function CustomersView() {
       'Phone Number',
       'Address',
       'Total Bills',
-      'Total Spent (Rs)',
+      `Total Spent (${currencySymbol})`,
       'Last Visit',
     ];
 
@@ -187,7 +193,7 @@ export default function CustomersView() {
       'Phone Number',
       'Address',
       'Total Bills',
-      'Total Spent (Rs)',
+      `Total Spent (${currencySymbol})`,
       'Last Visit',
     ];
 

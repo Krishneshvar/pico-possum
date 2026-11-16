@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
+import { getCurrencySymbol } from '../../lib/formatters';
 import Select from '../../components/common/Select';
 import { confirmDialog } from '../../stores/confirm.store';
 import { useThemeStore } from '../../stores/theme.store';
@@ -54,7 +55,7 @@ export default function SettingsView() {
     phone: '',
     address: '',
     gstin: '',
-    currency_symbol: '₹',
+    currency_symbol: getCurrencySymbol() || '',
     currency_code: 'INR',
     date_format: 'DD-MM-YYYY',
     time_format: '12 hour format',
@@ -570,7 +571,7 @@ export default function SettingsView() {
                       type="text"
                       value={general.currency_symbol}
                       onChange={(e) => setGeneral({ ...general, currency_symbol: e.target.value })}
-                      placeholder="e.g. ₹, $, €"
+                      placeholder="e.g. $, €, £"
                       className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-medium"
                     />
                     <span className="text-[11px] text-content-muted mt-1 block">

@@ -555,7 +555,7 @@ impl CsvImportService {
             .or_else(|| find_header_row_index(&rows, &["Invoice Number", "Total Amount"]))
             .ok_or_else(|| {
                 AppError::Validation(
-                    "Could not find valid bill header row. Required: 'Invoice #' (or 'Bill Number'), 'Date', and 'Net Total (Rs)' (or 'Net Amount')."
+                    "Could not find valid bill header row. Required: 'Invoice #' (or 'Bill Number'), 'Date', and 'Net Total' (or 'Net Amount')."
                         .to_string(),
                 )
             })?;

@@ -18,7 +18,7 @@ import {
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
-import { formatPaise, formatDateTime } from '../../../lib/formatters';
+import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
@@ -31,6 +31,12 @@ export default function ProductFlowView() {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+
+  const { data: generalSettings } = useQuery({
+    queryKey: ['general_settings'],
+    queryFn: () => tauriApi.getGeneralSettings(),
+  });
+  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
@@ -195,8 +201,8 @@ export default function ProductFlowView() {
       'Customer',
       'Event Type',
       'Sold Qty',
-      'Sold Unit Price (Rs)',
-      'Sold Total Amount (Rs)',
+      `Sold Unit Price (${currencySymbol})`,
+      `Sold Total Amount (${currencySymbol})`,
       'Payment Method',
     ];
 
@@ -248,8 +254,8 @@ export default function ProductFlowView() {
       'Customer',
       'Event Type',
       'Sold Qty',
-      'Sold Unit Price (Rs)',
-      'Sold Total Amount (Rs)',
+      `Sold Unit Price (${currencySymbol})`,
+      `Sold Total Amount (${currencySymbol})`,
       'Payment Method',
     ];
 
