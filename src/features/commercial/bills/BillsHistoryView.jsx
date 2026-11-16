@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { History, Eye, Printer, RotateCcw, FileText, FileSpreadsheet, Download, X } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { History, Eye, Printer, RotateCcw } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
@@ -11,7 +10,7 @@ import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
+import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
 
@@ -112,14 +111,6 @@ export default function BillsHistoryView() {
       return;
     }
 
-    const escapeCsv = (val) => {
-      const str = String(val ?? '');
-      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
     const headers = [
       strings.common.labels.invoiceNumber,
       strings.common.labels.date,
@@ -148,12 +139,11 @@ export default function BillsHistoryView() {
       escapeCsv(s.status || ''),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportWithUserLocation({
+    await exportToCsv({
       filename: `bill_history_${dateStr}.csv`,
-      extension: 'csv',
-      data: csvContent,
+      headers,
+      rows,
       count: dataToExport.length,
       entityName: strings.bills.export.entityName,
     });
@@ -194,15 +184,12 @@ export default function BillsHistoryView() {
       s.status || '',
     ]);
 
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, strings.bills.export.sheetName);
-    const xlsxArrayBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportWithUserLocation({
+    await exportToXlsx({
       filename: `bill_history_${dateStr}.xlsx`,
-      extension: 'xlsx',
-      data: xlsxArrayBuffer,
+      sheetName: strings.bills.export.sheetName,
+      headers,
+      rows,
       count: dataToExport.length,
       entityName: strings.bills.export.entityName,
     });

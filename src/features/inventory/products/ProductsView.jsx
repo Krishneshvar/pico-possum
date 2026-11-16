@@ -1,57 +1,33 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Package,
   Plus,
   Edit2,
   Trash2,
-  X,
-  ArrowUpDown,
   AlertTriangle,
+  ArrowUpDown,
   CheckCircle2,
-  Download,
-  FileText,
-  FileSpreadsheet,
-  ChevronDown,
   SlidersHorizontal,
-  ShoppingBag,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
+import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { tauriApi } from '../../../lib/tauri';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatPaise, rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
-import Select from '../../../components/common/Select';
+import ProductModal from './ProductModal';
+import StockAdjustmentModal from './StockAdjustmentModal';
 
 export default function ProductsView() {
   const queryClient = useQueryClient();
   const currencySymbol = getCurrencySymbol();
   const [modalMode, setModalMode] = useState(null); // 'create' | 'edit' | 'stock'
   const [selectedProduct, setSelectedProduct] = useState(null);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    sku: '',
-    category_id: '',
-    mrp_rupees: '',
-    cost_price_rupees: '',
-    tax_rate: '0',
-    initial_stock: '0',
-    status: 'active',
-    min_stock_alert: '5',
-    uom: 'Piece',
-  });
-  const [stockAdjustment, setStockAdjustment] = useState({
-    quantity_change: '',
-    movement_type: 'MANUAL_STOCK_CORRECTION',
-    note: '',
-  });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
@@ -65,22 +41,6 @@ export default function ProductsView() {
     queryKey: ['general_settings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
-
-  const autoNumericSku = generalSettings?.auto_numeric_sku ?? true;
-  const settingsLoaded = generalSettings !== undefined;
-  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
-
-  const { data: nextSku } = useQuery({
-    queryKey: ['next_sku'],
-    queryFn: () => tauriApi.getNextSku(),
-    enabled: settingsLoaded && autoNumericSku && modalMode === 'create',
-  });
-
-  useEffect(() => {
-    if (settingsLoaded && modalMode === 'create' && autoNumericSku && nextSku) {
-      setFormData((prev) => (prev.sku === nextSku ? prev : { ...prev, sku: nextSku }));
-    }
-  }, [settingsLoaded, modalMode, autoNumericSku, nextSku]);
 
   // Category counts and options with parentheses
   const categoryCounts = useMemo(() => {
@@ -211,45 +171,17 @@ export default function ProductsView() {
   });
 
   const handleOpenCreate = () => {
-    setFormData({
-      name: '',
-      sku: '',
-      category_id: '',
-      mrp_rupees: '',
-      cost_price_rupees: '',
-      tax_rate: '0',
-      initial_stock: '0',
-      status: 'active',
-      min_stock_alert: '5',
-      uom: 'Piece',
-    });
+    setSelectedProduct(null);
     setModalMode('create');
   };
 
   const handleOpenEdit = (p) => {
     setSelectedProduct(p);
-    setFormData({
-      name: p.name,
-      sku: p.sku || '',
-      category_id: p.category_id || '',
-      mrp_rupees: (p.mrp_paise / 100).toFixed(2),
-      cost_price_rupees: (p.cost_price_paise / 100).toFixed(2),
-      tax_rate: p.tax_rate.toString(),
-      initial_stock: p.current_stock.toString(),
-      status: p.status || 'active',
-      min_stock_alert: (p.min_stock_alert != null ? p.min_stock_alert : 5).toString(),
-      uom: 'Piece',
-    });
     setModalMode('edit');
   };
 
   const handleOpenStock = (p) => {
     setSelectedProduct(p);
-    setStockAdjustment({
-      quantity_change: '',
-      movement_type: 'MANUAL_STOCK_CORRECTION',
-      note: '',
-    });
     setModalMode('stock');
   };
 
@@ -269,28 +201,16 @@ export default function ProductsView() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.name.trim()) {
-      toast.warning(strings.products.validation.nameRequired);
-      return;
-    }
-    const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
-    const payload = {
-      name: formData.name.trim(),
-      sku: formData.sku.trim() || null,
-      category_id: formData.category_id || null,
-      mrp_paise: rupeesToPaise(formData.mrp_rupees),
-      cost_price_paise: rupeesToPaise(formData.cost_price_rupees),
-      tax_rate: parseFloat(formData.tax_rate) || 0,
-      status: formData.status || 'active',
-      min_stock_alert: !isNaN(minStockAlertVal) && minStockAlertVal >= 0 ? minStockAlertVal : 5,
-    };
-    if (modalMode === 'create') {
-      createMutation.mutate({ ...payload, initial_stock: parseInt(formData.initial_stock, 10) || 0 });
+  const handleProductSubmit = (payload, isCreate) => {
+    if (isCreate) {
+      createMutation.mutate(payload);
     } else {
       updateMutation.mutate({ id: selectedProduct.id, payload });
     }
+  };
+
+  const handleStockSubmit = (adjustment) => {
+    adjustStockMutation.mutate(adjustment);
   };
 
   const handleExportCsv = async () => {
@@ -325,12 +245,11 @@ export default function ProductsView() {
       escapeCsv(p.status || 'active'),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportWithUserLocation({
+    await exportToCsv({
       filename: `products_${dateStr}.csv`,
-      extension: 'csv',
-      data: csvContent,
+      headers,
+      rows,
       count: products.length,
       entityName: 'products',
     });
@@ -368,8 +287,7 @@ export default function ProductsView() {
       p.status || 'active',
     ]);
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = [
+    const colWidths = [
       { wch: 25 },
       { wch: 16 },
       { wch: 18 },
@@ -382,14 +300,13 @@ export default function ProductsView() {
       { wch: 12 },
     ];
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Products');
-    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportWithUserLocation({
+    await exportToXlsx({
       filename: `products_${dateStr}.xlsx`,
-      extension: 'xlsx',
-      data: xlsxArrayBuffer,
+      sheetName: 'Products',
+      headers,
+      rows,
+      colWidths,
       count: products.length,
       entityName: 'products',
     });
@@ -606,416 +523,24 @@ export default function ProductsView() {
         />
       </div>
 
-      {/* ── Grouped Product Form Modal ── */}
-      {(modalMode === 'create' || modalMode === 'edit') && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-surface border border-border-default rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 text-text-primary animate-scale-in">
-            <div className="flex justify-between items-center border-b border-border-default pb-3">
-              <h3 className="font-bold text-sm text-text-primary">
-                {modalMode === 'create' ? 'Add New Product' : 'Edit Product'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setModalMode(null)}
-                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* ── Product Create / Edit Modal ── */}
+      <ProductModal
+        open={modalMode === 'create' || modalMode === 'edit'}
+        product={modalMode === 'edit' ? selectedProduct : null}
+        categories={categories}
+        generalSettings={generalSettings}
+        onClose={() => setModalMode(null)}
+        onSubmit={handleProductSubmit}
+        isPending={createMutation.isPending || updateMutation.isPending}
+      />
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              {/* Group 1: Product Information */}
-              <div className="space-y-2.5">
-                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
-                  Product Information
-                </span>
-                <div>
-                  <label className="text-text-secondary block font-semibold mb-1">
-                    Product Name <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Fresh Milk 500ml"
-                    className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      SKU / Barcode
-                      {autoNumericSku && (
-                        <span className="ml-1.5 text-[10px] font-bold text-brand bg-brand-subtle px-1.5 py-0.5 rounded">
-                          Auto
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      disabled={autoNumericSku}
-                      placeholder={autoNumericSku ? 'Generating SKU…' : 'e.g. 100201'}
-                      className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
-                        autoNumericSku ? 'opacity-70 cursor-not-allowed' : ''
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      {strings.products.form.category}
-                    </label>
-                    <Select
-                      value={formData.category_id}
-                      onChange={(val) => setFormData({ ...formData, category_id: val })}
-                      placeholder={strings.products.form.noCategory}
-                      options={[
-                        { value: '', label: strings.products.form.noCategory },
-                        ...categories.map((c) => ({ value: String(c.id), label: c.name })),
-                      ]}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Group 2: Pricing and Tax */}
-              <div className="space-y-2.5 pt-2 border-t border-border-default">
-                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
-                  {strings.products.form.sections.pricing}
-                </span>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      {strings.products.form.costPrice(currencySymbol)}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.cost_price_rupees}
-                      onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })}
-                      placeholder={strings.products.form.placeholders.zeroDecimal}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      {strings.products.form.mrp(currencySymbol)} <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.mrp_rupees}
-                      onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })}
-                      placeholder={strings.products.form.placeholders.mrp}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono font-semibold focus:border-brand focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      {strings.products.form.gstTaxRate}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.tax_rate}
-                      onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
-                      placeholder={strings.products.form.placeholders.zero}
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Group 3: Inventory Configuration */}
-              <div className="space-y-2.5 pt-2 border-t border-border-default">
-                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
-                  {strings.products.form.sections.inventory}
-                </span>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      {strings.products.form.lowStockAlert}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.min_stock_alert}
-                      onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
-                      disabled={allowNegativeStock}
-                      placeholder={strings.products.form.placeholders.five}
-                      className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
-                        allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">
-                      {strings.products.form.productStatus}
-                    </label>
-                    <Select
-                      value={formData.status}
-                      onChange={(val) => setFormData({ ...formData, status: val })}
-                      options={[
-                        { value: 'active', label: strings.products.form.statusOptions.active },
-                        { value: 'inactive', label: strings.products.form.statusOptions.inactive },
-                        { value: 'discontinued', label: strings.products.form.statusOptions.discontinued },
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                {modalMode === 'create' && (
-                  <div>
-                    <label className="text-text-secondary block font-semibold mb-1">Initial Opening Stock (Units)</label>
-                    <input
-                      type="number"
-                      value={formData.initial_stock}
-                      onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })}
-                      placeholder="0"
-                      className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
-                    />
-                    <span className="text-[10px] text-text-muted mt-1 block">
-                      Recorded as initial stock balance in the stock movements ledger.
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-border-default">
-                <button
-                  type="button"
-                  onClick={() => setModalMode(null)}
-                  className="px-3.5 py-1.5 rounded-lg font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  {modalMode === 'create' ? 'Create Product' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Stock Adjustment Modal (Dedicated Movement Tracking) ── */}
-      {modalMode === 'stock' && selectedProduct && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-text-primary animate-scale-in">
-            <div className="flex justify-between items-center border-b border-border-default pb-3">
-              <div>
-                <h3 className="font-bold text-sm text-text-primary">{strings.products.actions.adjustStock}</h3>
-                <p className="text-[11px] text-text-muted truncate max-w-[200px]">{selectedProduct.name}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalMode(null)}
-                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {(() => {
-              const parsedQty = parseInt(stockAdjustment.quantity_change, 10);
-              const isValidQty = !isNaN(parsedQty) && parsedQty !== 0;
-              const isNegative = isValidQty && parsedQty < 0;
-              const projectedStock = isValidQty ? (selectedProduct.current_stock || 0) + parsedQty : null;
-
-              const handleSelectReason = (reason) => {
-                if (reason === 'PURCHASE' && isNegative) {
-                  toast.warning(strings.products.stock.purchaseNegativeWarning);
-                  return;
-                }
-                setStockAdjustment((prev) => ({ ...prev, movement_type: reason }));
-              };
-
-              const updateQtyVal = (rawVal) => {
-                const nextParsed = parseInt(rawVal, 10);
-                const willBeNegative = !isNaN(nextParsed) && nextParsed < 0;
-                setStockAdjustment((prev) => ({
-                  ...prev,
-                  quantity_change: rawVal,
-                  movement_type: willBeNegative && prev.movement_type === 'PURCHASE'
-                    ? 'MANUAL_STOCK_CORRECTION'
-                    : prev.movement_type,
-                }));
-              };
-
-              return (
-                <>
-                  <div className="bg-surface-secondary p-3 rounded-lg border border-border-default text-xs flex items-center justify-between">
-                    <span className="text-text-muted">{strings.products.stock.currentBalance}</span>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-text-primary font-mono font-bold text-sm">
-                        {strings.products.stock.units(selectedProduct.current_stock)}
-                      </strong>
-                      {isValidQty && (
-                        <span className="text-[11px] font-mono font-semibold text-brand">
-                          {strings.products.stock.projectedUnits(projectedStock)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 text-xs">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-text-secondary font-semibold">
-                          {strings.products.stock.reason} <span className="text-danger">*</span>
-                        </label>
-                        {isNegative && (
-                          <span className="text-[10px] text-text-muted font-mono">
-                            {strings.products.stock.negativeHint}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Segmented reason selector: Manual Stock Correction (Default) & Purchase */}
-                      <div className="grid grid-cols-2 gap-2 p-1 bg-surface-secondary border border-border-default rounded-xl">
-                        <button
-                          type="button"
-                          onClick={() => handleSelectReason('MANUAL_STOCK_CORRECTION')}
-                          className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            stockAdjustment.movement_type === 'MANUAL_STOCK_CORRECTION'
-                              ? 'bg-brand text-white shadow-xs'
-                              : 'text-text-muted hover:text-text-primary'
-                          }`}
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                          <span>{strings.products.stock.manualCorrection}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={isNegative}
-                          onClick={() => handleSelectReason('PURCHASE')}
-                          title={
-                            isNegative
-                              ? strings.products.stock.purchaseDisabledTooltip
-                              : strings.products.stock.purchaseTooltip
-                          }
-                          className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                            isNegative
-                              ? 'opacity-40 cursor-not-allowed text-text-muted bg-surface/30'
-                              : stockAdjustment.movement_type === 'PURCHASE'
-                              ? 'bg-brand text-white shadow-xs'
-                              : 'text-text-muted hover:text-text-primary cursor-pointer'
-                          }`}
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>{strings.products.stock.purchase}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-text-secondary block font-semibold mb-1">
-                        {strings.products.stock.quantityChange}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={stockAdjustment.quantity_change}
-                          onChange={(e) => {
-                            const val = e.target.value.trim();
-                            if (val === '' || val === '-' || val === '+' || /^[+-]?\d+$/.test(val)) {
-                              updateQtyVal(val);
-                            }
-                          }}
-                          placeholder={strings.products.stock.placeholders.quantity}
-                          className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 pr-16 text-text-primary focus:border-brand focus:outline-none font-mono"
-                        />
-                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
-                              const next = current + 1;
-                              updateQtyVal(next > 0 ? `+${next}` : String(next));
-                            }}
-                            className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
-                            title={strings.products.stock.addOne}
-                          >
-                            +
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
-                              const next = current - 1;
-                              updateQtyVal(next > 0 ? `+${next}` : String(next));
-                            }}
-                            className="px-2 py-0.5 text-xs font-bold bg-surface rounded border border-border-default hover:bg-surface-secondary text-text-primary cursor-pointer transition-colors"
-                            title={strings.products.stock.deductOne}
-                          >
-                            −
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-text-secondary block font-semibold mb-1">
-                        {strings.products.stock.noteLabel}
-                      </label>
-                      <input
-                        type="text"
-                        value={stockAdjustment.note}
-                        onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
-                        placeholder={strings.products.stock.placeholders.note}
-                        className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
-                    <button
-                      type="button"
-                      onClick={() => setModalMode(null)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isValidQty) {
-                          toast.warning('Enter a non-zero quantity to adjust stock (e.g. +10 or -5)');
-                          return;
-                        }
-                        if (parsedQty < 0 && stockAdjustment.movement_type === 'PURCHASE') {
-                          toast.warning('Purchase reason cannot be used for negative stock deductions');
-                          return;
-                        }
-                        adjustStockMutation.mutate({
-                          product_id: selectedProduct.id,
-                          quantity_change: parsedQty,
-                          reason: stockAdjustment.movement_type || 'MANUAL_STOCK_CORRECTION',
-                          note: stockAdjustment.note || null,
-                        });
-                      }}
-                      disabled={adjustStockMutation.isPending || !isValidQty}
-                      className="px-4 py-1.5 rounded-lg text-xs font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+      {/* ── Stock Adjustment Modal ── */}
+      <StockAdjustmentModal
+        product={modalMode === 'stock' ? selectedProduct : null}
+        onClose={() => setModalMode(null)}
+        onSubmit={handleStockSubmit}
+        isPending={adjustStockMutation.isPending}
+      />
     </div>
   );
 }

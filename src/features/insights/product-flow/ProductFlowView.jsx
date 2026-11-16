@@ -15,7 +15,6 @@ import {
   Tag,
   ExternalLink,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
@@ -23,7 +22,7 @@ import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
+import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
 
@@ -225,7 +224,6 @@ export default function ProductFlowView() {
       escapeCsv(r.payment_method || strings.common.states.emptyValue),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const dateRangeLabel = fromDate && toDate
       ? `${fromDate}_to_${toDate}`
@@ -235,10 +233,10 @@ export default function ProductFlowView() {
           ? `to_${toDate}`
           : 'all_time';
 
-    await exportWithUserLocation({
+    await exportToCsv({
       filename: `sales_history_${safeProdName}_${dateRangeLabel}.csv`,
-      extension: 'csv',
-      data: csvContent,
+      headers,
+      rows,
       count: flowItems.length,
       entityName: strings.productFlow.export.salesRecords,
     });
@@ -278,8 +276,7 @@ export default function ProductFlowView() {
       r.payment_method || strings.common.states.emptyValue,
     ]);
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = [
+    const colWidths = [
       { wch: 22 },
       { wch: 20 },
       { wch: 18 },
@@ -290,9 +287,6 @@ export default function ProductFlowView() {
       { wch: 16 },
       { wch: 14 },
     ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, strings.productFlow.export.salesHistorySheet);
-    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const dateRangeLabel = fromDate && toDate
       ? `${fromDate}_to_${toDate}`
@@ -302,10 +296,12 @@ export default function ProductFlowView() {
           ? `to_${toDate}`
           : 'all_time';
 
-    await exportWithUserLocation({
+    await exportToXlsx({
       filename: `sales_history_${safeProdName}_${dateRangeLabel}.xlsx`,
-      extension: 'xlsx',
-      data: xlsxArrayBuffer,
+      sheetName: strings.productFlow.export.salesHistorySheet,
+      headers,
+      rows,
+      colWidths,
       count: flowItems.length,
       entityName: strings.productFlow.export.salesRecords,
     });

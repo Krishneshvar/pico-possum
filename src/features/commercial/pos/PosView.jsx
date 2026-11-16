@@ -8,7 +8,7 @@ import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import PosBillEditor from './PosBillEditor';
-import AddCustomerModal from './AddCustomerModal';
+import CustomerModal from '../customers/CustomerModal';
 import { strings } from '../../../lib/strings';
 
 export default function PosView() {
@@ -466,10 +466,10 @@ export default function PosView() {
         </div>
       )}
 
-      <AddCustomerModal
+      <CustomerModal
         open={customerModalOpen}
         onClose={() => setCustomerModalOpen(false)}
-        onCreated={(saved) => setCustomer(saved)}
+        onSaved={(saved) => setCustomer(saved)}
       />
     </div>
   );

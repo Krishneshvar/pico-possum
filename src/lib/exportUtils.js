@@ -124,3 +124,62 @@ export async function exportWithUserLocation({
   }
 }
 
+/**
+ * Exports data to a CSV file, prompting the user for location.
+ */
+export async function exportToCsv({
+  filename,
+  headers,
+  rows,
+  autoEscape = false,
+  count,
+  entityName = 'records',
+}) {
+  const processedHeaders = autoEscape ? headers.map(escapeCsv) : headers;
+  const processedRows = autoEscape
+    ? rows.map((r) => r.map(escapeCsv))
+    : rows;
+
+  const csvContent = [
+    processedHeaders.join(','),
+    ...processedRows.map((r) => r.join(',')),
+  ].join('\r\n');
+
+  return exportWithUserLocation({
+    filename,
+    extension: 'csv',
+    data: csvContent,
+    count: count ?? rows.length,
+    entityName,
+  });
+}
+
+/**
+ * Exports data to an Excel (.xlsx) file, prompting the user for location.
+ */
+export async function exportToXlsx({
+  filename,
+  sheetName = 'Sheet1',
+  headers,
+  rows,
+  colWidths,
+  count,
+  entityName = 'records',
+}) {
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  if (colWidths) {
+    worksheet['!cols'] = colWidths;
+  }
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  const xlsxArrayBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+
+  return exportWithUserLocation({
+    filename,
+    extension: 'xlsx',
+    data: xlsxArrayBuffer,
+    count: count ?? rows.length,
+    entityName,
+  });
+}
+

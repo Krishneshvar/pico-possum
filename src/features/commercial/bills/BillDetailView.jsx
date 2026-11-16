@@ -25,7 +25,7 @@ import SortableTh from '../../../components/common/SortableTh';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import { computeBillTotals } from '../../../stores/pos.store';
 import PosBillEditor from '../pos/PosBillEditor';
-import AddCustomerModal from '../pos/AddCustomerModal';
+import CustomerModal from '../customers/CustomerModal';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
 
@@ -724,10 +724,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             }}
           />
 
-          <AddCustomerModal
+          <CustomerModal
             open={customerModalOpen}
             onClose={() => setCustomerModalOpen(false)}
-            onCreated={(customer) => {
+            onSaved={(customer) => {
               setDraftCustomer(customer);
               setCustomerModalOpen(false);
             }}

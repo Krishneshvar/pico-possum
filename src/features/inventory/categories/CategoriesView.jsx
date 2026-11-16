@@ -5,7 +5,6 @@ import {
   Plus,
   Trash2,
   Edit2,
-  X,
   Tag,
   ChevronRight,
   ChevronDown,
@@ -18,13 +17,12 @@ import {
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import * as XLSX from 'xlsx';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
-import Select from '../../../components/common/Select';
+import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
+import CategoryModal from './CategoryModal';
 import { strings } from '../../../lib/strings';
 
 // Recursive Tree Node Component
@@ -158,8 +156,7 @@ export default function CategoriesView() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [name, setName] = useState('');
-  const [parentId, setParentId] = useState('');
+  const [initialParentId, setInitialParentId] = useState('');
   const [viewMode, setViewMode] = useState('split');
   const [selectedTreeId, setSelectedTreeId] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -298,12 +295,11 @@ export default function CategoriesView() {
       escapeCsv(productCounts[c.id] || 0),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportWithUserLocation({
+    await exportToCsv({
       filename: `categories_${dateStr}.csv`,
-      extension: 'csv',
-      data: csvContent,
+      headers,
+      rows,
       count: categories.length,
       entityName: strings.categories.export.entityName,
     });
@@ -326,16 +322,14 @@ export default function CategoriesView() {
       productCounts[c.id] || 0,
     ]);
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 16 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, strings.categories.export.sheetName);
-    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const colWidths = [{ wch: 28 }, { wch: 24 }, { wch: 16 }];
     const dateStr = new Date().toISOString().split('T')[0];
-    await exportWithUserLocation({
+    await exportToXlsx({
       filename: `categories_${dateStr}.xlsx`,
-      extension: 'xlsx',
-      data: xlsxArrayBuffer,
+      sheetName: strings.categories.export.sheetName,
+      headers,
+      rows,
+      colWidths,
       count: categories.length,
       entityName: strings.categories.export.entityName,
     });
@@ -343,15 +337,13 @@ export default function CategoriesView() {
 
   const handleOpenCreate = (parent = null) => {
     setEditingCategory(null);
-    setName('');
-    setParentId(parent ? parent.id : '');
+    setInitialParentId(parent ? parent.id : '');
     setModalOpen(true);
   };
 
   const handleOpenEdit = (c) => {
     setEditingCategory(c);
-    setName(c.name);
-    setParentId(c.parent_id || '');
+    setInitialParentId(c.parent_id || '');
     setModalOpen(true);
   };
 
@@ -374,16 +366,10 @@ export default function CategoriesView() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.warning(strings.categories.toasts.nameRequired);
-      return;
-    }
-
+  const handleModalSubmit = ({ name, parentId }) => {
     const payload = {
-      name: name.trim(),
-      parent_id: parentId ? parentId : null,
+      name,
+      parent_id: parentId,
     };
 
     if (editingCategory) {
@@ -656,79 +642,15 @@ export default function CategoriesView() {
       </div>
 
       {/* Modal Dialog for Category Creation/Editing */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-surface border border-border-default rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-text-primary animate-scale-in">
-            <div className="flex justify-between items-center border-b border-border-default pb-3">
-              <h3 className="font-bold text-sm text-text-primary">
-                {editingCategory
-                  ? strings.categories.form.editTitle
-                  : strings.categories.form.createTitle}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="text-text-secondary block font-semibold mb-1">
-                  {strings.categories.form.nameLabel} <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={strings.categories.form.namePlaceholder}
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-text-secondary block font-semibold mb-1">
-                  {strings.categories.form.parentLabel}
-                </label>
-                <Select
-                  value={parentId}
-                  onChange={(val) => setParentId(val)}
-                  placeholder={strings.categories.form.noneTopLevel}
-                  options={[
-                    { value: '', label: strings.categories.form.noneTopLevel },
-                    ...categories
-                      .filter((c) => !editingCategory || c.id !== editingCategory.id)
-                      .map((c) => ({ value: String(c.id), label: c.name })),
-                  ]}
-                />
-                <p className="text-[10px] text-text-muted mt-1">
-                  {strings.categories.form.parentHint}
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
-                >
-                  {strings.common.actions.cancel}
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-1.5 rounded-lg font-bold bg-brand text-white hover:bg-brand-hover shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  {editingCategory ? strings.common.actions.save : strings.common.actions.create}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CategoryModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        editingCategory={editingCategory}
+        initialParentId={initialParentId}
+        categories={categories}
+        onSubmit={handleModalSubmit}
+        isPending={createMutation.isPending || updateMutation.isPending}
+      />
     </div>
   );
 }

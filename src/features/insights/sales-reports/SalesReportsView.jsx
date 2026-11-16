@@ -11,7 +11,6 @@ import {
   X,
   Filter,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
 import { formatPaise, formatDate, getCurrencySymbol } from '../../../lib/formatters';
 import { toast } from '../../../stores/toast.store';
@@ -19,7 +18,7 @@ import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker, { formatToIso } from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportWithUserLocation, escapeCsv } from '../../../lib/exportUtils';
+import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { strings } from '../../../lib/strings';
 
 export default function SalesReportsView() {
@@ -263,11 +262,10 @@ export default function SalesReportsView() {
             ? todayIso
             : 'all_time';
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-    await exportWithUserLocation({
+    await exportToCsv({
       filename: strings.salesReports.export.filename(reportType, dateRangeLabel, 'csv'),
-      extension: 'csv',
-      data: csvContent,
+      headers,
+      rows,
       count: filteredData.length,
       entityName: strings.salesReports.export.entityName,
     });
@@ -288,14 +286,10 @@ export default function SalesReportsView() {
       })
     );
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = visibleColumns.map((col) => ({
+    const colWidths = visibleColumns.map((col) => ({
       wch: Math.max(col.label.length + 4, 14),
     }));
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, strings.salesReports.export.sheetName);
-    const xlsxArrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     const dateRangeLabel = fromDate && toDate
       ? `${fromDate}_to_${toDate}`
       : fromDate
@@ -306,10 +300,12 @@ export default function SalesReportsView() {
             ? todayIso
             : 'all_time';
 
-    await exportWithUserLocation({
+    await exportToXlsx({
       filename: strings.salesReports.export.filename(reportType, dateRangeLabel, 'xlsx'),
-      extension: 'xlsx',
-      data: xlsxArrayBuffer,
+      sheetName: strings.salesReports.export.sheetName,
+      headers,
+      rows,
+      colWidths,
       count: filteredData.length,
       entityName: strings.salesReports.export.entityName,
     });
