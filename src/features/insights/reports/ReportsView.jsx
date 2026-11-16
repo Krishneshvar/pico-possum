@@ -411,14 +411,14 @@ export default function ReportsView() {
                     <div
                       style={{ width: `${cardPct}%`, backgroundColor: '#7C3AED' }}
                       className="h-full transition-all"
-                      title={`Card: ${formatPaise(cardRev)} (${cardPct.toFixed(1)}%)`}
+                      title={strings.reports.payments.barTooltip(strings.reports.payments.card, formatPaise(cardRev), cardPct.toFixed(1))}
                     />
                   )}
                   {giftCardPct > 0 && (
                     <div
                       style={{ width: `${giftCardPct}%`, backgroundColor: '#D97706' }}
                       className="h-full transition-all"
-                      title={`Gift Card: ${formatPaise(giftCardRev)} (${giftCardPct.toFixed(1)}%)`}
+                      title={strings.reports.payments.barTooltip(strings.reports.payments.giftCard, formatPaise(giftCardRev), giftCardPct.toFixed(1))}
                     />
                   )}
                 </div>
@@ -427,26 +427,26 @@ export default function ReportsView() {
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-content-secondary pt-1">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#2563EB' }} />
-                    <span className="font-medium text-content">Cash:</span>
+                    <span className="font-medium text-content">{strings.reports.payments.cash}:</span>
                     <span className="financial-value">{formatPaise(cashRev)}</span>
                     <span className="text-content-muted">({cashPct.toFixed(1)}%)</span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#0F766E' }} />
-                    <span className="font-medium text-content">UPI / QR:</span>
+                    <span className="font-medium text-content">{strings.reports.payments.upiQr}:</span>
                     <span className="financial-value">{formatPaise(upiRev)}</span>
                     <span className="text-content-muted">({upiPct.toFixed(1)}%)</span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#7C3AED' }} />
-                    <span className="font-medium text-content">Card:</span>
+                    <span className="font-medium text-content">{strings.reports.payments.card}:</span>
                     <span className="financial-value">{formatPaise(cardRev)}</span>
                     <span className="text-content-muted">({cardPct.toFixed(1)}%)</span>
                   </span>
                   {giftCardPct > 0 && (
                     <span className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
-                      <span className="font-medium text-content">Gift Card:</span>
+                      <span className="font-medium text-content">{strings.reports.payments.giftCard}:</span>
                       <span className="financial-value">{formatPaise(giftCardRev)}</span>
                       <span className="text-content-muted">({giftCardPct.toFixed(1)}%)</span>
                     </span>

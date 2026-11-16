@@ -5,7 +5,7 @@
 const DEFAULT_LOCALE = {
   currencySymbol: '₹',
   currencyCode: 'INR',
-  dateFormat: 'DD/MM/YYYY',
+  dateFormat: 'DD-MM-YYYY',
   timeFormat: '12h',
 };
 
@@ -15,6 +15,56 @@ const MONTHS_SHORT = [
 ];
 
 let localeSettings = { ...DEFAULT_LOCALE };
+
+/**
+ * Helper to parse various date formats safely without UTC date shift on date-only strings.
+ */
+function parseDateParts(input) {
+  if (!input) return null;
+  if (input instanceof Date) {
+    return isNaN(input.getTime()) ? null : { date: input, hasTime: true };
+  }
+  if (typeof input === 'number') {
+    const d = new Date(input);
+    return isNaN(d.getTime()) ? null : { date: d, hasTime: true };
+  }
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // YYYY-MM (e.g. from monthly reports breakdown)
+    const yearMonthMatch = trimmed.match(/^(\d{4})-(\d{2})$/);
+    if (yearMonthMatch) {
+      return {
+        date: new Date(Number(yearMonthMatch[1]), Number(yearMonthMatch[2]) - 1, 1),
+        hasTime: false,
+        isYearMonth: true,
+      };
+    }
+
+    // YYYY-MM-DD (pure date string)
+    const dateMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateMatch) {
+      return {
+        date: new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3])),
+        hasTime: false,
+      };
+    }
+
+    // SQLite space-separated timestamp: YYYY-MM-DD HH:MM:SS
+    const sqliteIso = trimmed.replace(' ', 'T');
+    const d = new Date(sqliteIso);
+    if (!isNaN(d.getTime())) {
+      return { date: d, hasTime: true };
+    }
+
+    const fallback = new Date(trimmed);
+    if (!isNaN(fallback.getTime())) {
+      return { date: fallback, hasTime: true };
+    }
+  }
+  return null;
+}
 
 /**
  * Apply the persisted General Settings to all formatters.
@@ -53,11 +103,15 @@ export function getCurrencySymbol() {
 // ── Currency ────────────────────────────────────────────────────────────────
 
 export function formatPaise(paise, symbol = localeSettings.currencySymbol) {
-  if (paise === null || paise === undefined || isNaN(paise)) return `${symbol}0.00`;
+  if (paise === null || paise === undefined || isNaN(paise)) {
+    return `${symbol}0.00`;
+  }
   const isNegative = paise < 0;
   const absPaise = Math.abs(paise);
   const rupees = (absPaise / 100).toFixed(2);
-  return isNegative ? `-${symbol}${rupees}` : `${symbol}${rupees}`;
+  const sym = symbol || '';
+  const sep = sym.length > 1 && !/^[^\w\s]+$/.test(sym) ? ' ' : '';
+  return isNegative ? `-${sym}${sep}${rupees}` : `${sym}${sep}${rupees}`;
 }
 
 export function paiseToRupees(paise) {
@@ -72,49 +126,52 @@ export function rupeesToPaise(rupees) {
 
 // ── Date & Time ─────────────────────────────────────────────────────────────
 
-export function formatDate(dateStr) {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
+export function formatDate(dateInput) {
+  if (!dateInput) return '';
+  const parsed = parseDateParts(dateInput);
+  if (!parsed) return String(dateInput);
 
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
+  const { date: d, isYearMonth } = parsed;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
 
-    const rawFormat = localeSettings.dateFormat;
-    const pattern = rawFormat.trim().toUpperCase();
-    const separator = rawFormat.includes('/') ? '/' : '-';
+  const rawFormat = localeSettings.dateFormat || 'DD-MM-YYYY';
+  const pattern = rawFormat.trim().toUpperCase();
+  const separator = rawFormat.includes('/') ? '/' : rawFormat.includes('.') ? '.' : '-';
 
-    switch (pattern) {
-      case 'DD/MM/YYYY':
-      case 'DD-MM-YYYY':
-        return `${day}${separator}${month}${separator}${year}`;
-      case 'MM/DD/YYYY':
-      case 'MM-DD-YYYY':
-        return `${month}${separator}${day}${separator}${year}`;
-      case 'YYYY/MM/DD':
-      case 'YYYY-MM-DD':
-        return `${year}${separator}${month}${separator}${day}`;
-      case 'MONTH DATE, YEAR':
-        return `${MONTHS_SHORT[d.getMonth()]} ${day}, ${year}`;
-      case 'DATE MONTH, YEAR':
-        return `${day} ${MONTHS_SHORT[d.getMonth()]}, ${year}`;
-      default:
-        return `${day}/${month}/${year}`;
+  if (isYearMonth) {
+    if (pattern.includes('MONTH')) {
+      return `${MONTHS_SHORT[d.getMonth()]} ${year}`;
     }
-  } catch {
-    return dateStr;
+    return `${month}${separator}${year}`;
+  }
+
+  const norm = pattern.replace(/[\/\.]/g, '-');
+  switch (norm) {
+    case 'DD-MM-YYYY':
+      return `${day}${separator}${month}${separator}${year}`;
+    case 'MM-DD-YYYY':
+      return `${month}${separator}${day}${separator}${year}`;
+    case 'YYYY-MM-DD':
+      return `${year}${separator}${month}${separator}${day}`;
+    case 'MONTH DATE, YEAR':
+      return `${MONTHS_SHORT[d.getMonth()]} ${day}, ${year}`;
+    case 'DATE MONTH, YEAR':
+      return `${day} ${MONTHS_SHORT[d.getMonth()]}, ${year}`;
+    default:
+      return `${day}${separator}${month}${separator}${year}`;
   }
 }
 
-export function formatTime(dateStr) {
-  if (!dateStr) return '';
+export function formatTime(dateInput) {
+  if (!dateInput) return '';
+  const parsed = parseDateParts(dateInput);
+  if (!parsed || !parsed.hasTime) return '';
+
   try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    const is24Hour = localeSettings.timeFormat.includes('24');
-    return d.toLocaleTimeString([], {
+    const is24Hour = (localeSettings.timeFormat || '').includes('24');
+    return parsed.date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
       hour12: !is24Hour,
@@ -124,7 +181,9 @@ export function formatTime(dateStr) {
   }
 }
 
-export function formatDateTime(dateStr) {
-  if (!dateStr) return '';
-  return `${formatDate(dateStr)} ${formatTime(dateStr)}`;
+export function formatDateTime(dateInput) {
+  if (!dateInput) return '';
+  const dStr = formatDate(dateInput);
+  const tStr = formatTime(dateInput);
+  return tStr ? `${dStr} ${tStr}` : dStr;
 }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { strings } from '../../lib/strings';
+import { formatDate } from '../../lib/formatters';
 
 const MONTH_NAMES = strings.common.datePicker.months;
 
@@ -30,15 +31,11 @@ export function parseIsoDate(isoStr) {
 }
 
 /**
- * Format for friendly display: e.g. "07 Nov 2026" or YYYY-MM-DD
+ * Format for friendly display adhering to user-configured date format
  */
 export function formatDisplayDate(isoStr) {
-  const d = parseIsoDate(isoStr);
-  if (!d) return '';
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = MONTH_NAMES[d.getMonth()].slice(0, 3);
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
+  if (!isoStr) return '';
+  return formatDate(isoStr);
 }
 
 /**
@@ -177,7 +174,7 @@ export default function DatePicker({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-2 px-2.5 py-1.5 text-xs bg-surface border border-border-default rounded-lg text-text-primary hover:border-border-strong focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${buttonClassName}`}
-        title={value ? strings.common.datePicker.selected(value) : strings.common.datePicker.pickDate}
+        title={value ? strings.common.datePicker.selected(formatDisplayDate(value)) : strings.common.datePicker.pickDate}
       >
         <CalendarIcon className="w-3.5 h-3.5 text-text-muted shrink-0" />
         <span className={`font-mono ${value ? 'text-text-primary font-medium' : 'text-text-muted'}`}>

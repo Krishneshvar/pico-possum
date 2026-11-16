@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { formatPaise, formatDate, getCurrencySymbol } from '../../../lib/formatters';
 import { toast } from '../../../stores/toast.store';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
@@ -118,8 +118,8 @@ export default function SalesReportsView() {
         label: strings.salesReports.columns.periodLabel(reportType),
         className: 'font-mono text-text-primary font-semibold text-xs whitespace-nowrap',
         minWidth: 120,
-        exportValue: (r) => r.period,
-        render: (r) => r.period,
+        exportValue: (r) => (reportType === 'yearly' ? r.period : formatDate(r.period)),
+        render: (r) => (reportType === 'yearly' ? r.period : formatDate(r.period)),
       },
       {
         key: 'total_transactions',
