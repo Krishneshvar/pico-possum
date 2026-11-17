@@ -16,6 +16,14 @@ const columns = {
   netSales: 'Net Sales',
 };
 
+const reportTypes = {
+  today: 'Today',
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+};
+
 const salesReports = {
   view: {
     title: 'Financial Sales Reports',
@@ -27,10 +35,15 @@ const salesReports = {
 
   columns,
 
+  periodOptions: reportTypes,
+
   filters: {
     period: 'Period:',
     from: 'From:',
     to: 'To:',
+    dateTo: 'to',
+    fromDate: 'From date',
+    toDate: 'To date',
     fromDatePlaceholder: 'From date',
     toDatePlaceholder: 'To date',
     advancedFilters: 'Advanced Filters',
@@ -38,12 +51,7 @@ const salesReports = {
     minAmountPlaceholder: (symbol) => `Min ${symbol}`,
     maxAmountPlaceholder: (symbol) => `Max ${symbol}`,
     rangeSeparator: '–',
-    reportTypes: {
-      today: 'Today',
-      daily: 'Daily',
-      monthly: 'Monthly',
-      yearly: 'Yearly',
-    },
+    reportTypes,
     amountFields: {
       gross: columns.grossSales,
       net: columns.netSales,

@@ -15,20 +15,29 @@ function getPaginationItems(current, total) {
 }
 
 export default function TablePagination({
-  safePage,
-  totalPages,
-  startRecord,
-  endRecord,
-  totalRecords,
+  currentPage,
+  safePage = currentPage ?? 1,
+  totalPages = 1,
+  startRecord = 0,
+  endRecord = 0,
+  totalRecords = 0,
   onPageChange,
 }) {
+  const safeTotalPages = Math.max(1, totalPages || 1);
+  const activePage = Math.max(1, Math.min(safePage, safeTotalPages));
+  const hasMultiplePages = safeTotalPages > 1;
+  const canGoPrev = hasMultiplePages && activePage > 1;
+  const canGoNext = hasMultiplePages && activePage < safeTotalPages;
+
   return (
     <div className="flex items-center justify-between px-4 py-2 border-t border-border-default bg-surface shrink-0 text-xs text-text-secondary select-none">
       {/* Left: Current Page info */}
       <div className="flex-1 min-w-0 flex items-center">
         <span>
-          Page <strong className="text-text-primary font-semibold">{safePage}</strong> {strings.common.table.of}{' '}
-          <strong className="text-text-primary font-semibold">{totalPages}</strong>
+          {strings.common.table.page}{' '}
+          <strong className="text-text-primary font-semibold">{activePage}</strong>{' '}
+          {strings.common.table.of}{' '}
+          <strong className="text-text-primary font-semibold">{safeTotalPages}</strong>
         </span>
       </div>
 
@@ -37,23 +46,25 @@ export default function TablePagination({
         <button
           type="button"
           onClick={() => onPageChange(1)}
-          disabled={safePage === 1}
-          className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+          disabled={!canGoPrev}
+          aria-disabled={!canGoPrev}
+          className="px-2 py-1 rounded font-bold transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary hover:bg-surface-secondary text-text-secondary hover:text-text-primary cursor-pointer"
           title={strings.common.table.firstPage}
         >
           «
         </button>
         <button
           type="button"
-          onClick={() => onPageChange(safePage - 1)}
-          disabled={safePage === 1}
-          className="p-1 rounded disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+          onClick={() => onPageChange(activePage - 1)}
+          disabled={!canGoPrev}
+          aria-disabled={!canGoPrev}
+          className="p-1 rounded transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary hover:bg-surface-secondary text-text-secondary hover:text-text-primary cursor-pointer"
           title={strings.common.table.previousPage}
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
-        {getPaginationItems(safePage, totalPages).map((p, idx) =>
+        {getPaginationItems(activePage, safeTotalPages).map((p, idx) =>
           p === '...' ? (
             <span
               key={`ellipsis-${idx}`}
@@ -66,10 +77,12 @@ export default function TablePagination({
               key={p}
               type="button"
               onClick={() => onPageChange(p)}
-              className={`w-7 h-7 rounded font-semibold text-xs transition-colors cursor-pointer ${
-                p === safePage
-                  ? 'bg-brand text-white shadow-xs'
-                  : 'hover:bg-surface text-text-secondary hover:text-text-primary'
+              disabled={p === activePage}
+              aria-current={p === activePage ? 'page' : undefined}
+              className={`w-7 h-7 rounded font-semibold text-xs transition-colors select-none ${
+                p === activePage
+                  ? 'bg-brand text-white shadow-xs cursor-default'
+                  : 'hover:bg-surface-secondary text-text-secondary hover:text-text-primary cursor-pointer'
               }`}
             >
               {p}
@@ -79,18 +92,20 @@ export default function TablePagination({
 
         <button
           type="button"
-          onClick={() => onPageChange(safePage + 1)}
-          disabled={safePage === totalPages}
-          className="p-1 rounded disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+          onClick={() => onPageChange(activePage + 1)}
+          disabled={!canGoNext}
+          aria-disabled={!canGoNext}
+          className="p-1 rounded transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary hover:bg-surface-secondary text-text-secondary hover:text-text-primary cursor-pointer"
           title={strings.common.table.nextPage}
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
         <button
           type="button"
-          onClick={() => onPageChange(totalPages)}
-          disabled={safePage === totalPages}
-          className="px-2 py-1 rounded font-bold disabled:opacity-30 hover:bg-surface text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:cursor-not-allowed"
+          onClick={() => onPageChange(safeTotalPages)}
+          disabled={!canGoNext}
+          aria-disabled={!canGoNext}
+          className="px-2 py-1 rounded font-bold transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary hover:bg-surface-secondary text-text-secondary hover:text-text-primary cursor-pointer"
           title={strings.common.table.lastPage}
         >
           »
@@ -100,7 +115,9 @@ export default function TablePagination({
       {/* Right: Record range */}
       <div className="flex-1 min-w-0 flex items-center justify-end text-right">
         <span>
-          {strings.common.table.from} <strong className="text-text-primary font-semibold">{startRecord}</strong> {strings.common.table.to}{' '}
+          {strings.common.table.from}{' '}
+          <strong className="text-text-primary font-semibold">{startRecord}</strong>{' '}
+          {strings.common.table.to}{' '}
           <strong className="text-text-primary font-semibold">{endRecord}</strong>
           {totalRecords > 0 && (
             <span className="text-text-muted">{strings.common.table.rangeOf(totalRecords)}</span>

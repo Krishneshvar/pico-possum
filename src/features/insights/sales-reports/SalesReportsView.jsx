@@ -8,18 +8,18 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  X,
   Filter,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise, formatDate, getCurrencySymbol } from '../../../lib/formatters';
-import { toast } from '../../../stores/toast.store';
+import { getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker, { formatToIso } from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { strings } from '../../../lib/strings';
+import { defaultColKeys, getSalesReportColumns } from './SalesReportColumns';
+import SalesReportTotalsBar from './SalesReportTotalsBar';
+import { exportSalesReportCsv, exportSalesReportXlsx } from './salesReportExport';
 
 export default function SalesReportsView() {
   const currencySymbol = getCurrencySymbol();
@@ -36,17 +36,6 @@ export default function SalesReportsView() {
   const [maxAmount, setMaxAmount] = useState('');
 
   // Column visibility
-  const defaultColKeys = [
-    'period',
-    'total_transactions',
-    'cash_paise',
-    'upi_paise',
-    'card_paise',
-    'gift_card_paise',
-    'total_discount_paise',
-    'total_sales_paise',
-    'net_sales',
-  ];
   const [visibleColKeys, setVisibleColKeys] = useState(defaultColKeys);
   const [colMenuOpen, setColMenuOpen] = useState(false);
   const colMenuRef = useRef(null);
@@ -111,105 +100,7 @@ export default function SalesReportsView() {
   }, [filteredData]);
 
   const ALL_COLUMNS = useMemo(
-    () => [
-      {
-        key: 'period',
-        label: strings.salesReports.columns.periodLabel(reportType),
-        className: 'font-mono text-text-primary font-semibold text-xs whitespace-nowrap',
-        minWidth: 120,
-        exportValue: (r) => (reportType === 'yearly' ? r.period : formatDate(r.period)),
-        render: (r) => (reportType === 'yearly' ? r.period : formatDate(r.period)),
-      },
-      {
-        key: 'total_transactions',
-        label: strings.salesReports.columns.billsCount,
-        headerClassName: 'text-center',
-        className: 'text-center text-xs font-mono',
-        minWidth: 90,
-        exportValue: (r) => r.total_transactions,
-        render: (r) => r.total_transactions,
-        isNumeric: true,
-        totalKey: 'transactions',
-      },
-      {
-        key: 'cash_paise',
-        label: strings.salesReports.columns.cashSettled,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value text-text-secondary text-xs',
-        minWidth: 110,
-        exportValue: (r) => (r.cash_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.cash_paise),
-        isNumeric: true,
-        totalKey: 'cash',
-      },
-      {
-        key: 'upi_paise',
-        label: strings.salesReports.columns.upiQr,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value text-text-secondary text-xs',
-        minWidth: 110,
-        exportValue: (r) => (r.upi_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.upi_paise),
-        isNumeric: true,
-        totalKey: 'upi',
-      },
-      {
-        key: 'card_paise',
-        label: strings.salesReports.columns.cardTerminal,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value text-text-secondary text-xs',
-        minWidth: 110,
-        exportValue: (r) => (r.card_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.card_paise),
-        isNumeric: true,
-        totalKey: 'card',
-      },
-      {
-        key: 'gift_card_paise',
-        label: strings.salesReports.columns.giftCard,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value text-text-secondary text-xs',
-        minWidth: 100,
-        exportValue: (r) => (r.gift_card_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.gift_card_paise),
-        isNumeric: true,
-        totalKey: 'giftCard',
-      },
-      {
-        key: 'total_discount_paise',
-        label: strings.salesReports.columns.discounts,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value text-amber-600 text-xs',
-        minWidth: 100,
-        exportValue: (r) => (r.total_discount_paise / 100).toFixed(2),
-        render: (r) => (r.total_discount_paise > 0 ? `-${formatPaise(r.total_discount_paise)}` : strings.common.states.emptyValue),
-        isNumeric: true,
-        totalKey: 'discount',
-      },
-      {
-        key: 'total_sales_paise',
-        label: strings.salesReports.columns.grossSales,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value text-text-primary font-medium text-xs',
-        minWidth: 120,
-        exportValue: (r) => (r.total_sales_paise / 100).toFixed(2),
-        render: (r) => formatPaise(r.total_sales_paise),
-        isNumeric: true,
-        totalKey: 'gross',
-      },
-      {
-        key: 'net_sales',
-        label: strings.salesReports.columns.netSales,
-        headerClassName: 'text-right',
-        className: 'text-right financial-value font-bold text-text-primary text-xs',
-        minWidth: 120,
-        exportValue: (r) => ((r.total_sales_paise - r.total_discount_paise) / 100).toFixed(2),
-        render: (r) => formatPaise(Math.max(0, r.total_sales_paise - r.total_discount_paise)),
-        sortValue: (r) => Math.max(0, (r.total_sales_paise || 0) - (r.total_discount_paise || 0)),
-        isNumeric: true,
-        totalKey: 'net',
-      },
-    ],
+    () => getSalesReportColumns(reportType),
     [reportType]
   );
 
@@ -241,75 +132,11 @@ export default function SalesReportsView() {
     setMaxAmount('');
   };
 
-  const handleExportCsv = async () => {
-    if (!filteredData.length || !visibleColumns.length) {
-      toast.warning(strings.salesReports.export.noData);
-      return;
-    }
+  const handleExportCsv = () =>
+    exportSalesReportCsv({ filteredData, visibleColumns, reportType, fromDate, toDate, todayIso });
 
-    const headers = visibleColumns.map((c) => escapeCsv(c.label));
-    const rows = filteredData.map((row) =>
-      visibleColumns.map((col) => escapeCsv(col.exportValue(row)))
-    );
-
-    const dateRangeLabel = fromDate && toDate
-      ? `${fromDate}_to_${toDate}`
-      : fromDate
-        ? `from_${fromDate}`
-        : toDate
-          ? `to_${toDate}`
-          : reportType === 'today'
-            ? todayIso
-            : 'all_time';
-
-    await exportToCsv({
-      filename: strings.salesReports.export.filename(reportType, dateRangeLabel, 'csv'),
-      headers,
-      rows,
-      count: filteredData.length,
-      entityName: strings.salesReports.export.entityName,
-    });
-  };
-
-  const handleExportXlsx = async () => {
-    if (!filteredData.length || !visibleColumns.length) {
-      toast.warning(strings.salesReports.export.noData);
-      return;
-    }
-
-    const headers = visibleColumns.map((c) => c.label);
-    const rows = filteredData.map((row) =>
-      visibleColumns.map((col) => {
-        const val = col.exportValue(row);
-        if (col.isNumeric && !isNaN(val)) return Number(val);
-        return val;
-      })
-    );
-
-    const colWidths = visibleColumns.map((col) => ({
-      wch: Math.max(col.label.length + 4, 14),
-    }));
-
-    const dateRangeLabel = fromDate && toDate
-      ? `${fromDate}_to_${toDate}`
-      : fromDate
-        ? `from_${fromDate}`
-        : toDate
-          ? `to_${toDate}`
-          : reportType === 'today'
-            ? todayIso
-            : 'all_time';
-
-    await exportToXlsx({
-      filename: strings.salesReports.export.filename(reportType, dateRangeLabel, 'xlsx'),
-      sheetName: strings.salesReports.export.sheetName,
-      headers,
-      rows,
-      colWidths,
-      count: filteredData.length,
-      entityName: strings.salesReports.export.entityName,
-    });
-  };
+  const handleExportXlsx = () =>
+    exportSalesReportXlsx({ filteredData, visibleColumns, reportType, fromDate, toDate, todayIso });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
@@ -402,48 +229,46 @@ export default function SalesReportsView() {
           <button
             type="button"
             onClick={() => refetch()}
-            className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
-            title={strings.salesReports.view.refreshReport}
+            className="p-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary transition-colors border border-border-default cursor-pointer shadow-2xs"
+            title={strings.common.actions.refresh}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* ── Row 2: Period & Date Range Toolbar ── */}
-      <div className="px-5 py-2.5 border-b border-border-default bg-surface flex items-center gap-3 flex-wrap text-xs shrink-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-text-muted font-medium">{strings.salesReports.filters.period}</span>
+      {/* ── Row 2: Filter Toolbar ── */}
+      <div className="px-5 py-2.5 border-b border-border-default bg-surface flex items-center gap-3 flex-wrap shrink-0">
+        <div className="w-36">
           <Select
             value={reportType}
             onChange={(val) => setReportType(val)}
             options={[
-              { value: 'today', label: strings.salesReports.filters.reportTypes.today },
-              { value: 'daily', label: strings.salesReports.filters.reportTypes.daily },
-              { value: 'monthly', label: strings.salesReports.filters.reportTypes.monthly },
-              { value: 'yearly', label: strings.salesReports.filters.reportTypes.yearly },
+              { value: 'today', label: strings.salesReports.periodOptions.today },
+              { value: 'daily', label: strings.salesReports.periodOptions.daily },
+              { value: 'weekly', label: strings.salesReports.periodOptions.weekly },
+              { value: 'monthly', label: strings.salesReports.periodOptions.monthly },
+              { value: 'yearly', label: strings.salesReports.periodOptions.yearly },
             ]}
           />
         </div>
 
+        {/* Date Pickers */}
         <div className="flex items-center gap-1.5">
-          <span className="text-text-muted font-medium">{strings.salesReports.filters.from}</span>
           <DatePicker
             value={fromDate}
             onChange={(val) => setFromDate(val)}
-            placeholder={strings.salesReports.filters.fromDatePlaceholder}
+            placeholder={strings.salesReports.filters.fromDate}
           />
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-text-muted font-medium">{strings.salesReports.filters.to}</span>
+          <span className="text-xs text-text-muted">{strings.salesReports.filters.dateTo}</span>
           <DatePicker
             value={toDate}
             onChange={(val) => setToDate(val)}
-            placeholder={strings.salesReports.filters.toDatePlaceholder}
+            placeholder={strings.salesReports.filters.toDate}
           />
         </div>
 
+        {/* Advanced Filters Toggle */}
         <button
           type="button"
           onClick={() => setAdvancedOpen((o) => !o)}
@@ -471,34 +296,34 @@ export default function SalesReportsView() {
       {/* ── Row 3: Collapsible Advanced Filters ── */}
       {advancedOpen && (
         <div className="px-5 py-2.5 bg-surface-secondary border-b border-border-default flex items-center gap-3 text-xs flex-wrap animate-fade-in shrink-0">
-          <span className="text-text-muted font-semibold">Filter Threshold:</span>
+          <span className="text-text-muted font-semibold">{strings.salesReports.filters.filterThreshold}</span>
           <Select
             value={amountCol}
             onChange={(val) => setAmountCol(val)}
             options={[
-              { value: 'gross', label: 'Gross Sales' },
-              { value: 'net', label: 'Net Sales' },
-              { value: 'cash', label: 'Cash' },
-              { value: 'upi', label: 'UPI' },
-              { value: 'card', label: 'Card' },
-              { value: 'gift_card', label: 'Gift Card' },
+              { value: 'gross', label: strings.salesReports.filters.amountFields.gross },
+              { value: 'net', label: strings.salesReports.filters.amountFields.net },
+              { value: 'cash', label: strings.salesReports.filters.amountFields.cash },
+              { value: 'upi', label: strings.salesReports.filters.amountFields.upi },
+              { value: 'card', label: strings.salesReports.filters.amountFields.card },
+              { value: 'gift_card', label: strings.salesReports.filters.amountFields.giftCard },
             ]}
           />
           <div className="flex items-center gap-1.5">
             <input
               type="number"
               step="any"
-              placeholder={`Min ${currencySymbol}`}
+              placeholder={strings.salesReports.filters.minAmountPlaceholder(currencySymbol)}
               value={minAmount}
               onChange={(e) => setMinAmount(e.target.value)}
               onInput={(e) => setMinAmount(e.target.value)}
               className="w-20 bg-surface border border-border-strong text-text-primary rounded-lg px-2 py-1 font-mono focus:border-brand focus:outline-none"
             />
-            <span className="text-text-muted">–</span>
+            <span className="text-text-muted">{strings.salesReports.filters.rangeSeparator}</span>
             <input
               type="number"
               step="any"
-              placeholder={`Max ${currencySymbol}`}
+              placeholder={strings.salesReports.filters.maxAmountPlaceholder(currencySymbol)}
               value={maxAmount}
               onChange={(e) => setMaxAmount(e.target.value)}
               onInput={(e) => setMaxAmount(e.target.value)}
@@ -513,7 +338,7 @@ export default function SalesReportsView() {
                 }}
                 className="text-danger hover:underline text-xs cursor-pointer ml-1"
               >
-                Clear
+                {strings.common.actions.clear}
               </button>
             )}
           </div>
@@ -521,7 +346,7 @@ export default function SalesReportsView() {
       )}
 
       {/* ── Main Breakdown Table ── */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <DataTable
           columns={visibleColumns}
           persistKey="sales-reports"
@@ -529,54 +354,16 @@ export default function SalesReportsView() {
           keyFn={(r) => r.period}
           searchKeys={['period']}
           pageSize={25}
-          emptyMessage="No sales records found for the selected period."
+          emptyMessage={strings.salesReports.empty.noRecords}
           isLoading={isLoading}
         />
       </div>
 
       {/* ── Sticky Financial Totals Bar ── */}
-      <div className="border-t border-border-default bg-surface px-5 py-2.5 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 text-xs shrink-0 shadow-xs z-20">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-text-primary uppercase tracking-wide">
-            {strings.salesReports.summary.totals}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 flex-wrap">
-          {visibleColumns.map((col) => {
-            if (!col.totalKey) return null;
-            let displayVal = '';
-
-            if (col.totalKey === 'transactions') {
-              displayVal = strings.salesReports.summary.transactions(totals.transactions);
-            } else if (col.totalKey === 'cash') {
-              displayVal = formatPaise(totals.cash);
-            } else if (col.totalKey === 'upi') {
-              displayVal = formatPaise(totals.upi);
-            } else if (col.totalKey === 'card') {
-              displayVal = formatPaise(totals.card);
-            } else if (col.totalKey === 'giftCard') {
-              displayVal = formatPaise(totals.giftCard);
-            } else if (col.totalKey === 'discount') {
-              displayVal = formatPaise(totals.discount);
-            } else if (col.totalKey === 'gross') {
-              displayVal = formatPaise(totals.gross);
-            } else if (col.totalKey === 'net') {
-              displayVal = formatPaise(totals.net);
-            }
-
-            return (
-              <div
-                key={col.key}
-                className="flex items-center gap-1.5 bg-surface-secondary px-2 py-1 rounded-md border border-border-default"
-              >
-                <span className="text-[10px] text-text-muted uppercase tracking-wider">{col.label}:</span>
-                <span className="font-semibold text-text-primary financial-value">{displayVal}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SalesReportTotalsBar
+        visibleColumns={visibleColumns}
+        totals={totals}
+      />
     </div>
   );
 }

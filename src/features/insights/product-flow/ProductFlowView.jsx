@@ -7,24 +7,20 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Package,
-  Calendar,
   RotateCcw,
   RefreshCw,
-  ShoppingBag,
-  TrendingUp,
-  Tag,
   ExternalLink,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { toast } from '../../../stores/toast.store';
 import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
+import ProductFlowStats from './ProductFlowStats';
+import { exportProductFlowCsv, exportProductFlowXlsx } from './productFlowExport';
 
 export default function ProductFlowView() {
   const { openOrFocus } = useWorkspaceStore();
@@ -190,122 +186,25 @@ export default function ProductFlowView() {
     setToDate('');
   };
 
-  const handleExportCsv = async () => {
-    if (!hasSelectedProduct || !flowItems.length) {
-      toast.warning(strings.productFlow.export.selectProductWarning);
-      return;
-    }
-
-    const headers = [
-      strings.common.labels.product,
-      strings.common.labels.dateTime,
-      strings.productFlow.export.headers.invoice,
-      strings.common.labels.customer,
-      strings.productFlow.export.headers.eventType,
-      strings.productFlow.export.headers.soldQty,
-      strings.productFlow.export.headers.soldUnitPrice(currencySymbol),
-      strings.productFlow.export.headers.soldTotalAmount(currencySymbol),
-      strings.common.labels.paymentMethod,
-    ];
-
-    const prodLabel = selectedProduct
-      ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
-      : strings.common.labels.product;
-
-    const rows = flowItems.map((r) => [
-      escapeCsv(prodLabel),
-      escapeCsv(formatDateTime(r.created_at)),
-      escapeCsv(r.invoice_number || strings.common.states.emptyValue),
-      escapeCsv(r.customer_name || strings.productFlow.productFlow.walkInCustomer),
-      escapeCsv(r.event_type || ''),
-      escapeCsv(r.quantity || 0),
-      escapeCsv(((r.unit_price_paise || 0) / 100).toFixed(2)),
-      escapeCsv(((r.total_paise || 0) / 100).toFixed(2)),
-      escapeCsv(r.payment_method || strings.common.states.emptyValue),
-    ]);
-
-    const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    const dateRangeLabel = fromDate && toDate
-      ? `${fromDate}_to_${toDate}`
-      : fromDate
-        ? `from_${fromDate}`
-        : toDate
-          ? `to_${toDate}`
-          : 'all_time';
-
-    await exportToCsv({
-      filename: `sales_history_${safeProdName}_${dateRangeLabel}.csv`,
-      headers,
-      rows,
-      count: flowItems.length,
-      entityName: strings.productFlow.export.salesRecords,
+  const handleExportCsv = () =>
+    exportProductFlowCsv({
+      hasSelectedProduct,
+      flowItems,
+      selectedProduct,
+      currencySymbol,
+      fromDate,
+      toDate,
     });
-  };
 
-  const handleExportXlsx = async () => {
-    if (!hasSelectedProduct || !flowItems.length) {
-      toast.warning(strings.productFlow.export.selectProductWarning);
-      return;
-    }
-
-    const headers = [
-      strings.common.labels.product,
-      strings.common.labels.dateTime,
-      strings.productFlow.export.headers.invoice,
-      strings.common.labels.customer,
-      strings.productFlow.export.headers.eventType,
-      strings.productFlow.export.headers.soldQty,
-      strings.productFlow.export.headers.soldUnitPrice(currencySymbol),
-      strings.productFlow.export.headers.soldTotalAmount(currencySymbol),
-      strings.common.labels.paymentMethod,
-    ];
-
-    const prodLabel = selectedProduct
-      ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
-      : strings.common.labels.product;
-
-    const rows = flowItems.map((r) => [
-      prodLabel,
-      formatDateTime(r.created_at),
-      r.invoice_number || strings.common.states.emptyValue,
-      r.customer_name || strings.productFlow.productFlow.walkInCustomer,
-      r.event_type || '',
-      r.quantity || 0,
-      parseFloat(((r.unit_price_paise || 0) / 100).toFixed(2)),
-      parseFloat(((r.total_paise || 0) / 100).toFixed(2)),
-      r.payment_method || strings.common.states.emptyValue,
-    ]);
-
-    const colWidths = [
-      { wch: 22 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 20 },
-      { wch: 14 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 16 },
-      { wch: 14 },
-    ];
-    const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    const dateRangeLabel = fromDate && toDate
-      ? `${fromDate}_to_${toDate}`
-      : fromDate
-        ? `from_${fromDate}`
-        : toDate
-          ? `to_${toDate}`
-          : 'all_time';
-
-    await exportToXlsx({
-      filename: `sales_history_${safeProdName}_${dateRangeLabel}.xlsx`,
-      sheetName: strings.productFlow.export.salesHistorySheet,
-      headers,
-      rows,
-      colWidths,
-      count: flowItems.length,
-      entityName: strings.productFlow.export.salesRecords,
+  const handleExportXlsx = () =>
+    exportProductFlowXlsx({
+      hasSelectedProduct,
+      flowItems,
+      selectedProduct,
+      currencySymbol,
+      fromDate,
+      toDate,
     });
-  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas text-content overflow-hidden">
@@ -397,85 +296,10 @@ export default function ProductFlowView() {
         {hasSelectedProduct ? (
           <div className="flex-1 flex flex-col p-6 space-y-6">
             {/* Product Summary Card */}
-            <div className="p-4 rounded-xl bg-surface border border-border">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-semibold text-content">
-                      {selectedProduct?.name}
-                    </h2>
-                    {selectedProduct?.sku && (
-                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-secondary border border-border text-content-secondary">
-                        {strings.productFlow.productFlow.skuBadge(selectedProduct.sku)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-content-secondary">
-                    {strings.productFlow.productFlow.summarySubtitle}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
-                    <ShoppingBag className="w-3.5 h-3.5 text-brand" />
-                    <span className="text-xs text-content-secondary">
-                      {strings.productFlow.productFlow.totalSold}
-                    </span>
-                    <span className="text-xs font-bold text-content financial-value">
-                      {strings.productFlow.productFlow.units(summaryMetrics.unitsSold)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
-                    <Receipt className="w-3.5 h-3.5 text-success" />
-                    <span className="text-xs text-content-secondary">
-                      {strings.productFlow.productFlow.totalRevenue}
-                    </span>
-                    <span className="text-xs font-bold text-content financial-value">
-                      {formatPaise(summaryMetrics.totalRevenue)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
-                    <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
-                    <span className="text-xs text-content-secondary">
-                      {strings.productFlow.productFlow.avgSoldPrice}
-                    </span>
-                    <span className="text-xs font-bold text-content financial-value">
-                      {formatPaise(summaryMetrics.avgPrice)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
-                    <Tag className="w-3.5 h-3.5 text-content-muted" />
-                    <span className="text-xs text-content-secondary">
-                      {strings.productFlow.productFlow.mrp}
-                    </span>
-                    <span className="text-xs font-semibold text-content financial-value">
-                      {formatPaise(selectedProduct?.mrp_paise || 0)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-secondary border border-border">
-                    <Package className="w-3.5 h-3.5 text-amber-600" />
-                    <span className="text-xs text-content-secondary">
-                      {strings.productFlow.productFlow.currentStock}
-                    </span>
-                    <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full border financial-value ${
-                        (selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0) <= 5
-                          ? 'bg-warning/10 text-warning border-warning/30'
-                          : 'bg-success/10 text-success border-success/30'
-                      }`}
-                    >
-                      {strings.productFlow.productFlow.units(
-                        selectedProduct?.stock_quantity ?? selectedProduct?.current_stock ?? 0
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ProductFlowStats
+              selectedProduct={selectedProduct}
+              summaryMetrics={summaryMetrics}
+            />
 
             {/* Transaction Flow Table */}
             <div className="flex-1 overflow-hidden border border-border rounded-xl bg-surface flex flex-col">
@@ -484,7 +308,7 @@ export default function ProductFlowView() {
                   {strings.productFlow.productFlow.transactionRecords}
                 </h3>
               </div>
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                 <DataTable
                   columns={columns}
                   persistKey="product-flow"

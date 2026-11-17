@@ -1,20 +1,17 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
-  ChevronDown,
   ChevronsUpDown,
   ArrowUp,
   ArrowDown,
-  X,
   GripVertical,
 } from 'lucide-react';
 import { nextSortState, sortRows } from '../../lib/sort';
-import Select from './Select';
 import { strings } from '../../lib/strings';
-import { readTableState, writeTableState, getSortValue } from './datatable/tableState';
-import MultiSelectDropdown from './datatable/MultiSelectDropdown';
-import RangeFilter from './datatable/RangeFilter';
-import DateRangeFilter from './datatable/DateRangeFilter';
+import { getSortValue } from './datatable/tableState';
 import TablePagination from './datatable/TablePagination';
+import DataTableToolbar from './datatable/DataTableToolbar';
+import { useTableColumns } from './datatable/useTableColumns';
+import { useTableFiltering } from './datatable/useTableFiltering';
 
 export default function DataTable({
   columns = [],
@@ -33,471 +30,70 @@ export default function DataTable({
   onFilteredChange,
   selectedRowId = null,
 }) {
-  const [search, setSearch] = useState('');
-  const [selectValues, setSelectValues] = useState({});
-  const [multiValues, setMultiValues] = useState({});
-  const [rangeValues, setRangeValues] = useState({});
-  const [dateValues, setDateValues] = useState({});
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState({ key: null, dir: null });
 
-  // ── Column Ordering State (persisted per table) ────────────────────────────
-  const persistedTableState = useMemo(() => readTableState(persistKey), [persistKey]);
+  const filterState = useTableFiltering({ data, filters, searchKeys, setPage });
+  const columnState = useTableColumns({ columns, persistKey });
 
-  const [colOrder, setColOrder] = useState(() => {
-    const currentKeys = columns.map((c) => c.key);
-    const savedOrder = persistedTableState?.order ?? [];
-    const kept = savedOrder.filter((k) => currentKeys.includes(k));
-    return [...kept, ...currentKeys.filter((k) => !kept.includes(k))];
-  });
-  const [draggedColKey, setDraggedColKey] = useState(null);
-  const [dragOverColKey, setDragOverColKey] = useState(null);
-
-  // ── Column Resizing State (persisted per table) ────────────────────────────
-  const [colWidths, setColWidths] = useState(() => {
-    const savedWidths = persistedTableState?.widths ?? {};
-    const validWidths = {};
-    for (const col of columns) {
-      const width = savedWidths[col.key];
-      if (typeof width === 'number' && Number.isFinite(width) && width > 0) {
-        validWidths[col.key] = width;
-      }
-    }
-    return validWidths;
-  });
-  const isResizing = useRef(false);
-  const suppressHeaderClick = useRef(false);
-
-  // Sync colOrder if columns change
+  // Reset page to 1 when data changes significantly
   useEffect(() => {
-    const currentKeys = columns.map((c) => c.key);
-    setColOrder((prev) => {
-      const filteredPrev = prev.filter((k) => currentKeys.includes(k));
-      const newKeys = currentKeys.filter((k) => !filteredPrev.includes(k));
-      const next = [...filteredPrev, ...newKeys];
-      const unchanged =
-        next.length === prev.length && next.every((key, i) => key === prev[i]);
-      return unchanged ? prev : next;
-    });
-  }, [columns]);
+    setPage(1);
+  }, [data.length]);
 
-  // Persist column order/widths
+  // Notify parent of filtered data changes
   useEffect(() => {
-    if (!persistKey) return;
-    const timer = setTimeout(() => {
-      writeTableState(persistKey, { order: colOrder, widths: colWidths });
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [persistKey, colOrder, colWidths]);
-
-  const orderedColumns = useMemo(() => {
-    const colMap = new Map(columns.map((c) => [c.key, c]));
-    return colOrder.map((key) => colMap.get(key)).filter(Boolean);
-  }, [colOrder, columns]);
-
-  // ── Drag & Drop Column Reordering ──────────────────────────────────────────
-  const handleDragStart = (e, colKey) => {
-    if (isResizing.current) {
-      e.preventDefault();
-      return;
+    if (onFilteredChange) {
+      onFilteredChange(filterState.filtered);
     }
-    suppressHeaderClick.current = true;
-    setDraggedColKey(colKey);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', colKey);
-  };
-
-  const handleDragOver = (e, targetKey) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverColKey !== targetKey) {
-      setDragOverColKey(targetKey);
-    }
-  };
-
-  const handleDrop = (e, targetKey) => {
-    e.preventDefault();
-    if (!draggedColKey || draggedColKey === targetKey) {
-      setDraggedColKey(null);
-      setDragOverColKey(null);
-      return;
-    }
-
-    setColOrder((prev) => {
-      const next = [...prev];
-      const fromIdx = next.indexOf(draggedColKey);
-      const toIdx = next.indexOf(targetKey);
-      if (fromIdx === -1 || toIdx === -1) return prev;
-      next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, draggedColKey);
-      return next;
-    });
-
-    setDraggedColKey(null);
-    setDragOverColKey(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedColKey(null);
-    setDragOverColKey(null);
-    setTimeout(() => {
-      suppressHeaderClick.current = false;
-    }, 250);
-  };
-
-  // ── Column Resizing Drag Handler ───────────────────────────────────────────
-  const startResizing = (e, colKey) => {
-    e.preventDefault();
-    e.stopPropagation();
-    isResizing.current = true;
-
-    const startX = e.clientX;
-    const thEl = e.currentTarget.parentElement;
-    const startWidth = thEl ? thEl.getBoundingClientRect().width : (colWidths[colKey] || 120);
-
-    const onMouseMove = (moveEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const newWidth = Math.max(50, Math.round(startWidth + delta));
-      setColWidths((prev) => ({
-        ...prev,
-        [colKey]: newWidth,
-      }));
-    };
-
-    const onMouseUp = () => {
-      isResizing.current = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
-
-  // ── Filter change handlers ──────────────────────────────────────────────────
-  const handleSearch = (val) => {
-    setSearch(val);
-    setPage(1);
-  };
-
-  const handleSelect = (key, val) => {
-    setSelectValues((p) => ({ ...p, [key]: val }));
-    setPage(1);
-  };
-
-  const handleMulti = (key, vals) => {
-    setMultiValues((p) => ({ ...p, [key]: vals }));
-    setPage(1);
-  };
-
-  const handleRangeMin = (key, val) => {
-    setRangeValues((p) => ({ ...p, [key]: { ...p[key], min: val } }));
-    setPage(1);
-  };
-
-  const handleRangeMax = (key, val) => {
-    setRangeValues((p) => ({ ...p, [key]: { ...p[key], max: val } }));
-    setPage(1);
-  };
-
-  const dateRangeKey = (f) => f.key ?? `${f.fromKey}__${f.toKey}`;
-
-  const handleDateFrom = (dk, val) => {
-    setDateValues((p) => ({ ...p, [dk]: { ...p[dk], from: val } }));
-    setPage(1);
-  };
-
-  const handleDateTo = (dk, val) => {
-    setDateValues((p) => ({ ...p, [dk]: { ...p[dk], to: val } }));
-    setPage(1);
-  };
-
-  // Enrich filter options with record counts from `data`
-  const enrichedFilters = useMemo(() => {
-    if (!filters || filters.length === 0) return [];
-    return filters.map((f) => {
-      if ((f.type === 'select' || f.type === 'multiselect') && Array.isArray(f.options)) {
-        const filterFn = f.filterFn || f.predicate;
-        const newOptions = f.options.map((opt) => {
-          let count = 0;
-          if (typeof filterFn === 'function') {
-            count = data.filter((row) => filterFn(row, [opt.value])).length;
-          } else {
-            count = data.filter((row) => String(row[f.key]) === String(opt.value)).length;
-          }
-          const baseLabel = String(opt.label).replace(/\s*\(\d+\)$/, '');
-          return {
-            ...opt,
-            label: `${baseLabel} (${count})`,
-          };
-        });
-        return { ...f, options: newOptions };
-      }
-      return f;
-    });
-  }, [filters, data]);
-
-  // ── Filter pipeline ────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    let result = data;
-
-    // Global text search across searchKeys
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      result = result.filter((row) => {
-        if (!searchKeys || searchKeys.length === 0) {
-          return Object.values(row).some((v) =>
-            v !== null && v !== undefined && String(v).toLowerCase().includes(q)
-          );
-        }
-        return searchKeys.some((k) => {
-          const v = row[k];
-          return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
-        });
-      });
-    }
-
-    // Single-select filters
-    for (const [key, val] of Object.entries(selectValues)) {
-      if (val) {
-        const filterDef = filters.find((flt) => flt.key === key);
-        if (filterDef && typeof filterDef.filterFn === 'function') {
-          result = result.filter((row) => filterDef.filterFn(row, val));
-        } else {
-          result = result.filter((row) => String(row[key]) === String(val));
-        }
-      }
-    }
-
-    // Multi-select filters
-    for (const [key, vals] of Object.entries(multiValues)) {
-      if (vals && vals.length > 0) {
-        const filterDef = filters.find((flt) => flt.key === key);
-        if (filterDef && typeof filterDef.filterFn === 'function') {
-          result = result.filter((row) => filterDef.filterFn(row, vals));
-        } else {
-          result = result.filter((row) => vals.map(String).includes(String(row[key])));
-        }
-      }
-    }
-
-    // Range (number) filters
-    for (const f of filters.filter((flt) => (flt.type ?? 'select') === 'range')) {
-      const rv = rangeValues[f.key];
-      if (!rv) continue;
-      const { min, max } = rv;
-      const hasMin = min !== '' && min !== undefined && !isNaN(parseFloat(min));
-      const hasMax = max !== '' && max !== undefined && !isNaN(parseFloat(max));
-      const minNum = hasMin ? parseFloat(min) : null;
-      const maxNum = hasMax ? parseFloat(max) : null;
-
-      if (hasMin || hasMax) {
-        result = result.filter((row) => {
-          if (typeof f.filterFn === 'function') {
-            return f.filterFn(row, { min: minNum, max: maxNum, rawMin: min, rawMax: max });
-          }
-          const raw = f.transform ? f.transform(row[f.key], row) : row[f.key];
-          const valNum = parseFloat(raw);
-          if (isNaN(valNum)) return false;
-          if (hasMin && valNum < minNum) return false;
-          if (hasMax && valNum > maxNum) return false;
-          return true;
-        });
-      }
-    }
-
-    // Date range filters
-    for (const f of filters.filter((flt) => flt.type === 'daterange')) {
-      const dk = dateRangeKey(f);
-      const dv = dateValues[dk];
-      if (!dv) continue;
-      const { from, to } = dv;
-      if (from) {
-        result = result.filter((row) => {
-          const val = row[f.fromKey ?? f.key];
-          if (!val) return false;
-          return new Date(val) >= new Date(from);
-        });
-      }
-      if (to) {
-        result = result.filter((row) => {
-          const val = row[f.toKey ?? f.key];
-          if (!val) return false;
-          const end = new Date(to);
-          end.setHours(23, 59, 59, 999);
-          return new Date(val) <= end;
-        });
-      }
-    }
-
-    return result;
-  }, [data, search, searchKeys, selectValues, multiValues, rangeValues, dateValues, filters]);
-
-  // Notify parent of filtered dataset if requested
-  useEffect(() => {
-    if (onFilteredChange) onFilteredChange(filtered);
-  }, [filtered, onFilteredChange]);
-
-  // ── Sort pipeline ──────────────────────────────────────────────────────────
-  const sorted = useMemo(() => {
-    if (!sort.key || !sort.dir) return filtered;
-    const col = columns.find((c) => c.key === sort.key);
-    return sortRows(filtered, sort, (row) => (col ? getSortValue(row, col) : row[sort.key]));
-  }, [filtered, sort, columns]);
-
-  // ── Pagination ─────────────────────────────────────────────────────────────
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const startIdx = (safePage - 1) * pageSize;
-  const slice = sorted.slice(startIdx, startIdx + pageSize);
-
-  const goPage = (p) => setPage(Math.max(1, Math.min(p, totalPages)));
+  }, [filterState.filtered, onFilteredChange]);
 
   const toggleSort = (colKey) => {
-    setSort((prev) => nextSortState(prev, colKey));
-    setPage(1);
+    const col = columns.find((c) => c.key === colKey);
+    const nextDir = nextSortState(sort.key === colKey ? sort.dir : null, col?.naturalSortDir);
+    setSort({ key: nextDir ? colKey : null, dir: nextDir });
   };
 
-  const hasActiveFilters =
-    search.trim() ||
-    Object.values(selectValues).some(Boolean) ||
-    Object.values(multiValues).some((v) => v && v.length > 0) ||
-    Object.values(rangeValues).some((v) => v?.min || v?.max) ||
-    Object.values(dateValues).some((v) => v?.from || v?.to) ||
-    filters.some((f) => f.type === 'daterange' && (f.fromVal || f.toVal));
+  // Sort pipeline
+  const sorted = useMemo(() => {
+    if (!sort.key || !sort.dir) return filterState.filtered;
+    const col = columns.find((c) => c.key === sort.key);
+    return sortRows(filterState.filtered, (row) => getSortValue(row, col, sort.key), sort.dir);
+  }, [filterState.filtered, sort, columns]);
 
-  const clearAllFilters = () => {
-    setSearch('');
-    setSelectValues({});
-    setMultiValues({});
-    setRangeValues({});
-    setDateValues({});
-    for (const f of filters) {
-      if (f.type === 'daterange') {
-        f.onFromChange?.('');
-        f.onToChange?.('');
-      }
-    }
-    setPage(1);
-  };
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * pageSize;
+  const startRecord = sorted.length === 0 ? 0 : startIdx + 1;
+  const endRecord = Math.min(startIdx + pageSize, sorted.length);
+  const pagedData = useMemo(() => {
+    return sorted.slice(startIdx, startIdx + pageSize);
+  }, [sorted, startIdx, pageSize]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-canvas">
-      {/* ── Standardized Toolbar ── */}
-      <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border-default bg-surface shrink-0 flex-wrap">
-        {/* Search Input */}
-        <div className="relative flex-1 min-w-44 max-w-xs">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-            />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder={strings.common.table.searchRecords}
-            className="w-full pl-8 pr-3 py-1.5 bg-surface-secondary border border-border-default rounded-lg text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
-          />
-        </div>
-
-        {/* Dynamic Filters */}
-        {enrichedFilters.map((f) => {
-          const type = f.type ?? 'select';
-
-          if (type === 'select') {
-            return (
-              <Select
-                key={f.key}
-                value={selectValues[f.key] ?? ''}
-                onChange={(val) => handleSelect(f.key, val)}
-                placeholder={f.label}
-                options={[
-                  { value: '', label: strings.common.table.allFilter(f.label) },
-                  ...f.options,
-                ]}
-              />
-            );
-          }
-
-          if (type === 'multiselect') {
-            return (
-              <MultiSelectDropdown
-                key={f.key}
-                label={f.label}
-                options={f.options}
-                selected={multiValues[f.key] ?? []}
-                onChange={(vals) => handleMulti(f.key, vals)}
-              />
-            );
-          }
-
-          if (type === 'range') {
-            const rv = rangeValues[f.key] ?? {};
-            return (
-              <RangeFilter
-                key={f.key}
-                label={f.label}
-                unit={f.unit}
-                minVal={rv.min ?? ''}
-                maxVal={rv.max ?? ''}
-                onMinChange={(v) => handleRangeMin(f.key, v)}
-                onMaxChange={(v) => handleRangeMax(f.key, v)}
-              />
-            );
-          }
-
-          if (type === 'daterange') {
-            const dk = dateRangeKey(f);
-            const dv = dateValues[dk] ?? {};
-            const curFrom = f.fromVal !== undefined ? f.fromVal : (dv.from ?? '');
-            const curTo = f.toVal !== undefined ? f.toVal : (dv.to ?? '');
-            return (
-              <DateRangeFilter
-                key={dk}
-                label={f.label}
-                fromVal={curFrom}
-                toVal={curTo}
-                onFromChange={(v) => {
-                  handleDateFrom(dk, v);
-                  f.onFromChange?.(v);
-                }}
-                onToChange={(v) => {
-                  handleDateTo(dk, v);
-                  f.onToChange?.(v);
-                }}
-              />
-            );
-          }
-
-          return null;
-        })}
-
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            className="flex items-center gap-1 text-[11px] font-medium text-danger hover:underline transition-colors cursor-pointer px-1 py-0.5"
-          >
-            <X className="w-3 h-3" /> {strings.common.table.clearFilters}
-          </button>
-        )}
-
-        <div className="flex-1" />
-        {typeof headerRight === 'function' ? headerRight({ filtered }) : headerRight}
-      </div>
+    <div className="flex-1 flex flex-col min-h-0 h-full bg-canvas">
+      {/* ── Toolbar: Search & Filters ── */}
+      <DataTableToolbar
+        search={filterState.search}
+        handleSearch={filterState.handleSearch}
+        enrichedFilters={filterState.enrichedFilters}
+        selectValues={filterState.selectValues}
+        handleSelect={filterState.handleSelect}
+        multiValues={filterState.multiValues}
+        handleMulti={filterState.handleMulti}
+        rangeValues={filterState.rangeValues}
+        handleRangeMin={filterState.handleRangeMin}
+        handleRangeMax={filterState.handleRangeMax}
+        dateRangeKey={filterState.dateRangeKey}
+        dateValues={filterState.dateValues}
+        handleDateFrom={filterState.handleDateFrom}
+        handleDateTo={filterState.handleDateTo}
+        hasActiveFilters={filterState.hasActiveFilters}
+        clearAllFilters={filterState.clearAllFilters}
+        headerRight={headerRight}
+        filtered={filterState.filtered}
+      />
 
       {/* ── Table Container ── */}
       <div className="flex-1 min-h-0 px-4 py-3 flex flex-col">
@@ -505,15 +101,15 @@ export default function DataTable({
           <table className="w-full text-left border-collapse select-text">
             <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 z-10 border-b border-table-header-border shadow-2xs">
               <tr className="h-10">
-                {orderedColumns.map((col, colIdx) => {
-                  const widthStyle = colWidths[col.key]
-                    ? { width: `${colWidths[col.key]}px`, minWidth: `${colWidths[col.key]}px` }
+                {columnState.orderedColumns.map((col, colIdx) => {
+                  const widthStyle = columnState.colWidths[col.key]
+                    ? { width: `${columnState.colWidths[col.key]}px`, minWidth: `${columnState.colWidths[col.key]}px` }
                     : col.minWidth
                     ? { minWidth: `${col.minWidth}px` }
                     : {};
 
-                  const isDropTarget = dragOverColKey === col.key && draggedColKey !== col.key;
-                  const isDraggingThis = draggedColKey === col.key;
+                  const isDropTarget = columnState.dragOverColKey === col.key && columnState.draggedColKey !== col.key;
+                  const isDraggingThis = columnState.draggedColKey === col.key;
                   const isSortable = col.sortable !== false;
                   const isSorted = isSortable && sort.key === col.key && !!sort.dir;
                   const SortIcon =
@@ -527,19 +123,19 @@ export default function DataTable({
                     <th
                       key={col.key}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, col.key)}
-                      onDragOver={(e) => handleDragOver(e, col.key)}
-                      onDrop={(e) => handleDrop(e, col.key)}
-                      onDragEnd={handleDragEnd}
+                      onDragStart={(e) => columnState.handleDragStart(e, col.key)}
+                      onDragOver={(e) => columnState.handleDragOver(e, col.key)}
+                      onDrop={(e) => columnState.handleDrop(e, col.key)}
+                      onDragEnd={columnState.handleDragEnd}
                       onClick={() => {
-                        if (!isSortable || suppressHeaderClick.current) return;
+                        if (!isSortable || columnState.suppressHeaderClick.current) return;
                         toggleSort(col.key);
                       }}
                       title={isSortable ? strings.common.table.sortBy(col.label) : undefined}
                       aria-sort={isSorted ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                       style={widthStyle}
                       className={`relative py-2.5 px-3.5 ${colIdx === 0 ? 'pl-4' : ''} ${
-                        !actions && colIdx === orderedColumns.length - 1 ? 'pr-4' : ''
+                        !actions && colIdx === columnState.orderedColumns.length - 1 ? 'pr-4' : ''
                       } transition-colors select-none group/th ${
                         isSortable ? 'cursor-pointer hover:bg-white/10' : ''
                       } ${col.headerClassName ?? ''} ${isDraggingThis ? 'opacity-30' : ''} ${
@@ -550,28 +146,18 @@ export default function DataTable({
                         <GripVertical className="w-3 h-3 text-table-header-text/40 opacity-40 group-hover/th:opacity-100 transition-opacity shrink-0 cursor-grab active:cursor-grabbing" />
                         <span className="truncate">{col.label}</span>
                         {isSortable && (
-                          <span
-                            className={`ml-auto shrink-0 flex items-center transition-opacity ${
-                              isSorted ? 'text-amber-300 opacity-100 font-bold' : 'text-table-header-text/60 opacity-0 group-hover/th:opacity-100'
+                          <SortIcon
+                            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                              isSorted ? 'text-table-header-text' : 'text-table-header-text/40 group-hover/th:text-table-header-text/70'
                             }`}
-                          >
-                            <SortIcon className="w-3 h-3" strokeWidth={isSorted ? 2.5 : 1.5} />
-                          </span>
+                          />
                         )}
                       </div>
 
                       {/* Resize Handle */}
                       <div
-                        onMouseDown={(e) => startResizing(e, col.key)}
+                        onMouseDown={(e) => columnState.startResizing(e, col.key)}
                         onClick={(e) => e.stopPropagation()}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          setColWidths((p) => {
-                            const next = { ...p };
-                            delete next[col.key];
-                            return next;
-                          });
-                        }}
                         title={strings.common.table.dragToResize}
                         className="absolute top-0 right-0 bottom-0 w-3 -mr-1.5 cursor-col-resize select-none flex items-center justify-center group/resize z-20"
                       >
@@ -581,81 +167,89 @@ export default function DataTable({
                   );
                 })}
                 {actions && (
-                  <th className="py-2.5 pl-3.5 pr-4 text-right sticky right-0 bg-table-header-bg z-10 w-28 text-table-header-text">
+                  <th className="py-2.5 px-3.5 pr-4 text-right sticky right-0 z-10 w-24 bg-table-header-bg">
                     {strings.common.table.actions}
                   </th>
                 )}
               </tr>
             </thead>
-          <tbody className="divide-y divide-border-default text-xs">
-            {isLoading ? (
-              <tr>
-                <td colSpan={orderedColumns.length + (actions ? 1 : 0)} className="py-16 text-center text-text-muted">
-                  <div className="inline-block w-5 h-5 border-2 border-border-default border-t-brand rounded-full animate-spin" />
-                </td>
-              </tr>
-            ) : slice.length === 0 ? (
-              <tr>
-                <td colSpan={orderedColumns.length + (actions ? 1 : 0)} className="py-16 text-center text-text-muted">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              slice.map((row) => {
-                const rowKey = keyFn(row);
-                const isSelected = selectedRowId != null && selectedRowId === rowKey;
-                return (
-                  <tr
-                    key={rowKey}
-                    onClick={() => onRowClick && onRowClick(row)}
-                    onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(row)}
-                    className={`h-11 transition-colors ${
-                      isSelected
-                        ? 'bg-brand-subtle'
-                        : 'hover:bg-surface-secondary/70'
-                    } ${onRowClick || onRowDoubleClick ? 'cursor-pointer' : ''}`}
+            <tbody className="divide-y divide-border-default text-xs">
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={columnState.orderedColumns.length + (actions ? 1 : 0)}
+                    className="py-12 text-center text-text-muted"
                   >
-                    {orderedColumns.map((col, colIdx) => {
-                      const widthStyle = colWidths[col.key]
-                        ? { width: `${colWidths[col.key]}px`, minWidth: `${colWidths[col.key]}px` }
-                        : col.minWidth
-                        ? { minWidth: `${col.minWidth}px` }
-                        : {};
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                      {strings.common.states.loading}
+                    </div>
+                  </td>
+                </tr>
+              ) : pagedData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={columnState.orderedColumns.length + (actions ? 1 : 0)}
+                    className="py-12 text-center text-text-muted"
+                  >
+                    {emptyMessage}
+                  </td>
+                </tr>
+              ) : (
+                pagedData.map((row, rIdx) => {
+                  const key = keyFn ? keyFn(row) : row.id ?? rIdx;
+                  const isSelected = selectedRowId != null && key === selectedRowId;
+                  const isInteractive = Boolean(onRowClick || onRowDoubleClick);
 
-                      return (
+                  return (
+                    <tr
+                      key={key}
+                      onClick={() => onRowClick && onRowClick(row)}
+                      onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(row)}
+                      className={`transition-colors ${
+                        isSelected
+                          ? 'bg-brand/10 border-l-2 border-l-brand'
+                          : rIdx % 2 === 1
+                          ? 'bg-surface-secondary/40 hover:bg-surface-secondary'
+                          : 'hover:bg-surface-secondary'
+                      } ${isInteractive ? 'cursor-pointer' : ''}`}
+                    >
+                      {columnState.orderedColumns.map((col, cIdx) => (
                         <td
                           key={col.key}
-                          style={widthStyle}
-                          className={`py-2 px-3.5 ${colIdx === 0 ? 'pl-4' : ''} ${
-                            !actions && colIdx === orderedColumns.length - 1 ? 'pr-4' : ''
-                          } ${col.className ?? ''}`}
+                          className={`py-2 px-3.5 ${cIdx === 0 ? 'pl-4' : ''} ${
+                            !actions && cIdx === columnState.orderedColumns.length - 1 ? 'pr-4' : ''
+                          } text-text-primary ${col.className ?? ''}`}
                         >
-                          {col.render ? col.render(row) : (row[col.key] ?? strings.common.states.emptyValue)}
+                          {col.render ? col.render(row) : row[col.key]}
                         </td>
-                      );
-                    })}
-                    {actions && (
-                      <td className="py-2 pl-3.5 pr-4 text-right sticky right-0 bg-surface/95 z-0">
-                        {actions(row)}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      ))}
+                      {actions && (
+                        <td
+                          className="py-2 px-3.5 pr-4 text-right sticky right-0 bg-surface/90 backdrop-blur-xs"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {actions(row)}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
-      {/* ── Standardized Pagination (Always visible) ── */}
+      {/* ── Standardized Pagination Bar (Fixed at the bottom of the page) ── */}
       <TablePagination
-        safePage={safePage}
+        currentPage={currentPage}
+        safePage={currentPage}
         totalPages={totalPages}
-        startRecord={sorted.length === 0 ? 0 : startIdx + 1}
-        endRecord={Math.min(startIdx + pageSize, sorted.length)}
+        startRecord={startRecord}
+        endRecord={endRecord}
         totalRecords={sorted.length}
-        onPageChange={goPage}
+        onPageChange={setPage}
       />
     </div>
   );

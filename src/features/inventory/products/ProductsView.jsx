@@ -5,23 +5,21 @@ import {
   Plus,
   Edit2,
   Trash2,
-  AlertTriangle,
   ArrowUpDown,
-  CheckCircle2,
-  SlidersHorizontal,
 } from 'lucide-react';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
-import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { tauriApi } from '../../../lib/tauri';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import ProductModal from './ProductModal';
 import StockAdjustmentModal from './StockAdjustmentModal';
+import { exportProductsCsv, exportProductsXlsx } from './productExport';
+import { getProductColumns } from './productColumns';
 
 export default function ProductsView() {
   const queryClient = useQueryClient();
@@ -41,6 +39,8 @@ export default function ProductsView() {
     queryKey: ['general_settings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
+
+  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
 
   // Category counts and options with parentheses
   const categoryCounts = useMemo(() => {
@@ -213,204 +213,13 @@ export default function ProductsView() {
     adjustStockMutation.mutate(adjustment);
   };
 
-  const handleExportCsv = async () => {
-    if (!products.length) {
-      toast.warning(strings.products.export.noProducts);
-      return;
-    }
+  const handleExportCsv = () => exportProductsCsv({ products, currencySymbol });
+  const handleExportXlsx = () => exportProductsXlsx({ products, currencySymbol });
 
-    const headers = [
-      strings.products.form.productName,
-      strings.common.labels.sku,
-      strings.common.labels.category,
-      strings.products.form.costPrice(currencySymbol),
-      strings.products.form.mrp(currencySymbol),
-      strings.products.export.headers.gst,
-      strings.products.export.headers.currentStock,
-      strings.products.export.headers.minStockAlert,
-      strings.common.labels.unit,
-      strings.common.labels.status,
-    ];
-
-    const rows = products.map((p) => [
-      escapeCsv(p.name || ''),
-      escapeCsv(p.sku || ''),
-      escapeCsv(p.category_name || strings.products.export.uncategorized),
-      escapeCsv((p.cost_price_paise / 100).toFixed(2)),
-      escapeCsv((p.mrp_paise / 100).toFixed(2)),
-      escapeCsv(p.tax_rate ?? 0),
-      escapeCsv(p.current_stock ?? 0),
-      escapeCsv(p.min_stock_alert ?? 5),
-      escapeCsv(p.uom || 'Piece'),
-      escapeCsv(p.status || 'active'),
-    ]);
-
-    const dateStr = new Date().toISOString().split('T')[0];
-    await exportToCsv({
-      filename: `products_${dateStr}.csv`,
-      headers,
-      rows,
-      count: products.length,
-      entityName: 'products',
-    });
-  };
-
-  const handleExportXlsx = async () => {
-    if (!products.length) {
-      toast.warning('No products to export');
-      return;
-    }
-
-    const headers = [
-      'Product Name',
-      'SKU',
-      'Category',
-      `Cost Price (${currencySymbol})`,
-      `MRP (${currencySymbol})`,
-      'GST (%)',
-      'Current Stock',
-      'Min Stock Alert',
-      'Unit',
-      'Status',
-    ];
-
-    const rows = products.map((p) => [
-      p.name || '',
-      p.sku || '',
-      p.category_name || 'Uncategorized',
-      parseFloat((p.cost_price_paise / 100).toFixed(2)),
-      parseFloat((p.mrp_paise / 100).toFixed(2)),
-      p.tax_rate ?? 0,
-      p.current_stock ?? 0,
-      p.min_stock_alert ?? 5,
-      p.uom || 'Piece',
-      p.status || 'active',
-    ]);
-
-    const colWidths = [
-      { wch: 25 },
-      { wch: 16 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 16 },
-      { wch: 10 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 10 },
-      { wch: 12 },
-    ];
-
-    const dateStr = new Date().toISOString().split('T')[0];
-    await exportToXlsx({
-      filename: `products_${dateStr}.xlsx`,
-      sheetName: 'Products',
-      headers,
-      rows,
-      colWidths,
-      count: products.length,
-      entityName: 'products',
-    });
-  };
-
-  const columns = [
-    {
-      key: 'name',
-      label: 'Product',
-      className: 'font-semibold text-text-primary text-xs',
-      render: (r) => (
-        <div>
-          <span>{r.name}</span>
-          {r.category_name && (
-            <div className="text-[10px] text-text-muted">{r.category_name}</div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'sku',
-      label: 'SKU / Barcode',
-      className: 'font-mono text-text-muted text-xs',
-      render: (r) => r.sku || '—',
-    },
-    {
-      key: 'cost_price_paise',
-      label: 'Cost Price',
-      headerClassName: 'text-right',
-      className: 'text-right financial-value text-text-muted text-xs',
-      render: (r) => formatPaise(r.cost_price_paise),
-    },
-    {
-      key: 'mrp_paise',
-      label: 'MRP',
-      headerClassName: 'text-right',
-      className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.mrp_paise),
-    },
-    {
-      key: 'tax_rate',
-      label: 'GST %',
-      headerClassName: 'text-center',
-      className: 'text-center font-mono text-text-muted text-xs',
-      render: (r) => `${r.tax_rate}%`,
-    },
-    {
-      key: 'current_stock',
-      label: 'Stock Level',
-      headerClassName: 'text-center',
-      className: 'text-center text-xs',
-      render: (r) => {
-        const s = r.current_stock;
-        const alertThreshold = r.min_stock_alert ?? 5;
-
-        if (allowNegativeStock) {
-          return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-surface-secondary text-text-secondary border border-border-default">
-              {s}
-            </span>
-          );
-        }
-
-        const isOut = s <= 0;
-        const isLow = s <= alertThreshold && !isOut;
-        const cls = isOut
-          ? 'bg-danger-bg text-danger border-danger/30'
-          : isLow
-          ? 'bg-warning-bg text-warning border-warning/30'
-          : 'bg-success-bg text-success border-success/30';
-        return (
-          <span
-            title={isLow ? `Low stock alert (≤ ${alertThreshold})` : isOut ? 'Out of stock' : `Stock: ${s}`}
-            className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono border ${cls}`}
-          >
-            {s}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      headerClassName: 'text-center',
-      className: 'text-center',
-      render: (r) => {
-        const status = r.status || 'active';
-        const styles = {
-          active: 'bg-success-bg text-success border-success/30',
-          inactive: 'bg-surface-secondary text-text-muted border-border-default',
-          discontinued: 'bg-danger-bg text-danger border-danger/30',
-        };
-        return (
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${
-              styles[status] || styles.active
-            }`}
-          >
-            {status}
-          </span>
-        );
-      },
-    },
-  ];
+  const columns = useMemo(
+    () => getProductColumns({ allowNegativeStock }),
+    [allowNegativeStock]
+  );
 
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas overflow-hidden">
@@ -453,7 +262,7 @@ export default function ProductsView() {
       </div>
 
       {/* ── DataTable ── */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <DataTable
           columns={columns}
           persistKey="products"
