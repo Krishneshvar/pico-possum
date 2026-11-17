@@ -105,14 +105,10 @@ impl MigrationService {
         // Second pass for category parent_id
         for row in &cat_rows {
             let old_id: i64 = row.get("id");
-            let parent_id_opt: Option<i64> = row.get("parent_id");
-            if let Some(parent_old_id) = parent_id_opt {
-                if let (Some(cat_uuid), Some(parent_uuid)) = (category_map.get(&old_id), category_map.get(&parent_old_id)) {
+            if let Some(p_old_id) = row.get::<Option<i64>, _>("parent_id") {
+                if let (Some(cat_uuid), Some(p_uuid)) = (category_map.get(&old_id), category_map.get(&p_old_id)) {
                     sqlx::query("UPDATE categories SET parent_id = ? WHERE id = ?")
-                        .bind(parent_uuid)
-                        .bind(cat_uuid)
-                        .execute(&mut *tx)
-                        .await?;
+                        .bind(p_uuid).bind(cat_uuid).execute(&mut *tx).await?;
                 }
             }
         }
@@ -295,6 +291,63 @@ impl MigrationService {
             sales_imported += 1;
         }
 
+        // 4b. Legacy Historical Sales if table exists
+        let has_legacy_sales: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'legacy_sales'"
+        )
+        .fetch_one(&legacy_pool)
+        .await
+        .unwrap_or(0);
+
+        if has_legacy_sales > 0 {
+            let leg_rows: Vec<SqliteRow> = sqlx::query(
+                "SELECT invoice_number, sale_date, customer_name, net_amount, payment_method_name, source_file FROM legacy_sales"
+            )
+            .fetch_all(&legacy_pool)
+            .await
+            .unwrap_or_default();
+
+            for row in &leg_rows {
+                let inv: String = row.get("invoice_number");
+                let s_date: Option<String> = row.get("sale_date");
+                let c_name: Option<String> = row.get("customer_name");
+                let net_num: f64 = row.try_get("net_amount").unwrap_or(0.0);
+                let raw_pm: Option<String> = row.get("payment_method_name");
+                let src: Option<String> = row.get("source_file");
+
+                let uid = Uuid::new_v4().to_string();
+                let paise = (net_num * 100.0).round() as i64;
+                let pm = match raw_pm.as_deref().unwrap_or("Cash").to_uppercase().as_str() {
+                    "CARD" => "CARD",
+                    "UPI" => "UPI",
+                    "GIFT CARD" | "GIFT_CARD" => "GIFT_CARD",
+                    _ => "CASH",
+                };
+                let dt = s_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
+
+                let res = sqlx::query(
+                    "INSERT INTO sales (id, invoice_number, customer_id, customer_name, customer_phone, biller_name, subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise, payment_method, status, fulfillment_status, notes, created_at)
+                     VALUES (?, ?, NULL, ?, NULL, NULL, ?, 0, 0, ?, ?, ?, 'LEGACY', 'FULFILLED', ?, ?)
+                     ON CONFLICT(invoice_number) DO NOTHING"
+                )
+                .bind(&uid)
+                .bind(&inv)
+                .bind(&c_name)
+                .bind(paise)
+                .bind(paise)
+                .bind(paise)
+                .bind(pm)
+                .bind(&src)
+                .bind(&dt)
+                .execute(&mut *tx)
+                .await?;
+
+                if res.rows_affected() > 0 {
+                    sales_imported += 1;
+                }
+            }
+        }
+
         // Sale items
         let item_rows: Vec<SqliteRow> = sqlx::query(
             "SELECT si.id, si.sale_id, si.product_id, si.quantity, si.price_per_unit, si.cost_per_unit, si.discount_amount, si.tax_rate, si.tax_amount,
@@ -400,23 +453,11 @@ impl MigrationService {
         // 6. Settings import if available
         let mut settings_imported = false;
         if let Some(settings_dir) = AppPaths::detect_legacy_settings_dir() {
-            let gen_file = settings_dir.join("general-settings.json");
-            if gen_file.exists() {
-                if let Ok(content) = std::fs::read_to_string(&gen_file) {
-                    let _ = sqlx::query("INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('general_settings', ?, CURRENT_TIMESTAMP)")
-                        .bind(content)
-                        .execute(&mut *tx)
-                        .await;
-                    settings_imported = true;
-                }
-            }
-            let bill_file = settings_dir.join("bill-settings.json");
-            if bill_file.exists() {
-                if let Ok(content) = std::fs::read_to_string(&bill_file) {
-                    let _ = sqlx::query("INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('bill_settings', ?, CURRENT_TIMESTAMP)")
-                        .bind(content)
-                        .execute(&mut *tx)
-                        .await;
+            for (fname, key) in [("general-settings.json", "general_settings"), ("bill-settings.json", "bill_settings")] {
+                let file = settings_dir.join(fname);
+                if let Ok(content) = std::fs::read_to_string(&file) {
+                    let _ = sqlx::query("INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                        .bind(key).bind(content).execute(&mut *tx).await;
                     settings_imported = true;
                 }
             }

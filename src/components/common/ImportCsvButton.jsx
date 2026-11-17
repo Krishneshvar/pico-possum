@@ -11,11 +11,15 @@ import {
   FileSpreadsheet,
   FileText,
   ShieldAlert,
+  Lightbulb,
+  Copy,
+  Check,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
 import { getCurrencySymbol } from '../../lib/formatters';
+import { formatHumanError, formatRowError } from '../../lib/formatHumanError';
 import { strings } from '../../lib/strings';
 
 const getEntitySchemas = (sym) => strings.common.importSchemas(sym);
@@ -34,6 +38,8 @@ export default function ImportCsvButton({
   const [error, setError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [showErrorsList, setShowErrorsList] = useState(false);
+  const [showTechnicalError, setShowTechnicalError] = useState(false);
+  const [copiedError, setCopiedError] = useState(false);
 
   const fileInputCsvRef = useRef(null);
   const fileInputXlsxRef = useRef(null);
@@ -137,9 +143,9 @@ export default function ImportCsvButton({
       if (onComplete) onComplete(res);
       if (onSuccess) onSuccess(res);
     } catch (err) {
-      const msg = typeof err === 'string' ? err : err?.message || strings.common.importCsv.parseFailed;
-      setError(msg);
-      toast.error(msg, { title: strings.common.importCsv.importFailedTitle });
+      const parsed = formatHumanError(err, `import_${resolvedKey}`);
+      setError(parsed);
+      toast.error(parsed.message, { title: parsed.title });
     } finally {
       setIsProcessing(false);
     }
@@ -322,22 +328,69 @@ export default function ImportCsvButton({
 
               {/* Error State */}
               {!isProcessing && error && (
-                <div className="p-4 rounded-xl bg-danger-bg border border-danger/30 text-danger space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="p-4 rounded-xl bg-danger-bg border border-danger/30 text-text-primary space-y-3">
+                  <div className="flex items-center gap-2 text-danger">
                     <XCircle className="w-5 h-5 shrink-0" />
-                    <span className="font-bold text-xs">{strings.common.importCsv.importFailed}</span>
+                    <span className="font-bold text-xs">{error.title || strings.common.importCsv.importFailed}</span>
                   </div>
-                  <p className="text-xs text-text-secondary whitespace-pre-wrap font-mono bg-surface p-2.5 rounded-lg border border-border-default">
-                    {error}
+                  <p className="text-xs text-text-primary leading-relaxed bg-surface p-3 rounded-lg border border-border-default">
+                    {error.message}
                   </p>
+
+                  {error.hint && (
+                    <div className="flex items-start gap-2.5 p-3 rounded-lg bg-brand-subtle border border-brand/20 text-text-primary text-xs">
+                      <Lightbulb className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-brand block mb-0.5">How to resolve this:</span>
+                        <span className="text-text-secondary leading-relaxed">{error.hint}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {error.technical && (
+                    <div className="border border-border-default rounded-lg overflow-hidden bg-surface">
+                      <button
+                        type="button"
+                        onClick={() => setShowTechnicalError(!showTechnicalError)}
+                        className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary bg-surface-secondary/50 transition-colors cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-text-muted" />
+                          <span>Technical Details</span>
+                        </span>
+                        {showTechnicalError ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                      {showTechnicalError && (
+                        <div className="p-2.5 border-t border-border-default space-y-1.5 font-mono text-[10px] text-text-secondary break-all select-text">
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(error.technical);
+                                setCopiedError(true);
+                                setTimeout(() => setCopiedError(false), 2000);
+                              }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-border-default hover:bg-surface-secondary text-text-muted hover:text-text-primary cursor-pointer"
+                            >
+                              {copiedError ? <Check className="w-2.5 h-2.5 text-success" /> : <Copy className="w-2.5 h-2.5" />}
+                              <span>{copiedError ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                          <pre className="whitespace-pre-wrap">{error.technical}</pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="pt-1 flex justify-end">
                     <button
                       type="button"
                       onClick={() => {
                         setError(null);
                         setSelectedFile(null);
+                        setShowTechnicalError(false);
                       }}
-                      className="text-xs font-semibold hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-brand hover:underline cursor-pointer"
                     >
                       {strings.common.importCsv.tryAnotherFile}
                     </button>
@@ -385,7 +438,7 @@ export default function ImportCsvButton({
                         <div className="mt-2.5 max-h-40 overflow-y-auto space-y-1 text-[11px] bg-surface p-2.5 rounded-lg border border-warning/20 font-mono text-text-secondary">
                           {result.errors.map((errStr, idx) => (
                             <div key={idx} className="truncate">
-                              {errStr}
+                              {formatRowError(errStr)}
                             </div>
                           ))}
                         </div>

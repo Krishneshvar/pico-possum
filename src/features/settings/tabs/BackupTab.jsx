@@ -6,6 +6,8 @@ import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatDateTime } from '../../../lib/formatters';
 import SortableTh from '../../../components/common/SortableTh';
+import ErrorDetailModal from '../../../components/common/ErrorDetailModal';
+import { formatHumanError } from '../../../lib/formatHumanError';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import { strings } from '../../../lib/strings';
 
@@ -13,6 +15,7 @@ export default function BackupTab() {
   const queryClient = useQueryClient();
   const restoreFileInputRef = useRef(null);
   const [backupSort, setBackupSort] = useState({ key: null, dir: null });
+  const [restoreError, setRestoreError] = useState(null);
 
   const { data: backupStatus } = useQuery({
     queryKey: ['backup_status'],
@@ -51,12 +54,16 @@ export default function BackupTab() {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries();
+      setRestoreError(null);
       toast.success(typeof res === 'string' ? res : strings.settings.toasts.backupRestored(res?.filename || ''));
     },
-    onError: (err) =>
-      toast.error(strings.settings.toasts.restoreFailed(err?.message || err), {
-        title: strings.settings.toasts.restoreFailedTitle,
-      }),
+    onError: (err) => {
+      const parsed = formatHumanError(err, 'restore');
+      setRestoreError(err);
+      toast.error(parsed.message, {
+        title: parsed.title,
+      });
+    },
   });
 
   return (
@@ -88,7 +95,9 @@ export default function BackupTab() {
               const bytes = Array.from(new Uint8Array(buffer));
               restoreBackupMutation.mutate({ filename: file.name, bytes });
             } catch (err) {
-              toast.error(strings.settings.backup.readFileFailed(err.message));
+              const parsed = formatHumanError(err, 'restore');
+              setRestoreError(err);
+              toast.error(parsed.message, { title: parsed.title });
             }
           }
         }}
@@ -253,6 +262,21 @@ export default function BackupTab() {
           </div>
         )}
       </div>
+
+      {/* Restore Error Detail Modal Overlay */}
+      <ErrorDetailModal
+        isOpen={Boolean(restoreError)}
+        onClose={() => setRestoreError(null)}
+        error={restoreError}
+        context="restore"
+        onChooseAnother={() => {
+          if (restoreFileInputRef.current) {
+            restoreFileInputRef.current.value = '';
+            restoreFileInputRef.current.click();
+          }
+        }}
+        chooseAnotherLabel={strings.settings.backup.uploadExternal}
+      />
     </div>
   );
 }

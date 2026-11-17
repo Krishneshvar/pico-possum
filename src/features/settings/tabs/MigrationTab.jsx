@@ -5,11 +5,14 @@ import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
+import ErrorDetailModal from '../../../components/common/ErrorDetailModal';
+import { formatHumanError } from '../../../lib/formatHumanError';
 import { strings } from '../../../lib/strings';
 
 export default function MigrationTab() {
   const queryClient = useQueryClient();
   const [migrationResult, setMigrationResult] = useState(null);
+  const [migrationError, setMigrationError] = useState(null);
 
   const { data: detectedLegacyDb } = useQuery({
     queryKey: ['detected_legacy_db'],
@@ -20,13 +23,17 @@ export default function MigrationTab() {
     mutationFn: (path) => tauriApi.importLegacyDatabase(path || null),
     onSuccess: (res) => {
       setMigrationResult(res);
+      setMigrationError(null);
       queryClient.invalidateQueries();
       toast.success(strings.settings.toasts.migrationComplete);
     },
-    onError: (err) =>
-      toast.error(strings.settings.toasts.migrationFailed(err?.message || err), {
-        title: strings.settings.toasts.migrationFailedTitle,
-      }),
+    onError: (err) => {
+      const parsed = formatHumanError(err, 'migration');
+      setMigrationError(err);
+      toast.error(parsed.message, {
+        title: parsed.title,
+      });
+    },
   });
 
   return (
@@ -170,6 +177,14 @@ export default function MigrationTab() {
           </div>
         </div>
       </div>
+
+      {/* Migration Error Detail Modal Overlay */}
+      <ErrorDetailModal
+        isOpen={Boolean(migrationError)}
+        onClose={() => setMigrationError(null)}
+        error={migrationError}
+        context="migration"
+      />
     </div>
   );
 }
