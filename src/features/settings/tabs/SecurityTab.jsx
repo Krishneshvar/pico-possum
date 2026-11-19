@@ -4,6 +4,7 @@ import { Lock, RefreshCw, Check } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { strings } from '../../../lib/strings';
+import { validatePasswordChange } from '../../../lib/validation';
 
 export default function SecurityTab() {
   const [passwordState, setPasswordState] = useState({
@@ -11,12 +12,14 @@ export default function SecurityTab() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [errors, setErrors] = useState({});
 
   const updatePasswordMutation = useMutation({
     mutationFn: ({ currentPassword, newPassword }) =>
       tauriApi.updatePassword({ currentPassword, newPassword }),
     onSuccess: (msg) => {
       setPasswordState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setErrors({});
       toast.success(msg || strings.settings.security.updated);
     },
     onError: (err) => {
@@ -27,20 +30,22 @@ export default function SecurityTab() {
     },
   });
 
+  const handleChange = (field, value) => {
+    setPasswordState((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmPassword } = passwordState;
+    const validation = validatePasswordChange(currentPassword, newPassword, confirmPassword);
 
-    if (!currentPassword) {
-      toast.warning(strings.settings.security.currentPasswordRequired);
-      return;
-    }
-    if (!newPassword || newPassword.length < 4) {
-      toast.warning(strings.settings.security.passwordLengthWarning);
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.warning(strings.settings.security.passwordMismatch);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      if (firstError) toast.warning(firstError);
       return;
     }
 
@@ -77,12 +82,13 @@ export default function SecurityTab() {
             <input
               type="password"
               value={passwordState.currentPassword}
-              onChange={(e) =>
-                setPasswordState({ ...passwordState, currentPassword: e.target.value })
-              }
+              onChange={(e) => handleChange('currentPassword', e.target.value)}
               placeholder={strings.settings.security.currentPasswordPlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2.5 text-content focus:outline-none ${
+                errors.currentPassword ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.currentPassword && <p className="text-[11px] text-danger mt-1">{errors.currentPassword}</p>}
           </div>
 
           <div>
@@ -92,12 +98,13 @@ export default function SecurityTab() {
             <input
               type="password"
               value={passwordState.newPassword}
-              onChange={(e) =>
-                setPasswordState({ ...passwordState, newPassword: e.target.value })
-              }
+              onChange={(e) => handleChange('newPassword', e.target.value)}
               placeholder={strings.settings.security.newPasswordPlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2.5 text-content focus:outline-none ${
+                errors.newPassword ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.newPassword && <p className="text-[11px] text-danger mt-1">{errors.newPassword}</p>}
           </div>
 
           <div>
@@ -107,12 +114,13 @@ export default function SecurityTab() {
             <input
               type="password"
               value={passwordState.confirmPassword}
-              onChange={(e) =>
-                setPasswordState({ ...passwordState, confirmPassword: e.target.value })
-              }
+              onChange={(e) => handleChange('confirmPassword', e.target.value)}
               placeholder={strings.settings.security.confirmPasswordPlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2.5 text-content focus:outline-none ${
+                errors.confirmPassword ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.confirmPassword && <p className="text-[11px] text-danger mt-1">{errors.confirmPassword}</p>}
           </div>
 
           <div className="pt-2 flex justify-end">

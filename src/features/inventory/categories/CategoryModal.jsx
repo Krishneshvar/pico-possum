@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Select from '../../../components/common/Select';
 import { strings } from '../../../lib/strings';
+import { toast } from '../../../stores/toast.store';
+import { validateCategoryForm } from '../../../lib/validation';
 
 export default function CategoryModal({
   open,
@@ -14,8 +16,10 @@ export default function CategoryModal({
 }) {
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
+    setErrors({});
     if (editingCategory) {
       setName(editingCategory.name || '');
       setParentId(editingCategory.parent_id ? String(editingCategory.parent_id) : '');
@@ -27,12 +31,33 @@ export default function CategoryModal({
 
   if (!open) return null;
 
+  const handleNameChange = (val) => {
+    setName(val);
+    if (errors.name) {
+      setErrors((prev) => ({ ...prev, name: undefined }));
+    }
+  };
+
+  const handleParentChange = (val) => {
+    setParentId(val);
+    if (errors.parentId) {
+      setErrors((prev) => ({ ...prev, parentId: undefined }));
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const validation = validateCategoryForm(name, parentId, editingCategory?.id);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      if (firstError) toast.warning(firstError);
+      return;
+    }
+
     onSubmit({
       name: name.trim(),
-      parentId: parentId ? parseInt(parentId, 10) : null,
+      parentId: parentId ? String(parentId) : null,
     });
   };
 
@@ -63,10 +88,13 @@ export default function CategoryModal({
               type="text"
               required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               placeholder={strings.categories.form.namePlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none ${
+                errors.name ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.name && <p className="text-[11px] text-danger mt-1">{errors.name}</p>}
           </div>
 
           <div>
@@ -75,7 +103,7 @@ export default function CategoryModal({
             </label>
             <Select
               value={parentId}
-              onChange={(val) => setParentId(val)}
+              onChange={(val) => handleParentChange(val)}
               placeholder={strings.categories.form.noneTopLevel}
               options={[
                 { value: '', label: strings.categories.form.noneTopLevel },
@@ -84,9 +112,13 @@ export default function CategoryModal({
                   .map((c) => ({ value: String(c.id), label: c.name })),
               ]}
             />
-            <p className="text-[10px] text-text-muted mt-1">
-              {strings.categories.form.parentHint}
-            </p>
+            {errors.parentId ? (
+              <p className="text-[11px] text-danger mt-1">{errors.parentId}</p>
+            ) : (
+              <p className="text-[10px] text-text-muted mt-1">
+                {strings.categories.form.parentHint}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border-default">

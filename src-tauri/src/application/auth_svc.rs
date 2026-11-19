@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
+use crate::application::ValidationService;
 use crate::domain::models::{
     AuthStateResponse, AuthUser, LoginRequest, RegisterAdminRequest, UpdatePasswordRequest,
 };
@@ -342,12 +343,7 @@ impl AuthService {
         let cur_pass = req.current_password.trim();
         let new_pass = req.new_password.trim();
 
-        if cur_pass.is_empty() || new_pass.is_empty() {
-            return Err(AppError::Validation("Current and new passwords are required".to_string()));
-        }
-        if new_pass.len() < 4 {
-            return Err(AppError::Validation("New password must be at least 4 characters long".to_string()));
-        }
+        ValidationService::validate_password_change(cur_pass, new_pass)?;
 
         // Fetch current user from DB
         let user_row = sqlx::query("SELECT password_hash FROM users WHERE id = ?")

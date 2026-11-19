@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::application::{CategoryService, CustomerService, ProductService, ReportsService, SettingsService};
+use crate::application::{CategoryService, CustomerService, ProductService, ReportsService, SettingsService, ValidationService};
 use crate::domain::models::{
     BillSettings, Category, CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
     Customer, GeneralSettings, MultiYearSalesPoint, Product, ProductFlowItem, SalesBreakdownItem,
@@ -64,9 +64,7 @@ impl InventoryService {
         pool: &SqlitePool,
         payload: StockAdjustmentPayload,
     ) -> Result<Product, AppError> {
-        if payload.quantity_change == 0 {
-            return Err(AppError::Validation("Quantity change cannot be zero".to_string()));
-        }
+        ValidationService::validate_stock_adjustment(&payload)?;
 
         let reason_upper = payload.reason.trim().to_uppercase();
         let movement_type = match reason_upper.as_str() {

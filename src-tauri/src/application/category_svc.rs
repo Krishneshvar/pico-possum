@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
+use crate::application::ValidationService;
 use crate::domain::models::{Category, CreateCategoryPayload, UpdateCategoryPayload};
 use crate::errors::AppError;
 
@@ -25,6 +26,7 @@ impl CategoryService {
         pool: &SqlitePool,
         payload: CreateCategoryPayload,
     ) -> Result<Category, AppError> {
+        ValidationService::validate_create_category(&payload)?;
         let id = Uuid::new_v4().to_string();
         sqlx::query(
             "INSERT INTO categories (id, name, parent_id, is_deleted)
@@ -54,6 +56,7 @@ impl CategoryService {
         id: &str,
         payload: UpdateCategoryPayload,
     ) -> Result<Category, AppError> {
+        ValidationService::validate_update_category(id, &payload)?;
         sqlx::query(
             "UPDATE categories SET name = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
         )

@@ -6,6 +6,7 @@ import { usePosStore, computeBillTotals } from '../../../stores/pos.store';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { validateUnitPriceAgainstMrp } from '../../../lib/validation';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import PosBillEditor from './PosBillEditor';
 import CustomerModal from '../customers/CustomerModal';
@@ -218,15 +219,19 @@ export default function PosView() {
         const available = productStockById.get(item.productId)?.current_stock;
         if (available != null && item.quantity > available) {
           toast.warning(
-            strings.pos.view.insufficientStock(
-              item.name,
-              available,
-              item.quantity
-            ),
+            strings.pos.view.insufficientStock(item.name, available, item.quantity),
             { title: strings.pos.view.insufficientStockTitle }
           );
           return;
         }
+      }
+    }
+
+    for (const item of currentBill.items) {
+      const priceErr = validateUnitPriceAgainstMrp(item.unitPricePaise, item.mrpPaise, item.name);
+      if (priceErr) {
+        toast.warning(priceErr);
+        return;
       }
     }
 

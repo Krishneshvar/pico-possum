@@ -7,6 +7,7 @@ import { confirmDialog } from '../../../stores/confirm.store';
 import { formatPaise } from '../../../lib/formatters';
 import { computeBillTotals } from '../../../stores/pos.store';
 import { strings } from '../../../lib/strings';
+import { validateUnitPriceAgainstMrp } from '../../../lib/validation';
 
 const b = strings.bills;
 
@@ -372,6 +373,15 @@ export function useBillEditDraft({
           toast.warning(message);
           return;
         }
+      }
+    }
+
+    for (const item of draftBill.items) {
+      const priceErr = validateUnitPriceAgainstMrp(item.unitPricePaise, item.mrpPaise, item.name);
+      if (priceErr) {
+        setEditError(priceErr);
+        toast.warning(priceErr);
+        return;
       }
     }
 

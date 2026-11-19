@@ -1,7 +1,7 @@
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
-use crate::application::SettingsService;
+use crate::application::{SettingsService, ValidationService};
 use crate::domain::models::{CreateProductPayload, GeneralSettings, Product, UpdateProductPayload};
 use crate::errors::AppError;
 
@@ -101,6 +101,8 @@ impl ProductService {
         pool: &SqlitePool,
         payload: CreateProductPayload,
     ) -> Result<Product, AppError> {
+        ValidationService::validate_create_product(&payload)?;
+
         let mut tx = pool.begin().await?;
 
         let id = Uuid::new_v4().to_string();
@@ -172,6 +174,8 @@ impl ProductService {
         id: &str,
         payload: UpdateProductPayload,
     ) -> Result<Product, AppError> {
+        ValidationService::validate_update_product(&payload)?;
+
         let min_stock_alert = payload.min_stock_alert.unwrap_or(5);
 
         // SKU is not editable while automatic numerical SKUs are enabled; keep

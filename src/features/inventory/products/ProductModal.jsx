@@ -6,6 +6,7 @@ import { tauriApi } from '../../../lib/tauri';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
 import { rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { validateProductForm } from '../../../lib/validation';
 
 const DEFAULT_FORM = {
   name: '',
@@ -30,6 +31,7 @@ export default function ProductModal({
   isPending = false,
 }) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [errors, setErrors] = useState({});
 
   const isCreate = !product?.id;
   const autoNumericSku = generalSettings?.auto_numeric_sku ?? true;
@@ -43,6 +45,7 @@ export default function ProductModal({
   });
 
   useEffect(() => {
+    setErrors({});
     if (product) {
       setFormData({
         name: product.name || '',
@@ -66,12 +69,23 @@ export default function ProductModal({
 
   if (!open) return null;
 
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      toast.warning(strings.products.validation.nameRequired);
+    const validation = validateProductForm(formData, isCreate);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      if (firstError) toast.warning(firstError);
       return;
     }
+
     const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
     const payload = {
       name: formData.name.trim(),
@@ -121,10 +135,13 @@ export default function ProductModal({
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="e.g. Fresh Milk 500ml"
-                className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
+                className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none ${
+                  errors.name ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                }`}
               />
+              {errors.name && <p className="text-[11px] text-danger mt-1">{errors.name}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -140,13 +157,14 @@ export default function ProductModal({
                 <input
                   type="text"
                   value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  onChange={(e) => handleChange('sku', e.target.value)}
                   disabled={autoNumericSku}
                   placeholder={autoNumericSku ? 'Generating SKU…' : 'e.g. 100201'}
-                  className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
-                    autoNumericSku ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
+                    errors.sku ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  } ${autoNumericSku ? 'opacity-70 cursor-not-allowed' : ''}`}
                 />
+                {errors.sku && <p className="text-[11px] text-danger mt-1">{errors.sku}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -179,10 +197,13 @@ export default function ProductModal({
                   type="number"
                   step="0.01"
                   value={formData.cost_price_rupees}
-                  onChange={(e) => setFormData({ ...formData, cost_price_rupees: e.target.value })}
+                  onChange={(e) => handleChange('cost_price_rupees', e.target.value)}
                   placeholder={strings.products.form.placeholders.zeroDecimal}
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
+                  className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
+                    errors.cost_price_rupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  }`}
                 />
+                {errors.cost_price_rupees && <p className="text-[10px] text-danger mt-1">{errors.cost_price_rupees}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -193,10 +214,13 @@ export default function ProductModal({
                   step="0.01"
                   required
                   value={formData.mrp_rupees}
-                  onChange={(e) => setFormData({ ...formData, mrp_rupees: e.target.value })}
+                  onChange={(e) => handleChange('mrp_rupees', e.target.value)}
                   placeholder={strings.products.form.placeholders.mrp}
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono font-semibold focus:border-brand focus:outline-none"
+                  className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono font-semibold focus:outline-none ${
+                    errors.mrp_rupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  }`}
                 />
+                {errors.mrp_rupees && <p className="text-[10px] text-danger mt-1">{errors.mrp_rupees}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -206,10 +230,13 @@ export default function ProductModal({
                   type="number"
                   step="0.1"
                   value={formData.tax_rate}
-                  onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
+                  onChange={(e) => handleChange('tax_rate', e.target.value)}
                   placeholder={strings.products.form.placeholders.zero}
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
+                  className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
+                    errors.tax_rate ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  }`}
                 />
+                {errors.tax_rate && <p className="text-[10px] text-danger mt-1">{errors.tax_rate}</p>}
               </div>
             </div>
           </div>
@@ -228,13 +255,14 @@ export default function ProductModal({
                   type="number"
                   min="0"
                   value={formData.min_stock_alert}
-                  onChange={(e) => setFormData({ ...formData, min_stock_alert: e.target.value })}
+                  onChange={(e) => handleChange('min_stock_alert', e.target.value)}
                   disabled={allowNegativeStock}
                   placeholder={strings.products.form.placeholders.five}
-                  className={`w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none ${
-                    allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
+                    errors.min_stock_alert ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  } ${allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
+                {errors.min_stock_alert && <p className="text-[10px] text-danger mt-1">{errors.min_stock_alert}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -258,10 +286,13 @@ export default function ProductModal({
                 <input
                   type="number"
                   value={formData.initial_stock}
-                  onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })}
+                  onChange={(e) => handleChange('initial_stock', e.target.value)}
                   placeholder="0"
-                  className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary font-mono focus:border-brand focus:outline-none"
+                  className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
+                    errors.initial_stock ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  }`}
                 />
+                {errors.initial_stock && <p className="text-[10px] text-danger mt-1">{errors.initial_stock}</p>}
                 <span className="text-[10px] text-text-muted mt-1 block">
                   Recorded as initial stock balance in the stock movements ledger.
                 </span>

@@ -1,7 +1,7 @@
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
-use crate::application::{InventoryService, SaleAmendmentService};
+use crate::application::{InventoryService, SaleAmendmentService, ValidationService};
 use crate::domain::models::{
     CreateSaleItemPayload, CreateSalePayload, Sale, SaleItem, SaleResponse, UpdateSalePayload,
 };
@@ -54,9 +54,7 @@ impl SalesService {
         pool: &SqlitePool,
         payload: CreateSalePayload,
     ) -> Result<SaleResponse, AppError> {
-        if payload.items.is_empty() {
-            return Err(AppError::Validation("Cart cannot be empty".to_string()));
-        }
+        ValidationService::validate_create_sale(&payload)?;
 
         let allow_negative_stock = InventoryService::get_general_settings(pool)
             .await?
@@ -145,10 +143,6 @@ impl SalesService {
         let mut sale_items: Vec<SaleItem> = Vec::new();
 
         for item_req in &payload.items {
-            if item_req.quantity <= 0 {
-                return Err(AppError::Validation("Item quantity must be greater than 0".to_string()));
-            }
-
             let prod_row = sqlx::query(
                 "SELECT id, name, sku, mrp_paise, cost_price_paise, tax_rate, current_stock
                  FROM products WHERE id = ? AND is_deleted = 0"
@@ -161,8 +155,11 @@ impl SalesService {
             let prod_id: String = prod_row.get("id");
             let prod_name: String = prod_row.get("name");
             let prod_sku: Option<String> = prod_row.get("sku");
+            let mrp_paise: i64 = prod_row.get("mrp_paise");
             let cost_price_paise: i64 = prod_row.get("cost_price_paise");
             let tax_rate: f64 = prod_row.get("tax_rate");
+
+            ValidationService::validate_item_unit_price(&prod_name, item_req.unit_price_paise, mrp_paise)?;
 
             let disc = std::cmp::max(0, item_req.discount_paise.unwrap_or(0));
             let gross = item_req.unit_price_paise * item_req.quantity;

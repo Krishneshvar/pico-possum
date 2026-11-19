@@ -4,6 +4,7 @@ import { X, UserPlus, UserCheck } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { strings } from '../../../lib/strings';
+import { validateCustomerForm } from '../../../lib/validation';
 
 const EMPTY_FORM = { name: '', phone: '', address: '' };
 
@@ -16,9 +17,11 @@ export default function CustomerModal({
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setErrors({});
     if (customer) {
       setForm({
         name: customer.name || '',
@@ -36,19 +39,29 @@ export default function CustomerModal({
 
   const handleClose = () => {
     setForm(EMPTY_FORM);
+    setErrors({});
     onClose?.();
+  };
+
+  const handleChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    const trimmedName = form.name.trim();
-    if (!trimmedName) {
-      toast.warning(strings.customers.toasts.nameRequired);
+    const validation = validateCustomerForm(form);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      if (firstError) toast.warning(firstError);
       return;
     }
 
     const payload = {
-      name: trimmedName,
+      name: form.name.trim(),
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
     };
@@ -113,10 +126,13 @@ export default function CustomerModal({
               type="text"
               required
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => handleChange('name', e.target.value)}
               placeholder={strings.customers.form.namePlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none ${
+                errors.name ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.name && <p className="text-[11px] text-danger mt-1">{errors.name}</p>}
           </div>
 
           <div>
@@ -126,10 +142,13 @@ export default function CustomerModal({
             <input
               type="text"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(e) => handleChange('phone', e.target.value)}
               placeholder={strings.customers.form.phonePlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none font-mono"
+              className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none font-mono ${
+                errors.phone ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.phone && <p className="text-[11px] text-danger mt-1">{errors.phone}</p>}
           </div>
 
           <div>
@@ -139,10 +158,13 @@ export default function CustomerModal({
             <textarea
               rows="2"
               value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              onChange={(e) => handleChange('address', e.target.value)}
               placeholder={strings.customers.form.addressPlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none resize-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none resize-none ${
+                errors.address ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.address && <p className="text-[11px] text-danger mt-1">{errors.address}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border-default">

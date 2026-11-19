@@ -11,6 +11,7 @@ pub mod reports_svc;
 pub mod sale_amend_svc;
 pub mod sales_svc;
 pub mod settings_svc;
+pub mod validation_svc;
 
 pub use auth_svc::{AuthService, AuthSessionManager};
 pub use backup_svc::BackupService;
@@ -25,3 +26,4 @@ pub use reports_svc::ReportsService;
 pub use sale_amend_svc::SaleAmendmentService;
 pub use sales_svc::SalesService;
 pub use settings_svc::SettingsService;
+pub use validation_svc::ValidationService;

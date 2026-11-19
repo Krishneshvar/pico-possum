@@ -2,18 +2,21 @@ import { useState } from 'react';
 import { X, SlidersHorizontal, ShoppingBag } from 'lucide-react';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
+import { validateStockAdjustment } from '../../../lib/validation';
 
 export default function StockAdjustmentModal({
   product,
   onClose,
   onSubmit,
   isPending = false,
+  allowNegativeStock = false,
 }) {
   const [stockAdjustment, setStockAdjustment] = useState({
     quantity_change: '',
     movement_type: 'MANUAL_STOCK_CORRECTION',
     note: '',
   });
+  const [errors, setErrors] = useState({});
 
   if (!product) return null;
 
@@ -27,10 +30,12 @@ export default function StockAdjustmentModal({
       toast.warning(strings.products.stock.purchaseNegativeWarning);
       return;
     }
+    setErrors((prev) => ({ ...prev, reason: undefined }));
     setStockAdjustment((prev) => ({ ...prev, movement_type: reason }));
   };
 
   const updateQtyVal = (rawVal) => {
+    setErrors((prev) => ({ ...prev, quantity_change: undefined }));
     const nextParsed = parseInt(rawVal, 10);
     const willBeNegative = !isNaN(nextParsed) && nextParsed < 0;
     setStockAdjustment((prev) => ({
@@ -43,19 +48,24 @@ export default function StockAdjustmentModal({
   };
 
   const handleConfirm = () => {
-    if (!isValidQty) {
-      toast.warning('Enter a non-zero quantity to adjust stock (e.g. +10 or -5)');
-      return;
-    }
-    if (parsedQty < 0 && stockAdjustment.movement_type === 'PURCHASE') {
-      toast.warning('Purchase reason cannot be used for negative stock deductions');
+    const validation = validateStockAdjustment(
+      stockAdjustment.quantity_change,
+      stockAdjustment.note,
+      stockAdjustment.movement_type,
+      product.current_stock || 0,
+      allowNegativeStock
+    );
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      if (firstError) toast.warning(firstError);
       return;
     }
     onSubmit({
       product_id: product.id,
       quantity_change: parsedQty,
       reason: stockAdjustment.movement_type || 'MANUAL_STOCK_CORRECTION',
-      note: stockAdjustment.note || null,
+      note: stockAdjustment.note ? stockAdjustment.note.trim() : null,
     });
   };
 
@@ -138,6 +148,7 @@ export default function StockAdjustmentModal({
                 <span>{strings.products.stock.purchase}</span>
               </button>
             </div>
+            {errors.reason && <p className="text-[11px] text-danger mt-1">{errors.reason}</p>}
           </div>
 
           <div>
@@ -156,7 +167,9 @@ export default function StockAdjustmentModal({
                   }
                 }}
                 placeholder={strings.products.stock.placeholders.quantity}
-                className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 pr-16 text-text-primary focus:border-brand focus:outline-none font-mono"
+                className={`w-full bg-surface-secondary border rounded-lg p-2 pr-16 text-text-primary focus:outline-none font-mono ${
+                  errors.quantity_change ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                }`}
               />
               <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <button
@@ -185,6 +198,7 @@ export default function StockAdjustmentModal({
                 </button>
               </div>
             </div>
+            {errors.quantity_change && <p className="text-[11px] text-danger mt-1">{errors.quantity_change}</p>}
           </div>
 
           <div>
@@ -194,10 +208,16 @@ export default function StockAdjustmentModal({
             <input
               type="text"
               value={stockAdjustment.note}
-              onChange={(e) => setStockAdjustment({ ...stockAdjustment, note: e.target.value })}
+              onChange={(e) => {
+                setErrors((prev) => ({ ...prev, note: undefined }));
+                setStockAdjustment({ ...stockAdjustment, note: e.target.value });
+              }}
               placeholder={strings.products.stock.placeholders.note}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2 text-text-primary focus:border-brand focus:outline-none"
+              className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none ${
+                errors.note ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+              }`}
             />
+            {errors.note && <p className="text-[11px] text-danger mt-1">{errors.note}</p>}
           </div>
         </div>
 

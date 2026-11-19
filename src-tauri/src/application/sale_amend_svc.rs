@@ -1,7 +1,7 @@
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
-use crate::application::SettingsService;
+use crate::application::{SettingsService, ValidationService};
 use crate::domain::models::{Sale, SaleItem, SaleResponse, UpdateSalePayload};
 use crate::errors::AppError;
 
@@ -35,9 +35,7 @@ impl SaleAmendmentService {
         pool: &SqlitePool,
         payload: UpdateSalePayload,
     ) -> Result<SaleResponse, AppError> {
-        if payload.items.is_empty() {
-            return Err(AppError::Validation("A bill must contain at least one item".to_string()));
-        }
+        ValidationService::validate_update_sale(&payload)?;
 
         let allow_negative_stock = SettingsService::get_general_settings(pool)
             .await?
@@ -78,12 +76,9 @@ impl SaleAmendmentService {
             *old_qty_map.entry(it.product_id.clone()).or_insert(0) += it.quantity;
         }
 
-        // 4. Map new quantities by product_id and validate
+        // 4. Map new quantities by product_id
         let mut new_qty_map: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
         for it in &payload.items {
-            if it.quantity <= 0 {
-                return Err(AppError::Validation("Item quantity must be greater than 0".to_string()));
-            }
             *new_qty_map.entry(it.product_id.clone()).or_insert(0) += it.quantity;
         }
 
@@ -176,8 +171,11 @@ impl SaleAmendmentService {
             let prod_id: String = prod_row.get("id");
             let prod_name: String = prod_row.get("name");
             let prod_sku: Option<String> = prod_row.get("sku");
+            let mrp_paise: i64 = prod_row.get("mrp_paise");
             let cost_price_paise: i64 = prod_row.get("cost_price_paise");
             let tax_rate: f64 = prod_row.get("tax_rate");
+
+            ValidationService::validate_item_unit_price(&prod_name, item_req.unit_price_paise, mrp_paise)?;
 
             let disc = std::cmp::max(0, item_req.discount_paise.unwrap_or(0));
             let gross = item_req.unit_price_paise * item_req.quantity;

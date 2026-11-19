@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
+use crate::application::ValidationService;
 use crate::domain::models::{CreateCustomerPayload, Customer, UpdateCustomerPayload};
 use crate::errors::AppError;
 
@@ -31,6 +32,7 @@ impl CustomerService {
         pool: &SqlitePool,
         payload: CreateCustomerPayload,
     ) -> Result<Customer, AppError> {
+        ValidationService::validate_create_customer(&payload)?;
         let id = Uuid::new_v4().to_string();
         sqlx::query(
             "INSERT INTO customers (id, name, phone, address, is_deleted)
@@ -59,6 +61,7 @@ impl CustomerService {
         id: &str,
         payload: UpdateCustomerPayload,
     ) -> Result<Customer, AppError> {
+        ValidationService::validate_update_customer(&payload)?;
         let rows_affected = sqlx::query(
             "UPDATE customers
              SET name = ?, phone = ?, address = ?, updated_at = CURRENT_TIMESTAMP
