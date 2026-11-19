@@ -1,5 +1,5 @@
 /**
- * Centralized Validation Library for Pico Possum
+ * Centralized Validation Library for PicoPOSSUM
  * Defines validation rules and form evaluators for products, categories,
  * customers, stock adjustments, pricing, and user security.
  */

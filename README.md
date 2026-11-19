@@ -306,15 +306,15 @@ pico-possum/
 
 ---
 
-## Contributing
+## Contributing & Security
 
-1. Fork the repository and create a feature branch.
-2. Keep backend changes covered by tests under `src-tauri/tests/`.
-3. Run `cargo test` and `npm run build` before opening a pull request.
-4. Follow the existing layering: business logic belongs in `application/` services, database access in `infrastructure/`, and Tauri commands in `commands/`.
+- Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct, development setup, and pull request procedures.
+- For private vulnerability disclosures and security policies, please review our [Security Policy](SECURITY.md).
 
 ---
 
-## License
+## License & Third-Party Notices
 
-Licensed under the **GNU General Public License v3.0**. See [LICENSE](LICENSE) for details.
+Licensed under the **GNU General Public License v3.0**. See [LICENSE](LICENSE) for the full text.
+
+Third-party open-source components, fonts, and assets used in this application are listed with their respective licenses in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

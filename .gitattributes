@@ -1,0 +1,22 @@
+# Set default behavior to automatically normalize line endings to LF
+* text=auto eol=lf
+
+# Windows scripts require CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.ico binary
+*.icns binary
+*.db binary
+*.sqlite binary
+
+# Exclude repository-only files from release tarballs (git archive)
+.github export-ignore
+.vscode export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+tests export-ignore
+src-tauri/tests export-ignore
+*.log export-ignore

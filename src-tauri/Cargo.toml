@@ -1,8 +1,11 @@
 [package]
 name = "pico-possum"
 version = "1.0.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Offline-first Point of Sale Solution for Unified Management & Inventory Management System"
+authors = ["PicoPOSSUM Contributors"]
+license = "GPL-3.0-only"
+repository = "https://github.com/Krishneshvar/pico-possum"
+readme = "../README.md"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -1,7 +1,14 @@
 {
   "name": "pico-possum",
-  "private": true,
   "version": "1.0.0",
+  "description": "Offline-first Point of Sale Solution & Inventory Management System",
+  "license": "GPL-3.0-only",
+  "author": "PicoPOSSUM Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Krishneshvar/pico-possum.git"
+  },
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",

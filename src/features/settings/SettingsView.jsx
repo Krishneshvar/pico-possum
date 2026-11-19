@@ -9,6 +9,7 @@ import {
   Database,
   Lock,
   Palette,
+  Info,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
@@ -23,6 +24,7 @@ import BackupTab from './tabs/BackupTab';
 import MigrationTab from './tabs/MigrationTab';
 import SecurityTab from './tabs/SecurityTab';
 import AppearanceTab from './tabs/AppearanceTab';
+import AboutTab from './tabs/AboutTab';
 
 const DEFAULT_SECTIONS = [
   {
@@ -176,6 +178,7 @@ export default function SettingsView() {
     { id: 'migration', label: strings.settings.nav.migration.label, icon: Database, description: strings.settings.nav.migration.description },
     { id: 'security', label: strings.settings.nav.security.label, icon: Lock, description: strings.settings.nav.security.description },
     { id: 'appearance', label: strings.settings.nav.appearance.label, icon: Palette, description: strings.settings.nav.appearance.description },
+    { id: 'about', label: 'About & License', icon: Info, description: 'Version, licensing and open source notices' },
   ];
 
   return (
@@ -273,6 +276,8 @@ export default function SettingsView() {
           {activeNav === 'security' && <SecurityTab />}
 
           {activeNav === 'appearance' && <AppearanceTab />}
+
+          {activeNav === 'about' && <AboutTab />}
         </main>
       </div>
     </div>

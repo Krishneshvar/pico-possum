@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.possum.pico</id>
+  <metadata_license>FSFAP</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>PicoPOSSUM</name>
+  <summary>Offline-first Point of Sale &amp; Inventory Management System</summary>
+  <description>
+    <p>
+      PicoPOSSUM is a local-first, offline Point of Sale (POS) and inventory
+      management system tailored for small shops and retail stores.
+    </p>
+    <p>
+      Features include high-speed keyboard checkout, concurrent open bill
+      drafts, live stock movement tracking, automated local backups, thermal
+      receipt printing, sales reporting, and CSV migration tools.
+    </p>
+  </description>
+  <launchable type="desktop-id">pico-possum.desktop</launchable>
+  <url type="homepage">https://github.com/Krishneshvar/pico-possum</url>
+  <url type="bugtracker">https://github.com/Krishneshvar/pico-possum/issues</url>
+  <provides>
+    <binary>pico-possum</binary>
+  </provides>
+  <releases>
+    <release version="1.0.0" date="2026-11-19">
+      <description>
+        <p>Initial stable release of PicoPOSSUM desktop POS terminal.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

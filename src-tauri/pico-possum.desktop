@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=PicoPOSSUM
+GenericName=Point of Sale Solution for Unified Management - Pico variant
+Comment=Offline-first Point of Sale Solution & Inventory Management System for small retail businesses
+Exec=pico-possum
+Icon=pico-possum
+Terminal=false
+Categories=Office;Finance;Billing;Inventory;POS;
+Keywords=pos;billing;retail;inventory;invoice;cashier;pico;possum;
+StartupWMClass=pico-possum
+X-Purism-FormFactor=Workstation;Mobile;

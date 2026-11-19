@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "pico-possum",
+  "productName": "PicoPOSSUM",
   "version": "1.0.0",
   "identifier": "com.possum.pico",
   "build": {
@@ -12,18 +12,25 @@
   "app": {
     "windows": [
       {
-        "title": "pico-possum",
-        "width": 800,
-        "height": 600
+        "title": "PicoPOSSUM",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data: asset:; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "Business",
+    "shortDescription": "Offline-first Point of Sale & Inventory Management System",
+    "longDescription": "PicoPOSSUM is an offline-first desktop Point of Sale and Inventory Management System designed for small retail and commercial businesses. It provides high-speed billing, inventory tracking, financial analytics, customer records, and local backup automation.",
+    "copyright": "Copyright (C) 2026 PicoPOSSUM Contributors",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
