@@ -10,6 +10,7 @@ use sqlx::SqlitePool;
 use tauri::{Manager, WindowEvent};
 
 use application::BackupService;
+use infrastructure::AppLogger;
 
 /// Guards the shutdown backup so it only runs once, no matter how the app is
 /// closed (window close button, app quit, OS session end, ...).
@@ -37,14 +38,17 @@ impl ShutdownState {
 /// Takes a backup of the live database. Failures are logged but never block
 /// the app from closing.
 async fn backup_before_shutdown<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    AppLogger::debug("Shutdown", "Initiating pre-shutdown database backup");
     let pool = app.state::<SqlitePool>();
-    if let Err(err) = BackupService::create_exit_backup(&pool).await {
-        eprintln!("[pico-possum] Failed to create backup before shutdown: {err}");
+    match BackupService::create_exit_backup(&pool).await {
+        Ok(path) => AppLogger::info("Shutdown", format!("Exit backup created at {:?}", path)),
+        Err(err) => AppLogger::warn("Shutdown", format!("Failed to create backup before shutdown: {err}")),
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    AppLogger::info("App", "Pico Possum desktop application starting up");
     let pool = tauri::async_runtime::block_on(async {
         infrastructure::database::init_pool()
             .await

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { tauriApi } from '../lib/tauri';
 import { toast } from './toast.store';
 import { strings } from '../lib/strings';
+import { logger } from '../lib/logger';
 
 const createEmptyBill = (index) => ({
   index,
@@ -20,11 +21,13 @@ const syncBillToDb = async (index, bill) => {
   try {
     if (bill && bill.items && bill.items.length > 0) {
       await tauriApi.saveOpenBill(index, JSON.stringify(bill));
+      logger.debug('POS', `Synced draft bill ${index} (${bill.items.length} items) to database`);
     } else {
       await tauriApi.deleteOpenBill(index);
+      logger.debug('POS', `Cleared empty draft bill ${index} from database`);
     }
   } catch (err) {
-    console.error(`Failed to sync bill ${index} to database:`, err);
+    logger.error('POS', `Failed to sync bill ${index} to database:`, err);
   }
 };
 
@@ -46,17 +49,18 @@ export const usePosStore = create((set, get) => ({
                 const parsed = JSON.parse(jsonPayload);
                 newBills[idx] = { ...createEmptyBill(idx), ...parsed, index: idx };
               } catch (e) {
-                console.warn(`Could not parse open bill ${idx}:`, e);
+                logger.warn('POS', `Could not parse open bill ${idx}:`, e);
               }
             }
           }
+          logger.info('POS', `Hydrated ${openBills.length} open bill drafts from database`);
           return { bills: newBills, isHydrated: true };
         });
       } else {
         set({ isHydrated: true });
       }
     } catch (err) {
-      console.warn('Could not hydrate open bills from database:', err);
+      logger.warn('POS', 'Could not hydrate open bills from database:', err);
       toast.warning(strings.pos.store.restoreFailed, {
         title: strings.pos.store.restoreFailedTitle,
       });

@@ -9,6 +9,7 @@ use crate::domain::models::{
     UpdateCategoryPayload, UpdateCustomerPayload, UpdateProductPayload,
 };
 use crate::errors::AppError;
+use crate::infrastructure::AppLogger;
 
 pub struct InventoryService;
 
@@ -163,6 +164,7 @@ impl InventoryService {
         .execute(&mut *tx)
         .await?;
 
+        AppLogger::info("Inventory", format!("Stock adjusted for product {}: delta {} ({})", payload.product_id, payload.quantity_change, movement_type));
         tx.commit().await?;
 
         ProductService::get_product_by_id(pool, &payload.product_id).await

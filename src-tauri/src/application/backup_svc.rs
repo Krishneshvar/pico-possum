@@ -9,6 +9,7 @@ use sqlx::SqlitePool;
 use crate::application::MigrationService;
 use crate::domain::models::{BackupInfo, BackupStatus};
 use crate::errors::AppError;
+use crate::infrastructure::AppLogger;
 use crate::infrastructure::paths::AppPaths;
 
 pub struct BackupService;
@@ -98,6 +99,7 @@ impl BackupService {
         }
 
         fs::copy(&live_db_path, &backup_path)?;
+        AppLogger::info("Backup", format!("Manual backup created: {}", backup_filename));
 
         let size_bytes = fs::metadata(&backup_path).map(|m| m.len()).unwrap_or(0);
         let created_at = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -130,6 +132,7 @@ impl BackupService {
         }
 
         fs::copy(&live_db_path, &backup_path)?;
+        AppLogger::info("Backup", format!("Manual backup created: {}", backup_filename));
 
         Self::prune_backups(&backups_dir, "pico-possum-exit-backup-", EXIT_BACKUP_RETENTION);
 
@@ -164,6 +167,7 @@ impl BackupService {
         }
 
         fs::copy(&live_db_path, &backup_path)?;
+        AppLogger::info("Backup", format!("Manual backup created: {}", backup_filename));
         let size_bytes = fs::metadata(&backup_path).map(|m| m.len()).unwrap_or(0);
         let created_at = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
@@ -323,6 +327,7 @@ impl BackupService {
         // 3. Overwrite live database with the backup file
         fs::copy(&target_path, &live_db_path)?;
 
+        AppLogger::info("Backup", format!("Database successfully restored from {}", target_path.display()));
         Ok(format!(
             "Database successfully restored from '{}'. Pre-restore backup saved at '{}'.",
             target_path.file_name().unwrap_or_default().to_string_lossy(),

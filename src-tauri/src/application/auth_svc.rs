@@ -10,6 +10,7 @@ use crate::domain::models::{
     AuthStateResponse, AuthUser, LoginRequest, RegisterAdminRequest, UpdatePasswordRequest,
 };
 use crate::errors::AppError;
+use crate::infrastructure::AppLogger;
 
 pub struct SessionData {
     pub user: AuthUser,
@@ -195,6 +196,7 @@ impl AuthService {
         .await?;
 
         tx.commit().await?;
+        AppLogger::info("Auth", format!("Admin user '{}' registered successfully", trimmed_user));
 
         let auth_user = AuthUser {
             id: user_id,
@@ -278,11 +280,13 @@ impl AuthService {
             .execute(pool)
             .await;
 
+            AppLogger::warn("Auth", format!("Failed login attempt for username '{}'", trimmed_user));
             return Err(AppError::Unauthorized("Invalid username or password".to_string()));
         }
 
         // Login succeeded: clear failed attempts
         session_mgr.clear_failed_attempts(trimmed_user).await;
+        AppLogger::info("Auth", format!("User '{}' logged in successfully", trimmed_user));
 
         let auth_user = AuthUser {
             id: user_id.clone(),
@@ -316,6 +320,7 @@ impl AuthService {
         session_mgr: &AuthSessionManager,
     ) -> Result<(), AppError> {
         if let Some(user) = session_mgr.get_current_user().await {
+            AppLogger::info("Auth", format!("User '{}' logged out", user.username));
             let _ = sqlx::query(
                 "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description)
                  VALUES (?, 'USER_LOGOUT', 'USER', ?, ?)"

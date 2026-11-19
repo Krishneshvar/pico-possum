@@ -16,6 +16,7 @@ import {
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
 import { strings } from '../../lib/strings';
+import { logger } from '../../lib/logger';
 import iconShell from '../../assets/icon-shell.png';
 
 export default function AuthScreen({ authState, onAuthenticated }) {
@@ -63,9 +64,11 @@ export default function AuthScreen({ authState, onAuthenticated }) {
         { title: strings.auth.toast.signedInTitle }
       );
       queryClient.setQueryData(['auth_state'], res);
+      logger.info('Auth', `User authenticated: ${res?.user?.username || 'admin'}`);
       if (onAuthenticated) onAuthenticated(res);
     },
     onError: (err) => {
+      logger.warn('Auth', 'Sign-in attempt failed');
       const msg =
         typeof err === 'string'
           ? err
@@ -84,9 +87,11 @@ export default function AuthScreen({ authState, onAuthenticated }) {
         title: strings.auth.toast.setupCompleteTitle,
       });
       queryClient.setQueryData(['auth_state'], res);
+      logger.info('Auth', `Admin account created: ${res?.user?.username || 'admin'}`);
       if (onAuthenticated) onAuthenticated(res);
     },
     onError: (err) => {
+      logger.warn('Auth', 'Registration attempt failed');
       const msg =
         typeof err === 'string'
           ? err

@@ -11,6 +11,7 @@ import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import PosBillEditor from './PosBillEditor';
 import CustomerModal from '../customers/CustomerModal';
 import { strings } from '../../../lib/strings';
+import { logger } from '../../../lib/logger';
 
 export default function PosView() {
   const queryClient = useQueryClient();
@@ -107,12 +108,14 @@ export default function PosView() {
       setCompletedSale(response);
       setShowPrintModal(true);
       clearCurrentBill();
+      logger.info('POS', `Sale completed: ${response.sale.invoice_number}`);
       toast.success(
         strings.pos.view.saleCompletedMessage(response.sale.invoice_number),
         { title: strings.pos.view.saleCompletedTitle }
       );
     },
     onError: (err) => {
+      logger.error('POS', 'Checkout failed:', err);
       toast.error(strings.pos.view.saleFailed(err), {
         title: strings.pos.view.checkoutFailedTitle,
       });
@@ -252,6 +255,7 @@ export default function PosView() {
       notes: currentBill.notes?.trim() || null,
     };
 
+    logger.debug('POS', `Submitting checkout for bill ${activeBillIndex} (${payload.items.length} items)`);
     saleMutation.mutate(payload);
   };
 

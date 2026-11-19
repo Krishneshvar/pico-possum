@@ -8,6 +8,7 @@ import { formatPaise } from '../../../lib/formatters';
 import { computeBillTotals } from '../../../stores/pos.store';
 import { strings } from '../../../lib/strings';
 import { validateUnitPriceAgainstMrp } from '../../../lib/validation';
+import { logger } from '../../../lib/logger';
 
 const b = strings.bills;
 
@@ -320,9 +321,11 @@ export function useBillEditDraft({
       setCustomerModalOpen(false);
       setEditSearchQuery('');
       setEditSelectedCategory(null);
+      logger.info('Bills', `Bill amended successfully: ${saleDetails?.sale?.invoice_number}`);
       toast.success(b.toasts.amended);
     },
     onError: (err) => {
+      logger.error('Bills', 'Failed to amend bill:', err);
       const message = b.toasts.saveFailed(String(err));
       setEditError(message);
       toast.error(message, { title: b.toasts.saveFailedTitle });

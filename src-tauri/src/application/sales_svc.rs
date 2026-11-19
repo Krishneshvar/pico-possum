@@ -7,6 +7,7 @@ use crate::domain::models::{
 };
 use crate::domain::rules::BusinessRules;
 use crate::errors::AppError;
+use crate::infrastructure::AppLogger;
 
 pub struct SalesService;
 
@@ -55,6 +56,7 @@ impl SalesService {
         payload: CreateSalePayload,
     ) -> Result<SaleResponse, AppError> {
         ValidationService::validate_create_sale(&payload)?;
+        AppLogger::debug("Sales", format!("Processing new sale with {} cart items", payload.items.len()));
 
         let allow_negative_stock = InventoryService::get_general_settings(pool)
             .await?
@@ -300,6 +302,7 @@ impl SalesService {
         .execute(&mut *tx)
         .await?;
 
+        AppLogger::info("Sales", format!("Sale {} committed: total {} paise", sale.invoice_number, sale.total_paise));
         tx.commit().await?;
 
         Ok(SaleResponse {

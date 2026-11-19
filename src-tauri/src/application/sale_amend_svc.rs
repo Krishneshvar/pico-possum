@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::application::{SettingsService, ValidationService};
 use crate::domain::models::{Sale, SaleItem, SaleResponse, UpdateSalePayload};
 use crate::errors::AppError;
+use crate::infrastructure::AppLogger;
 
 pub struct SaleAmendmentService;
 
@@ -341,6 +342,7 @@ impl SaleAmendmentService {
         .execute(&mut *tx)
         .await?;
 
+        AppLogger::info("Sales", format!("Bill {} amended: {} items, total {} paise", existing_sale.invoice_number, new_sale_items.len(), total_paise));
         tx.commit().await?;
 
         let updated_sale = Sale {
@@ -454,6 +456,7 @@ impl SaleAmendmentService {
         .execute(&mut *tx)
         .await?;
 
+        AppLogger::info("Sales", format!("Bill {} cancelled. Reason: {}", sale.invoice_number, reason));
         tx.commit().await?;
 
         let mut updated = sale;

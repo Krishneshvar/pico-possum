@@ -1,4 +1,15 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { logger } from './logger';
+
+const invoke = async (cmd, args) => {
+  logger.debug('IPC', `Invoke -> ${cmd}`);
+  try {
+    return await tauriInvoke(cmd, args);
+  } catch (err) {
+    logger.error('IPC', `Invoke error [${cmd}]:`, err);
+    throw err;
+  }
+};
 
 export const tauriApi = {
   // Products
