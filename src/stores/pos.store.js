@@ -16,18 +16,33 @@ const createEmptyBill = (index) => ({
   notes: '',
 });
 
-// Helper to persist or delete an open bill in SQLite
-const syncBillToDb = async (index, bill) => {
-  try {
-    if (bill && bill.items && bill.items.length > 0) {
-      await tauriApi.saveOpenBill(index, JSON.stringify(bill));
-      logger.debug('POS', `Synced draft bill ${index} (${bill.items.length} items) to database`);
-    } else {
-      await tauriApi.deleteOpenBill(index);
-      logger.debug('POS', `Cleared empty draft bill ${index} from database`);
+// Helper to persist or delete an open bill in SQLite (debounced to avoid IPC/disk thrashing during fast typing)
+const syncTimers = new Map();
+
+const syncBillToDb = (index, bill, immediate = false) => {
+  if (syncTimers.has(index)) {
+    clearTimeout(syncTimers.get(index));
+    syncTimers.delete(index);
+  }
+
+  const persist = async () => {
+    try {
+      if (bill && bill.items && bill.items.length > 0) {
+        await tauriApi.saveOpenBill(index, JSON.stringify(bill));
+        logger.debug('POS', `Synced draft bill ${index} (${bill.items.length} items) to database`);
+      } else {
+        await tauriApi.deleteOpenBill(index);
+        logger.debug('POS', `Cleared empty draft bill ${index} from database`);
+      }
+    } catch (err) {
+      logger.error('POS', `Failed to sync bill ${index} to database:`, err);
     }
-  } catch (err) {
-    logger.error('POS', `Failed to sync bill ${index} to database:`, err);
+  };
+
+  if (immediate) {
+    persist();
+  } else {
+    syncTimers.set(index, setTimeout(persist, 200));
   }
 };
 
@@ -264,7 +279,7 @@ export const usePosStore = create((set, get) => ({
       updatedBills[activeBillIndex] = empty;
       return { bills: updatedBills };
     });
-    syncBillToDb(activeBillIndex, empty);
+    syncBillToDb(activeBillIndex, empty, true);
   },
 }));
 

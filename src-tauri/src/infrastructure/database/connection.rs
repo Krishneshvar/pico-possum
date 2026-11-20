@@ -15,7 +15,10 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
         .journal_mode(SqliteJournalMode::Wal)
         .synchronous(SqliteSynchronous::Normal)
         .foreign_keys(true)
-        .busy_timeout(std::time::Duration::from_secs(5));
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .pragma("cache_size", "-64000")
+        .pragma("temp_store", "2")
+        .pragma("mmap_size", "268435456");
 
     let pool = SqlitePoolOptions::new()
         .max_connections(10)

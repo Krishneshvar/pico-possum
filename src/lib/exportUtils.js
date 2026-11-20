@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { tauriApi } from './tauri';
 import { toast } from '../stores/toast.store';
 import { strings } from './strings';
@@ -166,6 +165,7 @@ export async function exportToXlsx({
   count,
   entityName = 'records',
 }) {
+  const XLSX = await import('xlsx');
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   if (colWidths) {
     worksheet['!cols'] = colWidths;

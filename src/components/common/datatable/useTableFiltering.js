@@ -50,12 +50,21 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
     return filters.map((f) => {
       if ((f.type === 'select' || f.type === 'multiselect') && Array.isArray(f.options)) {
         const filterFn = f.filterFn || f.predicate;
+        let countsMap = null;
+        if (typeof filterFn !== 'function') {
+          countsMap = new Map();
+          for (let i = 0; i < data.length; i++) {
+            const k = String(data[i][f.key] ?? '');
+            countsMap.set(k, (countsMap.get(k) || 0) + 1);
+          }
+        }
+
         const newOptions = f.options.map((opt) => {
           let count = 0;
           if (typeof filterFn === 'function') {
             count = data.filter((row) => filterFn(row, [opt.value])).length;
           } else {
-            count = data.filter((row) => String(row[f.key]) === String(opt.value)).length;
+            count = countsMap.get(String(opt.value)) || 0;
           }
           const baseLabel = String(opt.label).replace(/\s*\(\d+\)$/, '');
           return {

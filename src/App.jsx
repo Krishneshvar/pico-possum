@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import NavBar from './components/layout/NavBar';
@@ -11,19 +12,19 @@ import { RefreshCw, ShoppingCart, Package, BarChart3 } from 'lucide-react';
 import AuthScreen from './features/auth/AuthScreen';
 import { strings } from './lib/strings';
 
-// Feature views
-import PosView from './features/commercial/pos/PosView';
-import BillsHistoryView from './features/commercial/bills/BillsHistoryView';
-import ProductsView from './features/inventory/products/ProductsView';
-import CategoriesView from './features/inventory/categories/CategoriesView';
-import StockLedgerView from './features/inventory/stock-ledger/StockLedgerView';
-import CustomersView from './features/commercial/customers/CustomersView';
-import ReportsView from './features/insights/reports/ReportsView';
-import SalesReportsView from './features/insights/sales-reports/SalesReportsView';
-import ProductFlowView from './features/insights/product-flow/ProductFlowView';
-import AuditLogView from './features/insights/audit-log/AuditLogView';
-import SettingsView from './features/settings/SettingsView';
-import BillDetailView from './features/commercial/bills/BillDetailView';
+// Feature views (lazily loaded on demand)
+const PosView = lazy(() => import('./features/commercial/pos/PosView'));
+const BillsHistoryView = lazy(() => import('./features/commercial/bills/BillsHistoryView'));
+const ProductsView = lazy(() => import('./features/inventory/products/ProductsView'));
+const CategoriesView = lazy(() => import('./features/inventory/categories/CategoriesView'));
+const StockLedgerView = lazy(() => import('./features/inventory/stock-ledger/StockLedgerView'));
+const CustomersView = lazy(() => import('./features/commercial/customers/CustomersView'));
+const ReportsView = lazy(() => import('./features/insights/reports/ReportsView'));
+const SalesReportsView = lazy(() => import('./features/insights/sales-reports/SalesReportsView'));
+const ProductFlowView = lazy(() => import('./features/insights/product-flow/ProductFlowView'));
+const AuditLogView = lazy(() => import('./features/insights/audit-log/AuditLogView'));
+const SettingsView = lazy(() => import('./features/settings/SettingsView'));
+const BillDetailView = lazy(() => import('./features/commercial/bills/BillDetailView'));
 
 /** Registry: viewId → component */
 const VIEW_REGISTRY = {
@@ -77,7 +78,15 @@ function WorkspaceContent() {
             className="absolute inset-0"
             style={{ display: tab.id === activeTabId ? 'flex' : 'none', flexDirection: 'column' }}
           >
-            <ViewComponent {...(tab.props ?? {})} />
+            <Suspense
+              fallback={
+                <div className="flex-1 flex items-center justify-center bg-canvas text-text-muted">
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                </div>
+              }
+            >
+              <ViewComponent {...(tab.props ?? {})} />
+            </Suspense>
           </div>
         );
       })}

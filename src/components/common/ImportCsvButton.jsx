@@ -15,7 +15,6 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
 import { getCurrencySymbol } from '../../lib/formatters';
@@ -98,6 +97,7 @@ export default function ImportCsvButton({
     try {
       let csvContent = '';
       if (isXlsx) {
+        const XLSX = await import('xlsx');
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, {
           type: 'array',
