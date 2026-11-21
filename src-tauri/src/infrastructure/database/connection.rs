@@ -32,6 +32,17 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
         .execute(&pool)
         .await;
 
+    // Migration helper: ensure sale_items table has item_order column and populate existing records from rowid
+    let _ = sqlx::query("ALTER TABLE sale_items ADD COLUMN item_order INTEGER NOT NULL DEFAULT 0")
+        .execute(&pool)
+        .await;
+    let _ = sqlx::query("UPDATE sale_items SET item_order = rowid WHERE item_order = 0")
+        .execute(&pool)
+        .await;
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_sale_items_order ON sale_items(sale_id, item_order ASC)")
+        .execute(&pool)
+        .await;
+
     // Migration helper: ensure sales table check constraint supports 'LEGACY' status
     let sales_sql: Option<String> = sqlx::query_scalar("SELECT sql FROM sqlite_master WHERE type='table' AND name='sales'")
         .fetch_optional(&pool)

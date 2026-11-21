@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS sale_items (
     discount_paise INTEGER NOT NULL DEFAULT 0 CHECK(discount_paise >= 0),
     tax_rate REAL NOT NULL DEFAULT 0.0,
     tax_paise INTEGER NOT NULL DEFAULT 0 CHECK(tax_paise >= 0),
-    total_paise INTEGER NOT NULL CHECK(total_paise >= 0)
+    total_paise INTEGER NOT NULL CHECK(total_paise >= 0),
+    item_order INTEGER NOT NULL DEFAULT 0
 );
 
 -- 6. Stock Movements (Ledger)

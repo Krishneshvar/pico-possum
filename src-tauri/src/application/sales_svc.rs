@@ -144,7 +144,7 @@ impl SalesService {
         let mut total_tax_paise: i64 = 0;
         let mut sale_items: Vec<SaleItem> = Vec::new();
 
-        for item_req in &payload.items {
+        for (idx, item_req) in payload.items.iter().enumerate() {
             let prod_row = sqlx::query(
                 "SELECT id, name, sku, mrp_paise, cost_price_paise, tax_rate, current_stock
                  FROM products WHERE id = ? AND is_deleted = 0"
@@ -184,6 +184,7 @@ impl SalesService {
                 tax_rate,
                 tax_paise: tax_p,
                 total_paise: item_total,
+                item_order: idx as i64,
             };
 
             // Deduct stock from ledger and update current_stock
@@ -270,8 +271,8 @@ impl SalesService {
         // 5. Insert sale_items (referencing sales(id))
         for sale_item in &sale_items {
             sqlx::query(
-                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise, item_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )
             .bind(&sale_item.id)
             .bind(&sale_item.sale_id)
@@ -285,6 +286,7 @@ impl SalesService {
             .bind(sale_item.tax_rate)
             .bind(sale_item.tax_paise)
             .bind(sale_item.total_paise)
+            .bind(sale_item.item_order)
             .execute(&mut *tx)
             .await?;
         }
@@ -380,8 +382,11 @@ impl SalesService {
 
         let items = sqlx::query_as::<_, SaleItem>(
             "SELECT id, sale_id, product_id, product_name, product_sku, quantity,
-                    unit_price_paise, cost_price_paise, discount_paise, CAST(tax_rate AS REAL) as tax_rate, tax_paise, total_paise
-             FROM sale_items WHERE sale_id = ?1"
+                    unit_price_paise, cost_price_paise, discount_paise, CAST(tax_rate AS REAL) as tax_rate, tax_paise, total_paise,
+                    item_order
+             FROM sale_items
+             WHERE sale_id = ?1
+             ORDER BY item_order ASC, rowid ASC"
         )
         .bind(&sale.id)
         .fetch_all(pool)

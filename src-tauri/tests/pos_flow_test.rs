@@ -379,3 +379,182 @@ async fn test_bill_edit_lifecycle() {
     assert_eq!(b_flow_after_cancel.len(), 0, "Cancelled sale items should not show in product flow");
 }
 
+#[tokio::test]
+async fn test_bill_input_item_order_preserved() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
+    let db_file = temp_dir.path().join("test-item-order.db");
+
+    let options = SqliteConnectOptions::new()
+        .filename(&db_file)
+        .create_if_missing(true)
+        .foreign_keys(true);
+
+    let pool = SqlitePoolOptions::new()
+        .connect_with(options)
+        .await
+        .expect("Failed to connect to db");
+
+    sqlx::raw_sql(pico_possum_lib::infrastructure::database::schema::INIT_SCHEMA)
+        .execute(&pool)
+        .await
+        .expect("Failed to initialize schema");
+
+    // Create 4 products whose natural alphabetical/UUID sort differs from input order
+    let prod_z = InventoryService::create_product(&pool, CreateProductPayload {
+        name: "Zucchini Squash".to_string(),
+        sku: Some("SKU-Z".to_string()),
+        category_id: None,
+        mrp_paise: 4000,
+        cost_price_paise: Some(2000),
+        tax_rate: Some(0.0),
+        initial_stock: Some(100),
+        min_stock_alert: Some(5),
+        status: Some("active".to_string()),
+    }).await.unwrap();
+
+    let prod_a = InventoryService::create_product(&pool, CreateProductPayload {
+        name: "Apple Royal Gala".to_string(),
+        sku: Some("SKU-A".to_string()),
+        category_id: None,
+        mrp_paise: 8000,
+        cost_price_paise: Some(4000),
+        tax_rate: Some(0.0),
+        initial_stock: Some(100),
+        min_stock_alert: Some(5),
+        status: Some("active".to_string()),
+    }).await.unwrap();
+
+    let prod_b = InventoryService::create_product(&pool, CreateProductPayload {
+        name: "Banana Cavendish".to_string(),
+        sku: Some("SKU-B".to_string()),
+        category_id: None,
+        mrp_paise: 2500,
+        cost_price_paise: Some(1000),
+        tax_rate: Some(0.0),
+        initial_stock: Some(100),
+        min_stock_alert: Some(5),
+        status: Some("active".to_string()),
+    }).await.unwrap();
+
+    let prod_c = InventoryService::create_product(&pool, CreateProductPayload {
+        name: "Carrot Organic".to_string(),
+        sku: Some("SKU-C".to_string()),
+        category_id: None,
+        mrp_paise: 3000,
+        cost_price_paise: Some(1500),
+        tax_rate: Some(0.0),
+        initial_stock: Some(100),
+        min_stock_alert: Some(5),
+        status: Some("active".to_string()),
+    }).await.unwrap();
+
+    // Specific input order chosen by user in bill: Zucchini, Apple, Banana, Carrot
+    let input_items = vec![
+        CreateSaleItemPayload {
+            product_id: prod_z.id.clone(),
+            quantity: 1,
+            unit_price_paise: 4000,
+            discount_paise: Some(0),
+        },
+        CreateSaleItemPayload {
+            product_id: prod_a.id.clone(),
+            quantity: 2,
+            unit_price_paise: 8000,
+            discount_paise: Some(0),
+        },
+        CreateSaleItemPayload {
+            product_id: prod_b.id.clone(),
+            quantity: 3,
+            unit_price_paise: 2500,
+            discount_paise: Some(0),
+        },
+        CreateSaleItemPayload {
+            product_id: prod_c.id.clone(),
+            quantity: 4,
+            unit_price_paise: 3000,
+            discount_paise: Some(0),
+        },
+    ];
+
+    let sale_res = SalesService::process_sale(&pool, CreateSalePayload {
+        customer_id: None,
+        customer_name: Some("Order Test Customer".to_string()),
+        customer_phone: None,
+        customer_address: None,
+        items: input_items,
+        discount_paise: Some(0),
+        payment_method: "CASH".to_string(),
+        paid_paise: 50000,
+        notes: None,
+    }).await.expect("Sale processing should succeed");
+
+    // 1. Check returned sale response preserves the input order
+    assert_eq!(sale_res.items.len(), 4);
+    assert_eq!(sale_res.items[0].product_name, "Zucchini Squash");
+    assert_eq!(sale_res.items[1].product_name, "Apple Royal Gala");
+    assert_eq!(sale_res.items[2].product_name, "Banana Cavendish");
+    assert_eq!(sale_res.items[3].product_name, "Carrot Organic");
+
+    // 2. Fetch bill details from database (what Bill History and Receipt Print query)
+    let details = SalesService::get_sale_details(&pool, &sale_res.sale.id)
+        .await
+        .expect("Fetch sale details should succeed");
+
+    assert_eq!(details.items.len(), 4);
+    assert_eq!(details.items[0].product_name, "Zucchini Squash");
+    assert_eq!(details.items[0].item_order, 0);
+    assert_eq!(details.items[1].product_name, "Apple Royal Gala");
+    assert_eq!(details.items[1].item_order, 1);
+    assert_eq!(details.items[2].product_name, "Banana Cavendish");
+    assert_eq!(details.items[2].item_order, 2);
+    assert_eq!(details.items[3].product_name, "Carrot Organic");
+    assert_eq!(details.items[3].item_order, 3);
+
+    // 3. Edit bill: reorder items to Carrot, Zucchini, Apple
+    let amended_items = vec![
+        UpdateSaleItemPayload {
+            product_id: prod_c.id.clone(),
+            quantity: 5,
+            unit_price_paise: 3000,
+            discount_paise: Some(0),
+        },
+        UpdateSaleItemPayload {
+            product_id: prod_z.id.clone(),
+            quantity: 2,
+            unit_price_paise: 4000,
+            discount_paise: Some(0),
+        },
+        UpdateSaleItemPayload {
+            product_id: prod_a.id.clone(),
+            quantity: 1,
+            unit_price_paise: 8000,
+            discount_paise: Some(0),
+        },
+    ];
+
+    SalesService::update_sale(&pool, UpdateSalePayload {
+        sale_id: sale_res.sale.id.clone(),
+        customer_id: None,
+        customer_name: Some("Order Test Customer".to_string()),
+        customer_phone: None,
+        customer_address: None,
+        items: amended_items,
+        discount_paise: Some(0),
+        payment_method: "CASH".to_string(),
+        paid_paise: 50000,
+        notes: None,
+    }).await.expect("Sale amendment should succeed");
+
+    let updated_details = SalesService::get_sale_details(&pool, &sale_res.sale.id)
+        .await
+        .expect("Fetch updated details should succeed");
+
+    assert_eq!(updated_details.items.len(), 3);
+    assert_eq!(updated_details.items[0].product_name, "Carrot Organic");
+    assert_eq!(updated_details.items[0].item_order, 0);
+    assert_eq!(updated_details.items[1].product_name, "Zucchini Squash");
+    assert_eq!(updated_details.items[1].item_order, 1);
+    assert_eq!(updated_details.items[2].product_name, "Apple Royal Gala");
+    assert_eq!(updated_details.items[2].item_order, 2);
+}
+

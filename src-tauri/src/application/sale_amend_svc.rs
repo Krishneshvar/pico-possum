@@ -64,8 +64,11 @@ impl SaleAmendmentService {
         // 2. Fetch existing items for this sale
         let old_items = sqlx::query_as::<_, SaleItem>(
             "SELECT id, sale_id, product_id, product_name, product_sku, quantity,
-                    unit_price_paise, cost_price_paise, discount_paise, CAST(tax_rate AS REAL) as tax_rate, tax_paise, total_paise
-             FROM sale_items WHERE sale_id = ?"
+                    unit_price_paise, cost_price_paise, discount_paise, CAST(tax_rate AS REAL) as tax_rate, tax_paise, total_paise,
+                    item_order
+             FROM sale_items
+             WHERE sale_id = ?
+             ORDER BY item_order ASC, rowid ASC"
         )
         .bind(&payload.sale_id)
         .fetch_all(&mut *tx)
@@ -159,7 +162,7 @@ impl SaleAmendmentService {
         let mut total_tax_paise: i64 = 0;
         let mut new_sale_items: Vec<SaleItem> = Vec::new();
 
-        for item_req in &payload.items {
+        for (idx, item_req) in payload.items.iter().enumerate() {
             let prod_row = sqlx::query(
                 "SELECT id, name, sku, mrp_paise, cost_price_paise, tax_rate, current_stock
                  FROM products WHERE id = ?"
@@ -199,11 +202,12 @@ impl SaleAmendmentService {
                 tax_rate,
                 tax_paise: tax_p,
                 total_paise: item_total,
+                item_order: idx as i64,
             };
 
             sqlx::query(
-                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise, item_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )
             .bind(&sale_item.id)
             .bind(&sale_item.sale_id)
@@ -217,6 +221,7 @@ impl SaleAmendmentService {
             .bind(sale_item.tax_rate)
             .bind(sale_item.tax_paise)
             .bind(sale_item.total_paise)
+            .bind(sale_item.item_order)
             .execute(&mut *tx)
             .await?;
 

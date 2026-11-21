@@ -353,12 +353,14 @@ impl MigrationService {
             "SELECT si.id, si.sale_id, si.product_id, si.quantity, si.price_per_unit, si.cost_per_unit, si.discount_amount, si.tax_rate, si.tax_amount,
                     p.name as product_name, p.sku as product_sku
              FROM sale_items si
-             LEFT JOIN products p ON p.id = si.product_id"
+             LEFT JOIN products p ON p.id = si.product_id
+             ORDER BY si.sale_id ASC, si.id ASC"
         )
         .fetch_all(&legacy_pool)
         .await
         .unwrap_or_default();
 
+        let mut sale_item_order_map: HashMap<String, i64> = HashMap::new();
         let mut sale_items_imported = 0;
         for row in &item_rows {
             let old_sale_id: i64 = row.get("sale_id");
@@ -381,10 +383,13 @@ impl MigrationService {
                 let total_paise = (unit_price_paise * quantity) - discount_paise;
 
                 let item_uuid = Uuid::new_v4().to_string();
+                let order_entry = sale_item_order_map.entry(sale_uuid.clone()).or_insert(0);
+                let current_order = *order_entry;
+                *order_entry += 1;
 
                 sqlx::query(
-                    "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise, item_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 )
                 .bind(&item_uuid)
                 .bind(sale_uuid)
@@ -398,6 +403,7 @@ impl MigrationService {
                 .bind(tax_rate)
                 .bind(tax_paise)
                 .bind(total_paise)
+                .bind(current_order)
                 .execute(&mut *tx)
                 .await?;
 

@@ -125,6 +125,8 @@ pub struct SaleItem {
     pub tax_rate: f64,
     pub tax_paise: i64,
     pub total_paise: i64,
+    #[serde(default)]
+    pub item_order: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

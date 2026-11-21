@@ -60,7 +60,13 @@ export default function BillDetailReadView({
             <table className="w-full text-left border-collapse text-xs select-text">
               <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
                 <tr>
-                  <th className="py-2.5 px-4 w-12 text-center">{b.columns.index}</th>
+                  <th
+                    className="py-2.5 px-4 w-12 text-center cursor-pointer select-none hover:text-text-primary transition-colors"
+                    onClick={() => onLineSortChange({ key: null, dir: null })}
+                    title="Click to reset to original bill input order"
+                  >
+                    {b.columns.index}
+                  </th>
                   <SortableTh
                     sortKey="product_name"
                     sort={lineSort}
