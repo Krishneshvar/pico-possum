@@ -18,25 +18,25 @@ export default function BackupTab() {
   const [restoreError, setRestoreError] = useState(null);
 
   const { data: backupStatus } = useQuery({
-    queryKey: ['backup_status'],
+    queryKey: ['backupStatus'],
     queryFn: () => tauriApi.getBackupStatus(),
   });
 
   const { data: backupsList = [] } = useQuery({
-    queryKey: ['backups_list'],
+    queryKey: ['backupsList'],
     queryFn: () => tauriApi.listBackups(),
   });
 
   const sortedBackups = useMemo(
-    () => sortRows(backupsList, backupSort, (row, key) => row[key]),
+    () => sortRows(backupsList, backupSort, (row, key) => row[key] ?? row[key.replace(/([A-Z])/g, '_$1').toLowerCase()]),
     [backupsList, backupSort]
   );
 
   const createBackupMutation = useMutation({
     mutationFn: () => tauriApi.createManualBackup(),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['backup_status'] });
-      queryClient.invalidateQueries({ queryKey: ['backups_list'] });
+      queryClient.invalidateQueries({ queryKey: ['backupStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['backupsList'] });
       toast.success(strings.settings.toasts.backupCreated(res?.filename || ''));
     },
     onError: (err) =>
@@ -159,7 +159,7 @@ export default function BackupTab() {
               {strings.settings.backup.storagePath}
             </span>
             <div className="font-mono text-content text-xs break-all select-all">
-              {backupStatus?.backup_location || strings.settings.backup.loadingLocation}
+              {backupStatus?.backupLocation ?? backupStatus?.backup_location ?? strings.settings.backup.loadingLocation}
             </div>
           </div>
 
@@ -168,18 +168,18 @@ export default function BackupTab() {
               {strings.settings.backup.latestSnapshot}
             </span>
             <div className="text-content font-medium text-xs">
-              {backupStatus?.latest_backup ? (
+              {(backupStatus?.latestBackup ?? backupStatus?.latest_backup) ? (
                 <span className="text-success font-semibold">
-                  {backupStatus.latest_backup.filename} (
-                  {Math.round(backupStatus.latest_backup.size_bytes / 1024)} KB)
+                  {(backupStatus.latestBackup ?? backupStatus.latest_backup).filename} (
+                  {Math.round(((backupStatus.latestBackup ?? backupStatus.latest_backup).sizeBytes ?? (backupStatus.latestBackup ?? backupStatus.latest_backup).size_bytes) / 1024)} KB)
                 </span>
               ) : (
                 <span className="text-content-muted">{strings.settings.backup.noSnapshots}</span>
               )}
             </div>
-            {backupStatus?.latest_backup?.created_at && (
+            {(backupStatus?.latestBackup ?? backupStatus?.latest_backup)?.createdAt && (
               <span className="text-[11px] text-content-muted block mt-0.5">
-                {formatDateTime(backupStatus.latest_backup.created_at)}
+                {formatDateTime((backupStatus.latestBackup ?? backupStatus.latest_backup).createdAt ?? (backupStatus.latestBackup ?? backupStatus.latest_backup).created_at)}
               </span>
             )}
           </div>
@@ -217,9 +217,9 @@ export default function BackupTab() {
               <thead className="bg-table-header-bg text-table-header-text font-semibold border-b border-table-header-border">
                 <tr className="h-10 text-[11px] uppercase tracking-wider">
                   <SortableTh sortKey="filename" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5 pl-4">{strings.settings.backup.table.filename}</SortableTh>
-                  <SortableTh sortKey="backup_type" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">{strings.settings.backup.table.type}</SortableTh>
-                  <SortableTh sortKey="created_at" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">{strings.settings.backup.table.date}</SortableTh>
-                  <SortableTh sortKey="size_bytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-3.5">{strings.settings.backup.table.size}</SortableTh>
+                  <SortableTh sortKey="backupType" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">{strings.settings.backup.table.type}</SortableTh>
+                  <SortableTh sortKey="createdAt" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} className="py-2.5 px-3.5">{strings.settings.backup.table.date}</SortableTh>
+                  <SortableTh sortKey="sizeBytes" sort={backupSort} onSort={(key) => setBackupSort((p) => nextSortState(p, key))} align="right" className="py-2.5 px-3.5">{strings.settings.backup.table.size}</SortableTh>
                   <th className="py-2.5 pl-3.5 pr-4 font-semibold text-right">{strings.settings.backup.table.action}</th>
                 </tr>
               </thead>
@@ -229,11 +229,11 @@ export default function BackupTab() {
                     <td className="py-2.5 px-3.5 pl-4 font-medium text-content truncate max-w-xs">{bk.filename}</td>
                     <td className="py-2.5 px-3.5">
                       <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-secondary text-content-secondary border border-border">
-                        {bk.backup_type}
+                        {bk.backupType ?? bk.backup_type}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3.5 text-content-secondary text-xs">{formatDateTime(bk.created_at)}</td>
-                    <td className="py-2.5 px-3.5 text-right text-content financial-value">{Math.round(bk.size_bytes / 1024)} KB</td>
+                    <td className="py-2.5 px-3.5 text-content-secondary text-xs">{formatDateTime(bk.createdAt ?? bk.created_at)}</td>
+                    <td className="py-2.5 px-3.5 text-right text-content financial-value">{Math.round((bk.sizeBytes ?? bk.size_bytes) / 1024)} KB</td>
                     <td className="py-2.5 pl-3.5 pr-4 text-right">
                       <button
                         type="button"

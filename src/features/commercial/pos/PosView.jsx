@@ -67,12 +67,12 @@ export default function PosView() {
   });
 
   const { data: billSettings } = useQuery({
-    queryKey: ['bill_settings'],
+    queryKey: ['billSettings'],
     queryFn: () => tauriApi.getBillSettings(),
   });
 
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
@@ -82,7 +82,7 @@ export default function PosView() {
     queryFn: () => tauriApi.getProducts(null, null),
   });
 
-  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
+  const allowNegativeStock = generalSettings?.allowNegativeStock ?? generalSettings?.allow_negative_stock ?? false;
 
   const productStockById = useMemo(() => {
     const map = new Map();
@@ -96,21 +96,22 @@ export default function PosView() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sale_details'] });
-      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-      queryClient.invalidateQueries({ queryKey: ['product_flow'] });
-      queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
-      queryClient.invalidateQueries({ queryKey: ['top_products'] });
-      queryClient.invalidateQueries({ queryKey: ['top_categories'] });
-      queryClient.invalidateQueries({ queryKey: ['multi_year_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['saleDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
+      queryClient.invalidateQueries({ queryKey: ['productFlow'] });
+      queryClient.invalidateQueries({ queryKey: ['salesReportSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['topProducts'] });
+      queryClient.invalidateQueries({ queryKey: ['topCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['multiYearSales'] });
+      queryClient.invalidateQueries({ queryKey: ['salesBreakdown'] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setCompletedSale(response);
       setShowPrintModal(true);
       clearCurrentBill();
-      logger.info('POS', `Sale completed: ${response.sale.invoice_number}`);
+      const invNo = response.sale.invoiceNumber ?? response.sale.invoice_number;
+      logger.info('POS', `Sale completed: ${invNo}`);
       toast.success(
-        strings.pos.view.saleCompletedMessage(response.sale.invoice_number),
+        strings.pos.view.saleCompletedMessage(invNo),
         { title: strings.pos.view.saleCompletedTitle }
       );
     },
@@ -219,7 +220,7 @@ export default function PosView() {
 
     if (!allowNegativeStock) {
       for (const item of currentBill.items) {
-        const available = productStockById.get(item.productId)?.current_stock;
+        const available = productStockById.get(item.productId)?.currentStock ?? productStockById.get(item.productId)?.current_stock;
         if (available != null && item.quantity > available) {
           toast.warning(
             strings.pos.view.insufficientStock(item.name, available, item.quantity),
@@ -239,19 +240,19 @@ export default function PosView() {
     }
 
     const payload = {
-      customer_id: currentBill.customer?.id || null,
-      customer_name: currentBill.customer?.name || null,
-      customer_phone: currentBill.customer?.phone || null,
-      customer_address: currentBill.customer?.address || null,
+      customerId: currentBill.customer?.id || null,
+      customerName: currentBill.customer?.name || null,
+      customerPhone: currentBill.customer?.phone || null,
+      customerAddress: currentBill.customer?.address || null,
       items: currentBill.items.map((it) => ({
-        product_id: it.productId,
+        productId: it.productId,
         quantity: it.quantity,
-        unit_price_paise: it.unitPricePaise,
-        discount_paise: it.discountPaise || 0,
+        unitPricePaise: it.unitPricePaise,
+        discountPaise: it.discountPaise || 0,
       })),
-      discount_paise: totals.discountPaise,
-      payment_method: currentBill.paymentMethod,
-      paid_paise: totals.tenderedPaise,
+      discountPaise: totals.discountPaise,
+      paymentMethod: currentBill.paymentMethod,
+      paidPaise: totals.tenderedPaise,
       notes: currentBill.notes?.trim() || null,
     };
 
@@ -261,8 +262,9 @@ export default function PosView() {
 
   const addProductToCart = (product) => {
     if (!allowNegativeStock) {
+      const current = product.currentStock ?? product.current_stock ?? 0;
       const available =
-        productStockById.get(product.id)?.current_stock ?? product.current_stock ?? 0;
+        (productStockById.get(product.id)?.currentStock ?? productStockById.get(product.id)?.current_stock) ?? current;
       const inCart = currentBill.items.find((it) => it.productId === product.id)?.quantity || 0;
 
       if (available <= 0) {
@@ -310,7 +312,7 @@ export default function PosView() {
     }
 
     if (!allowNegativeStock) {
-      const available = productStockById.get(productId)?.current_stock;
+      const available = productStockById.get(productId)?.currentStock ?? productStockById.get(productId)?.current_stock;
       if (available != null && nextQty > available) {
         toast.warning(
           strings.pos.view.stockLimit(available, item.name),
@@ -427,18 +429,18 @@ export default function PosView() {
               <h3 className="text-base font-bold text-text-primary">{strings.pos.view.saleCompletedTitle}</h3>
               <p className="text-xs text-text-muted">
                 {strings.pos.view.invoiceNumber}{' '}
-                <strong className="text-text-primary font-mono">{completedSale.sale.invoice_number}</strong>
+                <strong className="text-text-primary font-mono">{completedSale.sale.invoiceNumber ?? completedSale.sale.invoice_number}</strong>
               </p>
             </div>
 
             {/* Change banner */}
-            {completedSale.change_paise > 0 && (
+            {(completedSale.changePaise ?? completedSale.change_paise ?? 0) > 0 && (
               <div className="bg-surface-secondary p-3.5 rounded-xl border border-border-default text-center">
                 <div className="text-[11px] text-text-muted uppercase font-bold tracking-wider">
                   {strings.pos.view.changeToReturn}
                 </div>
                 <div className="text-2xl font-black text-text-primary financial-value mt-0.5">
-                  {formatPaise(completedSale.change_paise)}
+                  {formatPaise(completedSale.changePaise ?? completedSale.change_paise)}
                 </div>
               </div>
             )}

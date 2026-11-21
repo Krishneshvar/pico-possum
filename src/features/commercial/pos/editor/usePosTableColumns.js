@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { strings } from '../../../../lib/strings';
 
-export const POS_TABLE_WIDTHS_KEY = 'pico_possum_pos_table_widths';
+export const POS_TABLE_WIDTHS_KEY = 'picoPossumPosTableWidths';
 
 export const POS_COLUMNS = [
   { key: 'index', label: strings.pos.editor.columns.index, defaultWidth: 48, minWidth: 36, align: 'center' },
@@ -17,7 +17,7 @@ export const POS_COLUMNS = [
 export function usePosTableColumns() {
   const [colWidths, setColWidths] = useState(() => {
     try {
-      const saved = localStorage.getItem(POS_TABLE_WIDTHS_KEY);
+      const saved = localStorage.getItem(POS_TABLE_WIDTHS_KEY) || localStorage.getItem('picoPossumPosTableWidths');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') return parsed;

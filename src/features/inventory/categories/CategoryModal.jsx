@@ -22,7 +22,8 @@ export default function CategoryModal({
     setErrors({});
     if (editingCategory) {
       setName(editingCategory.name || '');
-      setParentId(editingCategory.parent_id ? String(editingCategory.parent_id) : '');
+      const pId = editingCategory.parentId ?? editingCategory.parent_id;
+      setParentId(pId ? String(pId) : '');
     } else {
       setName('');
       setParentId(initialParentId ? String(initialParentId) : '');
@@ -58,7 +59,6 @@ export default function CategoryModal({
     onSubmit({
       name: name.trim(),
       parentId: parentId ? String(parentId) : null,
-      parent_id: parentId ? String(parentId) : null,
     });
   };
 

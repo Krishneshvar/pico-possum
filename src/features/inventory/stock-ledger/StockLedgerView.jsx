@@ -65,7 +65,7 @@ export default function StockLedgerView() {
   const { openOrFocus } = useWorkspaceStore();
 
   const { data: movements = [], isLoading, refetch } = useQuery({
-    queryKey: ['stock_movements', fromDate, toDate],
+    queryKey: ['stockMovements', fromDate, toDate],
     queryFn: () => tauriApi.getStockMovements(null, fromDate || null, toDate || null, 500),
   });
 
@@ -84,39 +84,44 @@ export default function StockLedgerView() {
 
   const columns = [
     {
-      key: 'created_at',
+      key: 'createdAt',
       label: s.columns.dateTime,
       className: 'font-mono text-text-muted text-[11px] whitespace-nowrap',
-      render: (r) => formatDateTime(r.created_at),
+      render: (r) => formatDateTime(r.createdAt ?? r.created_at),
     },
     {
-      key: 'product_sku',
+      key: 'productSku',
       label: s.columns.sku,
       className: 'font-mono text-text-muted text-[11px]',
-      render: (r) => r.product_sku || <span className="text-text-muted">—</span>,
+      render: (r) => (r.productSku ?? r.product_sku) || <span className="text-text-muted">—</span>,
     },
     {
-      key: 'product_name',
+      key: 'productName',
       label: s.columns.product,
       className: 'font-semibold text-text-primary text-xs',
-      render: (r) => (
-        <span className="inline-flex items-center gap-1.5">
-          <span>{r.product_name || <span className="text-text-muted italic">{s.unknownItem}</span>}</span>
-          {r.movement_type === 'PRODUCT_DELETED' && (
-            <span className="text-[10px] text-text-muted font-normal italic">(Deleted)</span>
-          )}
-        </span>
-      ),
+      render: (r) => {
+        const pName = r.productName ?? r.product_name;
+        const movType = r.movementType ?? r.movement_type;
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <span>{pName || <span className="text-text-muted italic">{s.unknownItem}</span>}</span>
+            {movType === 'PRODUCT_DELETED' && (
+              <span className="text-[10px] text-text-muted font-normal italic">(Deleted)</span>
+            )}
+          </span>
+        );
+      },
     },
     {
-      key: 'movement_type',
+      key: 'movementType',
       label: s.columns.reason,
       headerClassName: 'text-center',
       className: 'text-center text-xs',
       render: (r) => {
-        const norm = normalizeMovementType(r.movement_type);
+        const rawType = r.movementType ?? r.movement_type;
+        const norm = normalizeMovementType(rawType);
         const config = REASON_CONFIG[norm] || {
-          label: r.movement_type,
+          label: rawType,
           badgeClass: 'bg-surface-secondary text-text-secondary border-border-default',
         };
         return (
@@ -129,12 +134,12 @@ export default function StockLedgerView() {
       },
     },
     {
-      key: 'quantity_change',
+      key: 'quantityChange',
       label: s.columns.quantityDelta,
       headerClassName: 'text-center',
       className: 'text-center financial-value font-bold text-xs',
       render: (r) => {
-        const delta = r.quantity_change;
+        const delta = r.quantityChange ?? r.quantity_change;
         const pos = delta > 0;
         const zero = delta === 0;
         return (
@@ -154,36 +159,38 @@ export default function StockLedgerView() {
       },
     },
     {
-      key: 'reference_id',
+      key: 'referenceId',
       label: s.columns.reference,
       className: 'font-mono text-xs',
       render: (r) => {
+        const refId = r.referenceId ?? r.reference_id;
+        const movType = r.movementType ?? r.movement_type;
         const isInvoiceRef =
-          r.reference_id &&
-          (r.movement_type === 'SALE' ||
-            r.movement_type === 'RETURN' ||
-            r.movement_type === 'CANCELLED' ||
-            r.movement_type === 'BILL_ADJUSTMENT');
-        if (!r.reference_id) return <span className="text-text-muted">—</span>;
+          refId &&
+          (movType === 'SALE' ||
+            movType === 'RETURN' ||
+            movType === 'CANCELLED' ||
+            movType === 'BILL_ADJUSTMENT');
+        if (!refId) return <span className="text-text-muted">—</span>;
         if (isInvoiceRef) {
           return (
             <button
               type="button"
               onClick={() =>
-                openOrFocus(s.billTabTitle(r.reference_id), 'bill-detail', {
-                  invoiceNumber: r.reference_id,
+                openOrFocus(s.billTabTitle(refId), 'bill-detail', {
+                  invoiceNumber: refId,
                 })
               }
               className="inline-flex items-center gap-1 text-brand hover:underline font-mono text-[11px] cursor-pointer"
-              title={s.openBill(r.reference_id)}
+              title={s.openBill(refId)}
             >
               <Receipt className="w-3 h-3 shrink-0" />
-              <span>{r.reference_id}</span>
+              <span>{refId}</span>
               <ExternalLink className="w-2.5 h-2.5 opacity-60" />
             </button>
           );
         }
-        return <span className="text-text-muted text-[11px]">{r.reference_id}</span>;
+        return <span className="text-text-muted text-[11px]">{refId}</span>;
       },
     },
     {
@@ -226,23 +233,23 @@ export default function StockLedgerView() {
           persistKey="stock-ledger"
           data={movements}
           keyFn={(r) => r.id}
-          searchKeys={['product_name', 'movement_type', 'note', 'reference_id']}
+          searchKeys={['productName', 'movementType', 'note', 'referenceId']}
           filters={[
             {
               type: 'multiselect',
-              key: 'movement_type',
+              key: 'movementType',
               label: s.filters.reasons,
               options: movementTypeOptions,
               filterFn: (row, selectedValues) => {
                 if (!selectedValues || selectedValues.length === 0) return true;
-                const norm = normalizeMovementType(row.movement_type);
+                const norm = normalizeMovementType(row.movementType ?? row.movement_type);
                 return selectedValues.includes(norm);
               },
             },
             {
               type: 'daterange',
-              fromKey: 'created_at',
-              toKey: 'created_at',
+              fromKey: 'createdAt',
+              toKey: 'createdAt',
               label: s.filters.date,
               fromVal: fromDate,
               toVal: toDate,

@@ -24,8 +24,8 @@ export default function GeneralTab({ general, setGeneral, onSave, isSaving }) {
             </label>
             <input
               type="text"
-              value={general.store_name}
-              onChange={(e) => setGeneral({ ...general, store_name: e.target.value })}
+              value={general.storeName ?? general.store_name ?? ''}
+              onChange={(e) => setGeneral({ ...general, storeName: e.target.value })}
               placeholder={strings.settings.general.storeNamePlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none"
             />
@@ -71,8 +71,8 @@ export default function GeneralTab({ general, setGeneral, onSave, isSaving }) {
               {strings.settings.general.dateDisplayFormat}
             </label>
             <Select
-              value={general.date_format}
-              onChange={(val) => setGeneral({ ...general, date_format: val })}
+              value={general.dateFormat ?? general.date_format ?? 'DD-MM-YYYY'}
+              onChange={(val) => setGeneral({ ...general, dateFormat: val })}
               options={[
                 { value: 'DD-MM-YYYY', label: strings.settings.general.dateFormats.dayFirst },
                 { value: 'MM-DD-YYYY', label: strings.settings.general.dateFormats.monthFirst },
@@ -88,8 +88,8 @@ export default function GeneralTab({ general, setGeneral, onSave, isSaving }) {
               {strings.settings.general.timeDisplayFormat}
             </label>
             <Select
-              value={general.time_format}
-              onChange={(val) => setGeneral({ ...general, time_format: val })}
+              value={general.timeFormat ?? general.time_format ?? '12 hour format'}
+              onChange={(val) => setGeneral({ ...general, timeFormat: val })}
               options={[
                 { value: '12 hour format', label: strings.settings.general.timeFormats.twelveHour },
                 { value: '24 hour format', label: strings.settings.general.timeFormats.twentyFourHour },

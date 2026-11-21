@@ -142,7 +142,8 @@ export default function PosBillEditor({
   const availableStockFor = (productId) => {
     const product = stockById.get(productId);
     if (!product) return undefined;
-    return (product.current_stock || 0) + (stockAllowanceByProduct.get(productId) || 0);
+    const current = product.currentStock ?? product.current_stock ?? 0;
+    return current + (stockAllowanceByProduct.get(productId) || 0);
   };
 
   const filteredSearchProducts = products.slice(0, 8);

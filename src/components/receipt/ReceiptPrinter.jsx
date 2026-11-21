@@ -4,7 +4,7 @@ import { strings } from '../../lib/strings';
 export default function ReceiptPrinter({ sale, items, billSettings, generalSettings }) {
   if (!sale) return null;
 
-  const is58mm = billSettings?.paper_width === '58mm';
+  const is58mm = (billSettings?.paperWidth ?? billSettings?.paper_width) === '58mm';
   const widthClass = is58mm ? 'w-[58mm] text-[11px]' : 'w-[80mm] text-[12px]';
 
   // Sections config or default order
@@ -34,10 +34,21 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
     const alignClass = getAlignClass(opts.alignment);
     const fontClass = getFontSizeClass(opts.fontSize);
 
+    const invoiceNumber = sale.invoiceNumber ?? sale.invoice_number;
+    const createdAt = sale.createdAt ?? sale.created_at;
+    const customerName = sale.customerName ?? sale.customer_name;
+    const billerName = sale.billerName ?? sale.biller_name;
+    const subtotalPaise = sale.subtotalPaise ?? sale.subtotal_paise ?? 0;
+    const discountPaise = sale.discountPaise ?? sale.discount_paise ?? 0;
+    const taxPaise = sale.taxPaise ?? sale.tax_paise ?? 0;
+    const totalPaise = sale.totalPaise ?? sale.total_paise ?? 0;
+    const paidPaise = sale.paidPaise ?? sale.paid_paise ?? totalPaise;
+    const paymentMethod = sale.paymentMethod ?? sale.payment_method;
+
     switch (section.id) {
       case 'storeHeader': {
-        const storeName = opts.storeName || billSettings?.store_name || generalSettings?.store_name || strings.receipt.defaults.storeName;
-        const storeDetails = opts.storeDetails || billSettings?.store_details || generalSettings?.address || '';
+        const storeName = opts.storeName || billSettings?.storeName || generalSettings?.storeName || strings.receipt.defaults.storeName;
+        const storeDetails = opts.storeDetails || billSettings?.storeDetails || generalSettings?.address || '';
         const phone = opts.phone || billSettings?.phone || generalSettings?.phone || '';
         const gstin = opts.gst || billSettings?.gst || generalSettings?.gstin || '';
 
@@ -55,22 +66,22 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
         return (
           <div key="billMetadata" className={`py-2 border-b border-black space-y-0.5 ${alignClass} ${fontClass}`}>
             <div className="flex justify-between">
-              <span><strong className="font-bold">{strings.receipt.labels.billNo}:</strong> {sale.invoice_number}</span>
-              <span><strong className="font-bold">{strings.common.labels.date}:</strong> {formatDate(sale.created_at)}</span>
+              <span><strong className="font-bold">{strings.receipt.labels.billNo}:</strong> {invoiceNumber}</span>
+              <span><strong className="font-bold">{strings.common.labels.date}:</strong> {formatDate(createdAt)}</span>
             </div>
             <div className="flex justify-between">
-              <span><strong className="font-bold">{strings.receipt.labels.cust}:</strong> {sale.customer_name || strings.receipt.defaults.cashCustomer}</span>
-              <span><strong className="font-bold">{strings.common.labels.time}:</strong> {formatTime(sale.created_at)}</span>
+              <span><strong className="font-bold">{strings.receipt.labels.cust}:</strong> {customerName || strings.receipt.defaults.cashCustomer}</span>
+              <span><strong className="font-bold">{strings.common.labels.time}:</strong> {formatTime(createdAt)}</span>
             </div>
-            {sale.biller_name && (
-              <div><strong className="font-bold">{strings.receipt.labels.cashier}:</strong> {sale.biller_name}</div>
+            {billerName && (
+              <div><strong className="font-bold">{strings.receipt.labels.cashier}:</strong> {billerName}</div>
             )}
           </div>
         );
       }
 
       case 'itemsTable': {
-        const showTax = opts.showTax ?? billSettings?.show_tax ?? false;
+        const showTax = opts.showTax ?? billSettings?.showTax ?? billSettings?.show_tax ?? false;
         return (
           <table key="itemsTable" className={`w-full my-2 border-collapse ${fontClass}`}>
             <thead>
@@ -84,13 +95,17 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
             </thead>
             <tbody>
               {(items || []).map((it, idx) => {
-                const lineTotal = (it.unit_price_paise * it.quantity) - (it.discount_paise || 0);
+                const unitPrice = it.unitPricePaise ?? it.unit_price_paise ?? 0;
+                const itemDiscount = it.discountPaise ?? it.discount_paise ?? 0;
+                const productName = it.productName ?? it.product_name ?? it.name;
+                const taxRate = it.taxRate ?? it.tax_rate ?? 0;
+                const lineTotal = (unitPrice * it.quantity) - itemDiscount;
                 return (
                   <tr key={idx} className="border-b border-dotted border-gray-400">
-                    <td className="py-1 pr-1 break-words whitespace-normal leading-tight">{it.product_name}</td>
+                    <td className="py-1 pr-1 break-words whitespace-normal leading-tight">{productName}</td>
                     <td className="text-center py-1">{it.quantity}</td>
-                    <td className="text-right py-1">{(it.unit_price_paise / 100).toFixed(2)}</td>
-                    {showTax && <td className="text-right py-1 font-mono">{strings.receipt.columns.taxRate(it.tax_rate ?? 0)}</td>}
+                    <td className="text-right py-1">{(unitPrice / 100).toFixed(2)}</td>
+                    {showTax && <td className="text-right py-1 font-mono">{strings.receipt.columns.taxRate(taxRate)}</td>}
                     <td className="text-right py-1">{(lineTotal / 100).toFixed(2)}</td>
                   </tr>
                 );
@@ -101,50 +116,51 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
       }
 
       case 'totals': {
+        const showTax = opts.showTax ?? billSettings?.showTax ?? billSettings?.show_tax ?? false;
         return (
           <div key="totals" className={`pt-1 border-t-2 border-black space-y-1 ${alignClass} ${fontClass}`}>
             <div className="flex justify-between">
               <span>{strings.common.labels.subtotal}:</span>
-              <span>{formatPaise(sale.subtotal_paise)}</span>
+              <span>{formatPaise(subtotalPaise)}</span>
             </div>
 
-            {sale.discount_paise > 0 && (
+            {discountPaise > 0 && (
               <div className="flex justify-between">
                 <span>{strings.common.labels.discount}:</span>
-                <span>-{formatPaise(sale.discount_paise)}</span>
+                <span>-{formatPaise(discountPaise)}</span>
               </div>
             )}
 
-            {(opts.showTax ?? billSettings?.show_tax ?? false) && sale.tax_paise > 0 && (
+            {showTax && taxPaise > 0 && (
               <div className="flex justify-between">
                 <span>{strings.receipt.labels.taxAmount}:</span>
-                <span>{formatPaise(sale.tax_paise)}</span>
+                <span>{formatPaise(taxPaise)}</span>
               </div>
             )}
 
             <div className="flex justify-between font-black text-sm pt-1 border-t border-black">
               <span>{strings.common.labels.total}:</span>
-              <span>{formatPaise(sale.total_paise)}</span>
+              <span>{formatPaise(totalPaise)}</span>
             </div>
 
-            {sale.payment_method && (
+            {paymentMethod && (
               <div className="flex justify-between text-[11px] pt-0.5">
-                <span>{strings.receipt.labels.paidVia(sale.payment_method.replace(/_/g, ' '))}</span>
-                <span>{formatPaise(sale.paid_paise ?? sale.total_paise)}</span>
+                <span>{strings.receipt.labels.paidVia(paymentMethod.replace(/_/g, ' '))}</span>
+                <span>{formatPaise(paidPaise)}</span>
               </div>
             )}
 
-            {sale.paid_paise > sale.total_paise && (
+            {paidPaise > totalPaise && (
               <div className="flex justify-between text-[11px]">
                 <span>{strings.receipt.labels.change}:</span>
-                <span>{formatPaise(sale.paid_paise - sale.total_paise)}</span>
+                <span>{formatPaise(paidPaise - totalPaise)}</span>
               </div>
             )}
 
-            {sale.paid_paise < sale.total_paise && (
+            {paidPaise < totalPaise && (
               <div className="flex justify-between text-[11px] font-bold">
                 <span>{strings.receipt.labels.balanceDue}:</span>
-                <span>{formatPaise(sale.total_paise - sale.paid_paise)}</span>
+                <span>{formatPaise(totalPaise - paidPaise)}</span>
               </div>
             )}
           </div>
@@ -152,7 +168,7 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
       }
 
       case 'footer': {
-        const text = opts.text || billSettings?.footer_text || strings.receipt.defaults.footerText;
+        const text = opts.text || billSettings?.footerText || strings.receipt.defaults.footerText;
         return (
           <div key="footer" className={`mt-4 pt-2 border-t border-black whitespace-pre-line ${alignClass} ${fontClass}`}>
             {text}

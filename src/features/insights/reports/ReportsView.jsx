@@ -41,7 +41,7 @@ export default function ReportsView() {
     isLoading: loadingSummary,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['sales_report_summary', fromDate, toDate, activePmFilter],
+    queryKey: ['salesReportSummary', fromDate, toDate, activePmFilter],
     queryFn: () => tauriApi.getSalesReportSummary(fromDate || null, toDate || null, activePmFilter),
   });
 
@@ -51,7 +51,7 @@ export default function ReportsView() {
     isLoading: loadingTopProducts,
     refetch: refetchTopProducts,
   } = useQuery({
-    queryKey: ['top_products', fromDate, toDate, activePmFilter],
+    queryKey: ['topProducts', fromDate, toDate, activePmFilter],
     queryFn: () => tauriApi.getTopSellingProducts(10, fromDate || null, toDate || null, activePmFilter),
   });
 
@@ -61,7 +61,7 @@ export default function ReportsView() {
     isLoading: loadingTopCategories,
     refetch: refetchTopCategories,
   } = useQuery({
-    queryKey: ['top_categories', fromDate, toDate, activePmFilter],
+    queryKey: ['topCategories', fromDate, toDate, activePmFilter],
     queryFn: () => tauriApi.getTopSellingCategories(10, fromDate || null, toDate || null, activePmFilter),
   });
 
@@ -71,7 +71,7 @@ export default function ReportsView() {
     isLoading: loadingMultiYear,
     refetch: refetchMultiYear,
   } = useQuery({
-    queryKey: ['multi_year_sales', yearsBack, activePmFilter],
+    queryKey: ['multiYearSales', yearsBack, activePmFilter],
     queryFn: () => tauriApi.getMultiYearSales(yearsBack, activePmFilter),
   });
 
@@ -85,10 +85,12 @@ export default function ReportsView() {
     const counts = { ALL: 0, CASH: 0, UPI: 0, CARD: 0, GIFT_CARD: 0 };
     for (const s of allSales) {
       if (s.status === 'CANCELLED') continue;
-      if (fromDate && s.created_at && s.created_at.split('T')[0] < fromDate) continue;
-      if (toDate && s.created_at && s.created_at.split('T')[0] > toDate) continue;
+      const createdAt = s.createdAt ?? s.created_at;
+      if (fromDate && createdAt && createdAt.split('T')[0] < fromDate) continue;
+      if (toDate && createdAt && createdAt.split('T')[0] > toDate) continue;
       counts.ALL++;
-      const pm = (s.payment_method || 'CASH').toUpperCase();
+      const paymentMethod = s.paymentMethod ?? s.payment_method;
+      const pm = (paymentMethod || 'CASH').toUpperCase();
       if (pm === 'GIFT_CARD' || pm === 'GIFT CARD' || pm === 'GIFTCARD' || pm === 'GC' || pm === 'X') {
         counts.GIFT_CARD++;
       } else if (counts[pm] !== undefined) {
@@ -109,25 +111,25 @@ export default function ReportsView() {
 
   // Sorted product rows
   const sortedTopProducts = useMemo(
-    () => sortRows(topProducts, topProdSort, (row, key) => row[key]),
+    () => sortRows(topProducts, topProdSort, (row, key) => row[key] ?? row[key.replace(/([A-Z])/g, '_$1').toLowerCase()]),
     [topProducts, topProdSort]
   );
 
   // Sorted category rows
   const sortedTopCategories = useMemo(
-    () => sortRows(topCategories, topCatSort, (row, key) => row[key]),
+    () => sortRows(topCategories, topCatSort, (row, key) => row[key] ?? row[key.replace(/([A-Z])/g, '_$1').toLowerCase()]),
     [topCategories, topCatSort]
   );
 
   // Summary computations
-  const totalRev = summary?.total_revenue_paise || 0;
-  const cashRev = summary?.cash_revenue_paise || 0;
-  const cardRev = summary?.card_revenue_paise || 0;
-  const upiRev = summary?.upi_revenue_paise || 0;
-  const giftCardRev = summary?.gift_card_revenue_paise || 0;
-  const totalCount = summary?.total_sales_count || 0;
+  const totalRev = summary?.totalRevenuePaise ?? summary?.total_revenue_paise ?? 0;
+  const cashRev = summary?.cashRevenuePaise ?? summary?.cash_revenue_paise ?? 0;
+  const cardRev = summary?.cardRevenuePaise ?? summary?.card_revenue_paise ?? 0;
+  const upiRev = summary?.upiRevenuePaise ?? summary?.upi_revenue_paise ?? 0;
+  const giftCardRev = summary?.giftCardRevenuePaise ?? summary?.gift_card_revenue_paise ?? 0;
+  const totalCount = summary?.totalSalesCount ?? summary?.total_sales_count ?? 0;
   const avgBill = totalCount > 0 ? Math.round(totalRev / totalCount) : 0;
-  const totalDiscount = summary?.total_discount_paise || 0;
+  const totalDiscount = summary?.totalDiscountPaise ?? summary?.total_discount_paise ?? 0;
 
   const cashPct = totalRev > 0 ? (cashRev / totalRev) * 100 : 0;
   const upiPct = totalRev > 0 ? (upiRev / totalRev) * 100 : 0;
@@ -136,21 +138,21 @@ export default function ReportsView() {
 
   // Category totals
   const totalCategoryUnits = useMemo(
-    () => topCategories.reduce((acc, c) => acc + (c.total_quantity || 0), 0),
+    () => topCategories.reduce((acc, c) => acc + (c.totalQuantity ?? c.total_quantity ?? 0), 0),
     [topCategories]
   );
   const totalCategoryRevenue = useMemo(
-    () => topCategories.reduce((acc, c) => acc + (c.total_revenue_paise || 0), 0),
+    () => topCategories.reduce((acc, c) => acc + (c.totalRevenuePaise ?? c.total_revenue_paise ?? 0), 0),
     [topCategories]
   );
 
   // Product totals
   const totalProductUnits = useMemo(
-    () => topProducts.reduce((acc, p) => acc + (p.total_quantity || 0), 0),
+    () => topProducts.reduce((acc, p) => acc + (p.totalQuantity ?? p.total_quantity ?? 0), 0),
     [topProducts]
   );
   const totalProductRevenue = useMemo(
-    () => topProducts.reduce((acc, p) => acc + (p.total_revenue_paise || 0), 0),
+    () => topProducts.reduce((acc, p) => acc + (p.totalRevenuePaise ?? p.total_revenue_paise ?? 0), 0),
     [topProducts]
   );
 

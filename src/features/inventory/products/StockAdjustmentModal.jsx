@@ -12,18 +12,19 @@ export default function StockAdjustmentModal({
   allowNegativeStock = false,
 }) {
   const [stockAdjustment, setStockAdjustment] = useState({
-    quantity_change: '',
-    movement_type: 'MANUAL_STOCK_CORRECTION',
+    quantityChange: '',
+    movementType: 'MANUAL_STOCK_CORRECTION',
     note: '',
   });
   const [errors, setErrors] = useState({});
 
   if (!product) return null;
 
-  const parsedQty = parseInt(stockAdjustment.quantity_change, 10);
+  const currentStock = product.currentStock ?? product.current_stock ?? 0;
+  const parsedQty = parseInt(stockAdjustment.quantityChange, 10);
   const isValidQty = !isNaN(parsedQty) && parsedQty !== 0;
   const isNegative = isValidQty && parsedQty < 0;
-  const projectedStock = isValidQty ? (product.current_stock || 0) + parsedQty : null;
+  const projectedStock = isValidQty ? currentStock + parsedQty : null;
 
   const handleSelectReason = (reason) => {
     if (reason === 'PURCHASE' && isNegative) {
@@ -31,28 +32,28 @@ export default function StockAdjustmentModal({
       return;
     }
     setErrors((prev) => ({ ...prev, reason: undefined }));
-    setStockAdjustment((prev) => ({ ...prev, movement_type: reason }));
+    setStockAdjustment((prev) => ({ ...prev, movementType: reason }));
   };
 
   const updateQtyVal = (rawVal) => {
-    setErrors((prev) => ({ ...prev, quantity_change: undefined }));
+    setErrors((prev) => ({ ...prev, quantityChange: undefined }));
     const nextParsed = parseInt(rawVal, 10);
     const willBeNegative = !isNaN(nextParsed) && nextParsed < 0;
     setStockAdjustment((prev) => ({
       ...prev,
-      quantity_change: rawVal,
-      movement_type: willBeNegative && prev.movement_type === 'PURCHASE'
+      quantityChange: rawVal,
+      movementType: willBeNegative && prev.movementType === 'PURCHASE'
         ? 'MANUAL_STOCK_CORRECTION'
-        : prev.movement_type,
+        : prev.movementType,
     }));
   };
 
   const handleConfirm = () => {
     const validation = validateStockAdjustment(
-      stockAdjustment.quantity_change,
+      stockAdjustment.quantityChange,
       stockAdjustment.note,
-      stockAdjustment.movement_type,
-      product.current_stock || 0,
+      stockAdjustment.movementType,
+      currentStock,
       allowNegativeStock
     );
     if (!validation.isValid) {
@@ -62,9 +63,9 @@ export default function StockAdjustmentModal({
       return;
     }
     onSubmit({
-      product_id: product.id,
-      quantity_change: parsedQty,
-      reason: stockAdjustment.movement_type || 'MANUAL_STOCK_CORRECTION',
+      productId: product.id,
+      quantityChange: parsedQty,
+      reason: stockAdjustment.movementType || 'MANUAL_STOCK_CORRECTION',
       note: stockAdjustment.note ? stockAdjustment.note.trim() : null,
     });
   };
@@ -90,7 +91,7 @@ export default function StockAdjustmentModal({
           <span className="text-text-muted">{strings.products.stock.currentBalance}</span>
           <div className="flex items-center gap-2">
             <strong className="text-text-primary font-mono font-bold text-sm">
-              {strings.products.stock.units(product.current_stock)}
+              {strings.products.stock.units(currentStock)}
             </strong>
             {isValidQty && (
               <span className="text-[11px] font-mono font-semibold text-brand">
@@ -118,7 +119,7 @@ export default function StockAdjustmentModal({
                 type="button"
                 onClick={() => handleSelectReason('MANUAL_STOCK_CORRECTION')}
                 className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  stockAdjustment.movement_type === 'MANUAL_STOCK_CORRECTION'
+                  stockAdjustment.movementType === 'MANUAL_STOCK_CORRECTION'
                     ? 'bg-brand text-white shadow-xs'
                     : 'text-text-muted hover:text-text-primary'
                 }`}
@@ -139,7 +140,7 @@ export default function StockAdjustmentModal({
                 className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                   isNegative
                     ? 'opacity-40 cursor-not-allowed text-text-muted bg-surface/30'
-                    : stockAdjustment.movement_type === 'PURCHASE'
+                    : stockAdjustment.movementType === 'PURCHASE'
                     ? 'bg-brand text-white shadow-xs'
                     : 'text-text-muted hover:text-text-primary cursor-pointer'
                 }`}
@@ -159,7 +160,7 @@ export default function StockAdjustmentModal({
               <input
                 type="text"
                 inputMode="numeric"
-                value={stockAdjustment.quantity_change}
+                value={stockAdjustment.quantityChange}
                 onChange={(e) => {
                   const val = e.target.value.trim();
                   if (val === '' || val === '-' || val === '+' || /^[+-]?\d+$/.test(val)) {
@@ -168,14 +169,14 @@ export default function StockAdjustmentModal({
                 }}
                 placeholder={strings.products.stock.placeholders.quantity}
                 className={`w-full bg-surface-secondary border rounded-lg p-2 pr-16 text-text-primary focus:outline-none font-mono ${
-                  errors.quantity_change ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                  errors.quantityChange ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                 }`}
               />
               <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => {
-                    const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
+                    const current = parseInt(stockAdjustment.quantityChange, 10) || 0;
                     const next = current + 1;
                     updateQtyVal(next > 0 ? `+${next}` : String(next));
                   }}
@@ -187,7 +188,7 @@ export default function StockAdjustmentModal({
                 <button
                   type="button"
                   onClick={() => {
-                    const current = parseInt(stockAdjustment.quantity_change, 10) || 0;
+                    const current = parseInt(stockAdjustment.quantityChange, 10) || 0;
                     const next = current - 1;
                     updateQtyVal(next > 0 ? `+${next}` : String(next));
                   }}
@@ -198,7 +199,7 @@ export default function StockAdjustmentModal({
                 </button>
               </div>
             </div>
-            {errors.quantity_change && <p className="text-[11px] text-danger mt-1">{errors.quantity_change}</p>}
+            {errors.quantityChange && <p className="text-[11px] text-danger mt-1">{errors.quantityChange}</p>}
           </div>
 
           <div>

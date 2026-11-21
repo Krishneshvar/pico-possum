@@ -29,10 +29,10 @@ export default function ProductFlowView() {
   const [toDate, setToDate] = useState('');
 
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
-  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
+  const currencySymbol = generalSettings?.currencySymbol || getCurrencySymbol();
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
@@ -47,7 +47,7 @@ export default function ProductFlowView() {
   const hasSelectedProduct = Boolean(selectedProductId);
 
   const { data: flowItems = [], isLoading, refetch } = useQuery({
-    queryKey: ['product_flow', selectedProductId, fromDate, toDate],
+    queryKey: ['productFlow', selectedProductId, fromDate, toDate],
     queryFn: () =>
       tauriApi.getProductFlow(selectedProductId || null, fromDate || null, toDate || null, 10000),
     enabled: hasSelectedProduct,
@@ -62,10 +62,10 @@ export default function ProductFlowView() {
         avgPrice: 0,
       };
     }
-    const salesOnly = flowItems.filter((f) => f.quantity < 0 || f.event_type === 'SALE');
+    const salesOnly = flowItems.filter((f) => f.quantity < 0 || (f.eventType ?? f.event_type) === 'SALE');
     const itemsToCount = salesOnly.length > 0 ? salesOnly : flowItems;
     const unitsSold = itemsToCount.reduce((acc, r) => acc + Math.abs(r.quantity || 0), 0);
-    const totalRevenue = itemsToCount.reduce((acc, r) => acc + (r.total_paise || 0), 0);
+    const totalRevenue = itemsToCount.reduce((acc, r) => acc + ((r.totalPaise ?? r.total_paise) || 0), 0);
     const avgPrice = unitsSold > 0 ? Math.round(totalRevenue / unitsSold) : 0;
 
     return {
@@ -77,60 +77,64 @@ export default function ProductFlowView() {
 
   const columns = [
     {
-      key: 'created_at',
+      key: 'createdAt',
       label: strings.common.labels.dateTime,
       className: 'text-content-secondary text-xs whitespace-nowrap',
-      render: (r) => formatDateTime(r.created_at),
+      render: (r) => formatDateTime(r.createdAt ?? r.created_at),
     },
     {
-      key: 'invoice_number',
+      key: 'invoiceNumber',
       label: strings.productFlow.columns.invoice,
       className: 'font-mono text-content font-medium',
       render: (r) => {
-        if (!r.invoice_number) return <span className="text-content-muted">{strings.common.states.emptyValue}</span>;
+        const invNo = r.invoiceNumber ?? r.invoice_number;
+        if (!invNo) return <span className="text-content-muted">{strings.common.states.emptyValue}</span>;
         return (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               openOrFocus(
-                strings.productFlow.productFlow.billTabTitle(r.invoice_number),
+                strings.productFlow.productFlow.billTabTitle(invNo),
                 'bill-detail',
-                { invoiceNumber: r.invoice_number },
-                `bill-${r.invoice_number}`
+                { invoiceNumber: invNo },
+                `bill-${invNo}`
               );
             }}
             className="inline-flex items-center gap-1.5 text-brand hover:underline font-mono text-xs font-semibold cursor-pointer transition-colors"
-            title={strings.productFlow.productFlow.viewBillTitle(r.invoice_number)}
+            title={strings.productFlow.productFlow.viewBillTitle(invNo)}
           >
             <Receipt className="w-3.5 h-3.5 text-brand shrink-0" />
-            <span>{r.invoice_number}</span>
+            <span>{invNo}</span>
             <ExternalLink className="w-3 h-3 opacity-60 shrink-0" />
           </button>
         );
       },
     },
     {
-      key: 'customer_name',
+      key: 'customerName',
       label: strings.common.labels.customer,
       className: 'text-content-secondary',
-      render: (r) => (
-        <span className="inline-flex items-center gap-1.5 text-content-secondary">
-          <User className="w-3 h-3 text-content-muted shrink-0" />
-          <span className="truncate max-w-[160px]">
-            {r.customer_name || strings.productFlow.productFlow.walkInCustomer}
+      render: (r) => {
+        const custName = r.customerName ?? r.customer_name;
+        return (
+          <span className="inline-flex items-center gap-1.5 text-content-secondary">
+            <User className="w-3 h-3 text-content-muted shrink-0" />
+            <span className="truncate max-w-[160px]">
+              {custName || strings.productFlow.productFlow.walkInCustomer}
+            </span>
           </span>
-        </span>
-      ),
+        );
+      },
     },
     {
-      key: 'event_type',
+      key: 'eventType',
       label: strings.productFlow.columns.eventType,
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => (
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-surface-secondary text-content-secondary border border-border">
-          {r.event_type}
+          {r.eventType ?? r.event_type}
         </span>
       ),
     },
@@ -154,29 +158,32 @@ export default function ProductFlowView() {
       },
     },
     {
-      key: 'unit_price_paise',
+      key: 'unitPricePaise',
       label: strings.productFlow.columns.soldUnitPrice,
       headerClassName: 'text-right',
       className: 'text-right text-content-secondary financial-value',
-      render: (r) => formatPaise(r.unit_price_paise),
+      render: (r) => formatPaise(r.unitPricePaise ?? r.unit_price_paise),
     },
     {
-      key: 'total_paise',
+      key: 'totalPaise',
       label: strings.productFlow.columns.soldTotalAmount,
       headerClassName: 'text-right',
       className: 'text-right font-medium text-content financial-value',
-      render: (r) => formatPaise(r.total_paise),
+      render: (r) => formatPaise(r.totalPaise ?? r.total_paise),
     },
     {
-      key: 'payment_method',
+      key: 'paymentMethod',
       label: strings.productFlow.columns.payment,
       headerClassName: 'text-center',
       className: 'text-center',
-      render: (r) => (
-        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-surface-secondary text-content-secondary border border-border">
-          {r.payment_method ? r.payment_method.replace(/_/g, ' ') : strings.common.states.emptyValue}
-        </span>
-      ),
+      render: (r) => {
+        const pm = r.paymentMethod ?? r.payment_method;
+        return (
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-surface-secondary text-content-secondary border border-border">
+            {pm ? pm.replace(/_/g, ' ') : strings.common.states.emptyValue}
+          </span>
+        );
+      },
     },
   ];
 
@@ -314,7 +321,7 @@ export default function ProductFlowView() {
                   persistKey="product-flow"
                   data={flowItems}
                   keyFn={(r) => r.id}
-                  searchKeys={['invoice_number', 'customer_name', 'payment_method']}
+                  searchKeys={['invoiceNumber', 'customerName', 'paymentMethod']}
                   pageSize={25}
                   emptyMessage={strings.productFlow.productFlow.emptyTable}
                   isLoading={isLoading}

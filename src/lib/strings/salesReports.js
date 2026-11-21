@@ -76,7 +76,7 @@ const salesReports = {
     entityName: 'report rows',
     sheetName: 'Sales Report',
     filename: (reportType, dateRange, extension) =>
-      `sales_report_${reportType}_${dateRange}.${extension}`,
+      `sales-report-${reportType}-${dateRange}.${extension}`,
   },
 };
 

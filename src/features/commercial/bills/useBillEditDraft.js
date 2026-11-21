@@ -38,7 +38,7 @@ export function useBillEditDraft({
   const editProducts = useMemo(() => {
     const q = editSearchQuery.trim().toLowerCase();
     return catalogProducts.filter((p) => {
-      if (editSelectedCategory && p.category_id !== editSelectedCategory) return false;
+      if (editSelectedCategory && (p.categoryId ?? p.category_id) !== editSelectedCategory) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
@@ -53,33 +53,35 @@ export function useBillEditDraft({
       const { sale, items } = details;
       setDraftBill({
         items: items.map((it) => {
-          const product = catalogProducts.find((p) => p.id === it.product_id);
+          const productId = it.productId ?? it.product_id;
+          const product = catalogProducts.find((p) => p.id === productId);
+          const unitPrice = it.unitPricePaise ?? it.unit_price_paise;
           return {
-            productId: it.product_id,
-            name: it.product_name,
-            sku: it.product_sku || product?.sku || '',
-            unitPricePaise: it.unit_price_paise,
-            mrpPaise: product?.mrp_paise ?? it.unit_price_paise,
-            costPricePaise: product?.cost_price_paise ?? it.cost_price_paise ?? 0,
-            taxRate: it.tax_rate || 0,
+            productId,
+            name: it.productName ?? it.product_name,
+            sku: it.productSku ?? it.product_sku ?? product?.sku ?? '',
+            unitPricePaise: unitPrice,
+            mrpPaise: product?.mrpPaise ?? product?.mrp_paise ?? unitPrice,
+            costPricePaise: product?.costPricePaise ?? product?.cost_price_paise ?? it.costPricePaise ?? it.cost_price_paise ?? 0,
+            taxRate: it.taxRate ?? it.tax_rate ?? 0,
             quantity: it.quantity,
-            discountPaise: it.discount_paise || 0,
+            discountPaise: it.discountPaise ?? it.discount_paise ?? 0,
           };
         }),
         customer:
-          sale.customer_id || sale.customer_name
+          (sale.customerId ?? sale.customer_id) || (sale.customerName ?? sale.customer_name)
             ? {
-                id: sale.customer_id || null,
-                name: sale.customer_name || '',
-                phone: sale.customer_phone || '',
-                address: sale.customer_address || '',
+                id: (sale.customerId ?? sale.customer_id) || null,
+                name: (sale.customerName ?? sale.customer_name) || '',
+                phone: (sale.customerPhone ?? sale.customer_phone) || '',
+                address: (sale.customerAddress ?? sale.customer_address) || '',
               }
             : null,
         discountType: 'FIXED',
-        discountValue: (sale.discount_paise || 0) / 100,
-        paymentMethod: sale.payment_method || 'CASH',
-        isFullPayment: sale.paid_paise === sale.total_paise,
-        amountTenderedPaise: sale.paid_paise || 0,
+        discountValue: ((sale.discountPaise ?? sale.discount_paise) || 0) / 100,
+        paymentMethod: (sale.paymentMethod ?? sale.payment_method) || 'CASH',
+        isFullPayment: (sale.paidPaise ?? sale.paid_paise) === (sale.totalPaise ?? sale.total_paise),
+        amountTenderedPaise: (sale.paidPaise ?? sale.paid_paise) || 0,
         notes: sale.notes || '',
       });
     },
@@ -177,10 +179,10 @@ export function useBillEditDraft({
               productId: product.id,
               name: product.name,
               sku: product.sku || '',
-              unitPricePaise: product.mrp_paise || 0,
-              mrpPaise: product.mrp_paise || 0,
-              costPricePaise: product.cost_price_paise || 0,
-              taxRate: product.tax_rate || 0,
+              unitPricePaise: (product.mrpPaise ?? product.mrp_paise) || 0,
+              mrpPaise: (product.mrpPaise ?? product.mrp_paise) || 0,
+              costPricePaise: (product.costPricePaise ?? product.cost_price_paise) || 0,
+              taxRate: (product.taxRate ?? product.tax_rate) || 0,
               quantity: 1,
               discountPaise: 0,
             },
@@ -198,9 +200,8 @@ export function useBillEditDraft({
     }
 
     if (!allowNegativeStock) {
-      const available =
-        (productStockById.get(productId)?.current_stock || 0) +
-        (stockAllowanceByProduct.get(productId) || 0);
+      const stock = productStockById.get(productId)?.currentStock ?? productStockById.get(productId)?.current_stock ?? 0;
+      const available = stock + (stockAllowanceByProduct.get(productId) || 0);
       if (quantity > available) {
         const name = draftBill?.items.find((it) => it.productId === productId)?.name || b.labels.itemFallback;
         toast.warning(
@@ -299,15 +300,15 @@ export function useBillEditDraft({
 
   const invalidateSalesAndAnalytics = () => {
     queryClient.invalidateQueries({ queryKey: ['sales'] });
-    queryClient.invalidateQueries({ queryKey: ['sale_details'] });
+    queryClient.invalidateQueries({ queryKey: ['saleDetails'] });
     queryClient.invalidateQueries({ queryKey: ['products'] });
-    queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-    queryClient.invalidateQueries({ queryKey: ['product_flow'] });
-    queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
-    queryClient.invalidateQueries({ queryKey: ['top_products'] });
-    queryClient.invalidateQueries({ queryKey: ['top_categories'] });
-    queryClient.invalidateQueries({ queryKey: ['multi_year_sales'] });
-    queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
+    queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
+    queryClient.invalidateQueries({ queryKey: ['productFlow'] });
+    queryClient.invalidateQueries({ queryKey: ['salesReportSummary'] });
+    queryClient.invalidateQueries({ queryKey: ['topProducts'] });
+    queryClient.invalidateQueries({ queryKey: ['topCategories'] });
+    queryClient.invalidateQueries({ queryKey: ['multiYearSales'] });
+    queryClient.invalidateQueries({ queryKey: ['salesBreakdown'] });
     queryClient.invalidateQueries({ queryKey: ['customers'] });
   };
 
@@ -321,7 +322,8 @@ export function useBillEditDraft({
       setCustomerModalOpen(false);
       setEditSearchQuery('');
       setEditSelectedCategory(null);
-      logger.info('Bills', `Bill amended successfully: ${saleDetails?.sale?.invoice_number}`);
+      const invNo = saleDetails?.sale?.invoiceNumber ?? saleDetails?.sale?.invoice_number;
+      logger.info('Bills', `Bill amended successfully: ${invNo}`);
       toast.success(b.toasts.amended);
     },
     onError: (err) => {
@@ -390,7 +392,7 @@ export function useBillEditDraft({
 
     const { confirmed, value: amendmentReason } = await confirmDialog({
       title: b.dialogs.amend.title,
-      message: b.dialogs.amend.message(saleDetails?.sale?.invoice_number),
+      message: b.dialogs.amend.message(saleDetails?.sale?.invoiceNumber ?? saleDetails?.sale?.invoice_number),
       input: {
         label: b.dialogs.amend.reasonLabel,
         defaultValue: b.dialogs.amend.reasonDefault,
@@ -406,20 +408,20 @@ export function useBillEditDraft({
     if (!confirmed) return;
 
     const payload = {
-      sale_id: saleDetails?.sale?.id || saleId,
-      customer_id: draftBill.customer?.id || null,
-      customer_name: draftBill.customer?.name?.trim() || null,
-      customer_phone: draftBill.customer?.phone?.trim() || null,
-      customer_address: draftBill.customer?.address?.trim() || null,
+      saleId: saleDetails?.sale?.id || saleId,
+      customerId: draftBill.customer?.id || null,
+      customerName: draftBill.customer?.name?.trim() || null,
+      customerPhone: draftBill.customer?.phone?.trim() || null,
+      customerAddress: draftBill.customer?.address?.trim() || null,
       items: draftBill.items.map((it) => ({
-        product_id: it.productId,
+        productId: it.productId,
         quantity: Number(it.quantity),
-        unit_price_paise: Number(it.unitPricePaise),
-        discount_paise: Number(it.discountPaise || 0),
+        unitPricePaise: Number(it.unitPricePaise),
+        discountPaise: Number(it.discountPaise || 0),
       })),
-      discount_paise: draftTotals.discountPaise,
-      payment_method: draftBill.paymentMethod,
-      paid_paise: requiresTender ? draftTotals.tenderedPaise : draftTotals.totalPaise,
+      discountPaise: draftTotals.discountPaise,
+      paymentMethod: draftBill.paymentMethod,
+      paidPaise: requiresTender ? draftTotals.tenderedPaise : draftTotals.totalPaise,
       notes: amendmentReason
         ? `[Amended: ${amendmentReason}] ${draftBill.notes || ''}`.trim()
         : draftBill.notes || null,

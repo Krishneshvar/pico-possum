@@ -13,11 +13,14 @@ export async function exportCategoriesCsv({ categories, categoryMap, productCoun
     strings.categories.export.headers.parent,
     strings.categories.export.headers.productCount,
   ];
-  const rows = categories.map((c) => [
-    escapeCsv(c.name || ''),
-    escapeCsv(categoryMap[c.parent_id]?.name || strings.common.states.none),
-    escapeCsv(productCounts[c.id] || 0),
-  ]);
+  const rows = categories.map((c) => {
+    const pId = c.parentId ?? c.parent_id;
+    return [
+      escapeCsv(c.name || ''),
+      escapeCsv(categoryMap[pId]?.name || strings.common.states.none),
+      escapeCsv(productCounts[c.id] || 0),
+    ];
+  });
 
   const dateStr = new Date().toISOString().split('T')[0];
   await exportToCsv({
@@ -40,11 +43,14 @@ export async function exportCategoriesXlsx({ categories, categoryMap, productCou
     strings.categories.export.headers.parent,
     strings.categories.export.headers.productCount,
   ];
-  const rows = categories.map((c) => [
-    c.name || '',
-    categoryMap[c.parent_id]?.name || strings.common.states.none,
-    productCounts[c.id] || 0,
-  ]);
+  const rows = categories.map((c) => {
+    const pId = c.parentId ?? c.parent_id;
+    return [
+      c.name || '',
+      categoryMap[pId]?.name || strings.common.states.none,
+      productCounts[c.id] || 0,
+    ];
+  });
 
   const dateStr = new Date().toISOString().split('T')[0];
   await exportToXlsx({

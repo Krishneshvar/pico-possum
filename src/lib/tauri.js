@@ -108,8 +108,8 @@ export const tauriApi = {
   updatePassword: ({ currentPassword, newPassword }) =>
     invoke('update_password', {
       req: {
-        current_password: currentPassword,
-        new_password: newPassword,
+        currentPassword,
+        newPassword,
       },
     }),
 

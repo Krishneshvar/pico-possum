@@ -29,7 +29,7 @@ export default function TopSellingCategoriesCard({
               <tr className="h-10">
                 <th className="py-2.5 px-3 pl-4 w-10 text-center">#</th>
                 <SortableTh
-                  sortKey="category_name"
+                  sortKey="categoryName"
                   sort={topCatSort}
                   onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                   className="py-2.5 px-3"
@@ -37,7 +37,7 @@ export default function TopSellingCategoriesCard({
                   Category
                 </SortableTh>
                 <SortableTh
-                  sortKey="distinct_products_sold"
+                  sortKey="distinctProductsSold"
                   sort={topCatSort}
                   onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                   align="center"
@@ -46,7 +46,7 @@ export default function TopSellingCategoriesCard({
                   Products
                 </SortableTh>
                 <SortableTh
-                  sortKey="total_quantity"
+                  sortKey="totalQuantity"
                   sort={topCatSort}
                   onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                   align="center"
@@ -55,7 +55,7 @@ export default function TopSellingCategoriesCard({
                   Sold
                 </SortableTh>
                 <SortableTh
-                  sortKey="total_revenue_paise"
+                  sortKey="totalRevenuePaise"
                   sort={topCatSort}
                   onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                   align="right"
@@ -80,21 +80,21 @@ export default function TopSellingCategoriesCard({
                 </tr>
               ) : (
                 sortedTopCategories.map((c, idx) => (
-                  <tr key={c.category_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
+                  <tr key={c.categoryId ?? c.category_id ?? idx} className="h-11 hover:bg-surface-secondary transition-colors">
                     <td className="px-3 pl-4 text-center text-content-muted text-xs">
                       {idx + 1}
                     </td>
                     <td className="px-3 font-medium text-content">
-                      {c.category_name}
+                      {c.categoryName ?? c.category_name}
                     </td>
                     <td className="px-3 text-center text-content-secondary financial-value">
-                      {c.distinct_products_sold}
+                      {c.distinctProductsSold ?? c.distinct_products_sold}
                     </td>
                     <td className="px-3 text-center font-medium text-content financial-value">
-                      {c.total_quantity}
+                      {c.totalQuantity ?? c.total_quantity}
                     </td>
                     <td className="px-3 pr-4 text-right font-medium text-content financial-value">
-                      {formatPaise(c.total_revenue_paise)}
+                      {formatPaise(c.totalRevenuePaise ?? c.total_revenue_paise)}
                     </td>
                   </tr>
                 ))

@@ -36,18 +36,19 @@ export default function ProductsView() {
     queryFn: () => tauriApi.getCategories(),
   });
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
-  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
+  const allowNegativeStock = generalSettings?.allowNegativeStock ?? generalSettings?.allow_negative_stock ?? false;
 
   // Category counts and options with parentheses
   const categoryCounts = useMemo(() => {
     const counts = {};
     for (const p of products) {
-      if (p.category_id) {
-        counts[p.category_id] = (counts[p.category_id] || 0) + 1;
+      const catId = p.categoryId ?? p.category_id;
+      if (catId) {
+        counts[catId] = (counts[catId] || 0) + 1;
       }
     }
     return counts;
@@ -68,8 +69,8 @@ export default function ProductsView() {
     let lowStock = 0;
     let outOfStock = 0;
     for (const p of products) {
-      const stock = p.current_stock || 0;
-      const alertThreshold = p.min_stock_alert ?? 5;
+      const stock = p.currentStock ?? p.current_stock ?? 0;
+      const alertThreshold = p.minStockAlert ?? p.min_stock_alert ?? 5;
       if (stock <= 0) outOfStock++;
       else if (stock <= alertThreshold) lowStock++;
       else inStock++;
@@ -79,10 +80,10 @@ export default function ProductsView() {
 
   const stockFilterOptions = useMemo(
     () => [
-      { value: 'in_stock', label: strings.products.filters.inStock(stockCounts.inStock) },
-      { value: 'low_stock', label: strings.products.filters.lowStock(stockCounts.lowStock) },
+      { value: 'inStock', label: strings.products.filters.inStock(stockCounts.inStock) },
+      { value: 'lowStock', label: strings.products.filters.lowStock(stockCounts.lowStock) },
       {
-        value: 'out_of_stock',
+        value: 'outOfStock',
         label: strings.products.filters.outOfStock(stockCounts.outOfStock),
       },
     ],
@@ -115,7 +116,7 @@ export default function ProductsView() {
     mutationFn: (p) => tauriApi.createProduct(p),
     onSuccess: (_data, product) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['next_sku'] });
+      queryClient.invalidateQueries({ queryKey: ['nextSku'] });
       setModalMode(null);
       toast.success(strings.products.toasts.created(product.name));
     },
@@ -154,9 +155,9 @@ export default function ProductsView() {
     mutationFn: (p) => tauriApi.adjustStock(p),
     onSuccess: (_data, adjustment) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
       setModalMode(null);
-      const delta = adjustment.quantity_change;
+      const delta = adjustment.quantityChange ?? adjustment.quantity_change;
       toast.success(
         strings.products.toasts.stockAdjusted(
           delta,
@@ -240,8 +241,8 @@ export default function ProductsView() {
             onComplete={() => {
               queryClient.invalidateQueries({ queryKey: ['products'] });
               queryClient.invalidateQueries({ queryKey: ['categories'] });
-              queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-              queryClient.invalidateQueries({ queryKey: ['next_sku'] });
+              queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
+              queryClient.invalidateQueries({ queryKey: ['nextSku'] });
             }}
           />
 
@@ -268,25 +269,26 @@ export default function ProductsView() {
           persistKey="products"
           data={products}
           keyFn={(r) => r.id}
-          searchKeys={['name', 'sku', 'category_name']}
+          searchKeys={['name', 'sku', 'categoryName']}
           filters={[
             {
               type: 'multiselect',
-              key: 'category_id',
+              key: 'categoryId',
               label: 'Categories',
               options: categoryFilterOptions,
+              filterFn: (row, vals) => vals.includes(String(row.categoryId ?? row.category_id ?? '')),
             },
             {
               type: 'multiselect',
-              key: 'stock_level',
+              key: 'stockLevel',
               label: 'Stock Level',
               options: stockFilterOptions,
               filterFn: (row, vals) => {
-                const stock = row.current_stock || 0;
-                const alertThreshold = row.min_stock_alert ?? 5;
-                let level = 'in_stock';
-                if (stock <= 0) level = 'out_of_stock';
-                else if (stock <= alertThreshold) level = 'low_stock';
+                const stock = row.currentStock ?? row.current_stock ?? 0;
+                const alertThreshold = row.minStockAlert ?? row.min_stock_alert ?? 5;
+                let level = 'inStock';
+                if (stock <= 0) level = 'outOfStock';
+                else if (stock <= alertThreshold) level = 'lowStock';
                 return vals.includes(level);
               },
             },
@@ -298,10 +300,16 @@ export default function ProductsView() {
             },
             {
               type: 'range',
-              key: 'mrp_paise',
+              key: 'mrpPaise',
               label: 'Price',
               unit: currencySymbol,
               transform: (v) => (v != null ? Number(v) / 100 : 0),
+              filterFn: (row, range) => {
+                const val = (row.mrpPaise ?? row.mrp_paise ?? 0) / 100;
+                if (range.min !== '' && range.min !== null && val < Number(range.min)) return false;
+                if (range.max !== '' && range.max !== null && val > Number(range.max)) return false;
+                return true;
+              },
             },
           ]}
           isLoading={isLoading}

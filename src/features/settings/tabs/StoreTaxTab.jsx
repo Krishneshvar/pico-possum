@@ -23,8 +23,8 @@ export default function StoreTaxTab({ general, setGeneral, onSave, isSaving }) {
             </label>
             <input
               type="text"
-              value={general.currency_symbol}
-              onChange={(e) => setGeneral({ ...general, currency_symbol: e.target.value })}
+              value={general.currencySymbol ?? general.currency_symbol ?? ''}
+              onChange={(e) => setGeneral({ ...general, currencySymbol: e.target.value })}
               placeholder={strings.settings.storeTax.currencySymbolPlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-medium"
             />
@@ -59,15 +59,15 @@ export default function StoreTaxTab({ general, setGeneral, onSave, isSaving }) {
         <div className="space-y-3 text-xs">
           <label
             className={`flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
-              general.auto_numeric_sku
+              (general.autoNumericSku ?? general.auto_numeric_sku)
                 ? 'bg-brand-subtle border-brand/40'
                 : 'bg-surface-secondary border-border hover:border-border-strong'
             }`}
           >
             <input
               type="checkbox"
-              checked={general.auto_numeric_sku}
-              onChange={(e) => setGeneral({ ...general, auto_numeric_sku: e.target.checked })}
+              checked={general.autoNumericSku ?? general.auto_numeric_sku ?? true}
+              onChange={(e) => setGeneral({ ...general, autoNumericSku: e.target.checked })}
               className="w-4 h-4 mt-0.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
             />
             <div className="space-y-1">
@@ -82,15 +82,15 @@ export default function StoreTaxTab({ general, setGeneral, onSave, isSaving }) {
 
           <label
             className={`flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
-              general.allow_negative_stock
+              (general.allowNegativeStock ?? general.allow_negative_stock)
                 ? 'bg-warning/10 border-warning/40'
                 : 'bg-surface-secondary border-border hover:border-border-strong'
             }`}
           >
             <input
               type="checkbox"
-              checked={general.allow_negative_stock}
-              onChange={(e) => setGeneral({ ...general, allow_negative_stock: e.target.checked })}
+              checked={general.allowNegativeStock ?? general.allow_negative_stock ?? false}
+              onChange={(e) => setGeneral({ ...general, allowNegativeStock: e.target.checked })}
               className="w-4 h-4 mt-0.5 rounded border-border-strong text-warning focus:ring-warning cursor-pointer"
             />
             <div className="space-y-1">

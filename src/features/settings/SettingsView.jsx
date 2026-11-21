@@ -82,44 +82,44 @@ const DEFAULT_SECTIONS = [
 export default function SettingsView() {
   const queryClient = useQueryClient();
 
-  // Navigation state: 'general' | 'store_tax' | 'receipt' | 'printing' | 'backup' | 'migration' | 'security' | 'appearance'
+  // Navigation state: 'general' | 'storeTax' | 'receipt' | 'printing' | 'backup' | 'migration' | 'security' | 'appearance'
   const [activeNav, setActiveNav] = useState('general');
 
   // ── General & Store Settings State ──────────────────────────────────────────
   const [general, setGeneral] = useState({
-    store_name: '',
+    storeName: '',
     phone: '',
     address: '',
     gstin: '',
-    currency_symbol: getCurrencySymbol() || '',
-    currency_code: 'INR',
-    date_format: 'DD-MM-YYYY',
-    time_format: '12 hour format',
-    default_printer_name: '',
-    auto_numeric_sku: true,
-    allow_negative_stock: false,
+    currencySymbol: getCurrencySymbol() || '',
+    currencyCode: 'INR',
+    dateFormat: 'DD-MM-YYYY',
+    timeFormat: '12 hour format',
+    defaultPrinterName: '',
+    autoNumericSku: true,
+    allowNegativeStock: false,
   });
 
   // ── Bill Structure State ───────────────────────────────────────────────────
   const [bill, setBill] = useState({
-    paper_width: '80mm',
-    store_name: strings.settings.sampleData.storeName,
-    store_details: strings.settings.sampleData.address,
+    paperWidth: '80mm',
+    storeName: strings.settings.sampleData.storeName,
+    storeDetails: strings.settings.sampleData.address,
     phone: strings.settings.sampleData.phone,
     gst: strings.settings.sampleData.gstin,
-    show_tax: false,
-    footer_text: strings.settings.sampleData.footer,
+    showTax: false,
+    footerText: strings.settings.sampleData.footer,
     sections: DEFAULT_SECTIONS,
   });
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: generalData } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
   const { data: billData } = useQuery({
-    queryKey: ['bill_settings'],
+    queryKey: ['billSettings'],
     queryFn: () => tauriApi.getBillSettings(),
   });
 
@@ -128,10 +128,14 @@ export default function SettingsView() {
       setGeneral((prev) => ({
         ...prev,
         ...generalData,
-        date_format: generalData.date_format?.replace(/\//g, '-') || 'DD-MM-YYYY',
-        time_format: generalData.time_format?.includes('24') ? '24 hour format' : '12 hour format',
-        auto_numeric_sku: generalData.auto_numeric_sku ?? true,
-        allow_negative_stock: generalData.allow_negative_stock ?? false,
+        storeName: generalData.storeName ?? generalData.store_name ?? prev.storeName,
+        currencySymbol: generalData.currencySymbol ?? generalData.currency_symbol ?? prev.currencySymbol,
+        currencyCode: generalData.currencyCode ?? generalData.currency_code ?? prev.currencyCode,
+        dateFormat: (generalData.dateFormat ?? generalData.date_format)?.replace(/\//g, '-') || 'DD-MM-YYYY',
+        timeFormat: (generalData.timeFormat ?? generalData.time_format)?.includes('24') ? '24 hour format' : '12 hour format',
+        defaultPrinterName: generalData.defaultPrinterName ?? generalData.default_printer_name ?? prev.defaultPrinterName,
+        autoNumericSku: generalData.autoNumericSku ?? generalData.auto_numeric_sku ?? true,
+        allowNegativeStock: generalData.allowNegativeStock ?? generalData.allow_negative_stock ?? false,
       }));
     }
   }, [generalData]);
@@ -141,6 +145,11 @@ export default function SettingsView() {
       setBill((prev) => ({
         ...prev,
         ...billData,
+        paperWidth: billData.paperWidth ?? billData.paper_width ?? prev.paperWidth,
+        storeName: billData.storeName ?? billData.store_name ?? prev.storeName,
+        storeDetails: billData.storeDetails ?? billData.store_details ?? prev.storeDetails,
+        showTax: billData.showTax ?? billData.show_tax ?? prev.showTax,
+        footerText: billData.footerText ?? billData.footer_text ?? prev.footerText,
         sections: billData.sections && billData.sections.length > 0 ? billData.sections : prev.sections,
       }));
     }
@@ -151,8 +160,8 @@ export default function SettingsView() {
     mutationFn: (data) => tauriApi.updateGeneralSettings(data),
     onSuccess: (_data, variables) => {
       applyGeneralSettings(variables);
-      queryClient.invalidateQueries({ queryKey: ['general_settings'] });
-      queryClient.invalidateQueries({ queryKey: ['next_sku'] });
+      queryClient.invalidateQueries({ queryKey: ['generalSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['nextSku'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(strings.settings.toasts.settingsSaved);
     },
@@ -162,7 +171,7 @@ export default function SettingsView() {
   const updateBillMutation = useMutation({
     mutationFn: (data) => tauriApi.updateBillSettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bill_settings'] });
+      queryClient.invalidateQueries({ queryKey: ['billSettings'] });
       toast.success(strings.settings.toasts.receiptSaved);
     },
     onError: (err) => toast.error(strings.settings.toasts.saveReceiptFailed(err)),
@@ -171,7 +180,7 @@ export default function SettingsView() {
   // Navigation Items
   const navItems = [
     { id: 'general', label: strings.settings.nav.general.label, icon: Sliders, description: strings.settings.nav.general.description },
-    { id: 'store_tax', label: strings.settings.nav.storeTax.label, icon: Store, description: strings.settings.nav.storeTax.description },
+    { id: 'storeTax', label: strings.settings.nav.storeTax.label, icon: Store, description: strings.settings.nav.storeTax.description },
     { id: 'receipt', label: strings.settings.nav.receipt.label, icon: Receipt, description: strings.settings.nav.receipt.description },
     { id: 'printing', label: strings.settings.nav.printing.label, icon: Printer, description: strings.settings.nav.printing.description },
     { id: 'backup', label: strings.settings.nav.backup.label, icon: ShieldCheck, description: strings.settings.nav.backup.description },
@@ -241,7 +250,7 @@ export default function SettingsView() {
             />
           )}
 
-          {activeNav === 'store_tax' && (
+          {activeNav === 'storeTax' && (
             <StoreTaxTab
               general={general}
               setGeneral={setGeneral}

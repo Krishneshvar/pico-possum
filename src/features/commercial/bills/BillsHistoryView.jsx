@@ -27,26 +27,26 @@ export default function BillsHistoryView() {
   const sales = useMemo(() => salesData ?? [], [salesData]);
 
   const { data: billSettings } = useQuery({
-    queryKey: ['bill_settings'],
+    queryKey: ['billSettings'],
     queryFn: () => tauriApi.getBillSettings(),
   });
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
-  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
+  const currencySymbol = generalSettings?.currencySymbol || getCurrencySymbol();
 
   const invalidateSalesAndAnalytics = () => {
     queryClient.invalidateQueries({ queryKey: ['sales'] });
-    queryClient.invalidateQueries({ queryKey: ['sale_details'] });
+    queryClient.invalidateQueries({ queryKey: ['saleDetails'] });
     queryClient.invalidateQueries({ queryKey: ['products'] });
-    queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-    queryClient.invalidateQueries({ queryKey: ['product_flow'] });
-    queryClient.invalidateQueries({ queryKey: ['sales_report_summary'] });
-    queryClient.invalidateQueries({ queryKey: ['top_products'] });
-    queryClient.invalidateQueries({ queryKey: ['top_categories'] });
-    queryClient.invalidateQueries({ queryKey: ['multi_year_sales'] });
-    queryClient.invalidateQueries({ queryKey: ['sales_breakdown'] });
+    queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
+    queryClient.invalidateQueries({ queryKey: ['productFlow'] });
+    queryClient.invalidateQueries({ queryKey: ['salesReportSummary'] });
+    queryClient.invalidateQueries({ queryKey: ['topProducts'] });
+    queryClient.invalidateQueries({ queryKey: ['topCategories'] });
+    queryClient.invalidateQueries({ queryKey: ['multiYearSales'] });
+    queryClient.invalidateQueries({ queryKey: ['salesBreakdown'] });
     queryClient.invalidateQueries({ queryKey: ['customers'] });
   };
 
@@ -63,10 +63,11 @@ export default function BillsHistoryView() {
   });
 
   const handleOpenDetail = (row) => {
+    const invNo = row.invoiceNumber ?? row.invoice_number;
     openOrFocus(
-      strings.bills.history.tabTitle(row.invoice_number),
+      strings.bills.history.tabTitle(invNo),
       'bill-detail',
-      { saleId: row.id, invoiceNumber: row.invoice_number },
+      { saleId: row.id, invoiceNumber: invNo },
       `bill-${row.id}`
     );
   };
@@ -125,23 +126,34 @@ export default function BillsHistoryView() {
       strings.common.labels.status,
     ];
 
-    const rows = dataToExport.map((s) => [
-      escapeCsv(s.invoice_number || ''),
-      escapeCsv(formatDate(s.created_at)),
-      escapeCsv(formatTime(s.created_at)),
-      escapeCsv(s.customer_name || strings.bills.labels.walkInCustomer),
-      escapeCsv(s.customer_phone || ''),
-      escapeCsv(s.payment_method || ''),
-      escapeCsv((s.subtotal_paise / 100).toFixed(2)),
-      escapeCsv((s.discount_paise / 100).toFixed(2)),
-      escapeCsv((s.tax_paise / 100).toFixed(2)),
-      escapeCsv((s.total_paise / 100).toFixed(2)),
-      escapeCsv(s.status || ''),
-    ]);
+    const rows = dataToExport.map((s) => {
+      const invNo = s.invoiceNumber ?? s.invoice_number ?? '';
+      const createdAt = s.createdAt ?? s.created_at;
+      const custName = s.customerName ?? s.customer_name ?? strings.bills.labels.walkInCustomer;
+      const custPhone = s.customerPhone ?? s.customer_phone ?? '';
+      const pm = s.paymentMethod ?? s.payment_method ?? '';
+      const subtotal = s.subtotalPaise ?? s.subtotal_paise ?? 0;
+      const discount = s.discountPaise ?? s.discount_paise ?? 0;
+      const tax = s.taxPaise ?? s.tax_paise ?? 0;
+      const total = s.totalPaise ?? s.total_paise ?? 0;
+      return [
+        escapeCsv(invNo),
+        escapeCsv(formatDate(createdAt)),
+        escapeCsv(formatTime(createdAt)),
+        escapeCsv(custName),
+        escapeCsv(custPhone),
+        escapeCsv(pm),
+        escapeCsv((subtotal / 100).toFixed(2)),
+        escapeCsv((discount / 100).toFixed(2)),
+        escapeCsv((tax / 100).toFixed(2)),
+        escapeCsv((total / 100).toFixed(2)),
+        escapeCsv(s.status || ''),
+      ];
+    });
 
     const dateStr = new Date().toISOString().split('T')[0];
     await exportToCsv({
-      filename: `bill_history_${dateStr}.csv`,
+      filename: `bill-history-${dateStr}.csv`,
       headers,
       rows,
       count: dataToExport.length,
@@ -170,23 +182,34 @@ export default function BillsHistoryView() {
       strings.common.labels.status,
     ];
 
-    const rows = dataToExport.map((s) => [
-      s.invoice_number || '',
-      formatDate(s.created_at),
-      formatTime(s.created_at),
-      s.customer_name || strings.bills.labels.walkInCustomer,
-      s.customer_phone || '',
-      s.payment_method || '',
-      parseFloat((s.subtotal_paise / 100).toFixed(2)),
-      parseFloat((s.discount_paise / 100).toFixed(2)),
-      parseFloat((s.tax_paise / 100).toFixed(2)),
-      parseFloat((s.total_paise / 100).toFixed(2)),
-      s.status || '',
-    ]);
+    const rows = dataToExport.map((s) => {
+      const invNo = s.invoiceNumber ?? s.invoice_number ?? '';
+      const createdAt = s.createdAt ?? s.created_at;
+      const custName = s.customerName ?? s.customer_name ?? strings.bills.labels.walkInCustomer;
+      const custPhone = s.customerPhone ?? s.customer_phone ?? '';
+      const pm = s.paymentMethod ?? s.payment_method ?? '';
+      const subtotal = s.subtotalPaise ?? s.subtotal_paise ?? 0;
+      const discount = s.discountPaise ?? s.discount_paise ?? 0;
+      const tax = s.taxPaise ?? s.tax_paise ?? 0;
+      const total = s.totalPaise ?? s.total_paise ?? 0;
+      return [
+        invNo,
+        formatDate(createdAt),
+        formatTime(createdAt),
+        custName,
+        custPhone,
+        pm,
+        parseFloat((subtotal / 100).toFixed(2)),
+        parseFloat((discount / 100).toFixed(2)),
+        parseFloat((tax / 100).toFixed(2)),
+        parseFloat((total / 100).toFixed(2)),
+        s.status || '',
+      ];
+    });
 
     const dateStr = new Date().toISOString().split('T')[0];
     await exportToXlsx({
-      filename: `bill_history_${dateStr}.xlsx`,
+      filename: `bill-history-${dateStr}.xlsx`,
       sheetName: strings.bills.export.sheetName,
       headers,
       rows,
@@ -197,57 +220,67 @@ export default function BillsHistoryView() {
 
   const columns = [
     {
-      key: 'invoice_number',
+      key: 'invoiceNumber',
       label: strings.common.labels.invoiceNumber,
       className: 'font-mono text-brand font-semibold text-xs',
-      render: (r) => (
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenDetail(r);
-          }}
-          className="hover:underline cursor-pointer"
-        >
-          {r.invoice_number}
-        </span>
-      ),
+      render: (r) => {
+        const invNo = r.invoiceNumber ?? r.invoice_number;
+        return (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDetail(r);
+            }}
+            className="hover:underline cursor-pointer"
+          >
+            {invNo}
+          </span>
+        );
+      },
     },
     {
-      key: 'created_at',
+      key: 'createdAt',
       label: strings.common.labels.dateTime,
       className: 'text-text-muted text-xs whitespace-nowrap',
-      render: (r) => formatDateTime(r.created_at),
+      render: (r) => formatDateTime(r.createdAt ?? r.created_at),
     },
     {
-      key: 'customer_name',
+      key: 'customerName',
       label: strings.common.labels.customer,
       className: 'font-medium text-text-primary text-xs',
-      render: (r) => (
-        <div>
-          <span>{r.customer_name || strings.bills.labels.walkInCustomer}</span>
-          {r.customer_phone && (
-            <div className="text-[10px] text-text-muted font-mono">{r.customer_phone}</div>
-          )}
-        </div>
-      ),
+      render: (r) => {
+        const custName = r.customerName ?? r.customer_name ?? strings.bills.labels.walkInCustomer;
+        const custPhone = r.customerPhone ?? r.customer_phone;
+        return (
+          <div>
+            <span>{custName}</span>
+            {custPhone && (
+              <div className="text-[10px] text-text-muted font-mono">{custPhone}</div>
+            )}
+          </div>
+        );
+      },
     },
     {
-      key: 'payment_method',
+      key: 'paymentMethod',
       label: strings.bills.columns.payment,
       headerClassName: 'text-center',
       className: 'text-center text-xs',
-      render: (r) => (
-        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-secondary text-text-secondary border border-border-default uppercase">
-          {r.payment_method ? r.payment_method.replace(/_/g, ' ') : 'CASH'}
-        </span>
-      ),
+      render: (r) => {
+        const pm = r.paymentMethod ?? r.payment_method;
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-secondary text-text-secondary border border-border-default uppercase">
+            {pm ? pm.replace(/_/g, ' ') : 'CASH'}
+          </span>
+        );
+      },
     },
     {
-      key: 'total_paise',
+      key: 'totalPaise',
       label: strings.bills.columns.totalAmount,
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.total_paise),
+      render: (r) => formatPaise(r.totalPaise ?? r.total_paise),
     },
     {
       key: 'status',
@@ -293,7 +326,8 @@ export default function BillsHistoryView() {
   const pmCounts = useMemo(() => {
     const counts = { CASH: 0, UPI: 0, CARD: 0, GIFT_CARD: 0 };
     for (const s of sales) {
-      const pm = (s.payment_method || 'CASH').toUpperCase().replace(/\s+/g, '_');
+      const rawPm = s.paymentMethod ?? s.payment_method;
+      const pm = (rawPm || 'CASH').toUpperCase().replace(/\s+/g, '_');
       if (counts[pm] !== undefined) {
         counts[pm]++;
       } else if (pm.includes('GIFT') || pm === 'GC') {
@@ -341,7 +375,7 @@ export default function BillsHistoryView() {
       },
       {
         type: 'multiselect',
-        key: 'payment_method',
+        key: 'paymentMethod',
         label: strings.common.labels.paymentMethod,
         options: [
           { value: 'CASH', label: strings.bills.filters.paymentOptions.cash(pmCounts.CASH) },
@@ -353,7 +387,8 @@ export default function BillsHistoryView() {
           },
         ],
         filterFn: (row, vals) => {
-          const pm = (row.payment_method || 'CASH').toUpperCase().replace(/\s+/g, '_');
+          const rawPm = row.paymentMethod ?? row.payment_method;
+          const pm = (rawPm || 'CASH').toUpperCase().replace(/\s+/g, '_');
           const normalized = pm.includes('GIFT') || pm === 'GC'
             ? 'GIFT_CARD'
             : pm.includes('CARD') || pm === 'CP'
@@ -366,16 +401,22 @@ export default function BillsHistoryView() {
       },
       {
         type: 'daterange',
-        fromKey: 'created_at',
-        toKey: 'created_at',
+        fromKey: 'createdAt',
+        toKey: 'createdAt',
         label: strings.common.datePicker.dateRange,
       },
       {
         type: 'range',
-        key: 'total_paise',
+        key: 'totalPaise',
         label: strings.common.labels.amount,
         unit: currencySymbol,
         transform: (v) => (v != null ? Number(v) / 100 : 0),
+        filterFn: (row, range) => {
+          const val = (row.totalPaise ?? row.total_paise ?? 0) / 100;
+          if (range.min !== '' && range.min !== null && val < Number(range.min)) return false;
+          if (range.max !== '' && range.max !== null && val > Number(range.max)) return false;
+          return true;
+        },
       },
     ],
     [statusCounts, pmCounts, currencySymbol]
@@ -419,9 +460,9 @@ export default function BillsHistoryView() {
           columns={columns}
           data={sales}
           keyFn={(r) => r.id}
-          searchKeys={['invoice_number', 'customer_name', 'customer_phone']}
+          searchKeys={['invoiceNumber', 'customerName', 'customerPhone']}
           filters={filters}
-          persistKey="bill_history"
+          persistKey="billHistory"
           isLoading={isLoading}
           onRowDoubleClick={handleOpenDetail}
           onFilteredChange={setFilteredSales}
@@ -452,7 +493,7 @@ export default function BillsHistoryView() {
                         label: 'Cancel Invoice & Return Stock',
                         icon: <RotateCcw className="w-3.5 h-3.5" />,
                         danger: true,
-                        onClick: () => handleCancelSale(row.id, row.invoice_number),
+                        onClick: () => handleCancelSale(row.id, row.invoiceNumber ?? row.invoice_number),
                       },
                     ]
                   : []),

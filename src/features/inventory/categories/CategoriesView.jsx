@@ -73,8 +73,9 @@ export default function CategoriesView() {
   const productCounts = useMemo(() => {
     const counts = {};
     for (const p of products) {
-      if (p.category_id) {
-        counts[p.category_id] = (counts[p.category_id] || 0) + 1;
+      const catId = p.categoryId ?? p.category_id;
+      if (catId) {
+        counts[catId] = (counts[catId] || 0) + 1;
       }
     }
     return counts;
@@ -88,8 +89,9 @@ export default function CategoriesView() {
 
     const roots = [];
     categories.forEach((cat) => {
-      if (cat.parent_id && map[cat.parent_id]) {
-        map[cat.parent_id].children.push(map[cat.id]);
+      const pId = cat.parentId ?? cat.parent_id;
+      if (pId && map[pId]) {
+        map[pId].children.push(map[cat.id]);
       } else {
         roots.push(map[cat.id]);
       }
@@ -111,8 +113,9 @@ export default function CategoriesView() {
     mutationFn: (payload) => tauriApi.createCategory(payload),
     onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      if (payload?.parent_id) {
-        setExpandedIds((prev) => new Set([...prev, payload.parent_id]));
+      const pId = payload?.parentId ?? payload?.parent_id;
+      if (pId) {
+        setExpandedIds((prev) => new Set([...prev, pId]));
       }
       setModalOpen(false);
       toast.success(strings.categories.toasts.created);
@@ -128,8 +131,9 @@ export default function CategoriesView() {
     onSuccess: (_data, { payload }) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      if (payload?.parent_id) {
-        setExpandedIds((prev) => new Set([...prev, payload.parent_id]));
+      const pId = payload?.parentId ?? payload?.parent_id;
+      if (pId) {
+        setExpandedIds((prev) => new Set([...prev, pId]));
       }
       setModalOpen(false);
       setEditingCategory(null);
@@ -171,7 +175,7 @@ export default function CategoriesView() {
 
   const handleOpenEdit = (category) => {
     setEditingCategory(category);
-    setInitialParentId(category.parent_id || '');
+    setInitialParentId(category.parentId ?? category.parent_id ?? '');
     setModalOpen(true);
   };
 
@@ -223,10 +227,10 @@ export default function CategoriesView() {
   };
 
   const handleModalSubmit = (values) => {
-    const parentId = values.parent_id !== undefined ? values.parent_id : values.parentId;
+    const parentId = values.parentId ?? values.parent_id;
     const payload = {
       name: values.name.trim(),
-      parent_id: parentId ? String(parentId) : null,
+      parentId: parentId ? String(parentId) : null,
       description: values.description ? values.description.trim() : null,
     };
 
@@ -257,11 +261,14 @@ export default function CategoriesView() {
   );
 
   const displayedCategories = useMemo(() => {
-    let list = categories.map((c) => ({
-      ...c,
-      parent_name: categoryMap[c.parent_id]?.name || '',
-      product_count: productCounts[c.id] || 0,
-    }));
+    let list = categories.map((c) => {
+      const pId = c.parentId ?? c.parent_id;
+      return {
+        ...c,
+        parentName: categoryMap[pId]?.name || '',
+        productCount: productCounts[c.id] || 0,
+      };
+    });
 
     if (selectedTreeId) {
       const validIds = new Set(getDescendantIds(selectedTreeId));
@@ -284,13 +291,13 @@ export default function CategoriesView() {
       ),
     },
     {
-      key: 'parent_name',
+      key: 'parentName',
       label: strings.categories.columns.parent,
       className: 'text-text-muted text-xs',
-      render: (r) => r.parent_name || strings.common.states.emptyValue,
+      render: (r) => r.parentName || strings.common.states.emptyValue,
     },
     {
-      key: 'product_count',
+      key: 'productCount',
       label: strings.categories.columns.products,
       className: 'text-text-muted font-mono text-xs',
       sortValue: (r) => productCounts[r.id] || 0,
@@ -436,7 +443,7 @@ export default function CategoriesView() {
                 persistKey="categories"
                 data={displayedCategories}
                 keyFn={(r) => r.id}
-                searchKeys={['name', 'parent_name']}
+                searchKeys={['name', 'parentName']}
                 pageSize={20}
                 emptyMessage={strings.categories.view.emptyTable}
                 isLoading={isLoading}

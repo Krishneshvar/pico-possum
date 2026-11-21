@@ -29,7 +29,7 @@ export default function TopSellingProductsCard({
               <tr className="h-10">
                 <th className="py-2.5 px-3 pl-4 w-10 text-center">#</th>
                 <SortableTh
-                  sortKey="product_name"
+                  sortKey="productName"
                   sort={topProdSort}
                   onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                   className="py-2.5 px-3"
@@ -37,7 +37,7 @@ export default function TopSellingProductsCard({
                   Product
                 </SortableTh>
                 <SortableTh
-                  sortKey="total_quantity"
+                  sortKey="totalQuantity"
                   sort={topProdSort}
                   onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                   align="center"
@@ -46,7 +46,7 @@ export default function TopSellingProductsCard({
                   Qty Sold
                 </SortableTh>
                 <SortableTh
-                  sortKey="total_revenue_paise"
+                  sortKey="totalRevenuePaise"
                   sort={topProdSort}
                   onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                   align="right"
@@ -71,12 +71,12 @@ export default function TopSellingProductsCard({
                 </tr>
               ) : (
                 sortedTopProducts.map((p, idx) => (
-                  <tr key={p.product_id || idx} className="h-11 hover:bg-surface-secondary transition-colors">
+                  <tr key={p.productId ?? p.product_id ?? idx} className="h-11 hover:bg-surface-secondary transition-colors">
                     <td className="px-3 pl-4 text-center text-content-muted text-xs">
                       {idx + 1}
                     </td>
                     <td className="px-3 text-content">
-                      <div className="font-medium">{p.product_name}</div>
+                      <div className="font-medium">{p.productName ?? p.product_name}</div>
                       {p.sku && (
                         <div className="text-[10px] text-content-muted font-mono">
                           SKU: {p.sku}
@@ -84,10 +84,10 @@ export default function TopSellingProductsCard({
                       )}
                     </td>
                     <td className="px-3 text-center font-medium text-content financial-value">
-                      {p.total_quantity}
+                      {p.totalQuantity ?? p.total_quantity}
                     </td>
                     <td className="px-3 pr-4 text-right font-medium text-content financial-value">
-                      {formatPaise(p.total_revenue_paise)}
+                      {formatPaise(p.totalRevenuePaise ?? p.total_revenue_paise)}
                     </td>
                   </tr>
                 ))

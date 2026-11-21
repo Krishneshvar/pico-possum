@@ -11,13 +11,13 @@ import { validateProductForm } from '../../../lib/validation';
 const DEFAULT_FORM = {
   name: '',
   sku: '',
-  category_id: '',
-  mrp_rupees: '',
-  cost_price_rupees: '',
-  tax_rate: '0',
-  initial_stock: '0',
+  categoryId: '',
+  mrpRupees: '',
+  costPriceRupees: '',
+  taxRate: '0',
+  initialStock: '0',
   status: 'active',
-  min_stock_alert: '5',
+  minStockAlert: '5',
   uom: 'Piece',
 };
 
@@ -34,12 +34,12 @@ export default function ProductModal({
   const [errors, setErrors] = useState({});
 
   const isCreate = !product?.id;
-  const autoNumericSku = generalSettings?.auto_numeric_sku ?? true;
-  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
-  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
+  const autoNumericSku = generalSettings?.autoNumericSku ?? generalSettings?.auto_numeric_sku ?? true;
+  const allowNegativeStock = generalSettings?.allowNegativeStock ?? generalSettings?.allow_negative_stock ?? false;
+  const currencySymbol = generalSettings?.currencySymbol || getCurrencySymbol();
 
   const { data: nextSku } = useQuery({
-    queryKey: ['next_sku'],
+    queryKey: ['nextSku'],
     queryFn: () => tauriApi.getNextSku(),
     enabled: Boolean(open && isCreate && autoNumericSku),
   });
@@ -47,16 +47,23 @@ export default function ProductModal({
   useEffect(() => {
     setErrors({});
     if (product) {
+      const mrp = product.mrpPaise ?? product.mrp_paise ?? 0;
+      const costPrice = product.costPricePaise ?? product.cost_price_paise ?? 0;
+      const taxRate = product.taxRate ?? product.tax_rate ?? 0;
+      const currentStock = product.currentStock ?? product.current_stock ?? 0;
+      const minStockAlert = product.minStockAlert ?? product.min_stock_alert ?? 5;
+      const categoryId = product.categoryId ?? product.category_id ?? '';
+
       setFormData({
         name: product.name || '',
         sku: product.sku || '',
-        category_id: product.category_id || '',
-        mrp_rupees: (product.mrp_paise / 100).toFixed(2),
-        cost_price_rupees: (product.cost_price_paise / 100).toFixed(2),
-        tax_rate: (product.tax_rate ?? 0).toString(),
-        initial_stock: (product.current_stock ?? 0).toString(),
+        categoryId,
+        mrpRupees: (mrp / 100).toFixed(2),
+        costPriceRupees: (costPrice / 100).toFixed(2),
+        taxRate: taxRate.toString(),
+        initialStock: currentStock.toString(),
         status: product.status || 'active',
-        min_stock_alert: (product.min_stock_alert != null ? product.min_stock_alert : 5).toString(),
+        minStockAlert: minStockAlert.toString(),
         uom: product.uom || 'Piece',
       });
     } else {
@@ -86,20 +93,20 @@ export default function ProductModal({
       return;
     }
 
-    const minStockAlertVal = parseInt(formData.min_stock_alert, 10);
+    const minStockAlertVal = parseInt(formData.minStockAlert, 10);
     const payload = {
       name: formData.name.trim(),
       sku: formData.sku.trim() || null,
-      category_id: formData.category_id || null,
-      mrp_paise: rupeesToPaise(formData.mrp_rupees),
-      cost_price_paise: rupeesToPaise(formData.cost_price_rupees),
-      tax_rate: parseFloat(formData.tax_rate) || 0,
+      categoryId: formData.categoryId || null,
+      mrpPaise: rupeesToPaise(formData.mrpRupees),
+      costPricePaise: rupeesToPaise(formData.costPriceRupees),
+      taxRate: parseFloat(formData.taxRate) || 0,
       status: formData.status || 'active',
-      min_stock_alert: !isNaN(minStockAlertVal) && minStockAlertVal >= 0 ? minStockAlertVal : 5,
+      minStockAlert: !isNaN(minStockAlertVal) && minStockAlertVal >= 0 ? minStockAlertVal : 5,
     };
 
     if (isCreate) {
-      payload.initial_stock = parseInt(formData.initial_stock, 10) || 0;
+      payload.initialStock = parseInt(formData.initialStock, 10) || 0;
     }
 
     onSubmit(payload, isCreate);
@@ -171,8 +178,8 @@ export default function ProductModal({
                   {strings.products.form.category}
                 </label>
                 <Select
-                  value={formData.category_id}
-                  onChange={(val) => setFormData({ ...formData, category_id: val })}
+                  value={formData.categoryId}
+                  onChange={(val) => setFormData({ ...formData, categoryId: val })}
                   placeholder={strings.products.form.noCategory}
                   options={[
                     { value: '', label: strings.products.form.noCategory },
@@ -196,14 +203,14 @@ export default function ProductModal({
                 <input
                   type="number"
                   step="0.01"
-                  value={formData.cost_price_rupees}
-                  onChange={(e) => handleChange('cost_price_rupees', e.target.value)}
+                  value={formData.costPriceRupees}
+                  onChange={(e) => handleChange('costPriceRupees', e.target.value)}
                   placeholder={strings.products.form.placeholders.zeroDecimal}
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
-                    errors.cost_price_rupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.costPriceRupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   }`}
                 />
-                {errors.cost_price_rupees && <p className="text-[10px] text-danger mt-1">{errors.cost_price_rupees}</p>}
+                {errors.costPriceRupees && <p className="text-[10px] text-danger mt-1">{errors.costPriceRupees}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -213,14 +220,14 @@ export default function ProductModal({
                   type="number"
                   step="0.01"
                   required
-                  value={formData.mrp_rupees}
-                  onChange={(e) => handleChange('mrp_rupees', e.target.value)}
+                  value={formData.mrpRupees}
+                  onChange={(e) => handleChange('mrpRupees', e.target.value)}
                   placeholder={strings.products.form.placeholders.mrp}
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono font-semibold focus:outline-none ${
-                    errors.mrp_rupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.mrpRupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   }`}
                 />
-                {errors.mrp_rupees && <p className="text-[10px] text-danger mt-1">{errors.mrp_rupees}</p>}
+                {errors.mrpRupees && <p className="text-[10px] text-danger mt-1">{errors.mrpRupees}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -229,14 +236,14 @@ export default function ProductModal({
                 <input
                   type="number"
                   step="0.1"
-                  value={formData.tax_rate}
-                  onChange={(e) => handleChange('tax_rate', e.target.value)}
+                  value={formData.taxRate}
+                  onChange={(e) => handleChange('taxRate', e.target.value)}
                   placeholder={strings.products.form.placeholders.zero}
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
-                    errors.tax_rate ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.taxRate ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   }`}
                 />
-                {errors.tax_rate && <p className="text-[10px] text-danger mt-1">{errors.tax_rate}</p>}
+                {errors.taxRate && <p className="text-[10px] text-danger mt-1">{errors.taxRate}</p>}
               </div>
             </div>
           </div>
@@ -254,15 +261,15 @@ export default function ProductModal({
                 <input
                   type="number"
                   min="0"
-                  value={formData.min_stock_alert}
-                  onChange={(e) => handleChange('min_stock_alert', e.target.value)}
+                  value={formData.minStockAlert}
+                  onChange={(e) => handleChange('minStockAlert', e.target.value)}
                   disabled={allowNegativeStock}
                   placeholder={strings.products.form.placeholders.five}
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
-                    errors.min_stock_alert ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.minStockAlert ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   } ${allowNegativeStock ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
-                {errors.min_stock_alert && <p className="text-[10px] text-danger mt-1">{errors.min_stock_alert}</p>}
+                {errors.minStockAlert && <p className="text-[10px] text-danger mt-1">{errors.minStockAlert}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -285,14 +292,14 @@ export default function ProductModal({
                 <label className="text-text-secondary block font-semibold mb-1">Initial Opening Stock (Units)</label>
                 <input
                   type="number"
-                  value={formData.initial_stock}
-                  onChange={(e) => handleChange('initial_stock', e.target.value)}
+                  value={formData.initialStock}
+                  onChange={(e) => handleChange('initialStock', e.target.value)}
                   placeholder="0"
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
-                    errors.initial_stock ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.initialStock ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   }`}
                 />
-                {errors.initial_stock && <p className="text-[10px] text-danger mt-1">{errors.initial_stock}</p>}
+                {errors.initialStock && <p className="text-[10px] text-danger mt-1">{errors.initialStock}</p>}
                 <span className="text-[10px] text-text-muted mt-1 block">
                   Recorded as initial stock balance in the stock movements ledger.
                 </span>

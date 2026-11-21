@@ -7,7 +7,7 @@ import { strings } from '../../../lib/strings';
 
 export default function PrintingTab({ general, setGeneral, onSave, isSaving }) {
   const { data: printers = [], isLoading: scanningPrinters, refetch: refreshPrinters } = useQuery({
-    queryKey: ['system_printers'],
+    queryKey: ['systemPrinters'],
     queryFn: () => tauriApi.listPrinters(),
   });
 
@@ -42,8 +42,8 @@ export default function PrintingTab({ general, setGeneral, onSave, isSaving }) {
                 : strings.settings.printing.noPrintersDetected}
             </div>
             <p className="text-[11px] text-content-secondary">
-              {general.default_printer_name
-                ? strings.settings.printing.activeDefault(general.default_printer_name)
+              {(general.defaultPrinterName ?? general.default_printer_name)
+                ? strings.settings.printing.activeDefault(general.defaultPrinterName ?? general.default_printer_name)
                 : strings.settings.printing.usingOsDefault}
             </p>
           </div>
@@ -77,14 +77,14 @@ export default function PrintingTab({ general, setGeneral, onSave, isSaving }) {
           <div>
             <label className="text-content font-medium block mb-1.5">{strings.settings.printing.defaultPrinter}</label>
             <Select
-              value={general.default_printer_name}
-              onChange={(val) => setGeneral({ ...general, default_printer_name: val })}
+              value={general.defaultPrinterName ?? general.default_printer_name ?? ''}
+              onChange={(val) => setGeneral({ ...general, defaultPrinterName: val })}
               placeholder={strings.settings.printing.osDefaultOption}
               options={[
                 { value: '', label: strings.settings.printing.osDefaultOption },
                 ...printers.map((p) => {
                   const name = typeof p === 'string' ? p : p?.name || '';
-                  const isDef = typeof p === 'object' ? Boolean(p?.is_default) : false;
+                  const isDef = typeof p === 'object' ? Boolean(p?.isDefault ?? p?.is_default) : false;
                   return {
                     value: name,
                     label: strings.settings.printing.printerOption(name, isDef),
@@ -114,7 +114,7 @@ export default function PrintingTab({ general, setGeneral, onSave, isSaving }) {
 
             <button
               type="button"
-              onClick={() => testPrintMutation.mutate(general.default_printer_name || null)}
+              onClick={() => testPrintMutation.mutate((general.defaultPrinterName ?? general.default_printer_name) || null)}
               disabled={testPrintMutation.isPending}
               className="px-5 py-2.5 rounded-lg bg-surface-secondary border border-border hover:bg-surface-tertiary text-content font-medium text-xs flex items-center gap-2 transition-colors cursor-pointer"
             >

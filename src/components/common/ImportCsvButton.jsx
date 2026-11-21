@@ -408,7 +408,7 @@ export default function ImportCsvButton({
                         {strings.common.importCsv.successTitle(result.imported, schema.singular)}
                       </div>
                       <div className="text-[11px] opacity-80 mt-0.5">
-                        {strings.common.importCsv.totalRows(result.total_rows)}<span className="font-mono">{selectedFile?.name}</span>
+                        {strings.common.importCsv.totalRows(result.totalRows ?? result.total_rows)}<span className="font-mono">{selectedFile?.name}</span>
                       </div>
                     </div>
                   </div>

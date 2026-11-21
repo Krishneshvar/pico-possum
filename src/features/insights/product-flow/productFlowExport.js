@@ -27,14 +27,14 @@ export async function exportProductFlowCsv({ hasSelectedProduct, flowItems, sele
 
   const rows = flowItems.map((r) => [
     escapeCsv(prodLabel),
-    escapeCsv(formatDateTime(r.created_at)),
-    escapeCsv(r.invoice_number || strings.common.states.emptyValue),
-    escapeCsv(r.customer_name || strings.productFlow.productFlow.walkInCustomer),
-    escapeCsv(r.event_type || ''),
+    escapeCsv(formatDateTime(r.createdAt ?? r.created_at)),
+    escapeCsv((r.invoiceNumber ?? r.invoice_number) || strings.common.states.emptyValue),
+    escapeCsv((r.customerName ?? r.customer_name) || strings.productFlow.productFlow.walkInCustomer),
+    escapeCsv((r.eventType ?? r.event_type) || ''),
     escapeCsv(r.quantity || 0),
-    escapeCsv(((r.unit_price_paise || 0) / 100).toFixed(2)),
-    escapeCsv(((r.total_paise || 0) / 100).toFixed(2)),
-    escapeCsv(r.payment_method || strings.common.states.emptyValue),
+    escapeCsv((((r.unitPricePaise ?? r.unit_price_paise) || 0) / 100).toFixed(2)),
+    escapeCsv((((r.totalPaise ?? r.total_paise) || 0) / 100).toFixed(2)),
+    escapeCsv((r.paymentMethod ?? r.payment_method) || strings.common.states.emptyValue),
   ]);
 
   const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -47,7 +47,7 @@ export async function exportProductFlowCsv({ hasSelectedProduct, flowItems, sele
         : 'all_time';
 
   await exportToCsv({
-    filename: `sales_history_${safeProdName}_${dateRangeLabel}.csv`,
+    filename: `sales-history-${safeProdName}-${dateRangeLabel}.csv`,
     headers,
     rows,
     count: flowItems.length,
@@ -79,14 +79,14 @@ export async function exportProductFlowXlsx({ hasSelectedProduct, flowItems, sel
 
   const rows = flowItems.map((r) => [
     prodLabel,
-    formatDateTime(r.created_at),
-    r.invoice_number || strings.common.states.emptyValue,
-    r.customer_name || strings.productFlow.productFlow.walkInCustomer,
-    r.event_type || '',
+    formatDateTime(r.createdAt ?? r.created_at),
+    (r.invoiceNumber ?? r.invoice_number) || strings.common.states.emptyValue,
+    (r.customerName ?? r.customer_name) || strings.productFlow.productFlow.walkInCustomer,
+    (r.eventType ?? r.event_type) || '',
     r.quantity || 0,
-    Number(((r.unit_price_paise || 0) / 100).toFixed(2)),
-    Number(((r.total_paise || 0) / 100).toFixed(2)),
-    r.payment_method || strings.common.states.emptyValue,
+    Number((((r.unitPricePaise ?? r.unit_price_paise) || 0) / 100).toFixed(2)),
+    Number((((r.totalPaise ?? r.total_paise) || 0) / 100).toFixed(2)),
+    (r.paymentMethod ?? r.payment_method) || strings.common.states.emptyValue,
   ]);
 
   const safeProdName = (selectedProduct?.name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -99,7 +99,7 @@ export async function exportProductFlowXlsx({ hasSelectedProduct, flowItems, sel
         : 'all_time';
 
   await exportToXlsx({
-    filename: `sales_history_${safeProdName}_${dateRangeLabel}.xlsx`,
+    filename: `sales-history-${safeProdName}-${dateRangeLabel}.xlsx`,
     sheetName: strings.productFlow.export.salesSheet,
     headers,
     rows,

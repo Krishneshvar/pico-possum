@@ -21,7 +21,7 @@ import iconShell from '../../assets/icon-shell.png';
 
 export default function AuthScreen({ authState, onAuthenticated }) {
   const queryClient = useQueryClient();
-  const requiresSetup = authState?.requires_setup ?? false;
+  const requiresSetup = authState?.requiresSetup ?? authState?.requires_setup ?? false;
   const passwordInputRef = useRef(null);
 
   // Form states
@@ -42,7 +42,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
 
   // Fetch admin username if signing in
   const { data: adminUsername } = useQuery({
-    queryKey: ['admin_username'],
+    queryKey: ['adminUsername'],
     queryFn: () => tauriApi.getAdminUsername(),
     enabled: !requiresSetup,
   });
@@ -63,7 +63,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
           : strings.auth.toast.signedIn,
         { title: strings.auth.toast.signedInTitle }
       );
-      queryClient.setQueryData(['auth_state'], res);
+      queryClient.setQueryData(['authState'], res);
       logger.info('Auth', `User authenticated: ${res?.user?.username || 'admin'}`);
       if (onAuthenticated) onAuthenticated(res);
     },
@@ -86,7 +86,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
       toast.success(strings.auth.toast.accountCreated, {
         title: strings.auth.toast.setupCompleteTitle,
       });
-      queryClient.setQueryData(['auth_state'], res);
+      queryClient.setQueryData(['authState'], res);
       logger.info('Auth', `Admin account created: ${res?.user?.username || 'admin'}`);
       if (onAuthenticated) onAuthenticated(res);
     },

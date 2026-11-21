@@ -39,18 +39,18 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const lookupKey = saleId || invoiceNumber;
 
   const { data: saleDetails, isLoading, isError } = useQuery({
-    queryKey: ['sale_details', lookupKey],
+    queryKey: ['saleDetails', lookupKey],
     queryFn: () => tauriApi.getSaleDetails(lookupKey),
     enabled: !!lookupKey,
   });
 
   const { data: billSettings } = useQuery({
-    queryKey: ['bill_settings'],
+    queryKey: ['billSettings'],
     queryFn: () => tauriApi.getBillSettings(),
   });
 
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
@@ -70,7 +70,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
     queryFn: () => tauriApi.getCustomers(),
   });
 
-  const allowNegativeStock = generalSettings?.allow_negative_stock ?? false;
+  const allowNegativeStock = generalSettings?.allowNegativeStock ?? generalSettings?.allow_negative_stock ?? false;
 
   const productStockById = useMemo(() => {
     const map = new Map();
@@ -81,7 +81,8 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const stockAllowanceByProduct = useMemo(() => {
     const map = new Map();
     for (const it of saleDetails?.items || []) {
-      map.set(it.product_id, (map.get(it.product_id) || 0) + it.quantity);
+      const pId = it.productId ?? it.product_id;
+      map.set(pId, (map.get(pId) || 0) + it.quantity);
     }
     return map;
   }, [saleDetails]);
@@ -153,9 +154,10 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
   const isLegacy = sale.status === 'LEGACY';
 
   const handleCancelSale = async () => {
+    const invNo = sale.invoiceNumber ?? sale.invoice_number;
     const { confirmed, value } = await confirmDialog({
-      title: b.dialogs.cancelBill.title(sale.invoice_number),
-      message: b.dialogs.cancelBill.message(sale.invoice_number),
+      title: b.dialogs.cancelBill.title(invNo),
+      message: b.dialogs.cancelBill.message(invNo),
       input: {
         label: b.dialogs.cancelBill.reasonLabel,
         defaultValue: b.dialogs.cancelBill.reasonDefault,
@@ -196,7 +198,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
             <div>
               <div className="flex items-center gap-2.5">
                 <h2 className="text-sm font-bold text-text-primary font-mono tracking-wide">
-                  {b.detail.heading(sale.invoice_number || invoiceNumber)}
+                  {b.detail.heading(sale.invoiceNumber ?? sale.invoice_number ?? invoiceNumber)}
                 </h2>
                 {draft.editing ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-warning-bg text-warning border-warning/30">
@@ -223,7 +225,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-text-muted font-mono">{formatDateTime(sale.created_at)}</p>
+              <p className="text-[11px] text-text-muted font-mono">{formatDateTime(sale.createdAt ?? sale.created_at)}</p>
             </div>
           </div>
         </div>

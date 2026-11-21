@@ -3,18 +3,18 @@ import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import { strings } from '../../../lib/strings';
 
 const sampleSale = {
-  invoice_number: strings.settings.sampleData.invoiceNumber,
-  created_at: new Date().toISOString(),
-  payment_method: strings.settings.sampleData.paymentMethod,
-  subtotal_paise: 35000,
-  discount_paise: 3500,
-  tax_paise: 1750,
-  total_paise: 33250,
+  invoiceNumber: strings.settings.sampleData.invoiceNumber,
+  createdAt: new Date().toISOString(),
+  paymentMethod: strings.settings.sampleData.paymentMethod,
+  subtotalPaise: 35000,
+  discountPaise: 3500,
+  taxPaise: 1750,
+  totalPaise: 33250,
 };
 
 const sampleItems = [
-  { id: 1, product_name: strings.settings.sampleData.sampleItem1, quantity: 2, unit_price_paise: 10000, tax_rate: 5, total_paise: 20000 },
-  { id: 2, product_name: strings.settings.sampleData.sampleItem2, quantity: 1, unit_price_paise: 15000, tax_rate: 5, total_paise: 15000 },
+  { id: 1, productName: strings.settings.sampleData.sampleItem1, quantity: 2, unitPricePaise: 10000, taxRate: 5, totalPaise: 20000 },
+  { id: 2, productName: strings.settings.sampleData.sampleItem2, quantity: 1, unitPricePaise: 15000, taxRate: 5, totalPaise: 15000 },
 ];
 
 export default function ReceiptTab({ bill, setBill, general, onSave, isSaving }) {
@@ -72,9 +72,9 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
               <button
                 key={w}
                 type="button"
-                onClick={() => setBill({ ...bill, paper_width: w })}
+                onClick={() => setBill({ ...bill, paperWidth: w })}
                 className={`p-3 rounded-lg font-medium border text-xs flex items-center justify-center gap-2 transition-colors ${
-                  bill.paper_width === w
+                  (bill.paperWidth ?? bill.paper_width) === w
                     ? 'bg-brand text-white border-brand shadow-sm'
                     : 'bg-surface-secondary text-content-secondary border-border hover:text-content'
                 }`}
@@ -255,7 +255,7 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
         <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-              {strings.settings.receipt.previewTitle(bill.paper_width)}
+              {strings.settings.receipt.previewTitle(bill.paperWidth ?? bill.paper_width)}
             </h3>
             <span className="text-[11px] text-content-muted">{strings.settings.receipt.sampleTransaction}</span>
           </div>

@@ -65,8 +65,8 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
               {strings.productFlow.productFlow.currentMrp}
             </span>
             <span className="text-xs font-bold text-content financial-value">
-              {selectedProduct?.mrp_paise != null
-                ? formatPaise(selectedProduct.mrp_paise)
+              {(selectedProduct?.mrpPaise ?? selectedProduct?.mrp_paise) != null
+                ? formatPaise(selectedProduct.mrpPaise ?? selectedProduct.mrp_paise)
                 : strings.common.states.emptyValue}
             </span>
           </div>
@@ -77,7 +77,7 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
               {strings.productFlow.productFlow.inStock}
             </span>
             <span className="text-xs font-bold text-content financial-value">
-              {strings.productFlow.productFlow.units(selectedProduct?.current_stock ?? 0)}
+              {strings.productFlow.productFlow.units((selectedProduct?.currentStock ?? selectedProduct?.current_stock) ?? 0)}
             </span>
           </div>
         </div>

@@ -24,10 +24,10 @@ export default function CustomersView() {
   const [viewingCustomer, setViewingCustomer] = useState(null);
 
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
-  const currencySymbol = generalSettings?.currency_symbol || getCurrencySymbol();
+  const currencySymbol = generalSettings?.currencySymbol || getCurrencySymbol();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['customers'],
@@ -70,10 +70,11 @@ export default function CustomersView() {
   };
 
   const handleOpenBillDetail = (sale) => {
+    const invNumber = sale.invoiceNumber ?? sale.invoice_number;
     openOrFocus(
-      strings.customers.billTabTitle(sale.invoice_number),
+      strings.customers.billTabTitle(invNumber),
       'bill-detail',
-      { saleId: sale.id, invoiceNumber: sale.invoice_number },
+      { saleId: sale.id, invoiceNumber: invNumber },
       `bill-${sale.id}`
     );
   };
@@ -93,14 +94,19 @@ export default function CustomersView() {
       strings.customers.export.headers.lastVisit,
     ];
 
-    const rows = customers.map((c) => [
-      escapeCsv(c.name || ''),
-      escapeCsv(c.phone || ''),
-      escapeCsv(c.address || ''),
-      escapeCsv(c.total_sales || 0),
-      escapeCsv(((c.total_spent_paise || 0) / 100).toFixed(2)),
-      escapeCsv(c.last_sale_date ? formatDate(c.last_sale_date) : ''),
-    ]);
+    const rows = customers.map((c) => {
+      const totalSales = c.totalSales ?? c.total_sales ?? 0;
+      const totalSpent = c.totalSpentPaise ?? c.total_spent_paise ?? 0;
+      const lastVisit = c.lastSaleDate ?? c.last_sale_date;
+      return [
+        escapeCsv(c.name || ''),
+        escapeCsv(c.phone || ''),
+        escapeCsv(c.address || ''),
+        escapeCsv(totalSales),
+        escapeCsv((totalSpent / 100).toFixed(2)),
+        escapeCsv(lastVisit ? formatDate(lastVisit) : ''),
+      ];
+    });
 
     const dateStr = new Date().toISOString().split('T')[0];
     await exportToCsv({
@@ -127,14 +133,19 @@ export default function CustomersView() {
       strings.customers.export.headers.lastVisit,
     ];
 
-    const rows = customers.map((c) => [
-      c.name || '',
-      c.phone || '',
-      c.address || '',
-      c.total_sales || 0,
-      parseFloat(((c.total_spent_paise || 0) / 100).toFixed(2)),
-      c.last_sale_date ? formatDate(c.last_sale_date) : strings.common.states.emptyValue,
-    ]);
+    const rows = customers.map((c) => {
+      const totalSales = c.totalSales ?? c.total_sales ?? 0;
+      const totalSpent = c.totalSpentPaise ?? c.total_spent_paise ?? 0;
+      const lastVisit = c.lastSaleDate ?? c.last_sale_date;
+      return [
+        c.name || '',
+        c.phone || '',
+        c.address || '',
+        totalSales,
+        parseFloat((totalSpent / 100).toFixed(2)),
+        lastVisit ? formatDate(lastVisit) : strings.common.states.emptyValue,
+      ];
+    });
 
     const colWidths = [
       { wch: 25 },
@@ -180,31 +191,31 @@ export default function CustomersView() {
       render: (r) => r.phone || strings.common.states.emptyValue,
     },
     {
-      key: 'total_bills',
+      key: 'totalBills',
       label: strings.customers.columns.billsCount,
       headerClassName: 'text-center',
       className: 'text-center text-xs font-mono',
       render: (r) => (
         <span className="px-2 py-0.5 rounded-full bg-surface-secondary border border-border-default text-text-secondary text-[11px]">
-          {r.total_sales || 0}
+          {r.totalSales ?? r.total_sales ?? 0}
         </span>
       ),
     },
     {
-      key: 'total_spent_paise',
+      key: 'totalSpentPaise',
       label: strings.customers.columns.totalSpent,
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.total_spent_paise || 0),
+      render: (r) => formatPaise(r.totalSpentPaise ?? r.total_spent_paise ?? 0),
     },
     {
-      key: 'last_visit',
+      key: 'lastVisit',
       label: strings.customers.columns.lastVisit,
       className: 'text-text-muted text-xs whitespace-nowrap',
-      render: (r) =>
-        r.last_sale_date
-          ? formatDate(r.last_sale_date)
-          : strings.common.states.emptyValue,
+      render: (r) => {
+        const lastVisit = r.lastSaleDate ?? r.last_sale_date;
+        return lastVisit ? formatDate(lastVisit) : strings.common.states.emptyValue;
+      },
     },
   ];
 

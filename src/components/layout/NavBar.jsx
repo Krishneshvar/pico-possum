@@ -189,13 +189,13 @@ export default function NavBar({ authUser }) {
   const logoutMutation = useMutation({
     mutationFn: () => tauriApi.logout(),
     onSuccess: () => {
-      queryClient.setQueryData(['auth_state'], {
-        requires_setup: false,
-        is_authenticated: false,
+      queryClient.setQueryData(['authState'], {
+        requiresSetup: false,
+        isAuthenticated: false,
         user: null,
-        session_token: null,
+        sessionToken: null,
       });
-      queryClient.invalidateQueries({ queryKey: ['auth_state'] });
+      queryClient.invalidateQueries({ queryKey: ['authState'] });
       toast.info(strings.layout.nav.toast.locked);
     },
     onError: (err) => toast.error(strings.layout.nav.toast.lockFailedMessage(err), { title: strings.layout.nav.toast.lockFailedTitle }),

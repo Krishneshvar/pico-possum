@@ -72,22 +72,27 @@ function parseDateParts(input) {
  */
 export function applyGeneralSettings(settings) {
   if (!settings) return;
+  const currencySymbol = settings.currencySymbol ?? settings.currency_symbol;
+  const currencyCode = settings.currencyCode ?? settings.currency_code;
+  const dateFormat = settings.dateFormat ?? settings.date_format;
+  const timeFormat = settings.timeFormat ?? settings.time_format;
+
   localeSettings = {
     currencySymbol:
-      typeof settings.currency_symbol === 'string' && settings.currency_symbol.trim()
-        ? settings.currency_symbol.trim()
+      typeof currencySymbol === 'string' && currencySymbol.trim()
+        ? currencySymbol.trim()
         : localeSettings.currencySymbol,
     currencyCode:
-      typeof settings.currency_code === 'string' && settings.currency_code.trim()
-        ? settings.currency_code.trim()
+      typeof currencyCode === 'string' && currencyCode.trim()
+        ? currencyCode.trim()
         : localeSettings.currencyCode,
     dateFormat:
-      typeof settings.date_format === 'string' && settings.date_format.trim()
-        ? settings.date_format.trim()
+      typeof dateFormat === 'string' && dateFormat.trim()
+        ? dateFormat.trim()
         : localeSettings.dateFormat,
     timeFormat:
-      typeof settings.time_format === 'string' && settings.time_format.trim()
-        ? settings.time_format.trim()
+      typeof timeFormat === 'string' && timeFormat.trim()
+        ? timeFormat.trim()
         : localeSettings.timeFormat,
   };
 }

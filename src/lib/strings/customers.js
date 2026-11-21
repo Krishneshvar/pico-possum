@@ -52,7 +52,7 @@ const customers = {
     name: 'Customer Name',
     phone: 'Phone Number',
     address: 'Address / Notes',
-    namePlaceholder: 'e.g. Anand R.',
+    namePlaceholder: 'e.g. John Doe',
     phonePlaceholder: 'e.g. 9876543210',
     addressPlaceholder: 'Street / locality',
     saveCustomer: 'Save Customer',

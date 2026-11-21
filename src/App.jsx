@@ -97,7 +97,7 @@ function WorkspaceContent() {
 function MainLayout({ authUser }) {
   // Load locale/currency preferences once and keep shared formatters in sync.
   const { data: generalSettings } = useQuery({
-    queryKey: ['general_settings'],
+    queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
   });
 
@@ -119,7 +119,7 @@ function MainLayout({ authUser }) {
 
 function AppRoot() {
   const { data: authState, isLoading } = useQuery({
-    queryKey: ['auth_state'],
+    queryKey: ['authState'],
     queryFn: () => tauriApi.getAuthState(),
   });
 
@@ -135,12 +135,12 @@ function AppRoot() {
   }
 
   // If not authenticated or requires initial admin registration, show AuthScreen
-  if (!authState?.is_authenticated) {
+  if (!authState?.isAuthenticated) {
     return (
       <AuthScreen
         authState={authState}
         onAuthenticated={(res) => {
-          queryClient.setQueryData(['auth_state'], res);
+          queryClient.setQueryData(['authState'], res);
         }}
       />
     );

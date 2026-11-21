@@ -68,7 +68,7 @@ export default function BillDetailReadView({
                     {b.columns.index}
                   </th>
                   <SortableTh
-                    sortKey="product_name"
+                    sortKey="productName"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     className="py-2.5 px-4"
@@ -76,7 +76,7 @@ export default function BillDetailReadView({
                     {b.columns.productName}
                   </SortableTh>
                   <SortableTh
-                    sortKey="unit_price_paise"
+                    sortKey="unitPricePaise"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -94,7 +94,7 @@ export default function BillDetailReadView({
                     {b.columns.quantity}
                   </SortableTh>
                   <SortableTh
-                    sortKey="discount_paise"
+                    sortKey="discountPaise"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -103,7 +103,7 @@ export default function BillDetailReadView({
                     {b.columns.discount}
                   </SortableTh>
                   <SortableTh
-                    sortKey="tax_rate"
+                    sortKey="taxRate"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -112,7 +112,7 @@ export default function BillDetailReadView({
                     {b.columns.taxPercent}
                   </SortableTh>
                   <SortableTh
-                    sortKey="total_paise"
+                    sortKey="totalPaise"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -123,32 +123,40 @@ export default function BillDetailReadView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-default">
-                {sortedItems.map((it, idx) => (
-                  <tr key={it.id || idx} className="hover:bg-surface-secondary/60 transition-colors">
-                    <td className="py-3 px-4 text-text-muted font-mono text-center">{idx + 1}</td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-text-primary">{it.product_name}</div>
-                      {it.product_sku && (
-                        <div className="text-[10px] text-text-muted font-mono mt-0.5">{it.product_sku}</div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right financial-value text-text-secondary">
-                      {formatPaise(it.unit_price_paise)}
-                    </td>
-                    <td className="py-3 px-4 text-center font-bold text-text-primary financial-value">
-                      {it.quantity}
-                    </td>
-                    <td className="py-3 px-4 text-right financial-value text-amber-600">
-                      {it.discount_paise > 0 ? `-${formatPaise(it.discount_paise)}` : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-text-muted">
-                      {it.tax_rate != null ? `${it.tax_rate}%` : '0%'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-text-primary financial-value">
-                      {formatPaise(it.total_paise)}
-                    </td>
-                  </tr>
-                ))}
+                {sortedItems.map((it, idx) => {
+                  const pName = it.productName ?? it.product_name;
+                  const pSku = it.productSku ?? it.product_sku;
+                  const unitPrice = it.unitPricePaise ?? it.unit_price_paise;
+                  const discount = it.discountPaise ?? it.discount_paise ?? 0;
+                  const taxRate = it.taxRate ?? it.tax_rate;
+                  const total = it.totalPaise ?? it.total_paise;
+                  return (
+                    <tr key={it.id || idx} className="hover:bg-surface-secondary/60 transition-colors">
+                      <td className="py-3 px-4 text-text-muted font-mono text-center">{idx + 1}</td>
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-text-primary">{pName}</div>
+                        {pSku && (
+                          <div className="text-[10px] text-text-muted font-mono mt-0.5">{pSku}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right financial-value text-text-secondary">
+                        {formatPaise(unitPrice)}
+                      </td>
+                      <td className="py-3 px-4 text-center font-bold text-text-primary financial-value">
+                        {it.quantity}
+                      </td>
+                      <td className="py-3 px-4 text-right financial-value text-amber-600">
+                        {discount > 0 ? `-${formatPaise(discount)}` : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-text-muted">
+                        {taxRate != null ? `${taxRate}%` : '0%'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-text-primary financial-value">
+                        {formatPaise(total)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -165,15 +173,15 @@ export default function BillDetailReadView({
           </div>
           <div className="pt-2 border-t border-border-default space-y-1">
             <div className="text-sm font-bold text-text-primary">
-              {sale.customer_name || b.labels.walkInCustomer}
+              {sale.customerName ?? sale.customer_name ?? b.labels.walkInCustomer}
             </div>
-            {sale.customer_phone ? (
-              <div className="text-xs text-text-muted font-mono">{sale.customer_phone}</div>
+            {(sale.customerPhone ?? sale.customer_phone) ? (
+              <div className="text-xs text-text-muted font-mono">{sale.customerPhone ?? sale.customer_phone}</div>
             ) : (
               <div className="text-xs text-text-muted italic">{b.detail.customer.noPhone}</div>
             )}
-            {sale.customer_address && (
-              <div className="text-xs text-text-secondary mt-1">{sale.customer_address}</div>
+            {(sale.customerAddress ?? sale.customer_address) && (
+              <div className="text-xs text-text-secondary mt-1">{sale.customerAddress ?? sale.customer_address}</div>
             )}
           </div>
         </div>
@@ -188,13 +196,13 @@ export default function BillDetailReadView({
             <div className="flex items-center justify-between">
               <span className="text-text-muted">{c.labels.paymentMethod}</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded bg-surface border border-border-default text-text-primary uppercase tracking-wide">
-                {sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH'}
+                {(sale.paymentMethod ?? sale.payment_method) ? (sale.paymentMethod ?? sale.payment_method).replace(/_/g, ' ') : 'CASH'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-muted">{b.detail.payment.cashier}</span>
               <span className="font-medium text-text-primary">
-                {sale.biller_name || b.detail.payment.operatorDefault}
+                {sale.billerName ?? sale.biller_name ?? b.detail.payment.operatorDefault}
               </span>
             </div>
             <div className="flex items-center justify-between pt-1 border-t border-border-default">
@@ -202,7 +210,7 @@ export default function BillDetailReadView({
                 <Calendar className="w-3.5 h-3.5" /> {c.labels.dateTime}
               </span>
               <span className="font-mono text-text-primary">
-                {formatDateTime(sale.created_at)}
+                {formatDateTime(sale.createdAt ?? sale.created_at)}
               </span>
             </div>
           </div>
@@ -220,24 +228,24 @@ export default function BillDetailReadView({
               <div className="flex justify-between">
                 <span className="text-text-muted">{c.labels.subtotal}</span>
                 <span className="financial-value font-medium text-text-primary">
-                  {formatPaise(sale.subtotal_paise)}
+                  {formatPaise(sale.subtotalPaise ?? sale.subtotal_paise)}
                 </span>
               </div>
 
-              {sale.discount_paise > 0 && (
+              {(sale.discountPaise ?? sale.discount_paise) > 0 && (
                 <div className="flex justify-between text-amber-600">
                   <span>{c.labels.discount}</span>
                   <span className="financial-value font-medium">
-                    -{formatPaise(sale.discount_paise)}
+                    -{formatPaise(sale.discountPaise ?? sale.discount_paise)}
                   </span>
                 </div>
               )}
 
-              {sale.tax_paise > 0 && (
+              {(sale.taxPaise ?? sale.tax_paise) > 0 && (
                 <div className="flex justify-between text-text-muted">
                   <span>{b.detail.summary.gst}</span>
                   <span className="financial-value font-medium text-text-primary">
-                    {formatPaise(sale.tax_paise)}
+                    {formatPaise(sale.taxPaise ?? sale.tax_paise)}
                   </span>
                 </div>
               )}
@@ -247,7 +255,7 @@ export default function BillDetailReadView({
                   {b.detail.summary.grandTotal}
                 </span>
                 <span className="text-xl font-bold financial-value text-text-primary">
-                  {formatPaise(sale.total_paise)}
+                  {formatPaise(sale.totalPaise ?? sale.total_paise)}
                 </span>
               </div>
             </div>
@@ -255,20 +263,20 @@ export default function BillDetailReadView({
             {/* Paid & Settlement Details */}
             <div className="bg-surface rounded-lg p-2.5 border border-border-default space-y-1 text-xs">
               <div className="flex justify-between text-text-muted">
-                <span>{b.detail.summary.paidAmount(sale.payment_method ? sale.payment_method.replace(/_/g, ' ') : 'CASH')}</span>
+                <span>{b.detail.summary.paidAmount((sale.paymentMethod ?? sale.payment_method) ? (sale.paymentMethod ?? sale.payment_method).replace(/_/g, ' ') : 'CASH')}</span>
                 <span className="financial-value font-semibold text-text-primary">
-                  {formatPaise(sale.paid_paise)}
+                  {formatPaise(sale.paidPaise ?? sale.paid_paise)}
                 </span>
               </div>
-              {sale.paid_paise > sale.total_paise ? (
+              {(sale.paidPaise ?? sale.paid_paise) > (sale.totalPaise ?? sale.total_paise) ? (
                 <div className="flex justify-between text-success font-semibold">
                   <span>{b.detail.summary.changeReturned}</span>
-                  <span className="financial-value">{formatPaise(sale.paid_paise - sale.total_paise)}</span>
+                  <span className="financial-value">{formatPaise((sale.paidPaise ?? sale.paid_paise) - (sale.totalPaise ?? sale.total_paise))}</span>
                 </div>
-              ) : sale.paid_paise < sale.total_paise ? (
+              ) : (sale.paidPaise ?? sale.paid_paise) < (sale.totalPaise ?? sale.total_paise) ? (
                 <div className="flex justify-between text-danger font-semibold">
                   <span>{b.detail.summary.balanceDue}</span>
-                  <span className="financial-value">{formatPaise(sale.total_paise - sale.paid_paise)}</span>
+                  <span className="financial-value">{formatPaise((sale.totalPaise ?? sale.total_paise) - (sale.paidPaise ?? sale.paid_paise))}</span>
                 </div>
               ) : (
                 <div className="flex justify-between text-text-muted text-[11px]">

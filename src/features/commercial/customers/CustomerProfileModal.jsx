@@ -12,16 +12,16 @@ export default function CustomerProfileModal({
   onClose,
   onOpenBillDetail,
 }) {
-  const [historySort, setHistorySort] = useState({ key: 'created_at', dir: 'desc' });
+  const [historySort, setHistorySort] = useState({ key: 'createdAt', dir: 'desc' });
 
   const { data: customerSales = [], isLoading: loadingCustomerSales } = useQuery({
-    queryKey: ['customer_sales', customer?.id],
+    queryKey: ['customerSales', customer?.id],
     queryFn: () => tauriApi.getCustomerSales(customer.id),
     enabled: Boolean(customer?.id),
   });
 
   const sortedCustomerSales = useMemo(() => {
-    return sortRows(customerSales, historySort, (row, key) => row[key]);
+    return sortRows(customerSales, historySort, (row, key) => row[key] ?? row[key.replace(/([A-Z])/g, '_$1').toLowerCase()]);
   }, [customerSales, historySort]);
 
   const customerStats = useMemo(() => {
@@ -30,9 +30,9 @@ export default function CustomerProfileModal({
     }
     const nonCancelled = customerSales.filter((s) => s.status !== 'CANCELLED');
     const totalOrders = nonCancelled.length;
-    const totalSpent = nonCancelled.reduce((sum, s) => sum + (s.total_paise || 0), 0);
+    const totalSpent = nonCancelled.reduce((sum, s) => sum + (s.totalPaise ?? s.total_paise ?? 0), 0);
     const avgBill = totalOrders > 0 ? Math.round(totalSpent / totalOrders) : 0;
-    const lastOrder = customerSales[0]?.created_at || null;
+    const lastOrder = (customerSales[0]?.createdAt ?? customerSales[0]?.created_at) || null;
     return { totalOrders, totalSpent, avgBill, lastOrder };
   }, [customerSales]);
 
@@ -111,7 +111,7 @@ export default function CustomerProfileModal({
             <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-2xs">
               <tr>
                 <SortableTh
-                  sortKey="invoice_number"
+                  sortKey="invoiceNumber"
                   sort={historySort}
                   onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                   className="py-2.5 px-3.5 pl-4"
@@ -119,7 +119,7 @@ export default function CustomerProfileModal({
                   {strings.common.labels.invoiceNumber}
                 </SortableTh>
                 <SortableTh
-                  sortKey="created_at"
+                  sortKey="createdAt"
                   sort={historySort}
                   onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                   className="py-2.5 px-3.5"
@@ -127,7 +127,7 @@ export default function CustomerProfileModal({
                   {strings.common.labels.date}
                 </SortableTh>
                 <SortableTh
-                  sortKey="payment_method"
+                  sortKey="paymentMethod"
                   sort={historySort}
                   onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                   className="py-2.5 px-3.5"
@@ -144,7 +144,7 @@ export default function CustomerProfileModal({
                   {strings.common.labels.status}
                 </SortableTh>
                 <SortableTh
-                  sortKey="total_paise"
+                  sortKey="totalPaise"
                   sort={historySort}
                   onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                   align="right"
@@ -174,15 +174,15 @@ export default function CustomerProfileModal({
                 sortedCustomerSales.map((sale) => (
                   <tr key={sale.id} className="hover:bg-surface-secondary/70 transition-colors">
                     <td className="py-2 px-3.5 pl-4 font-bold font-mono text-text-primary">
-                      {sale.invoice_number}
+                      {sale.invoiceNumber ?? sale.invoice_number}
                     </td>
                     <td className="py-2 px-3.5 text-text-muted text-[11px]">
-                      {formatDateTime(sale.created_at)}
+                      {formatDateTime(sale.createdAt ?? sale.created_at)}
                     </td>
                     <td className="py-2 px-3.5">
                       <span className="px-1.5 py-0.5 rounded bg-surface-secondary text-text-secondary text-[10px] uppercase border border-border-default">
-                        {sale.payment_method
-                          ? sale.payment_method.replace(/_/g, ' ')
+                        {(sale.paymentMethod ?? sale.payment_method)
+                          ? (sale.paymentMethod ?? sale.payment_method).replace(/_/g, ' ')
                           : strings.customers.profile.history.defaultPaymentMethod}
                       </span>
                     </td>
@@ -198,7 +198,7 @@ export default function CustomerProfileModal({
                       </span>
                     </td>
                     <td className="py-2 px-3.5 text-right font-bold financial-value text-text-primary">
-                      {formatPaise(sale.total_paise)}
+                      {formatPaise(sale.totalPaise ?? sale.total_paise)}
                     </td>
                     <td className="py-2 pl-3.5 pr-4 text-right">
                       <button

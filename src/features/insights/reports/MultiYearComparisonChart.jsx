@@ -43,8 +43,8 @@ export default function MultiYearComparisonChart({
         }
         const m = parseInt(item.month, 10);
         map[item.year][m] = {
-          revenue: item.total_revenue_paise || 0,
-          transactions: item.total_transactions || 0,
+          revenue: item.totalRevenuePaise ?? item.total_revenue_paise ?? 0,
+          transactions: item.totalTransactions ?? item.total_transactions ?? 0,
         };
       }
     });

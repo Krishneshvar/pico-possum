@@ -154,18 +154,18 @@ export default function PosEmptyCartRow({
                     </div>
                     <div className="text-right shrink-0">
                       <div className={`font-mono font-bold ${isHl ? 'text-white' : 'text-text-primary'}`}>
-                        {formatPaise(p.mrp_paise)}
+                        {formatPaise(p.mrpPaise ?? p.mrp_paise)}
                       </div>
                       <div
                         className={`text-[10px] ${
                           isHl
                             ? 'text-white/80'
-                            : p.current_stock <= (p.min_stock_alert ?? 5)
+                            : (p.currentStock ?? p.current_stock ?? 0) <= ((p.minStockAlert ?? p.min_stock_alert) ?? 5)
                             ? 'text-danger font-semibold'
                             : 'text-text-muted'
                         }`}
                       >
-                        Stock: {p.current_stock}
+                        Stock: {p.currentStock ?? p.current_stock ?? 0}
                       </div>
                     </div>
                   </div>

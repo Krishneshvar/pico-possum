@@ -15,7 +15,7 @@ export default function MigrationTab() {
   const [migrationError, setMigrationError] = useState(null);
 
   const { data: detectedLegacyDb } = useQuery({
-    queryKey: ['detected_legacy_db'],
+    queryKey: ['detectedLegacyDb'],
     queryFn: () => tauriApi.detectLegacyDatabase(),
   });
 
@@ -82,7 +82,7 @@ export default function MigrationTab() {
           </div>
           {migrationResult && (
             <div className="pt-2 text-xs text-success font-medium border-t border-brand/20">
-              ✓ Successfully imported {migrationResult.products_imported} products, {migrationResult.categories_imported} categories, {migrationResult.customers_imported} customers, and {migrationResult.sales_imported} sales invoices.
+              ✓ Successfully imported {migrationResult.productsImported ?? migrationResult.products_imported} products, {migrationResult.categoriesImported ?? migrationResult.categories_imported} categories, {migrationResult.customersImported ?? migrationResult.customers_imported} customers, and {migrationResult.salesImported ?? migrationResult.sales_imported} sales invoices.
             </div>
           )}
         </div>

@@ -49,16 +49,14 @@ export default function DataTable({
   }, [filterState.filtered, onFilteredChange]);
 
   const toggleSort = (colKey) => {
-    const col = columns.find((c) => c.key === colKey);
-    const nextDir = nextSortState(sort.key === colKey ? sort.dir : null, col?.naturalSortDir);
-    setSort({ key: nextDir ? colKey : null, dir: nextDir });
+    setSort((prev) => nextSortState(prev, colKey));
   };
 
   // Sort pipeline
   const sorted = useMemo(() => {
     if (!sort.key || !sort.dir) return filterState.filtered;
     const col = columns.find((c) => c.key === sort.key);
-    return sortRows(filterState.filtered, (row) => getSortValue(row, col, sort.key), sort.dir);
+    return sortRows(filterState.filtered, sort, (row) => getSortValue(row, col));
   }, [filterState.filtered, sort, columns]);
 
   // Pagination

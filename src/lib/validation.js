@@ -147,9 +147,9 @@ export function validateStockAdjustment(quantityChange, note, reason, currentSto
   const parsedQty = parseInt(quantityChange, 10);
 
   if (isNaN(parsedQty) || parsedQty === 0) {
-    errors.quantity_change = 'Enter a non-zero quantity change (e.g. +5 or -2)';
+    errors.quantityChange = 'Enter a non-zero quantity change (e.g. +5 or -2)';
   } else if (!allowNegativeStock && currentStock + parsedQty < 0) {
-    errors.quantity_change = `Adjustment results in negative stock (${currentStock + parsedQty}), which is disabled in settings`;
+    errors.quantityChange = `Adjustment results in negative stock (${currentStock + parsedQty}), which is disabled in settings`;
   }
 
   if (parsedQty < 0 && reason === 'PURCHASE') {
@@ -202,22 +202,27 @@ export function validateProductForm(formData, isCreate = false) {
   const skuErr = validateProductSku(formData.sku);
   if (skuErr) errors.sku = skuErr;
 
-  const mrpErr = validateMrp(formData.mrp_rupees);
-  if (mrpErr) errors.mrp_rupees = mrpErr;
+  const mrpVal = formData.mrpRupees ?? formData.mrp_rupees;
+  const mrpErr = validateMrp(mrpVal);
+  if (mrpErr) errors.mrpRupees = mrpErr;
 
-  const cpErr = validateCostPrice(formData.cost_price_rupees);
-  if (cpErr) errors.cost_price_rupees = cpErr;
+  const cpVal = formData.costPriceRupees ?? formData.cost_price_rupees;
+  const cpErr = validateCostPrice(cpVal);
+  if (cpErr) errors.costPriceRupees = cpErr;
 
-  const taxErr = validateTaxRate(formData.tax_rate);
-  if (taxErr) errors.tax_rate = taxErr;
+  const taxVal = formData.taxRate ?? formData.tax_rate;
+  const taxErr = validateTaxRate(taxVal);
+  if (taxErr) errors.taxRate = taxErr;
 
   if (isCreate) {
-    const stockErr = validateStock(formData.initial_stock);
-    if (stockErr) errors.initial_stock = stockErr;
+    const stockVal = formData.initialStock ?? formData.initial_stock;
+    const stockErr = validateStock(stockVal);
+    if (stockErr) errors.initialStock = stockErr;
   }
 
-  const alertErr = validateMinStockAlert(formData.min_stock_alert);
-  if (alertErr) errors.min_stock_alert = alertErr;
+  const alertVal = formData.minStockAlert ?? formData.min_stock_alert;
+  const alertErr = validateMinStockAlert(alertVal);
+  if (alertErr) errors.minStockAlert = alertErr;
 
   return {
     isValid: Object.keys(errors).length === 0,

@@ -54,7 +54,7 @@ export default function SalesReportsView() {
   const effectiveToDate = reportType === 'today' ? (toDate || todayIso) : (toDate || null);
 
   const { data: rawData = [], isLoading, refetch } = useQuery({
-    queryKey: ['sales_breakdown', reportType, effectiveFromDate, effectiveToDate],
+    queryKey: ['salesBreakdown', reportType, effectiveFromDate, effectiveToDate],
     queryFn: () => tauriApi.getSalesBreakdown(reportType, effectiveFromDate, effectiveToDate),
   });
 
@@ -67,13 +67,20 @@ export default function SalesReportsView() {
 
     return rawData.filter((row) => {
       let valPaise = 0;
-      if (amountCol === 'gross') valPaise = row.total_sales_paise || 0;
+      const totalSalesPaise = row.totalSalesPaise ?? row.total_sales_paise ?? 0;
+      const totalDiscountPaise = row.totalDiscountPaise ?? row.total_discount_paise ?? 0;
+      const cashPaise = row.cashPaise ?? row.cash_paise ?? 0;
+      const upiPaise = row.upiPaise ?? row.upi_paise ?? 0;
+      const cardPaise = row.cardPaise ?? row.card_paise ?? 0;
+      const giftCardPaise = row.giftCardPaise ?? row.gift_card_paise ?? 0;
+
+      if (amountCol === 'gross') valPaise = totalSalesPaise;
       else if (amountCol === 'net')
-        valPaise = (row.total_sales_paise || 0) - (row.total_discount_paise || 0);
-      else if (amountCol === 'cash') valPaise = row.cash_paise || 0;
-      else if (amountCol === 'upi') valPaise = row.upi_paise || 0;
-      else if (amountCol === 'card') valPaise = row.card_paise || 0;
-      else if (amountCol === 'gift_card') valPaise = row.gift_card_paise || 0;
+        valPaise = totalSalesPaise - totalDiscountPaise;
+      else if (amountCol === 'cash') valPaise = cashPaise;
+      else if (amountCol === 'upi') valPaise = upiPaise;
+      else if (amountCol === 'card') valPaise = cardPaise;
+      else if (amountCol === 'giftCard') valPaise = giftCardPaise;
 
       const valRs = valPaise / 100;
       if (hasMin && valRs < minNum) return false;
@@ -85,14 +92,17 @@ export default function SalesReportsView() {
   const totals = useMemo(() => {
     return filteredData.reduce(
       (acc, r) => {
-        acc.transactions += r.total_transactions || 0;
-        acc.cash += r.cash_paise || 0;
-        acc.upi += r.upi_paise || 0;
-        acc.card += r.card_paise || 0;
-        acc.giftCard += r.gift_card_paise || 0;
-        acc.discount += r.total_discount_paise || 0;
-        acc.gross += r.total_sales_paise || 0;
-        acc.net += Math.max(0, (r.total_sales_paise || 0) - (r.total_discount_paise || 0));
+        const totalSalesPaise = r.totalSalesPaise ?? r.total_sales_paise ?? 0;
+        const totalDiscountPaise = r.totalDiscountPaise ?? r.total_discount_paise ?? 0;
+
+        acc.transactions += r.totalTransactions ?? r.total_transactions ?? 0;
+        acc.cash += r.cashPaise ?? r.cash_paise ?? 0;
+        acc.upi += r.upiPaise ?? r.upi_paise ?? 0;
+        acc.card += r.cardPaise ?? r.card_paise ?? 0;
+        acc.giftCard += r.giftCardPaise ?? r.gift_card_paise ?? 0;
+        acc.discount += totalDiscountPaise;
+        acc.gross += totalSalesPaise;
+        acc.net += Math.max(0, totalSalesPaise - totalDiscountPaise);
         return acc;
       },
       { transactions: 0, cash: 0, upi: 0, card: 0, giftCard: 0, discount: 0, gross: 0, net: 0 }
@@ -306,7 +316,7 @@ export default function SalesReportsView() {
               { value: 'cash', label: strings.salesReports.filters.amountFields.cash },
               { value: 'upi', label: strings.salesReports.filters.amountFields.upi },
               { value: 'card', label: strings.salesReports.filters.amountFields.card },
-              { value: 'gift_card', label: strings.salesReports.filters.amountFields.giftCard },
+              { value: 'giftCard', label: strings.salesReports.filters.amountFields.giftCard },
             ]}
           />
           <div className="flex items-center gap-1.5">

@@ -6,14 +6,17 @@ export function getProductColumns({ allowNegativeStock }) {
       key: 'name',
       label: 'Product',
       className: 'font-semibold text-text-primary text-xs',
-      render: (r) => (
-        <div>
-          <span>{r.name}</span>
-          {r.category_name && (
-            <div className="text-[10px] text-text-muted">{r.category_name}</div>
-          )}
-        </div>
-      ),
+      render: (r) => {
+        const catName = r.categoryName ?? r.category_name;
+        return (
+          <div>
+            <span>{r.name}</span>
+            {catName && (
+              <div className="text-[10px] text-text-muted">{catName}</div>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'sku',
@@ -22,34 +25,34 @@ export function getProductColumns({ allowNegativeStock }) {
       render: (r) => r.sku || '—',
     },
     {
-      key: 'cost_price_paise',
+      key: 'costPricePaise',
       label: 'Cost Price',
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-muted text-xs',
-      render: (r) => formatPaise(r.cost_price_paise),
+      render: (r) => formatPaise(r.costPricePaise ?? r.cost_price_paise),
     },
     {
-      key: 'mrp_paise',
+      key: 'mrpPaise',
       label: 'MRP',
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.mrp_paise),
+      render: (r) => formatPaise(r.mrpPaise ?? r.mrp_paise),
     },
     {
-      key: 'tax_rate',
+      key: 'taxRate',
       label: 'GST %',
       headerClassName: 'text-center',
       className: 'text-center font-mono text-text-muted text-xs',
-      render: (r) => `${r.tax_rate}%`,
+      render: (r) => `${r.taxRate ?? r.tax_rate}%`,
     },
     {
-      key: 'current_stock',
+      key: 'currentStock',
       label: 'Stock Level',
       headerClassName: 'text-center',
       className: 'text-center text-xs',
       render: (r) => {
-        const s = r.current_stock;
-        const alertThreshold = r.min_stock_alert ?? 5;
+        const s = r.currentStock ?? r.current_stock ?? 0;
+        const alertThreshold = r.minStockAlert ?? r.min_stock_alert ?? 5;
 
         if (allowNegativeStock) {
           return (

@@ -24,15 +24,16 @@ export default function AuditLogView() {
   const [copiedJson, setCopiedJson] = useState(false);
 
   const { data: logs = [], isLoading, refetch } = useQuery({
-    queryKey: ['audit_logs'],
+    queryKey: ['auditLogs'],
     queryFn: () => tauriApi.getAuditLogs(300),
   });
 
   const eventTypeOptions = useMemo(() => {
     const counts = {};
     for (const l of logs) {
-      if (l.event_type) {
-        counts[l.event_type] = (counts[l.event_type] || 0) + 1;
+      const et = l.eventType ?? l.event_type;
+      if (et) {
+        counts[et] = (counts[et] || 0) + 1;
       }
     }
     const types = Object.keys(counts).sort();
@@ -44,17 +45,19 @@ export default function AuditLogView() {
 
   const getActor = (log) => {
     if (log.actor) return log.actor;
-    if (log.entity_type === 'SYSTEM' || log.event_type?.includes('BACKUP'))
+    const entityType = log.entityType ?? log.entity_type;
+    const eventType = log.eventType ?? log.event_type;
+    if (entityType === 'SYSTEM' || eventType?.includes('BACKUP'))
       return strings.productFlow.auditLog.actors.system;
     return strings.productFlow.auditLog.actors.admin;
   };
 
   const columns = [
     {
-      key: 'created_at',
+      key: 'createdAt',
       label: strings.productFlow.columns.timestamp,
       className: 'text-content-secondary text-xs whitespace-nowrap',
-      render: (r) => formatDateTime(r.created_at),
+      render: (r) => formatDateTime(r.createdAt ?? r.created_at),
     },
     {
       key: 'actor',
@@ -69,27 +72,27 @@ export default function AuditLogView() {
       ),
     },
     {
-      key: 'event_type',
+      key: 'eventType',
       label: strings.productFlow.columns.action,
       headerClassName: 'text-center',
       className: 'text-center',
       render: (r) => (
         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-surface-secondary text-content border border-border">
-          {r.event_type}
+          {r.eventType ?? r.event_type}
         </span>
       ),
     },
     {
-      key: 'entity_type',
+      key: 'entityType',
       label: strings.productFlow.columns.module,
       className: 'text-xs text-content-secondary font-medium tracking-wide uppercase',
-      render: (r) => r.entity_type || 'SYSTEM',
+      render: (r) => (r.entityType ?? r.entity_type) || 'SYSTEM',
     },
     {
-      key: 'entity_id',
+      key: 'entityId',
       label: strings.productFlow.columns.entityId,
       className: 'font-mono text-xs text-content-muted truncate max-w-[120px]',
-      render: (r) => r.entity_id || strings.common.states.emptyValue,
+      render: (r) => (r.entityId ?? r.entity_id) || strings.common.states.emptyValue,
     },
     {
       key: 'description',
@@ -141,13 +144,14 @@ export default function AuditLogView() {
           persistKey="audit-log"
           data={logs}
           keyFn={(r) => r.id}
-          searchKeys={['description', 'entity_id', 'event_type', 'entity_type']}
+          searchKeys={['description', 'entityId', 'eventType', 'entityType']}
           filters={[
             {
               type: 'multiselect',
-              key: 'event_type',
+              key: 'eventType',
               label: a.allActions,
               options: eventTypeOptions,
+              filterFn: (row, vals) => vals.includes(row.eventType ?? row.event_type),
             },
           ]}
           pageSize={25}
@@ -189,7 +193,7 @@ export default function AuditLogView() {
               <div className="grid grid-cols-2 gap-3 p-3.5 bg-surface-secondary rounded-lg border border-border">
                 <div>
                   <span className="text-[11px] text-content-muted font-medium block">{a.details.timestamp}</span>
-                  <span className="text-content font-medium">{formatDateTime(selectedLog.created_at)}</span>
+                  <span className="text-content font-medium">{formatDateTime(selectedLog.createdAt ?? selectedLog.created_at)}</span>
                 </div>
                 <div>
                   <span className="text-[11px] text-content-muted font-medium block">{a.details.actor}</span>
@@ -197,17 +201,17 @@ export default function AuditLogView() {
                 </div>
                 <div>
                   <span className="text-[11px] text-content-muted font-medium block">{a.details.actionEvent}</span>
-                  <span className="text-brand font-medium">{selectedLog.event_type}</span>
+                  <span className="text-brand font-medium">{selectedLog.eventType ?? selectedLog.event_type}</span>
                 </div>
                 <div>
                   <span className="text-[11px] text-content-muted font-medium block">{a.details.moduleEntity}</span>
-                  <span className="text-content font-medium">{selectedLog.entity_type || 'SYSTEM'}</span>
+                  <span className="text-content font-medium">{(selectedLog.entityType ?? selectedLog.entity_type) || 'SYSTEM'}</span>
                 </div>
-                {selectedLog.entity_id && (
+                {(selectedLog.entityId ?? selectedLog.entity_id) && (
                   <div className="col-span-2">
                     <span className="text-[11px] text-content-muted font-medium block">{a.details.entityIdentifier}</span>
                     <span className="font-mono text-content-secondary text-[11px] break-all">
-                      {selectedLog.entity_id}
+                      {selectedLog.entityId ?? selectedLog.entity_id}
                     </span>
                   </div>
                 )}
