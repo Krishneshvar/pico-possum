@@ -6,6 +6,8 @@
  * already formatted by the caller.
  */
 
+const isMac = typeof navigator !== 'undefined' && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || navigator.userAgent);
+
 const pos = {
   view: {
     saleCompletedTitle: 'Sale Completed',
@@ -48,7 +50,7 @@ const pos = {
     },
     grandTotal: 'Grand Total',
     amountPlaceholder: '0.00',
-    searchPlaceholder: 'Search... (Ctrl+K)',
+    searchPlaceholder: isMac ? 'Search... (⌘K)' : 'Search... (Ctrl+K)',
     noMatchingProducts: (query) => `No products matching "${query}"`,
     skuNotFoundTitle: 'SKU Not Found',
     skuNotFound: (sku) => `No product found with SKU "${sku}"`,

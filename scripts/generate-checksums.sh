@@ -22,6 +22,15 @@ fi
 
 TEMP_FILE="$(mktemp)"
 
+if command -v sha256sum >/dev/null 2>&1; then
+  HASH_CMD="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+  HASH_CMD="shasum -a 256"
+else
+  echo "[!] Error: Neither sha256sum nor shasum is installed." >&2
+  exit 1
+fi
+
 find "${BUNDLE_DIR}" -type f \( \
   -name "*.AppImage" -o \
   -name "*.deb" -o \
@@ -31,7 +40,7 @@ find "${BUNDLE_DIR}" -type f \( \
   -name "*.exe" -o \
   -name "*.tar.gz" -o \
   -name "*.zip" \
-\) -exec sha256sum {} + | while read -r hash path; do
+\) -exec ${HASH_CMD} {} + | while read -r hash path; do
   filename="$(basename "${path}")"
   echo "${hash}  ${filename}"
 done | sort -k2 > "${TEMP_FILE}"

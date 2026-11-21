@@ -82,10 +82,14 @@ export default function PrintingTab({ general, setGeneral, onSave, isSaving }) {
               placeholder={strings.settings.printing.osDefaultOption}
               options={[
                 { value: '', label: strings.settings.printing.osDefaultOption },
-                ...printers.map((p) => ({
-                  value: p.name,
-                  label: strings.settings.printing.printerOption(p.name, p.is_default),
-                })),
+                ...printers.map((p) => {
+                  const name = typeof p === 'string' ? p : p?.name || '';
+                  const isDef = typeof p === 'object' ? Boolean(p?.is_default) : false;
+                  return {
+                    value: name,
+                    label: strings.settings.printing.printerOption(name, isDef),
+                  };
+                }),
               ]}
             />
             <span className="text-[11px] text-content-muted mt-1 block">

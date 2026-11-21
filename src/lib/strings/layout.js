@@ -2,6 +2,8 @@
  * Application shell strings: navigation, workspace tabs and branding.
  */
 
+const isMac = typeof navigator !== 'undefined' && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || navigator.userAgent);
+
 const layout = {
   brand: {
     name: 'PicoPOSSUM',
@@ -78,7 +80,7 @@ const layout = {
     discardAndClose: 'Discard & Close',
     keepTabOpen: 'Keep Tab Open',
     unsavedIndicator: 'Unsaved changes',
-    closeTabTitle: 'Close tab (Ctrl+W)',
+    closeTabTitle: isMac ? 'Close tab (⌘W)' : 'Close tab (Ctrl+W)',
     closeTab: 'Close Tab',
     closeOthers: 'Close Others',
     closeAll: 'Close All',

@@ -22,22 +22,34 @@ impl AppPaths {
 
 
     pub fn detect_legacy_db_path() -> Option<PathBuf> {
-        let base = dirs::data_dir()?;
-        let candidate = base.join("pico-possum").join("database").join("pico-possum.db");
-        if candidate.exists() {
-            Some(candidate)
-        } else {
-            None
+        if let Some(base) = dirs::data_dir() {
+            let candidate = base.join("pico-possum").join("database").join("pico-possum.db");
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
+        if let Some(home) = dirs::home_dir() {
+            let alt = home.join(".pico-possum").join("database").join("pico-possum.db");
+            if alt.exists() {
+                return Some(alt);
+            }
+        }
+        None
     }
 
     pub fn detect_legacy_settings_dir() -> Option<PathBuf> {
-        let base = dirs::data_dir()?;
-        let candidate = base.join("pico-possum").join("settings");
-        if candidate.exists() {
-            Some(candidate)
-        } else {
-            None
+        if let Some(base) = dirs::data_dir() {
+            let candidate = base.join("pico-possum").join("settings");
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
+        if let Some(home) = dirs::home_dir() {
+            let alt = home.join(".pico-possum").join("settings");
+            if alt.exists() {
+                return Some(alt);
+            }
+        }
+        None
     }
 }

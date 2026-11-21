@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use pico_possum_lib::domain::models::{
     CreateCategoryPayload, CreateProductPayload,
@@ -11,8 +10,8 @@ async fn test_sales_analytics_with_filters_and_categories() {
     let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
     let target_db_file = temp_dir.path().join("test-analytics.db");
 
-    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", target_db_file.to_string_lossy()))
-        .unwrap()
+    let options = SqliteConnectOptions::new()
+        .filename(&target_db_file)
         .create_if_missing(true)
         .foreign_keys(true);
 

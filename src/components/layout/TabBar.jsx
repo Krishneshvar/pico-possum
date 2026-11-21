@@ -36,10 +36,10 @@ export default function TabBar() {
     if (activeEl) activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }, [activeTabId]);
 
-  // Global Ctrl+W to close active tab
+  // Global Ctrl+W / Cmd+W to close active tab
   useEffect(() => {
     const handler = (e) => {
-      if (e.ctrlKey && !e.shiftKey && e.key === 'w') {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'w' || e.key === 'W')) {
         e.preventDefault();
         if (activeTabId) handleAttemptCloseTab(activeTabId);
       }

@@ -1,5 +1,4 @@
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteSynchronous};
-use std::str::FromStr;
 use crate::errors::AppError;
 use crate::infrastructure::logger::AppLogger;
 use crate::infrastructure::paths::AppPaths;
@@ -7,10 +6,10 @@ use super::schema::INIT_SCHEMA;
 
 pub async fn init_pool() -> Result<SqlitePool, AppError> {
     let db_path = AppPaths::get_database_path();
-    let db_path_str = db_path.to_string_lossy();
     AppLogger::debug("Database", format!("Opening database connection: {:?}", db_path));
 
-    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", db_path_str))?
+    let options = SqliteConnectOptions::new()
+        .filename(&db_path)
         .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal)
         .synchronous(SqliteSynchronous::Normal)

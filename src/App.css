@@ -242,6 +242,17 @@ input[type="number"] {
 
 /* Thermal receipt printable style */
 @media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   body * {
     visibility: hidden;
   }

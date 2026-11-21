@@ -1,5 +1,4 @@
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use std::str::FromStr;
 use pico_possum_lib::domain::models::{
     CreateCategoryPayload, CreateCustomerPayload, CreateProductPayload,
     CreateSaleItemPayload, CreateSalePayload, StockAdjustmentPayload,
@@ -12,8 +11,8 @@ async fn test_full_pos_lifecycle() {
     let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
     let target_db_file = temp_dir.path().join("test-pos-lifecycle.db");
 
-    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", target_db_file.to_string_lossy()))
-        .unwrap()
+    let options = SqliteConnectOptions::new()
+        .filename(&target_db_file)
         .create_if_missing(true)
         .foreign_keys(true);
 
@@ -235,8 +234,8 @@ async fn test_bill_edit_lifecycle() {
     let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
     let db_file = temp_dir.path().join("test-bill-edit.db");
 
-    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", db_file.to_string_lossy()))
-        .unwrap()
+    let options = SqliteConnectOptions::new()
+        .filename(&db_file)
         .create_if_missing(true)
         .foreign_keys(true);
 

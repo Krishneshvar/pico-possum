@@ -59,6 +59,15 @@ pub fn run() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|_app| {
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(menu) = tauri::menu::Menu::default(_app.handle()) {
+                    let _ = _app.set_menu(menu);
+                }
+            }
+            Ok(())
+        })
         .manage(pool)
         .manage(session_mgr)
         .manage(ShutdownState::default())

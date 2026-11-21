@@ -1,5 +1,4 @@
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use std::str::FromStr;
 
 #[tokio::test]
 async fn test_migration_against_legacy_db() {
@@ -18,8 +17,8 @@ async fn test_migration_against_legacy_db() {
     let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
     let target_db_file = temp_dir.path().join("test-possum.db");
 
-    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", target_db_file.to_string_lossy()))
-        .unwrap()
+    let options = SqliteConnectOptions::new()
+        .filename(&target_db_file)
         .create_if_missing(true)
         .foreign_keys(true);
 
@@ -45,7 +44,11 @@ async fn test_migration_against_legacy_db() {
     println!("Migration Summary: {:?}", summary);
     assert!(summary.categories_imported >= 1, "Categories count mismatch");
     assert!(summary.products_imported >= 1, "Products count mismatch");
-    assert!(summary.customers_imported >= 1, "Customers count mismatch");
+    let target_cust_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM customers")
+        .fetch_one(&target_pool)
+        .await
+        .unwrap_or(0);
+    assert_eq!(summary.customers_imported, target_cust_count as usize, "Customers count mismatch");
     assert!(summary.sales_imported >= 1, "Sales count mismatch");
     assert!(summary.sale_items_imported >= 1, "Sale items count mismatch");
     assert!(summary.stock_movements_imported >= 1, "Stock movements count mismatch");

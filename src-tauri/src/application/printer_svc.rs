@@ -78,10 +78,11 @@ impl PrinterService {
             .or_else(|| printers.first().cloned())
             .ok_or_else(|| AppError::Printer("No printer selected".to_string()))?;
 
+        let test_content = "================================\n         PICO POSSUM POS        \n        PRINTER TEST PRINT      \n================================\nStatus: Online & Functional\nDate: Test Verification\n================================\n\n\n\n";
+
         #[cfg(not(target_os = "windows"))]
         {
             // Send simple test banner via `lp -d <target>`
-            let test_content = b"================================\n         PICO POSSUM POS        \n        PRINTER TEST PRINT      \n================================\nStatus: Online & Functional\nDate: Test Verification\n================================\n\n\n\n";
             let mut child = Command::new("lp")
                 .args(["-d", &target])
                 .stdin(std::process::Stdio::piped())
@@ -92,7 +93,7 @@ impl PrinterService {
 
             if let Some(mut stdin) = child.stdin.take() {
                 use std::io::Write;
-                let _ = stdin.write_all(test_content);
+                let _ = stdin.write_all(test_content.as_bytes());
             }
 
             let output = child.wait_with_output()
@@ -106,7 +107,20 @@ impl PrinterService {
 
         #[cfg(target_os = "windows")]
         {
-            // On Windows, return Ok (WebView print also handles it)
+            let safe_target = target.replace('"', "`\"");
+            let script = format!(
+                "$content = @'\n{}\n'@;\n$content | Out-Printer -Name \"{}\"",
+                test_content, safe_target
+            );
+            let output = Command::new("powershell")
+                .args(["-NoProfile", "-Command", &script])
+                .output()
+                .map_err(|e| AppError::Printer(format!("Failed to execute Windows print command: {}", e)))?;
+
+            if !output.status.success() {
+                let err_msg = String::from_utf8_lossy(&output.stderr);
+                return Err(AppError::Printer(format!("Windows printer error: {}", err_msg)));
+            }
         }
 
         Ok(())

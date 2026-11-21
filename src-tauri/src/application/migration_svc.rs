@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::Path;
-use std::str::FromStr;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteRow};
 use sqlx::Row;
 use uuid::Uuid;
@@ -29,7 +28,8 @@ impl MigrationService {
         }
 
         // Open read-only connection to legacy database
-        let legacy_options = SqliteConnectOptions::from_str(&format!("sqlite://{}", legacy_path.to_string_lossy()))?
+        let legacy_options = SqliteConnectOptions::new()
+            .filename(legacy_path)
             .read_only(true);
         let legacy_pool = SqlitePoolOptions::new()
             .max_connections(1)

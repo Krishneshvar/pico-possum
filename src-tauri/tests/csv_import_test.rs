@@ -113,8 +113,8 @@ async fn test_import_customers_csv() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(row.get::<String, _>("name"), "Sindhu");
-    assert_eq!(row.get::<String, _>("address"), "123 Lane, Chennai, 600001");
+    assert_eq!(row.get::<String, _>("name"), "Someone");
+    assert_eq!(row.get::<String, _>("address"), "123 Lane, Somewhere, 600001");
 }
 
 #[tokio::test]

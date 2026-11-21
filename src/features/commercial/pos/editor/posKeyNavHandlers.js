@@ -89,7 +89,7 @@ export function createPosKeyHandlers({
       return;
     }
 
-    if (item && (e.key === 'Delete' || (e.ctrlKey && e.key === 'd'))) {
+    if (item && (e.key === 'Delete' || ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')))) {
       e.preventDefault();
       onRemoveItem(item.productId);
       const nextRow = Math.min(rowIdx, bill.items.length - 2);

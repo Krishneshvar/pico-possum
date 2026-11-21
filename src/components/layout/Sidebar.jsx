@@ -13,6 +13,8 @@ import {
 import { strings } from '../../lib/strings';
 
 export default function Sidebar({ activeRoute, onNavigate }) {
+  const isMac = typeof navigator !== 'undefined' && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || navigator.userAgent);
+  const modKey = isMac ? '⌘' : 'Ctrl';
   const nav = strings.layout.sidebar.nav;
   const navItems = [
     { id: 'pos', label: nav.pointOfSale, icon: ShoppingCart, badge: strings.layout.sidebar.badgePos },
@@ -73,7 +75,7 @@ export default function Sidebar({ activeRoute, onNavigate }) {
       <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 text-xs text-slate-400 space-y-1.5">
         <div className="flex justify-between items-center text-[11px]">
           <span>{strings.layout.sidebar.shortcuts.searchProducts}</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">Ctrl+K</kbd>
+          <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">{modKey}+K</kbd>
         </div>
         <div className="flex justify-between items-center text-[11px]">
           <span>{strings.layout.sidebar.shortcuts.completeCheckout}</span>
@@ -81,7 +83,7 @@ export default function Sidebar({ activeRoute, onNavigate }) {
         </div>
         <div className="flex justify-between items-center text-[11px]">
           <span>{strings.layout.sidebar.shortcuts.switchBills}</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">Ctrl+1-9</kbd>
+          <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">{modKey}+1-9</kbd>
         </div>
       </div>
     </aside>

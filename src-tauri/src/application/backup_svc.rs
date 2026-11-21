@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str::FromStr;
 use chrono::{DateTime, Local, Utc};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
@@ -208,11 +207,9 @@ impl BackupService {
     }
 
     pub async fn is_legacy_database(target_path: &Path) -> Result<bool, AppError> {
-        let conn_str = format!("sqlite://{}?mode=ro", target_path.to_string_lossy());
-        let options = match SqliteConnectOptions::from_str(&conn_str) {
-            Ok(opts) => opts.read_only(true),
-            Err(_) => return Ok(false),
-        };
+        let options = SqliteConnectOptions::new()
+            .filename(target_path)
+            .read_only(true);
 
         let test_pool = match SqlitePoolOptions::new()
             .max_connections(1)
