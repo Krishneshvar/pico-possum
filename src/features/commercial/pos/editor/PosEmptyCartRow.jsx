@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { formatPaise } from '../../../../lib/formatters';
+import { formatCurrency } from '../../../../lib/formatters';
 
 export default function PosEmptyCartRow({
   itemsCount,
@@ -154,7 +154,7 @@ export default function PosEmptyCartRow({
                     </div>
                     <div className="text-right shrink-0">
                       <div className={`font-mono font-bold ${isHl ? 'text-white' : 'text-text-primary'}`}>
-                        {formatPaise(p.mrpPaise ?? p.mrp_paise)}
+                        {formatCurrency(p.priceCents ?? p.mrpCents ?? p.mrp_cents)}
                       </div>
                       <div
                         className={`text-[10px] ${

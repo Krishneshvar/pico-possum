@@ -5,7 +5,7 @@ import {
   Tag,
   Package,
 } from 'lucide-react';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { strings } from '../../../lib/strings';
 
 export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
@@ -45,7 +45,7 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
               {strings.productFlow.productFlow.totalRevenue}
             </span>
             <span className="text-xs font-bold text-content financial-value">
-              {formatPaise(summaryMetrics.totalRevenue)}
+              {formatCurrency(summaryMetrics.totalRevenue)}
             </span>
           </div>
 
@@ -55,7 +55,7 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
               {strings.productFlow.productFlow.avgSoldPrice}
             </span>
             <span className="text-xs font-bold text-content financial-value">
-              {formatPaise(summaryMetrics.avgPrice)}
+              {formatCurrency(summaryMetrics.avgPrice)}
             </span>
           </div>
 
@@ -65,8 +65,8 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
               {strings.productFlow.productFlow.currentMrp}
             </span>
             <span className="text-xs font-bold text-content financial-value">
-              {(selectedProduct?.mrpPaise ?? selectedProduct?.mrp_paise) != null
-                ? formatPaise(selectedProduct.mrpPaise ?? selectedProduct.mrp_paise)
+              {(selectedProduct?.mrpCents ?? selectedProduct?.mrp_cents) != null
+                ? formatCurrency(selectedProduct.mrpCents ?? selectedProduct.mrp_cents)
                 : strings.common.states.emptyValue}
             </span>
           </div>

@@ -134,10 +134,10 @@ export function validateCustomerAddress(address) {
   return null;
 }
 
-export function validateUnitPriceAgainstMrp(unitPricePaise, mrpPaise, productName = '') {
-  if (unitPricePaise != null && mrpPaise != null && unitPricePaise > mrpPaise) {
+export function validateUnitPriceAgainstMrp(unitPriceCents, mrpCents, productName = '') {
+  if (unitPriceCents != null && mrpCents != null && unitPriceCents > mrpCents) {
     const target = productName ? ` for "${productName}"` : '';
-    return `Unit price cannot exceed MRP${target}`;
+    return `Unit price cannot exceed list price${target}`;
   }
   return null;
 }
@@ -202,13 +202,17 @@ export function validateProductForm(formData, isCreate = false) {
   const skuErr = validateProductSku(formData.sku);
   if (skuErr) errors.sku = skuErr;
 
-  const mrpVal = formData.mrpRupees ?? formData.mrp_rupees;
+  const mrpVal = formData.mrp ?? formData.priceUnits ?? formData.mrpUnits;
   const mrpErr = validateMrp(mrpVal);
-  if (mrpErr) errors.mrpRupees = mrpErr;
+  if (mrpErr) {
+    errors.mrp = mrpErr;
+  }
 
-  const cpVal = formData.costPriceRupees ?? formData.cost_price_rupees;
+  const cpVal = formData.costPrice ?? formData.costPriceUnits;
   const cpErr = validateCostPrice(cpVal);
-  if (cpErr) errors.costPriceRupees = cpErr;
+  if (cpErr) {
+    errors.costPrice = cpErr;
+  }
 
   const taxVal = formData.taxRate ?? formData.tax_rate;
   const taxErr = validateTaxRate(taxVal);

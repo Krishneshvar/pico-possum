@@ -58,7 +58,7 @@ impl ProductService {
 
         let products = sqlx::query_as::<_, Product>(
             "SELECT p.id, p.name, p.sku, p.category_id, c.name as category_name,
-                    p.mrp_paise, p.cost_price_paise, CAST(p.tax_rate AS REAL) as tax_rate, p.current_stock,
+                    p.mrp_cents, p.cost_price_cents, CAST(p.tax_rate AS REAL) as tax_rate, p.current_stock,
                     p.min_stock_alert, p.status, p.is_deleted,
                     p.created_at, p.updated_at
              FROM products p
@@ -82,7 +82,7 @@ impl ProductService {
     ) -> Result<Product, AppError> {
         let product = sqlx::query_as::<_, Product>(
             "SELECT p.id, p.name, p.sku, p.category_id, c.name as category_name,
-                    p.mrp_paise, p.cost_price_paise, CAST(p.tax_rate AS REAL) as tax_rate, p.current_stock,
+                    p.mrp_cents, p.cost_price_cents, CAST(p.tax_rate AS REAL) as tax_rate, p.current_stock,
                     p.min_stock_alert, p.status, p.is_deleted,
                     p.created_at, p.updated_at
              FROM products p
@@ -109,7 +109,7 @@ impl ProductService {
         let initial_stock = payload.initial_stock.unwrap_or(0);
         let min_stock_alert = payload.min_stock_alert.unwrap_or(5);
         let status = payload.status.unwrap_or_else(|| "active".to_string());
-        let cost_price = payload.cost_price_paise.unwrap_or(0);
+        let cost_price = payload.cost_price_cents.unwrap_or(0);
         let tax_rate = payload.tax_rate.unwrap_or(0.0);
 
         // When automatic numerical SKUs are enabled the SKU is always generated
@@ -122,14 +122,14 @@ impl ProductService {
         };
 
         sqlx::query(
-            "INSERT INTO products (id, name, sku, category_id, mrp_paise, cost_price_paise, tax_rate, current_stock, min_stock_alert, status, is_deleted)
+            "INSERT INTO products (id, name, sku, category_id, mrp_cents, cost_price_cents, tax_rate, current_stock, min_stock_alert, status, is_deleted)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
         )
         .bind(&id)
         .bind(&payload.name)
         .bind(&sku)
         .bind(&payload.category_id)
-        .bind(payload.mrp_paise)
+        .bind(payload.mrp_cents)
         .bind(cost_price)
         .bind(tax_rate)
         .bind(initial_stock)
@@ -195,8 +195,8 @@ impl ProductService {
                 name = ?,
                 sku = ?,
                 category_id = ?,
-                mrp_paise = ?,
-                cost_price_paise = ?,
+                mrp_cents = ?,
+                cost_price_cents = ?,
                 tax_rate = ?,
                 min_stock_alert = ?,
                 status = ?,
@@ -206,8 +206,8 @@ impl ProductService {
         .bind(&payload.name)
         .bind(&sku)
         .bind(&payload.category_id)
-        .bind(payload.mrp_paise)
-        .bind(payload.cost_price_paise)
+        .bind(payload.mrp_cents)
+        .bind(payload.cost_price_cents)
         .bind(payload.tax_rate)
         .bind(min_stock_alert)
         .bind(&payload.status)

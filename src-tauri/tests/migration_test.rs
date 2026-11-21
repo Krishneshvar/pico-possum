@@ -53,14 +53,14 @@ async fn test_migration_against_legacy_db() {
     assert!(summary.sale_items_imported >= 1, "Sale items count mismatch");
     assert!(summary.stock_movements_imported >= 1, "Stock movements count mismatch");
 
-    // Verify a sample product has integer paise
+    // Verify a sample product has integer cents
     let prod = pico_possum_lib::application::InventoryService::get_products(&target_pool, None, None)
         .await
         .expect("Failed to get products");
 
     println!("Imported {} products.", prod.len());
     for p in prod.iter().take(3) {
-        assert!(p.mrp_paise >= 0);
+        assert!(p.mrp_cents >= 0);
     }
 
     let sales = pico_possum_lib::application::SalesService::get_sales(&target_pool, 10, 0, None)
@@ -68,7 +68,7 @@ async fn test_migration_against_legacy_db() {
         .expect("Failed to get sales");
     println!("Imported {} sales.", sales.len());
     for s in sales.iter().take(3) {
-        println!("Sale: {} | Customer: {:?} | Total (paise): {} (₹{:.2}) | Status: {}",
-            s.invoice_number, s.customer_name, s.total_paise, s.total_paise as f64 / 100.0, s.status);
+        println!("Sale: {} | Customer: {:?} | Total (cents): {} (${:.2}) | Status: {}",
+            s.invoice_number, s.customer_name, s.total_cents, s.total_cents as f64 / 100.0, s.status);
     }
 }

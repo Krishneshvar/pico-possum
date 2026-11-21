@@ -30,8 +30,8 @@ fn general_settings(auto_numeric_sku: bool, allow_negative_stock: bool) -> Gener
         phone: "".to_string(),
         address: "".to_string(),
         gstin: "".to_string(),
-        currency_symbol: "₹".to_string(),
-        currency_code: "INR".to_string(),
+        currency_symbol: "$".to_string(),
+        currency_code: "USD".to_string(),
         date_format: "DD/MM/YYYY".to_string(),
         time_format: "12h".to_string(),
         default_printer_name: "".to_string(),
@@ -45,8 +45,8 @@ fn product_payload(name: &str, sku: Option<&str>, stock: i64) -> CreateProductPa
         name: name.to_string(),
         sku: sku.map(|s| s.to_string()),
         category_id: None,
-        mrp_paise: 1000,
-        cost_price_paise: Some(500),
+        mrp_cents: 1000,
+        cost_price_cents: Some(500),
         tax_rate: Some(0.0),
         initial_stock: Some(stock),
         min_stock_alert: Some(5),
@@ -64,12 +64,12 @@ fn sale_payload(product_id: &str, quantity: i64) -> CreateSalePayload {
         items: vec![CreateSaleItemPayload {
             product_id: product_id.to_string(),
             quantity,
-            unit_price_paise: 1000,
-            discount_paise: Some(0),
+            unit_price_cents: 1000,
+            discount_cents: Some(0),
         }],
-        discount_paise: Some(0),
+        discount_cents: Some(0),
         payment_method: "CASH".to_string(),
-        paid_paise: total,
+        paid_cents: total,
         notes: None,
     }
 }
@@ -89,7 +89,7 @@ async fn test_default_settings_enable_auto_sku_and_disable_negative_stock() {
     sqlx::query(
         "INSERT INTO app_settings (key, value) VALUES ('general_settings', ?)",
     )
-    .bind(r#"{"store_name":"Legacy","phone":"","address":"","gstin":"","currency_symbol":"₹","currency_code":"INR","date_format":"DD/MM/YYYY","time_format":"12h","default_printer_name":""}"#)
+    .bind(r#"{"store_name":"Legacy","phone":"","address":"","gstin":"","currency_symbol":"$","currency_code":"USD","date_format":"DD/MM/YYYY","time_format":"12h","default_printer_name":""}"#)
     .execute(&pool)
     .await
     .unwrap();
@@ -123,7 +123,7 @@ async fn test_auto_numeric_sku_generation_and_import_continuation() {
     // Simulate imported legacy data containing a much higher numeric SKU and
     // a non-numeric SKU. Only the numeric one should advance the sequence.
     sqlx::query(
-        "INSERT INTO products (id, name, sku, mrp_paise, current_stock, min_stock_alert, status, is_deleted)
+        "INSERT INTO products (id, name, sku, mrp_cents, current_stock, min_stock_alert, status, is_deleted)
          VALUES ('imported-1', 'Imported Numeric', '250', 1000, 10, 5, 'active', 0),
                 ('imported-2', 'Imported Legacy SKU', 'SKU-84', 1000, 10, 5, 'active', 0)",
     )
@@ -159,8 +159,8 @@ async fn test_auto_numeric_sku_generation_and_import_continuation() {
             name: manual.name.clone(),
             sku: Some("ABC-2".to_string()),
             category_id: None,
-            mrp_paise: manual.mrp_paise,
-            cost_price_paise: manual.cost_price_paise,
+            mrp_cents: manual.mrp_cents,
+            cost_price_cents: manual.cost_price_cents,
             tax_rate: manual.tax_rate,
             min_stock_alert: Some(manual.min_stock_alert),
             status: manual.status.clone(),
@@ -182,8 +182,8 @@ async fn test_auto_numeric_sku_generation_and_import_continuation() {
             name: manual.name.clone(),
             sku: Some("SHOULD-NOT-APPLY".to_string()),
             category_id: None,
-            mrp_paise: manual.mrp_paise,
-            cost_price_paise: manual.cost_price_paise,
+            mrp_cents: manual.mrp_cents,
+            cost_price_cents: manual.cost_price_cents,
             tax_rate: manual.tax_rate,
             min_stock_alert: Some(manual.min_stock_alert),
             status: manual.status.clone(),

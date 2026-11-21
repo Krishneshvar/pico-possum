@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { formatCurrency, getCurrencySymbol } from '../../../lib/formatters';
 import { strings } from '../../../lib/strings';
 import PosCheckoutSidebar from './editor/PosCheckoutSidebar';
 import PosCartTable from './editor/PosCartTable';
@@ -117,21 +117,21 @@ export default function PosBillEditor({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onSearchFocusedChange, emptyProductRef]);
 
-  // Keep the amount tendered field in sync with the bill's amountTenderedPaise, except while user is typing.
+  // Keep the amount tendered field in sync with the bill's amountTenderedCents, except while user is typing.
   useEffect(() => {
     if (cashInputFocusedRef.current) return;
-    const paise = bill.amountTenderedPaise || 0;
-    setCashTenderedInput(paise > 0 ? (paise / 100).toFixed(2) : '');
-  }, [bill.index, bill.amountTenderedPaise]);
+    const cents = bill.amountTenderedCents || 0;
+    setCashTenderedInput(cents > 0 ? (cents / 100).toFixed(2) : '');
+  }, [bill.index, bill.amountTenderedCents]);
 
   // Partial payment must not take in any amount equal to or greater than the bill amount.
   useEffect(() => {
     if (!requiresTender) return;
-    if (bill.isFullPayment === false && totals.totalPaise > 0 && (bill.amountTenderedPaise || 0) >= totals.totalPaise) {
+    if (bill.isFullPayment === false && (totals.totalCents || 0) > 0 && (bill.amountTenderedCents || 0) >= (totals.totalCents || 0)) {
       onSetAmountTendered(0);
       setCashTenderedInput('');
     }
-  }, [requiresTender, bill.isFullPayment, totals.totalPaise, bill.amountTenderedPaise, onSetAmountTendered]);
+  }, [requiresTender, bill.isFullPayment, totals.totalCents, bill.amountTenderedCents, onSetAmountTendered]);
 
   const stockById = useMemo(() => {
     const map = new Map();

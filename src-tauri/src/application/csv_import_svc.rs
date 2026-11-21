@@ -187,12 +187,12 @@ impl CsvImportService {
             .and_then(|v| parse_integer(&v))
             .unwrap_or(10);
 
-            let mrp_paise = get_value(row, &headers, &["MRP", "MRP/Price", "Price"])
-                .and_then(|v| parse_decimal_to_paise(&v))
+            let mrp_cents = get_value(row, &headers, &["MRP", "MRP/Price", "Price"])
+                .and_then(|v| parse_decimal_to_cents(&v))
                 .unwrap_or(0);
 
-            let cost_price_paise = get_value(row, &headers, &["Avg Item Cost", "Cost Price", "Cost"])
-                .and_then(|v| parse_decimal_to_paise(&v))
+            let cost_price_cents = get_value(row, &headers, &["Avg Item Cost", "Cost Price", "Cost"])
+                .and_then(|v| parse_decimal_to_cents(&v))
                 .unwrap_or(0);
 
             let initial_stock = get_value(row, &headers, &["Opening Stock", "Current Stock", "Stock"])
@@ -268,8 +268,8 @@ impl CsvImportService {
                     UPDATE products SET
                         name = ?,
                         category_id = COALESCE(?, category_id),
-                        mrp_paise = ?,
-                        cost_price_paise = ?,
+                        mrp_cents = ?,
+                        cost_price_cents = ?,
                         tax_rate = ?,
                         min_stock_alert = ?,
                         is_deleted = 0,
@@ -279,8 +279,8 @@ impl CsvImportService {
                 )
                 .bind(&name)
                 .bind(&resolved_cat_id)
-                .bind(mrp_paise)
-                .bind(cost_price_paise)
+                .bind(mrp_cents)
+                .bind(cost_price_cents)
                 .bind(tax_rate)
                 .bind(min_stock_alert)
                 .bind(&prod_id)
@@ -315,7 +315,7 @@ impl CsvImportService {
                 sqlx::query(
                     r#"
                     INSERT INTO products (
-                        id, name, sku, category_id, mrp_paise, cost_price_paise,
+                        id, name, sku, category_id, mrp_cents, cost_price_cents,
                         tax_rate, current_stock, min_stock_alert, status, is_deleted
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0)
                     "#,
@@ -324,8 +324,8 @@ impl CsvImportService {
                 .bind(&name)
                 .bind(&sku)
                 .bind(&resolved_cat_id)
-                .bind(mrp_paise)
-                .bind(cost_price_paise)
+                .bind(mrp_cents)
+                .bind(cost_price_cents)
                 .bind(tax_rate)
                 .bind(initial_stock)
                 .bind(min_stock_alert)
@@ -637,16 +637,14 @@ impl CsvImportService {
                 .format("%Y-%m-%d %H:%M:%S")
                 .to_string();
 
-            let net_amount_paise = get_value(
+            let net_amount_cents = get_value(
                 row,
                 &headers,
                 &[
-                    "Net Total (Rs)",
                     "Net Total",
                     "Net amount",
                     "Net Amount",
                     "Total Amount",
-                    "Total (Rs)",
                     "Total",
                     "Grand Total",
                     "Amount",
@@ -654,38 +652,36 @@ impl CsvImportService {
                     "Net Amt",
                 ],
             )
-            .and_then(|v| parse_decimal_to_paise(&v))
+            .and_then(|v| parse_decimal_to_cents(&v))
             .unwrap_or(0);
 
-            let subtotal_paise = get_value(
+            let subtotal_cents = get_value(
                 row,
                 &headers,
                 &[
-                    "Subtotal (Rs)",
                     "Subtotal",
-                    "Sub Total (Rs)",
                     "Sub Total",
                     "Gross Amount",
                     "Gross Total",
                 ],
             )
-            .and_then(|v| parse_decimal_to_paise(&v))
-            .unwrap_or(net_amount_paise);
+            .and_then(|v| parse_decimal_to_cents(&v))
+            .unwrap_or(net_amount_cents);
 
-            let discount_paise = get_value(
+            let discount_cents = get_value(
                 row,
                 &headers,
-                &["Discount (Rs)", "Discount", "Disc (Rs)", "Disc"],
+                &["Discount", "Disc"],
             )
-            .and_then(|v| parse_decimal_to_paise(&v))
+            .and_then(|v| parse_decimal_to_cents(&v))
             .unwrap_or(0);
 
-            let tax_paise = get_value(
+            let tax_cents = get_value(
                 row,
                 &headers,
-                &["Tax (Rs)", "Tax", "GST (Rs)", "GST", "VAT (Rs)", "VAT"],
+                &["Tax", "GST", "VAT"],
             )
-            .and_then(|v| parse_decimal_to_paise(&v))
+            .and_then(|v| parse_decimal_to_cents(&v))
             .unwrap_or(0);
 
             let customer_name = get_value(
@@ -761,9 +757,9 @@ impl CsvImportService {
                 None => "LEGACY",
             };
 
-            let paid_paise = match status {
+            let paid_cents = match status {
                 "CANCELLED" | "REFUNDED" => 0,
-                _ => net_amount_paise,
+                _ => net_amount_cents,
             };
 
             let notes_from_file = get_value(row, &headers, &["Notes", "Note", "Remarks"]);
@@ -813,7 +809,7 @@ impl CsvImportService {
                 r#"
                 INSERT INTO sales (
                     id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
-                    subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise,
+                    subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
                     payment_method, status, fulfillment_status, notes, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'FULFILLED', ?, ?)
                 ON CONFLICT(invoice_number) DO UPDATE SET
@@ -821,11 +817,11 @@ impl CsvImportService {
                     customer_name = excluded.customer_name,
                     customer_phone = coalesce(excluded.customer_phone, sales.customer_phone),
                     biller_name = excluded.biller_name,
-                    subtotal_paise = excluded.subtotal_paise,
-                    discount_paise = excluded.discount_paise,
-                    tax_paise = excluded.tax_paise,
-                    total_paise = excluded.total_paise,
-                    paid_paise = excluded.paid_paise,
+                    subtotal_cents = excluded.subtotal_cents,
+                    discount_cents = excluded.discount_cents,
+                    tax_cents = excluded.tax_cents,
+                    total_cents = excluded.total_cents,
+                    paid_cents = excluded.paid_cents,
                     payment_method = excluded.payment_method,
                     status = excluded.status,
                     notes = excluded.notes,
@@ -838,11 +834,11 @@ impl CsvImportService {
             .bind(&customer_name)
             .bind(&customer_phone)
             .bind(&biller_name)
-            .bind(subtotal_paise)
-            .bind(discount_paise)
-            .bind(tax_paise)
-            .bind(net_amount_paise)
-            .bind(paid_paise)
+            .bind(subtotal_cents)
+            .bind(discount_cents)
+            .bind(tax_cents)
+            .bind(net_amount_cents)
+            .bind(paid_cents)
             .bind(&payment_method)
             .bind(status)
             .bind(&notes)
@@ -1018,7 +1014,7 @@ pub fn parse_float(s: &str) -> Option<f64> {
     cleaned.trim().parse::<f64>().ok()
 }
 
-pub fn parse_decimal_to_paise(s: &str) -> Option<i64> {
+pub fn parse_decimal_to_cents(s: &str) -> Option<i64> {
     let cleaned: String = s.replace(',', "");
     let float_val = cleaned.trim().parse::<f64>().ok()?;
     Some((float_val * 100.0).round() as i64)
@@ -1079,11 +1075,9 @@ pub fn is_bill_header_row(row: &[String]) -> bool {
     let has_amount = headers.keys().any(|k| {
         matches!(
             k.as_str(),
-            "nettotalrs"
-                | "nettotal"
+            "nettotal"
                 | "netamount"
                 | "totalamount"
-                | "totalrs"
                 | "total"
                 | "amount"
                 | "grandtotal"

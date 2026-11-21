@@ -300,12 +300,12 @@ export default function ProductsView() {
             },
             {
               type: 'range',
-              key: 'mrpPaise',
+              key: 'mrpCents',
               label: 'Price',
               unit: currencySymbol,
               transform: (v) => (v != null ? Number(v) / 100 : 0),
               filterFn: (row, range) => {
-                const val = (row.mrpPaise ?? row.mrp_paise ?? 0) / 100;
+                const val = (row.mrpCents ?? row.mrp_cents ?? 0) / 100;
                 if (range.min !== '' && range.min !== null && val < Number(range.min)) return false;
                 if (range.max !== '' && range.max !== null && val > Number(range.max)) return false;
                 return true;

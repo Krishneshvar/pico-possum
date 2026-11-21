@@ -32,8 +32,8 @@ export async function exportProductFlowCsv({ hasSelectedProduct, flowItems, sele
     escapeCsv((r.customerName ?? r.customer_name) || strings.productFlow.productFlow.walkInCustomer),
     escapeCsv((r.eventType ?? r.event_type) || ''),
     escapeCsv(r.quantity || 0),
-    escapeCsv((((r.unitPricePaise ?? r.unit_price_paise) || 0) / 100).toFixed(2)),
-    escapeCsv((((r.totalPaise ?? r.total_paise) || 0) / 100).toFixed(2)),
+    escapeCsv((((r.unitPriceCents ?? r.unit_price_cents) || 0) / 100).toFixed(2)),
+    escapeCsv((((r.totalCents ?? r.total_cents) || 0) / 100).toFixed(2)),
     escapeCsv((r.paymentMethod ?? r.payment_method) || strings.common.states.emptyValue),
   ]);
 
@@ -84,8 +84,8 @@ export async function exportProductFlowXlsx({ hasSelectedProduct, flowItems, sel
     (r.customerName ?? r.customer_name) || strings.productFlow.productFlow.walkInCustomer,
     (r.eventType ?? r.event_type) || '',
     r.quantity || 0,
-    Number((((r.unitPricePaise ?? r.unit_price_paise) || 0) / 100).toFixed(2)),
-    Number((((r.totalPaise ?? r.total_paise) || 0) / 100).toFixed(2)),
+    Number((((r.unitPriceCents ?? r.unit_price_cents) || 0) / 100).toFixed(2)),
+    Number((((r.totalCents ?? r.total_cents) || 0) / 100).toFixed(2)),
     (r.paymentMethod ?? r.payment_method) || strings.common.states.emptyValue,
   ]);
 

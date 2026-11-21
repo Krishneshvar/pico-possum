@@ -1,4 +1,4 @@
-import { formatPaise, formatDate, formatTime } from '../../lib/formatters';
+import { formatCurrency, formatDate, formatTime } from '../../lib/formatters';
 import { strings } from '../../lib/strings';
 
 export default function ReceiptPrinter({ sale, items, billSettings, generalSettings }) {
@@ -38,11 +38,11 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
     const createdAt = sale.createdAt ?? sale.created_at;
     const customerName = sale.customerName ?? sale.customer_name;
     const billerName = sale.billerName ?? sale.biller_name;
-    const subtotalPaise = sale.subtotalPaise ?? sale.subtotal_paise ?? 0;
-    const discountPaise = sale.discountPaise ?? sale.discount_paise ?? 0;
-    const taxPaise = sale.taxPaise ?? sale.tax_paise ?? 0;
-    const totalPaise = sale.totalPaise ?? sale.total_paise ?? 0;
-    const paidPaise = sale.paidPaise ?? sale.paid_paise ?? totalPaise;
+    const subtotalCents = sale.subtotalCents ?? sale.subtotal_cents ?? 0;
+    const discountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+    const taxCents = sale.taxCents ?? sale.tax_cents ?? 0;
+    const totalCents = sale.totalCents ?? sale.total_cents ?? 0;
+    const paidCents = sale.paidCents ?? sale.paid_cents ?? totalCents;
     const paymentMethod = sale.paymentMethod ?? sale.payment_method;
 
     switch (section.id) {
@@ -95,8 +95,8 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
             </thead>
             <tbody>
               {(items || []).map((it, idx) => {
-                const unitPrice = it.unitPricePaise ?? it.unit_price_paise ?? 0;
-                const itemDiscount = it.discountPaise ?? it.discount_paise ?? 0;
+                const unitPrice = it.unitPriceCents ?? it.unit_price_cents ?? 0;
+                const itemDiscount = it.discountCents ?? it.discount_cents ?? 0;
                 const productName = it.productName ?? it.product_name ?? it.name;
                 const taxRate = it.taxRate ?? it.tax_rate ?? 0;
                 const lineTotal = (unitPrice * it.quantity) - itemDiscount;
@@ -121,46 +121,46 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
           <div key="totals" className={`pt-1 border-t-2 border-black space-y-1 ${alignClass} ${fontClass}`}>
             <div className="flex justify-between">
               <span>{strings.common.labels.subtotal}:</span>
-              <span>{formatPaise(subtotalPaise)}</span>
+              <span>{formatCurrency(subtotalCents)}</span>
             </div>
 
-            {discountPaise > 0 && (
+            {discountCents > 0 && (
               <div className="flex justify-between">
                 <span>{strings.common.labels.discount}:</span>
-                <span>-{formatPaise(discountPaise)}</span>
+                <span>-{formatCurrency(discountCents)}</span>
               </div>
             )}
 
-            {showTax && taxPaise > 0 && (
+            {showTax && taxCents > 0 && (
               <div className="flex justify-between">
                 <span>{strings.receipt.labels.taxAmount}:</span>
-                <span>{formatPaise(taxPaise)}</span>
+                <span>{formatCurrency(taxCents)}</span>
               </div>
             )}
 
             <div className="flex justify-between font-black text-sm pt-1 border-t border-black">
               <span>{strings.common.labels.total}:</span>
-              <span>{formatPaise(totalPaise)}</span>
+              <span>{formatCurrency(totalCents)}</span>
             </div>
 
             {paymentMethod && (
               <div className="flex justify-between text-[11px] pt-0.5">
                 <span>{strings.receipt.labels.paidVia(paymentMethod.replace(/_/g, ' '))}</span>
-                <span>{formatPaise(paidPaise)}</span>
+                <span>{formatCurrency(paidCents)}</span>
               </div>
             )}
 
-            {paidPaise > totalPaise && (
+            {paidCents > totalCents && (
               <div className="flex justify-between text-[11px]">
                 <span>{strings.receipt.labels.change}:</span>
-                <span>{formatPaise(paidPaise - totalPaise)}</span>
+                <span>{formatCurrency(paidCents - totalCents)}</span>
               </div>
             )}
 
-            {paidPaise < totalPaise && (
+            {paidCents < totalCents && (
               <div className="flex justify-between text-[11px] font-bold">
                 <span>{strings.receipt.labels.balanceDue}:</span>
-                <span>{formatPaise(totalPaise - paidPaise)}</span>
+                <span>{formatCurrency(totalCents - paidCents)}</span>
               </div>
             )}
           </div>

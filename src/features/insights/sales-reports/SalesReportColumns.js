@@ -1,15 +1,15 @@
-import { formatPaise, formatDate } from '../../../lib/formatters';
+import { formatCurrency, formatDate } from '../../../lib/formatters';
 import { strings } from '../../../lib/strings';
 
 export const defaultColKeys = [
   'period',
   'totalTransactions',
-  'cashPaise',
-  'upiPaise',
-  'cardPaise',
-  'giftCardPaise',
-  'totalDiscountPaise',
-  'totalSalesPaise',
+  'cashCents',
+  'upiCents',
+  'cardCents',
+  'giftCardCents',
+  'totalDiscountCents',
+  'totalSalesCents',
   'netSales',
 ];
 
@@ -35,71 +35,71 @@ export function getSalesReportColumns(reportType) {
       totalKey: 'transactions',
     },
     {
-      key: 'cashPaise',
+      key: 'cashCents',
       label: strings.salesReports.columns.cashSettled,
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-secondary text-xs',
       minWidth: 110,
-      exportValue: (r) => (((r.cashPaise ?? r.cash_paise ?? 0)) / 100).toFixed(2),
-      render: (r) => formatPaise(r.cashPaise ?? r.cash_paise),
+      exportValue: (r) => (((r.cashCents ?? r.cash_cents ?? 0)) / 100).toFixed(2),
+      render: (r) => formatCurrency(r.cashCents ?? r.cash_cents),
       isNumeric: true,
       totalKey: 'cash',
     },
     {
-      key: 'upiPaise',
+      key: 'upiCents',
       label: strings.salesReports.columns.upiQr,
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-secondary text-xs',
       minWidth: 110,
-      exportValue: (r) => (((r.upiPaise ?? r.upi_paise ?? 0)) / 100).toFixed(2),
-      render: (r) => formatPaise(r.upiPaise ?? r.upi_paise),
+      exportValue: (r) => (((r.upiCents ?? r.upi_cents ?? 0)) / 100).toFixed(2),
+      render: (r) => formatCurrency(r.upiCents ?? r.upi_cents),
       isNumeric: true,
       totalKey: 'upi',
     },
     {
-      key: 'cardPaise',
+      key: 'cardCents',
       label: strings.salesReports.columns.cardTerminal,
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-secondary text-xs',
       minWidth: 110,
-      exportValue: (r) => (((r.cardPaise ?? r.card_paise ?? 0)) / 100).toFixed(2),
-      render: (r) => formatPaise(r.cardPaise ?? r.card_paise),
+      exportValue: (r) => (((r.cardCents ?? r.card_cents ?? 0)) / 100).toFixed(2),
+      render: (r) => formatCurrency(r.cardCents ?? r.card_cents),
       isNumeric: true,
       totalKey: 'card',
     },
     {
-      key: 'giftCardPaise',
+      key: 'giftCardCents',
       label: strings.salesReports.columns.giftCard,
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-secondary text-xs',
       minWidth: 100,
-      exportValue: (r) => (((r.giftCardPaise ?? r.gift_card_paise ?? 0)) / 100).toFixed(2),
-      render: (r) => formatPaise(r.giftCardPaise ?? r.gift_card_paise),
+      exportValue: (r) => (((r.giftCardCents ?? r.gift_card_cents ?? 0)) / 100).toFixed(2),
+      render: (r) => formatCurrency(r.giftCardCents ?? r.gift_card_cents),
       isNumeric: true,
       totalKey: 'giftCard',
     },
     {
-      key: 'totalDiscountPaise',
+      key: 'totalDiscountCents',
       label: strings.salesReports.columns.discounts,
       headerClassName: 'text-right',
       className: 'text-right financial-value text-amber-600 text-xs',
       minWidth: 100,
-      exportValue: (r) => (((r.totalDiscountPaise ?? r.total_discount_paise ?? 0)) / 100).toFixed(2),
+      exportValue: (r) => (((r.totalDiscountCents ?? r.total_discount_cents ?? 0)) / 100).toFixed(2),
       render: (r) => {
-        const disc = r.totalDiscountPaise ?? r.total_discount_paise ?? 0;
-        return disc > 0 ? `-${formatPaise(disc)}` : strings.common.states.emptyValue;
+        const disc = r.totalDiscountCents ?? r.total_discount_cents ?? 0;
+        return disc > 0 ? `-${formatCurrency(disc)}` : strings.common.states.emptyValue;
       },
       isNumeric: true,
       totalKey: 'discount',
     },
     {
-      key: 'totalSalesPaise',
+      key: 'totalSalesCents',
       label: strings.salesReports.columns.grossSales,
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-primary font-medium text-xs',
       minWidth: 120,
-      exportValue: (r) => (((r.totalSalesPaise ?? r.total_sales_paise ?? 0)) / 100).toFixed(2),
-      render: (r) => formatPaise(r.totalSalesPaise ?? r.total_sales_paise),
+      exportValue: (r) => (((r.totalSalesCents ?? r.total_sales_cents ?? 0)) / 100).toFixed(2),
+      render: (r) => formatCurrency(r.totalSalesCents ?? r.total_sales_cents),
       isNumeric: true,
       totalKey: 'gross',
     },
@@ -110,18 +110,18 @@ export function getSalesReportColumns(reportType) {
       className: 'text-right financial-value font-bold text-text-primary text-xs',
       minWidth: 120,
       exportValue: (r) => {
-        const gross = r.totalSalesPaise ?? r.total_sales_paise ?? 0;
-        const disc = r.totalDiscountPaise ?? r.total_discount_paise ?? 0;
+        const gross = r.totalSalesCents ?? r.total_sales_cents ?? 0;
+        const disc = r.totalDiscountCents ?? r.total_discount_cents ?? 0;
         return ((gross - disc) / 100).toFixed(2);
       },
       render: (r) => {
-        const gross = r.totalSalesPaise ?? r.total_sales_paise ?? 0;
-        const disc = r.totalDiscountPaise ?? r.total_discount_paise ?? 0;
-        return formatPaise(Math.max(0, gross - disc));
+        const gross = r.totalSalesCents ?? r.total_sales_cents ?? 0;
+        const disc = r.totalDiscountCents ?? r.total_discount_cents ?? 0;
+        return formatCurrency(Math.max(0, gross - disc));
       },
       sortValue: (r) => {
-        const gross = r.totalSalesPaise ?? r.total_sales_paise ?? 0;
-        const disc = r.totalDiscountPaise ?? r.total_discount_paise ?? 0;
+        const gross = r.totalSalesCents ?? r.total_sales_cents ?? 0;
+        const disc = r.totalDiscountCents ?? r.total_discount_cents ?? 0;
         return Math.max(0, gross - disc);
       },
       isNumeric: true,

@@ -32,6 +32,26 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
         .execute(&pool)
         .await;
 
+    // Migration helper: rename legacy minor unit columns to universal _cents across all tables if upgrading
+    const MIGRATIONS: [&str; 12] = [
+        concat!("ALTER TABLE products RENAME COLUMN cost_price_", "pai", "se TO cost_price_cents"),
+        concat!("ALTER TABLE products RENAME COLUMN mrp_", "pai", "se TO mrp_cents"),
+        concat!("ALTER TABLE sales RENAME COLUMN subtotal_", "pai", "se TO subtotal_cents"),
+        concat!("ALTER TABLE sales RENAME COLUMN discount_", "pai", "se TO discount_cents"),
+        concat!("ALTER TABLE sales RENAME COLUMN tax_", "pai", "se TO tax_cents"),
+        concat!("ALTER TABLE sales RENAME COLUMN total_", "pai", "se TO total_cents"),
+        concat!("ALTER TABLE sales RENAME COLUMN paid_", "pai", "se TO paid_cents"),
+        concat!("ALTER TABLE sale_items RENAME COLUMN unit_price_", "pai", "se TO unit_price_cents"),
+        concat!("ALTER TABLE sale_items RENAME COLUMN cost_price_", "pai", "se TO cost_price_cents"),
+        concat!("ALTER TABLE sale_items RENAME COLUMN discount_", "pai", "se TO discount_cents"),
+        concat!("ALTER TABLE sale_items RENAME COLUMN tax_", "pai", "se TO tax_cents"),
+        concat!("ALTER TABLE sale_items RENAME COLUMN total_", "pai", "se TO total_cents"),
+    ];
+
+    for stmt in MIGRATIONS {
+        let _ = sqlx::query(stmt).execute(&pool).await;
+    }
+
     // Migration helper: ensure sale_items table has item_order column and populate existing records from rowid
     let _ = sqlx::query("ALTER TABLE sale_items ADD COLUMN item_order INTEGER NOT NULL DEFAULT 0")
         .execute(&pool)
@@ -61,11 +81,11 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
                     customer_name TEXT,
                     customer_phone TEXT,
                     biller_name TEXT,
-                    subtotal_paise INTEGER NOT NULL CHECK(subtotal_paise >= 0),
-                    discount_paise INTEGER NOT NULL DEFAULT 0 CHECK(discount_paise >= 0),
-                    tax_paise INTEGER NOT NULL DEFAULT 0 CHECK(tax_paise >= 0),
-                    total_paise INTEGER NOT NULL CHECK(total_paise >= 0),
-                    paid_paise INTEGER NOT NULL DEFAULT 0 CHECK(paid_paise >= 0),
+                    subtotal_cents INTEGER NOT NULL CHECK(subtotal_cents >= 0),
+                    discount_cents INTEGER NOT NULL DEFAULT 0 CHECK(discount_cents >= 0),
+                    tax_cents INTEGER NOT NULL DEFAULT 0 CHECK(tax_cents >= 0),
+                    total_cents INTEGER NOT NULL CHECK(total_cents >= 0),
+                    paid_cents INTEGER NOT NULL DEFAULT 0 CHECK(paid_cents >= 0),
                     payment_method TEXT NOT NULL,
                     status TEXT NOT NULL CHECK(status IN ('PAID', 'PARTIALLY_PAID', 'CANCELLED', 'REFUNDED', 'LEGACY')) DEFAULT 'PAID',
                     fulfillment_status TEXT NOT NULL DEFAULT 'FULFILLED',
@@ -138,8 +158,8 @@ async fn seed_defaults(pool: &SqlitePool) -> Result<(), AppError> {
         "phone": "",
         "address": "",
         "gstin": "",
-        "currency_symbol": "₹",
-        "currency_code": "INR",
+        "currency_symbol": "$",
+        "currency_code": "USD",
         "date_format": "DD/MM/YYYY",
         "time_format": "12h",
         "default_printer_name": "",

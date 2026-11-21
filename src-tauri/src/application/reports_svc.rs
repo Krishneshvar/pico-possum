@@ -59,14 +59,14 @@ impl ReportsService {
 
         let row = sqlx::query(
             "SELECT
-                COALESCE(SUM(total_paise), 0) as total_revenue,
-                COALESCE(SUM(discount_paise), 0) as total_discount,
-                COALESCE(SUM(tax_paise), 0) as total_tax,
+                COALESCE(SUM(total_cents), 0) as total_revenue,
+                COALESCE(SUM(discount_cents), 0) as total_discount,
+                COALESCE(SUM(tax_cents), 0) as total_tax,
                 COUNT(id) as total_count,
-                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_rev,
-                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_rev,
-                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_rev,
-                COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_rev
+                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_cents ELSE 0 END), 0) as cash_rev,
+                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_cents ELSE 0 END), 0) as card_rev,
+                COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_cents ELSE 0 END), 0) as upi_rev,
+                COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_cents ELSE 0 END), 0) as gift_card_rev
              FROM sales
              WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY') AND created_at >= ? AND created_at <= ?
                AND (? IS NULL OR upper(replace(payment_method, ' ', '_')) = ? OR upper(payment_method) = ?)"
@@ -79,24 +79,24 @@ impl ReportsService {
         .fetch_one(pool)
         .await?;
 
-        let total_revenue_paise: i64 = row.get("total_revenue");
-        let total_discount_paise: i64 = row.get("total_discount");
-        let total_tax_paise: i64 = row.get("total_tax");
+        let total_revenue_cents: i64 = row.get("total_revenue");
+        let total_discount_cents: i64 = row.get("total_discount");
+        let total_tax_cents: i64 = row.get("total_tax");
         let total_sales_count: i64 = row.get("total_count");
-        let cash_revenue_paise: i64 = row.get("cash_rev");
-        let card_revenue_paise: i64 = row.get("card_rev");
-        let upi_revenue_paise: i64 = row.get("upi_rev");
-        let gift_card_revenue_paise: i64 = row.get("gift_card_rev");
+        let cash_revenue_cents: i64 = row.get("cash_rev");
+        let card_revenue_cents: i64 = row.get("card_rev");
+        let upi_revenue_cents: i64 = row.get("upi_rev");
+        let gift_card_revenue_cents: i64 = row.get("gift_card_rev");
 
         Ok(SalesReportSummary {
-            total_revenue_paise,
-            total_discount_paise,
-            total_tax_paise,
+            total_revenue_cents,
+            total_discount_cents,
+            total_tax_cents,
             total_sales_count,
-            cash_revenue_paise,
-            card_revenue_paise,
-            upi_revenue_paise,
-            gift_card_revenue_paise,
+            cash_revenue_cents,
+            card_revenue_cents,
+            upi_revenue_cents,
+            gift_card_revenue_cents,
         })
     }
 
@@ -123,7 +123,7 @@ impl ReportsService {
             "SELECT si.product_id, si.product_name,
                     p.sku as product_sku,
                     SUM(si.quantity) as total_quantity,
-                    SUM(si.total_paise) as total_revenue_paise
+                    SUM(si.total_cents) as total_revenue_cents
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
              LEFT JOIN products p ON p.id = si.product_id
@@ -149,7 +149,7 @@ impl ReportsService {
                 product_name: r.get("product_name"),
                 sku: r.get("product_sku"),
                 total_quantity: r.get("total_quantity"),
-                total_revenue_paise: r.get("total_revenue_paise"),
+                total_revenue_cents: r.get("total_revenue_cents"),
             })
             .collect();
 
@@ -181,7 +181,7 @@ impl ReportsService {
                 COALESCE(c.name, 'Uncategorized') as category_name,
                 COUNT(DISTINCT si.product_id) as distinct_products_sold,
                 COALESCE(SUM(si.quantity), 0) as total_quantity,
-                COALESCE(SUM(si.total_paise), 0) as total_revenue_paise
+                COALESCE(SUM(si.total_cents), 0) as total_revenue_cents
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id
              LEFT JOIN products p ON p.id = si.product_id
@@ -190,7 +190,7 @@ impl ReportsService {
                AND s.created_at >= ? AND s.created_at <= ?
                AND (? IS NULL OR upper(replace(s.payment_method, ' ', '_')) = ? OR upper(s.payment_method) = ?)
              GROUP BY COALESCE(c.id, 'uncategorized'), COALESCE(c.name, 'Uncategorized')
-             ORDER BY total_revenue_paise DESC LIMIT ?"
+             ORDER BY total_revenue_cents DESC LIMIT ?"
         )
         .bind(from)
         .bind(to)
@@ -208,7 +208,7 @@ impl ReportsService {
                 category_name: r.get("category_name"),
                 distinct_products_sold: r.get("distinct_products_sold"),
                 total_quantity: r.get("total_quantity"),
-                total_revenue_paise: r.get("total_revenue_paise"),
+                total_revenue_cents: r.get("total_revenue_cents"),
             })
             .collect();
 
@@ -234,7 +234,7 @@ impl ReportsService {
             "SELECT
                 strftime('%Y', s.created_at) as year,
                 strftime('%m', s.created_at) as month,
-                COALESCE(SUM(s.total_paise), 0) as total_revenue_paise,
+                COALESCE(SUM(s.total_cents), 0) as total_revenue_cents,
                 COUNT(s.id) as total_transactions
              FROM sales s
              WHERE s.status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
@@ -288,12 +288,12 @@ impl ReportsService {
                     "SELECT
                         strftime('%Y-%m', created_at) as period,
                         COUNT(DISTINCT id) as total_transactions,
-                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
-                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
+                        COALESCE(SUM(total_cents), 0) as total_sales_cents,
+                        COALESCE(SUM(discount_cents), 0) as total_discount_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_cents ELSE 0 END), 0) as cash_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_cents ELSE 0 END), 0) as upi_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_cents ELSE 0 END), 0) as card_cents,
+                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_cents ELSE 0 END), 0) as gift_card_cents
                      FROM sales
                      WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
@@ -311,12 +311,12 @@ impl ReportsService {
                     "SELECT
                         strftime('%Y', created_at) as period,
                         COUNT(DISTINCT id) as total_transactions,
-                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
-                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
+                        COALESCE(SUM(total_cents), 0) as total_sales_cents,
+                        COALESCE(SUM(discount_cents), 0) as total_discount_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_cents ELSE 0 END), 0) as cash_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_cents ELSE 0 END), 0) as upi_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_cents ELSE 0 END), 0) as card_cents,
+                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_cents ELSE 0 END), 0) as gift_card_cents
                      FROM sales
                      WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
@@ -334,12 +334,12 @@ impl ReportsService {
                     "SELECT
                         strftime('%Y-%m-%d', created_at) as period,
                         COUNT(DISTINCT id) as total_transactions,
-                        COALESCE(SUM(total_paise), 0) as total_sales_paise,
-                        COALESCE(SUM(discount_paise), 0) as total_discount_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_paise ELSE 0 END), 0) as cash_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_paise ELSE 0 END), 0) as upi_paise,
-                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_paise ELSE 0 END), 0) as card_paise,
-                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_paise ELSE 0 END), 0) as gift_card_paise
+                        COALESCE(SUM(total_cents), 0) as total_sales_cents,
+                        COALESCE(SUM(discount_cents), 0) as total_discount_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CASH', 'CH') THEN total_cents ELSE 0 END), 0) as cash_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('UPI', 'UP') THEN total_cents ELSE 0 END), 0) as upi_cents,
+                        COALESCE(SUM(CASE WHEN upper(payment_method) IN ('CARD', 'CP') THEN total_cents ELSE 0 END), 0) as card_cents,
+                        COALESCE(SUM(CASE WHEN upper(replace(payment_method, ' ', '_')) IN ('GIFT_CARD', 'GC') OR upper(payment_method) LIKE '%GIFT%' THEN total_cents ELSE 0 END), 0) as gift_card_cents
                      FROM sales
                      WHERE status IN ('PAID', 'PARTIALLY_PAID', 'LEGACY')
                        AND strftime('%Y-%m-%d', created_at) >= ?
@@ -382,8 +382,8 @@ impl ReportsService {
                 s.payment_method as payment_method,
                 'SALE' as event_type,
                 -si.quantity as quantity,
-                si.unit_price_paise as unit_price_paise,
-                si.total_paise as total_paise,
+                si.unit_price_cents as unit_price_cents,
+                si.total_cents as total_cents,
                 s.created_at as created_at
              FROM sale_items si
              JOIN sales s ON s.id = si.sale_id

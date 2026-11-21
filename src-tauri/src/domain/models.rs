@@ -43,10 +43,10 @@ pub struct Product {
     pub category_id: Option<String>,
     #[serde(alias = "category_name")]
     pub category_name: Option<String>,
-    #[serde(alias = "mrp_paise")]
-    pub mrp_paise: i64,
-    #[serde(alias = "cost_price_paise")]
-    pub cost_price_paise: i64,
+    #[serde(alias = "mrp_cents", alias = "priceCents")]
+    pub mrp_cents: i64,
+    #[serde(alias = "cost_price_cents")]
+    pub cost_price_cents: i64,
     #[serde(alias = "tax_rate")]
     pub tax_rate: f64,
     #[serde(alias = "current_stock")]
@@ -69,10 +69,10 @@ pub struct CreateProductPayload {
     pub sku: Option<String>,
     #[serde(alias = "category_id")]
     pub category_id: Option<String>,
-    #[serde(alias = "mrp_paise")]
-    pub mrp_paise: i64,
-    #[serde(alias = "cost_price_paise")]
-    pub cost_price_paise: Option<i64>,
+    #[serde(alias = "mrp_cents", alias = "priceCents")]
+    pub mrp_cents: i64,
+    #[serde(alias = "cost_price_cents")]
+    pub cost_price_cents: Option<i64>,
     #[serde(alias = "tax_rate")]
     pub tax_rate: Option<f64>,
     #[serde(alias = "initial_stock")]
@@ -89,10 +89,10 @@ pub struct UpdateProductPayload {
     pub sku: Option<String>,
     #[serde(alias = "category_id")]
     pub category_id: Option<String>,
-    #[serde(alias = "mrp_paise")]
-    pub mrp_paise: i64,
-    #[serde(alias = "cost_price_paise")]
-    pub cost_price_paise: i64,
+    #[serde(alias = "mrp_cents", alias = "priceCents")]
+    pub mrp_cents: i64,
+    #[serde(alias = "cost_price_cents")]
+    pub cost_price_cents: i64,
     #[serde(alias = "tax_rate")]
     pub tax_rate: f64,
     #[serde(alias = "min_stock_alert")]
@@ -145,16 +145,16 @@ pub struct Sale {
     pub customer_phone: Option<String>,
     #[serde(alias = "biller_name")]
     pub biller_name: Option<String>,
-    #[serde(alias = "subtotal_paise")]
-    pub subtotal_paise: i64,
-    #[serde(alias = "discount_paise")]
-    pub discount_paise: i64,
-    #[serde(alias = "tax_paise")]
-    pub tax_paise: i64,
-    #[serde(alias = "total_paise")]
-    pub total_paise: i64,
-    #[serde(alias = "paid_paise")]
-    pub paid_paise: i64,
+    #[serde(alias = "subtotal_cents")]
+    pub subtotal_cents: i64,
+    #[serde(alias = "discount_cents")]
+    pub discount_cents: i64,
+    #[serde(alias = "tax_cents")]
+    pub tax_cents: i64,
+    #[serde(alias = "total_cents")]
+    pub total_cents: i64,
+    #[serde(alias = "paid_cents")]
+    pub paid_cents: i64,
     #[serde(alias = "payment_method")]
     pub payment_method: String,
     pub status: String,
@@ -178,18 +178,18 @@ pub struct SaleItem {
     #[serde(alias = "product_sku")]
     pub product_sku: Option<String>,
     pub quantity: i64,
-    #[serde(alias = "unit_price_paise")]
-    pub unit_price_paise: i64,
-    #[serde(alias = "cost_price_paise")]
-    pub cost_price_paise: i64,
-    #[serde(alias = "discount_paise")]
-    pub discount_paise: i64,
+    #[serde(alias = "unit_price_cents")]
+    pub unit_price_cents: i64,
+    #[serde(alias = "cost_price_cents")]
+    pub cost_price_cents: i64,
+    #[serde(alias = "discount_cents")]
+    pub discount_cents: i64,
     #[serde(alias = "tax_rate")]
     pub tax_rate: f64,
-    #[serde(alias = "tax_paise")]
-    pub tax_paise: i64,
-    #[serde(alias = "total_paise")]
-    pub total_paise: i64,
+    #[serde(alias = "tax_cents")]
+    pub tax_cents: i64,
+    #[serde(alias = "total_cents")]
+    pub total_cents: i64,
     #[serde(default, alias = "item_order")]
     pub item_order: i64,
 }
@@ -200,10 +200,10 @@ pub struct CreateSaleItemPayload {
     #[serde(alias = "product_id")]
     pub product_id: String,
     pub quantity: i64,
-    #[serde(alias = "unit_price_paise")]
-    pub unit_price_paise: i64,
-    #[serde(alias = "discount_paise")]
-    pub discount_paise: Option<i64>,
+    #[serde(alias = "unit_price_cents")]
+    pub unit_price_cents: i64,
+    #[serde(alias = "discount_cents")]
+    pub discount_cents: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,12 +218,12 @@ pub struct CreateSalePayload {
     #[serde(alias = "customer_address")]
     pub customer_address: Option<String>,
     pub items: Vec<CreateSaleItemPayload>,
-    #[serde(alias = "discount_paise")]
-    pub discount_paise: Option<i64>,
+    #[serde(alias = "discount_cents")]
+    pub discount_cents: Option<i64>,
     #[serde(alias = "payment_method")]
     pub payment_method: String,
-    #[serde(alias = "paid_paise")]
-    pub paid_paise: i64,
+    #[serde(alias = "paid_cents")]
+    pub paid_cents: i64,
     pub notes: Option<String>,
 }
 
@@ -233,10 +233,10 @@ pub struct UpdateSaleItemPayload {
     #[serde(alias = "product_id")]
     pub product_id: String,
     pub quantity: i64,
-    #[serde(alias = "unit_price_paise")]
-    pub unit_price_paise: i64,
-    #[serde(alias = "discount_paise")]
-    pub discount_paise: Option<i64>,
+    #[serde(alias = "unit_price_cents")]
+    pub unit_price_cents: i64,
+    #[serde(alias = "discount_cents")]
+    pub discount_cents: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,12 +253,12 @@ pub struct UpdateSalePayload {
     #[serde(alias = "customer_address")]
     pub customer_address: Option<String>,
     pub items: Vec<UpdateSaleItemPayload>,
-    #[serde(alias = "discount_paise")]
-    pub discount_paise: Option<i64>,
+    #[serde(alias = "discount_cents")]
+    pub discount_cents: Option<i64>,
     #[serde(alias = "payment_method")]
     pub payment_method: String,
-    #[serde(alias = "paid_paise")]
-    pub paid_paise: i64,
+    #[serde(alias = "paid_cents")]
+    pub paid_cents: i64,
     pub notes: Option<String>,
 }
 
@@ -267,8 +267,8 @@ pub struct UpdateSalePayload {
 pub struct SaleResponse {
     pub sale: Sale,
     pub items: Vec<SaleItem>,
-    #[serde(alias = "change_paise")]
-    pub change_paise: i64,
+    #[serde(alias = "change_cents")]
+    pub change_cents: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -419,22 +419,22 @@ pub struct LegacyMigrationSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SalesReportSummary {
-    #[serde(alias = "total_revenue_paise")]
-    pub total_revenue_paise: i64,
-    #[serde(alias = "total_discount_paise")]
-    pub total_discount_paise: i64,
-    #[serde(alias = "total_tax_paise")]
-    pub total_tax_paise: i64,
+    #[serde(alias = "total_revenue_cents")]
+    pub total_revenue_cents: i64,
+    #[serde(alias = "total_discount_cents")]
+    pub total_discount_cents: i64,
+    #[serde(alias = "total_tax_cents")]
+    pub total_tax_cents: i64,
     #[serde(alias = "total_sales_count")]
     pub total_sales_count: i64,
-    #[serde(alias = "cash_revenue_paise")]
-    pub cash_revenue_paise: i64,
-    #[serde(alias = "card_revenue_paise")]
-    pub card_revenue_paise: i64,
-    #[serde(alias = "upi_revenue_paise")]
-    pub upi_revenue_paise: i64,
-    #[serde(alias = "gift_card_revenue_paise")]
-    pub gift_card_revenue_paise: i64,
+    #[serde(alias = "cash_revenue_cents")]
+    pub cash_revenue_cents: i64,
+    #[serde(alias = "card_revenue_cents")]
+    pub card_revenue_cents: i64,
+    #[serde(alias = "upi_revenue_cents")]
+    pub upi_revenue_cents: i64,
+    #[serde(alias = "gift_card_revenue_cents")]
+    pub gift_card_revenue_cents: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -448,8 +448,8 @@ pub struct TopSellingProduct {
     pub sku: Option<String>,
     #[serde(alias = "total_quantity")]
     pub total_quantity: i64,
-    #[serde(alias = "total_revenue_paise")]
-    pub total_revenue_paise: i64,
+    #[serde(alias = "total_revenue_cents")]
+    pub total_revenue_cents: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -463,8 +463,8 @@ pub struct TopSellingCategory {
     pub distinct_products_sold: i64,
     #[serde(alias = "total_quantity")]
     pub total_quantity: i64,
-    #[serde(alias = "total_revenue_paise")]
-    pub total_revenue_paise: i64,
+    #[serde(alias = "total_revenue_cents")]
+    pub total_revenue_cents: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -472,8 +472,8 @@ pub struct TopSellingCategory {
 pub struct MultiYearSalesPoint {
     pub year: String,
     pub month: String,
-    #[serde(alias = "total_revenue_paise")]
-    pub total_revenue_paise: i64,
+    #[serde(alias = "total_revenue_cents")]
+    pub total_revenue_cents: i64,
     #[serde(alias = "total_transactions")]
     pub total_transactions: i64,
 }
@@ -484,18 +484,18 @@ pub struct SalesBreakdownItem {
     pub period: String,
     #[serde(alias = "total_transactions")]
     pub total_transactions: i64,
-    #[serde(alias = "total_sales_paise")]
-    pub total_sales_paise: i64,
-    #[serde(alias = "total_discount_paise")]
-    pub total_discount_paise: i64,
-    #[serde(alias = "cash_paise")]
-    pub cash_paise: i64,
-    #[serde(alias = "upi_paise")]
-    pub upi_paise: i64,
-    #[serde(alias = "card_paise")]
-    pub card_paise: i64,
-    #[serde(alias = "gift_card_paise")]
-    pub gift_card_paise: i64,
+    #[serde(alias = "total_sales_cents")]
+    pub total_sales_cents: i64,
+    #[serde(alias = "total_discount_cents")]
+    pub total_discount_cents: i64,
+    #[serde(alias = "cash_cents")]
+    pub cash_cents: i64,
+    #[serde(alias = "upi_cents")]
+    pub upi_cents: i64,
+    #[serde(alias = "card_cents")]
+    pub card_cents: i64,
+    #[serde(alias = "gift_card_cents")]
+    pub gift_card_cents: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -517,10 +517,10 @@ pub struct ProductFlowItem {
     #[serde(alias = "event_type")]
     pub event_type: String,
     pub quantity: i64,
-    #[serde(alias = "unit_price_paise")]
-    pub unit_price_paise: i64,
-    #[serde(alias = "total_paise")]
-    pub total_paise: i64,
+    #[serde(alias = "unit_price_cents")]
+    pub unit_price_cents: i64,
+    #[serde(alias = "total_cents")]
+    pub total_cents: i64,
     #[serde(alias = "created_at")]
     pub created_at: String,
 }

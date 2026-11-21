@@ -6,15 +6,15 @@ const sampleSale = {
   invoiceNumber: strings.settings.sampleData.invoiceNumber,
   createdAt: new Date().toISOString(),
   paymentMethod: strings.settings.sampleData.paymentMethod,
-  subtotalPaise: 35000,
-  discountPaise: 3500,
-  taxPaise: 1750,
-  totalPaise: 33250,
+  subtotalCents: 35000,
+  discountCents: 3500,
+  taxCents: 1750,
+  totalCents: 33250,
 };
 
 const sampleItems = [
-  { id: 1, productName: strings.settings.sampleData.sampleItem1, quantity: 2, unitPricePaise: 10000, taxRate: 5, totalPaise: 20000 },
-  { id: 2, productName: strings.settings.sampleData.sampleItem2, quantity: 1, unitPricePaise: 15000, taxRate: 5, totalPaise: 15000 },
+  { id: 1, productName: strings.settings.sampleData.sampleItem1, quantity: 2, unitPriceCents: 10000, taxRate: 5, totalCents: 20000 },
+  { id: 2, productName: strings.settings.sampleData.sampleItem2, quantity: 1, unitPriceCents: 15000, taxRate: 5, totalCents: 15000 },
 ];
 
 export default function ReceiptTab({ bill, setBill, general, onSave, isSaving }) {

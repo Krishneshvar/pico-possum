@@ -47,7 +47,7 @@ impl SaleAmendmentService {
         // 1. Fetch current sale
         let existing_sale = sqlx::query_as::<_, Sale>(
             "SELECT id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
-                    subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise,
+                    subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
                     payment_method, status, fulfillment_status, notes,
                     created_at
              FROM sales WHERE id = ?"
@@ -64,7 +64,7 @@ impl SaleAmendmentService {
         // 2. Fetch existing items for this sale
         let old_items = sqlx::query_as::<_, SaleItem>(
             "SELECT id, sale_id, product_id, product_name, product_sku, quantity,
-                    unit_price_paise, cost_price_paise, discount_paise, CAST(tax_rate AS REAL) as tax_rate, tax_paise, total_paise,
+                    unit_price_cents, cost_price_cents, discount_cents, CAST(tax_rate AS REAL) as tax_rate, tax_cents, total_cents,
                     item_order
              FROM sale_items
              WHERE sale_id = ?
@@ -158,13 +158,13 @@ impl SaleAmendmentService {
             .execute(&mut *tx)
             .await?;
 
-        let mut subtotal_paise: i64 = 0;
-        let mut total_tax_paise: i64 = 0;
+        let mut subtotal_cents: i64 = 0;
+        let mut total_tax_cents: i64 = 0;
         let mut new_sale_items: Vec<SaleItem> = Vec::new();
 
         for (idx, item_req) in payload.items.iter().enumerate() {
             let prod_row = sqlx::query(
-                "SELECT id, name, sku, mrp_paise, cost_price_paise, tax_rate, current_stock
+                "SELECT id, name, sku, mrp_cents, cost_price_cents, tax_rate, current_stock
                  FROM products WHERE id = ?"
             )
             .bind(&item_req.product_id)
@@ -175,19 +175,19 @@ impl SaleAmendmentService {
             let prod_id: String = prod_row.get("id");
             let prod_name: String = prod_row.get("name");
             let prod_sku: Option<String> = prod_row.get("sku");
-            let mrp_paise: i64 = prod_row.get("mrp_paise");
-            let cost_price_paise: i64 = prod_row.get("cost_price_paise");
+            let mrp_cents: i64 = prod_row.get("mrp_cents");
+            let cost_price_cents: i64 = prod_row.get("cost_price_cents");
             let tax_rate: f64 = prod_row.get("tax_rate");
 
-            ValidationService::validate_item_unit_price(&prod_name, item_req.unit_price_paise, mrp_paise)?;
+            ValidationService::validate_item_unit_price(&prod_name, item_req.unit_price_cents, mrp_cents)?;
 
-            let disc = std::cmp::max(0, item_req.discount_paise.unwrap_or(0));
-            let gross = item_req.unit_price_paise * item_req.quantity;
+            let disc = std::cmp::max(0, item_req.discount_cents.unwrap_or(0));
+            let gross = item_req.unit_price_cents * item_req.quantity;
             let item_total = std::cmp::max(0, gross - disc);
-            subtotal_paise += item_total;
+            subtotal_cents += item_total;
 
             let tax_p = ((item_total as f64) * (tax_rate / 100.0)).round() as i64;
-            total_tax_paise += tax_p;
+            total_tax_cents += tax_p;
 
             let sale_item = SaleItem {
                 id: Uuid::new_v4().to_string(),
@@ -196,17 +196,17 @@ impl SaleAmendmentService {
                 product_name: prod_name,
                 product_sku: prod_sku,
                 quantity: item_req.quantity,
-                unit_price_paise: item_req.unit_price_paise,
-                cost_price_paise,
-                discount_paise: disc,
+                unit_price_cents: item_req.unit_price_cents,
+                cost_price_cents,
+                discount_cents: disc,
                 tax_rate,
-                tax_paise: tax_p,
-                total_paise: item_total,
+                tax_cents: tax_p,
+                total_cents: item_total,
                 item_order: idx as i64,
             };
 
             sqlx::query(
-                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise, item_order)
+                "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_cents, cost_price_cents, discount_cents, tax_rate, tax_cents, total_cents, item_order)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )
             .bind(&sale_item.id)
@@ -215,12 +215,12 @@ impl SaleAmendmentService {
             .bind(&sale_item.product_name)
             .bind(&sale_item.product_sku)
             .bind(sale_item.quantity)
-            .bind(sale_item.unit_price_paise)
-            .bind(sale_item.cost_price_paise)
-            .bind(sale_item.discount_paise)
+            .bind(sale_item.unit_price_cents)
+            .bind(sale_item.cost_price_cents)
+            .bind(sale_item.discount_cents)
             .bind(sale_item.tax_rate)
-            .bind(sale_item.tax_paise)
-            .bind(sale_item.total_paise)
+            .bind(sale_item.tax_cents)
+            .bind(sale_item.total_cents)
             .bind(sale_item.item_order)
             .execute(&mut *tx)
             .await?;
@@ -284,12 +284,12 @@ impl SaleAmendmentService {
         }
 
         // 8. Financial totals
-        let overall_discount = std::cmp::max(0, payload.discount_paise.unwrap_or(0));
-        let total_paise = std::cmp::max(0, subtotal_paise - overall_discount);
-        let paid_paise = std::cmp::max(0, payload.paid_paise);
-        let change_paise = std::cmp::max(0, paid_paise - total_paise);
+        let overall_discount = std::cmp::max(0, payload.discount_cents.unwrap_or(0));
+        let total_cents = std::cmp::max(0, subtotal_cents - overall_discount);
+        let paid_cents = std::cmp::max(0, payload.paid_cents);
+        let change_cents = std::cmp::max(0, paid_cents - total_cents);
 
-        let status = if paid_paise >= total_paise {
+        let status = if paid_cents >= total_cents {
             "PAID"
         } else {
             "PARTIALLY_PAID"
@@ -303,11 +303,11 @@ impl SaleAmendmentService {
                 customer_id = ?,
                 customer_name = ?,
                 customer_phone = ?,
-                subtotal_paise = ?,
-                discount_paise = ?,
-                tax_paise = ?,
-                total_paise = ?,
-                paid_paise = ?,
+                subtotal_cents = ?,
+                discount_cents = ?,
+                tax_cents = ?,
+                total_cents = ?,
+                paid_cents = ?,
                 payment_method = ?,
                 status = ?,
                 notes = ?
@@ -316,11 +316,11 @@ impl SaleAmendmentService {
         .bind(&resolved_customer_id)
         .bind(cust_name)
         .bind(cust_phone)
-        .bind(subtotal_paise)
+        .bind(subtotal_cents)
         .bind(overall_discount)
-        .bind(total_tax_paise)
-        .bind(total_paise)
-        .bind(paid_paise)
+        .bind(total_tax_cents)
+        .bind(total_cents)
+        .bind(paid_cents)
         .bind(&payment_method)
         .bind(status)
         .bind(&clean_notes)
@@ -331,10 +331,10 @@ impl SaleAmendmentService {
         // 9. Audit log entry
         let audit_id = Uuid::new_v4().to_string();
         let desc = format!(
-            "Edited bill #{}: updated items/pricing. Total changed from {} paise to {} paise. Payment: {}",
+            "Edited bill #{}: updated items/pricing. Total changed from {} to {}. Payment: {}",
             existing_sale.invoice_number,
-            existing_sale.total_paise,
-            total_paise,
+            existing_sale.total_cents,
+            total_cents,
             payment_method
         );
         sqlx::query(
@@ -347,7 +347,7 @@ impl SaleAmendmentService {
         .execute(&mut *tx)
         .await?;
 
-        AppLogger::info("Sales", format!("Bill {} amended: {} items, total {} paise", existing_sale.invoice_number, new_sale_items.len(), total_paise));
+        AppLogger::info("Sales", format!("Bill {} amended: {} items, total {}", existing_sale.invoice_number, new_sale_items.len(), total_cents));
         tx.commit().await?;
 
         let updated_sale = Sale {
@@ -357,11 +357,11 @@ impl SaleAmendmentService {
             customer_name: cust_name.map(String::from),
             customer_phone: cust_phone.map(String::from),
             biller_name: existing_sale.biller_name,
-            subtotal_paise,
-            discount_paise: overall_discount,
-            tax_paise: total_tax_paise,
-            total_paise,
-            paid_paise,
+            subtotal_cents,
+            discount_cents: overall_discount,
+            tax_cents: total_tax_cents,
+            total_cents,
+            paid_cents,
             payment_method,
             status: status.to_string(),
             fulfillment_status: existing_sale.fulfillment_status,
@@ -372,7 +372,7 @@ impl SaleAmendmentService {
         Ok(SaleResponse {
             sale: updated_sale,
             items: new_sale_items,
-            change_paise,
+            change_cents,
         })
     }
 
@@ -385,7 +385,7 @@ impl SaleAmendmentService {
 
         let sale = sqlx::query_as::<_, Sale>(
             "SELECT id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
-                    subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise,
+                    subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
                     payment_method, status, fulfillment_status, notes,
                     created_at
              FROM sales WHERE id = ?"

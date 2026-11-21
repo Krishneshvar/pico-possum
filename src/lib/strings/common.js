@@ -316,7 +316,7 @@ const common = {
         },
         {
           name: `Net Total (${sym}) / Net Amount`,
-          aliases: `Net Total (${sym}), Net Total, Net Amount, Total Amount, Total, Amount, Net Total (Rs)`,
+          aliases: `Net Total (${sym}), Net Total, Net Amount, Total Amount, Total, Amount`,
           desc: `Final bill total in ${sym} (matches this app's export "Net Total (${sym})")`,
         },
       ],
@@ -343,17 +343,17 @@ const common = {
         },
         {
           name: `Subtotal (${sym})`,
-          aliases: `Subtotal (${sym}), Subtotal, Sub Total, Subtotal (Rs)`,
+          aliases: `Subtotal (${sym}), Subtotal, Sub Total`,
           desc: 'Pre-tax gross subtotal (defaults to Net Total if omitted)',
         },
         {
           name: `Discount (${sym})`,
-          aliases: `Discount (${sym}), Discount, Disc, Discount (Rs)`,
+          aliases: `Discount (${sym}), Discount, Disc`,
           desc: `Total discount amount in ${sym} (defaults to 0.00)`,
         },
         {
           name: `Tax (${sym})`,
-          aliases: `Tax (${sym}), Tax, GST, Tax (Rs)`,
+          aliases: `Tax (${sym}), Tax, GST, VAT`,
           desc: `Total tax amount in ${sym} (defaults to 0.00)`,
         },
         {

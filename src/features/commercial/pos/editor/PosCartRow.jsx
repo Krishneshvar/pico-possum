@@ -1,4 +1,4 @@
-import { formatPaise, rupeesToPaise } from '../../../../lib/formatters';
+import { formatCurrency, unitsToCents } from '../../../../lib/formatters';
 import { toast } from '../../../../stores/toast.store';
 import { strings } from '../../../../lib/strings';
 
@@ -29,7 +29,10 @@ export default function PosCartRow({
   discountInputs,
   setDiscountInputs,
 }) {
-  const lineTotal = item.unitPricePaise * item.quantity - (item.discountPaise || 0);
+  const unitPrice = item.unitPriceCents ?? item.unit_price_cents ?? 0;
+  const itemDiscount = item.discountCents ?? item.discount_cents ?? 0;
+  const mrp = item.mrpCents ?? item.mrp_cents ?? unitPrice;
+  const lineTotal = unitPrice * item.quantity - itemDiscount;
   const availableStock = availableStockFor(item.productId);
   const exceedsStock =
     !allowNegativeStock && availableStock != null && item.quantity > availableStock;
@@ -135,11 +138,11 @@ export default function PosCartRow({
         <div className="font-semibold text-text-primary text-xs leading-tight">
           {item.name}
         </div>
-        {(item.discountPaise > 0 || exceedsStock) && (
+        {(itemDiscount > 0 || exceedsStock) && (
           <div className="text-[10px] flex items-center gap-2 mt-0.5 font-sans">
-            {item.discountPaise > 0 && (
+            {itemDiscount > 0 && (
               <span className="text-amber-600 dark:text-amber-400 font-medium">
-                {strings.pos.editor.lineDiscount(formatPaise(item.discountPaise))}
+                {strings.pos.editor.lineDiscount(formatCurrency(itemDiscount))}
               </span>
             )}
             {exceedsStock && (
@@ -209,11 +212,11 @@ export default function PosCartRow({
             type="number"
             step="0.01"
             min="0"
-            max={item.mrpPaise ? (item.mrpPaise / 100).toFixed(2) : undefined}
+            max={mrp ? (mrp / 100).toFixed(2) : undefined}
             value={
               priceInputs[item.productId] !== undefined
                 ? priceInputs[item.productId]
-                : (item.unitPricePaise / 100).toFixed(2)
+                : (unitPrice / 100).toFixed(2)
             }
             onFocus={() => {
               setActiveCell({ row: index, col: 4 });
@@ -221,20 +224,20 @@ export default function PosCartRow({
             }}
             onChange={(e) => {
               const val = e.target.value;
-              const mrpPaise = item.mrpPaise ?? item.unitPricePaise;
-              const parsedPaise = rupeesToPaise(val);
-              if (mrpPaise != null && parsedPaise > mrpPaise) {
+              const maxPriceCents = mrp;
+              const parsedCents = unitsToCents(val);
+              if (maxPriceCents != null && parsedCents > maxPriceCents) {
                 toast.warning(
-                  strings.pos.editor.priceExceedsMrp(formatPaise(mrpPaise)),
+                  strings.pos.editor.priceExceedsMrp(formatCurrency(maxPriceCents)),
                   { title: strings.pos.editor.priceExceedsMrpTitle }
                 );
-                const cappedVal = (mrpPaise / 100).toFixed(2);
+                const cappedVal = (maxPriceCents / 100).toFixed(2);
                 setPriceInputs((prev) => ({ ...prev, [item.productId]: cappedVal }));
-                onUpdateItemPrice(item.productId, mrpPaise);
+                onUpdateItemPrice(item.productId, maxPriceCents);
                 return;
               }
               setPriceInputs((prev) => ({ ...prev, [item.productId]: val }));
-              onUpdateItemPrice(item.productId, parsedPaise);
+              onUpdateItemPrice(item.productId, parsedCents);
             }}
             onBlur={() => {
               setPriceInputs((prev) => {
@@ -242,9 +245,8 @@ export default function PosCartRow({
                 delete next[item.productId];
                 return next;
               });
-              const mrpPaise = item.mrpPaise ?? item.unitPricePaise;
-              if (mrpPaise != null && item.unitPricePaise > mrpPaise) {
-                onUpdateItemPrice(item.productId, mrpPaise);
+              if (mrp != null && unitPrice > mrp) {
+                onUpdateItemPrice(item.productId, mrp);
               }
             }}
             onKeyDown={(e) => handleUnitPriceKeyDown(e, index, item)}
@@ -277,12 +279,12 @@ export default function PosCartRow({
       >
         <span
           className={`financial-value font-mono text-xs ${
-            (item.mrpPaise ?? item.unitPricePaise) > item.unitPricePaise
+            mrp > unitPrice
               ? 'line-through text-text-muted/80'
               : 'text-text-muted'
           }`}
         >
-          {formatPaise(item.mrpPaise ?? item.unitPricePaise)}
+          {formatCurrency(mrp)}
         </span>
       </td>
 
@@ -314,8 +316,8 @@ export default function PosCartRow({
             value={
               discountInputs[item.productId] !== undefined
                 ? discountInputs[item.productId]
-                : item.discountPaise > 0
-                ? (item.discountPaise / 100).toFixed(2)
+                : itemDiscount > 0
+                ? (itemDiscount / 100).toFixed(2)
                 : ''
             }
             onFocus={() => {
@@ -325,7 +327,7 @@ export default function PosCartRow({
             onChange={(e) => {
               const val = e.target.value;
               setDiscountInputs((prev) => ({ ...prev, [item.productId]: val }));
-              onUpdateItemDiscount(item.productId, rupeesToPaise(val));
+              onUpdateItemDiscount(item.productId, unitsToCents(val));
             }}
             onBlur={() => {
               setDiscountInputs((prev) => {
@@ -363,7 +365,7 @@ export default function PosCartRow({
         }`}
       >
         <span className="financial-value font-mono font-bold text-text-primary text-xs">
-          {formatPaise(lineTotal)}
+          {formatCurrency(lineTotal)}
         </span>
       </td>
     </tr>

@@ -12,8 +12,8 @@ fn test_product_validation() {
         name: "Test Item".to_string(),
         sku: Some("SKU-123".to_string()),
         category_id: None,
-        mrp_paise: 1500,
-        cost_price_paise: Some(1000),
+        mrp_cents: 1500,
+        cost_price_cents: Some(1000),
         tax_rate: Some(18.0),
         initial_stock: Some(10),
         min_stock_alert: Some(2),
@@ -28,12 +28,12 @@ fn test_product_validation() {
 
     // Negative MRP
     let mut invalid = valid_prod.clone();
-    invalid.mrp_paise = -10;
+    invalid.mrp_cents = -10;
     assert!(ValidationService::validate_create_product(&invalid).is_err());
 
     // Negative cost price
     let mut invalid = valid_prod.clone();
-    invalid.cost_price_paise = Some(-50);
+    invalid.cost_price_cents = Some(-50);
     assert!(ValidationService::validate_create_product(&invalid).is_err());
 
     // Invalid tax rate (> 100 or < 0)
@@ -53,8 +53,8 @@ fn test_product_validation() {
         name: "Updated Item".to_string(),
         sku: Some("SKU-123".to_string()),
         category_id: None,
-        mrp_paise: 2000,
-        cost_price_paise: 1200,
+        mrp_cents: 2000,
+        cost_price_cents: 1200,
         tax_rate: 5.0,
         min_stock_alert: Some(5),
         status: "active".to_string(),
@@ -62,7 +62,7 @@ fn test_product_validation() {
     assert!(ValidationService::validate_update_product(&valid_update).is_ok());
 
     let mut invalid_update = valid_update.clone();
-    invalid_update.cost_price_paise = -100;
+    invalid_update.cost_price_cents = -100;
     assert!(ValidationService::validate_update_product(&invalid_update).is_err());
 }
 
@@ -132,9 +132,9 @@ fn test_sales_and_price_validation() {
         customer_phone: None,
         customer_address: None,
         items: vec![],
-        discount_paise: None,
+        discount_cents: None,
         payment_method: "CASH".to_string(),
-        paid_paise: 1000,
+        paid_cents: 1000,
         notes: None,
     };
     assert!(ValidationService::validate_create_sale(&empty_sale).is_err());
@@ -148,12 +148,12 @@ fn test_sales_and_price_validation() {
         items: vec![CreateSaleItemPayload {
             product_id: "prod-1".to_string(),
             quantity: 1,
-            unit_price_paise: 500,
-            discount_paise: None,
+            unit_price_cents: 500,
+            discount_cents: None,
         }],
-        discount_paise: None,
+        discount_cents: None,
         payment_method: "BITCOIN".to_string(),
-        paid_paise: 500,
+        paid_cents: 500,
         notes: None,
     };
     assert!(ValidationService::validate_create_sale(&bad_pm).is_err());

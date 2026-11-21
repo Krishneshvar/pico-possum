@@ -13,7 +13,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { sortRows } from '../../../lib/sort';
 import MultiYearComparisonChart from './MultiYearComparisonChart';
 import PaymentDistributionSection from './PaymentDistributionSection';
@@ -122,14 +122,14 @@ export default function ReportsView() {
   );
 
   // Summary computations
-  const totalRev = summary?.totalRevenuePaise ?? summary?.total_revenue_paise ?? 0;
-  const cashRev = summary?.cashRevenuePaise ?? summary?.cash_revenue_paise ?? 0;
-  const cardRev = summary?.cardRevenuePaise ?? summary?.card_revenue_paise ?? 0;
-  const upiRev = summary?.upiRevenuePaise ?? summary?.upi_revenue_paise ?? 0;
-  const giftCardRev = summary?.giftCardRevenuePaise ?? summary?.gift_card_revenue_paise ?? 0;
+  const totalRev = summary?.totalRevenueCents ?? summary?.total_revenue_cents ?? 0;
+  const cashRev = summary?.cashRevenueCents ?? summary?.cash_revenue_cents ?? 0;
+  const cardRev = summary?.cardRevenueCents ?? summary?.card_revenue_cents ?? 0;
+  const upiRev = summary?.upiRevenueCents ?? summary?.upi_revenue_cents ?? 0;
+  const giftCardRev = summary?.giftCardRevenueCents ?? summary?.gift_card_revenue_cents ?? 0;
   const totalCount = summary?.totalSalesCount ?? summary?.total_sales_count ?? 0;
   const avgBill = totalCount > 0 ? Math.round(totalRev / totalCount) : 0;
-  const totalDiscount = summary?.totalDiscountPaise ?? summary?.total_discount_paise ?? 0;
+  const totalDiscount = summary?.totalDiscountCents ?? summary?.total_discount_cents ?? 0;
 
   const cashPct = totalRev > 0 ? (cashRev / totalRev) * 100 : 0;
   const upiPct = totalRev > 0 ? (upiRev / totalRev) * 100 : 0;
@@ -142,7 +142,7 @@ export default function ReportsView() {
     [topCategories]
   );
   const totalCategoryRevenue = useMemo(
-    () => topCategories.reduce((acc, c) => acc + (c.totalRevenuePaise ?? c.total_revenue_paise ?? 0), 0),
+    () => topCategories.reduce((acc, c) => acc + (c.totalRevenueCents ?? c.total_revenue_cents ?? 0), 0),
     [topCategories]
   );
 
@@ -152,7 +152,7 @@ export default function ReportsView() {
     [topProducts]
   );
   const totalProductRevenue = useMemo(
-    () => topProducts.reduce((acc, p) => acc + (p.totalRevenuePaise ?? p.total_revenue_paise ?? 0), 0),
+    () => topProducts.reduce((acc, p) => acc + (p.totalRevenueCents ?? p.total_revenue_cents ?? 0), 0),
     [topProducts]
   );
 
@@ -314,7 +314,7 @@ export default function ReportsView() {
               </div>
             </div>
             <div className="text-2xl font-semibold text-content financial-value">
-              {formatPaise(totalRev)}
+              {formatCurrency(totalRev)}
             </div>
             <p className="text-[11px] text-content-muted">
               {paymentMethod === 'ALL'
@@ -346,7 +346,7 @@ export default function ReportsView() {
               </div>
             </div>
             <div className="text-2xl font-semibold text-content financial-value">
-              {formatPaise(avgBill)}
+              {formatCurrency(avgBill)}
             </div>
             <p className="text-[11px] text-content-muted">{strings.reports.kpis.perCheckoutAverage}</p>
           </div>
@@ -360,7 +360,7 @@ export default function ReportsView() {
               </div>
             </div>
             <div className="text-2xl font-semibold text-content financial-value">
-              {formatPaise(totalDiscount)}
+              {formatCurrency(totalDiscount)}
             </div>
             <p className="text-[11px] text-content-muted">{strings.reports.kpis.customerSavings}</p>
           </div>

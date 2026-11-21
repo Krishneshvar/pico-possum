@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, ArrowRight } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise, formatDate, formatDateTime } from '../../../lib/formatters';
+import { formatCurrency, formatDate, formatDateTime } from '../../../lib/formatters';
 import SortableTh from '../../../components/common/SortableTh';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import { strings } from '../../../lib/strings';
@@ -30,7 +30,7 @@ export default function CustomerProfileModal({
     }
     const nonCancelled = customerSales.filter((s) => s.status !== 'CANCELLED');
     const totalOrders = nonCancelled.length;
-    const totalSpent = nonCancelled.reduce((sum, s) => sum + (s.totalPaise ?? s.total_paise ?? 0), 0);
+    const totalSpent = nonCancelled.reduce((sum, s) => sum + (s.totalCents ?? s.total_cents ?? 0), 0);
     const avgBill = totalOrders > 0 ? Math.round(totalSpent / totalOrders) : 0;
     const lastOrder = (customerSales[0]?.createdAt ?? customerSales[0]?.created_at) || null;
     return { totalOrders, totalSpent, avgBill, lastOrder };
@@ -82,7 +82,7 @@ export default function CustomerProfileModal({
               {strings.customers.profile.stats.totalSpent}
             </span>
             <span className="text-base font-bold text-text-primary financial-value mt-0.5 block">
-              {formatPaise(customerStats.totalSpent)}
+              {formatCurrency(customerStats.totalSpent)}
             </span>
           </div>
           <div className="p-3 bg-surface-secondary rounded-xl border border-border-default text-center">
@@ -90,7 +90,7 @@ export default function CustomerProfileModal({
               {strings.customers.profile.stats.averageOrder}
             </span>
             <span className="text-base font-bold text-text-primary financial-value mt-0.5 block">
-              {formatPaise(customerStats.avgBill)}
+              {formatCurrency(customerStats.avgBill)}
             </span>
           </div>
           <div className="p-3 bg-surface-secondary rounded-xl border border-border-default text-center">
@@ -144,7 +144,7 @@ export default function CustomerProfileModal({
                   {strings.common.labels.status}
                 </SortableTh>
                 <SortableTh
-                  sortKey="totalPaise"
+                  sortKey="totalCents"
                   sort={historySort}
                   onSort={(key) => setHistorySort((p) => nextSortState(p, key))}
                   align="right"
@@ -198,7 +198,7 @@ export default function CustomerProfileModal({
                       </span>
                     </td>
                     <td className="py-2 px-3.5 text-right font-bold financial-value text-text-primary">
-                      {formatPaise(sale.totalPaise ?? sale.total_paise)}
+                      {formatCurrency(sale.totalCents ?? sale.total_cents)}
                     </td>
                     <td className="py-2 pl-3.5 pr-4 text-right">
                       <button

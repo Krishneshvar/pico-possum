@@ -28,10 +28,10 @@ impl ValidationService {
                 return Err(AppError::Validation("SKU cannot exceed 50 characters".to_string()));
             }
         }
-        if payload.mrp_paise < 0 {
-            return Err(AppError::Validation("MRP cannot be negative".to_string()));
+        if payload.mrp_cents < 0 {
+            return Err(AppError::Validation("Price cannot be negative".to_string()));
         }
-        if let Some(cp) = payload.cost_price_paise {
+        if let Some(cp) = payload.cost_price_cents {
             if cp < 0 {
                 return Err(AppError::Validation("Cost price cannot be negative".to_string()));
             }
@@ -73,10 +73,10 @@ impl ValidationService {
                 return Err(AppError::Validation("SKU cannot exceed 50 characters".to_string()));
             }
         }
-        if payload.mrp_paise < 0 {
-            return Err(AppError::Validation("MRP cannot be negative".to_string()));
+        if payload.mrp_cents < 0 {
+            return Err(AppError::Validation("Price cannot be negative".to_string()));
         }
-        if payload.cost_price_paise < 0 {
+        if payload.cost_price_cents < 0 {
             return Err(AppError::Validation("Cost price cannot be negative".to_string()));
         }
         if !(0.0..=100.0).contains(&payload.tax_rate) {
@@ -162,21 +162,21 @@ impl ValidationService {
             if item.quantity > 100_000 {
                 return Err(AppError::Validation("Item quantity exceeds maximum limit of 100,000".to_string()));
             }
-            if item.unit_price_paise < 0 {
+            if item.unit_price_cents < 0 {
                 return Err(AppError::Validation("Unit price cannot be negative".to_string()));
             }
-            if let Some(disc) = item.discount_paise {
+            if let Some(disc) = item.discount_cents {
                 if disc < 0 {
                     return Err(AppError::Validation("Item discount cannot be negative".to_string()));
                 }
             }
         }
-        if let Some(disc) = payload.discount_paise {
+        if let Some(disc) = payload.discount_cents {
             if disc < 0 {
                 return Err(AppError::Validation("Overall discount cannot be negative".to_string()));
             }
         }
-        if payload.paid_paise < 0 {
+        if payload.paid_cents < 0 {
             return Err(AppError::Validation("Paid amount cannot be negative".to_string()));
         }
         let pm = payload.payment_method.trim().to_uppercase();
@@ -200,21 +200,21 @@ impl ValidationService {
             if item.quantity > 100_000 {
                 return Err(AppError::Validation("Item quantity exceeds maximum limit of 100,000".to_string()));
             }
-            if item.unit_price_paise < 0 {
+            if item.unit_price_cents < 0 {
                 return Err(AppError::Validation("Unit price cannot be negative".to_string()));
             }
-            if let Some(disc) = item.discount_paise {
+            if let Some(disc) = item.discount_cents {
                 if disc < 0 {
                     return Err(AppError::Validation("Item discount cannot be negative".to_string()));
                 }
             }
         }
-        if let Some(disc) = payload.discount_paise {
+        if let Some(disc) = payload.discount_cents {
             if disc < 0 {
                 return Err(AppError::Validation("Overall discount cannot be negative".to_string()));
             }
         }
-        if payload.paid_paise < 0 {
+        if payload.paid_cents < 0 {
             return Err(AppError::Validation("Paid amount cannot be negative".to_string()));
         }
         let pm = payload.payment_method.trim().to_uppercase();
@@ -224,10 +224,10 @@ impl ValidationService {
         Ok(())
     }
 
-    pub fn validate_item_unit_price(product_name: &str, unit_price_paise: i64, mrp_paise: i64) -> Result<(), AppError> {
-        if unit_price_paise > mrp_paise {
+    pub fn validate_item_unit_price(product_name: &str, unit_price_cents: i64, mrp_cents: i64) -> Result<(), AppError> {
+        if unit_price_cents > mrp_cents {
             return Err(AppError::Validation(format!(
-                "Unit price cannot exceed MRP for '{}'",
+                "Unit price cannot exceed list price for '{}'",
                 product_name
             )));
         }

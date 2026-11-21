@@ -9,10 +9,10 @@ const createEmptyBill = (index) => ({
   items: [],
   customer: null,
   discountType: 'FIXED', // 'FIXED' or 'PERCENT'
-  discountValue: 0,      // in Rupees or %
+  discountValue: 0,      // in currency units or %
   paymentMethod: 'CASH',
   isFullPayment: true,
-  amountTenderedPaise: 0,
+  amountTenderedCents: 0,
   notes: '',
 });
 
@@ -125,12 +125,12 @@ export const usePosStore = create((set, get) => ({
           productId: product.id,
           name: product.name,
           sku: product.sku || '',
-          unitPricePaise: product.mrpPaise ?? product.mrp_paise,
-          mrpPaise: product.mrpPaise ?? product.mrp_paise,
-          costPricePaise: product.costPricePaise ?? product.cost_price_paise ?? 0,
+          unitPriceCents: product.mrpCents ?? product.mrp_cents,
+          mrpCents: product.mrpCents ?? product.mrp_cents,
+          costPriceCents: product.costPriceCents ?? product.cost_price_cents ?? 0,
           taxRate: product.taxRate ?? product.tax_rate ?? 0,
           quantity: 1,
-          discountPaise: 0,
+          discountCents: 0,
         },
       ];
     }
@@ -161,14 +161,14 @@ export const usePosStore = create((set, get) => ({
     syncBillToDb(activeBillIndex, updatedBill);
   },
 
-  updateItemPrice: (productId, unitPricePaise) => {
+  updateItemPrice: (productId, unitPriceCents) => {
     const { bills, activeBillIndex } = get();
     const currentBill = bills[activeBillIndex];
     const newItems = currentBill.items.map((it) => {
       if (it.productId !== productId) return it;
-      const mrp = it.mrpPaise ?? it.unitPricePaise;
-      const capped = mrp != null ? Math.min(Math.max(0, unitPricePaise), mrp) : Math.max(0, unitPricePaise);
-      return { ...it, unitPricePaise: capped };
+      const mrp = it.mrpCents ?? it.unitPriceCents;
+      const capped = mrp != null ? Math.min(Math.max(0, unitPriceCents), mrp) : Math.max(0, unitPriceCents);
+      return { ...it, unitPriceCents: capped };
     });
     const updatedBill = { ...currentBill, items: newItems };
     const updatedBills = [...bills];
@@ -178,11 +178,11 @@ export const usePosStore = create((set, get) => ({
     syncBillToDb(activeBillIndex, updatedBill);
   },
 
-  updateItemDiscount: (productId, discountPaise) => {
+  updateItemDiscount: (productId, discountCents) => {
     const { bills, activeBillIndex } = get();
     const currentBill = bills[activeBillIndex];
     const newItems = currentBill.items.map((it) =>
-      it.productId === productId ? { ...it, discountPaise: Math.max(0, discountPaise) } : it
+      it.productId === productId ? { ...it, discountCents: Math.max(0, discountCents) } : it
     );
     const updatedBill = { ...currentBill, items: newItems };
     const updatedBills = [...bills];
@@ -258,11 +258,11 @@ export const usePosStore = create((set, get) => ({
     syncBillToDb(activeBillIndex, updatedBill);
   },
 
-  setAmountTendered: (amountTenderedPaise) => {
+  setAmountTendered: (amountTenderedCents) => {
     const { bills, activeBillIndex } = get();
     const updatedBill = {
       ...bills[activeBillIndex],
-      amountTenderedPaise: Math.max(0, amountTenderedPaise),
+      amountTenderedCents: Math.max(0, amountTenderedCents),
     };
     const updatedBills = [...bills];
     updatedBills[activeBillIndex] = updatedBill;
@@ -287,55 +287,56 @@ export const usePosStore = create((set, get) => ({
 export function computeBillTotals(bill) {
   if (!bill || !bill.items) {
     return {
-      subtotalPaise: 0,
-      discountPaise: 0,
-      taxPaise: 0,
-      totalPaise: 0,
-      tenderedPaise: 0,
-      balancePaise: 0,
+      subtotalCents: 0,
+      discountCents: 0,
+      taxCents: 0,
+      totalCents: 0,
+      tenderedCents: 0,
+      balanceCents: 0,
       isChange: true,
       totalQty: 0,
     };
   }
 
-  let subtotalPaise = 0;
-  let taxPaise = 0;
+  let subtotalCents = 0;
+  let taxCents = 0;
   let totalQty = 0;
 
   for (const it of bill.items) {
     totalQty += (it.quantity || 0);
-    const lineDisc = Math.max(0, it.discountPaise || 0);
-    const lineTotal = Math.max(0, (it.unitPricePaise * it.quantity) - lineDisc);
-    subtotalPaise += lineTotal;
+    const lineDisc = Math.max(0, it.discountCents ?? 0);
+    const unitPrice = it.unitPriceCents ?? 0;
+    const lineTotal = Math.max(0, (unitPrice * it.quantity) - lineDisc);
+    subtotalCents += lineTotal;
     const tax = Math.round(lineTotal * ((it.taxRate || 0) / 100));
-    taxPaise += tax;
+    taxCents += tax;
   }
 
-  let discountPaise = 0;
+  let discountCents = 0;
   const rawDiscVal = parseFloat(bill.discountValue);
   const cleanDiscVal = !isNaN(rawDiscVal) && rawDiscVal > 0 ? rawDiscVal : 0;
   if (bill.discountType === 'PERCENT') {
-    discountPaise = Math.round(subtotalPaise * (cleanDiscVal / 100));
+    discountCents = Math.round(subtotalCents * (cleanDiscVal / 100));
   } else {
-    discountPaise = Math.round(cleanDiscVal * 100);
+    discountCents = Math.round(cleanDiscVal * 100);
   }
-  discountPaise = Math.min(subtotalPaise, Math.max(0, discountPaise));
+  discountCents = Math.min(subtotalCents, Math.max(0, discountCents));
 
-  const totalPaise = Math.max(0, subtotalPaise - discountPaise);
+  const totalCents = Math.max(0, subtotalCents - discountCents);
 
   const requiresTender = !bill.paymentMethod || bill.paymentMethod === 'CASH' || bill.paymentMethod === 'GIFT_CARD';
-  const tenderedPaise = requiresTender ? (bill.amountTenderedPaise || 0) : totalPaise;
-  const diff = tenderedPaise - totalPaise;
+  const tenderedCents = requiresTender ? (bill.amountTenderedCents ?? 0) : totalCents;
+  const diff = tenderedCents - totalCents;
   const isChange = diff >= 0;
-  const balancePaise = Math.abs(diff);
+  const balanceCents = Math.abs(diff);
 
   return {
-    subtotalPaise,
-    discountPaise,
-    taxPaise,
-    totalPaise,
-    tenderedPaise,
-    balancePaise,
+    subtotalCents,
+    discountCents,
+    taxCents,
+    totalCents,
+    tenderedCents,
+    balanceCents,
     isChange,
     totalQty,
   };

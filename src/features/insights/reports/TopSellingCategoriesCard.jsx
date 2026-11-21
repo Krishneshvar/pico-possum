@@ -1,5 +1,5 @@
 import { FolderTree } from 'lucide-react';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { nextSortState } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
 import { strings } from '../../../lib/strings';
@@ -55,7 +55,7 @@ export default function TopSellingCategoriesCard({
                   Sold
                 </SortableTh>
                 <SortableTh
-                  sortKey="totalRevenuePaise"
+                  sortKey="totalRevenueCents"
                   sort={topCatSort}
                   onSort={(key) => setTopCatSort((p) => nextSortState(p, key))}
                   align="right"
@@ -94,7 +94,7 @@ export default function TopSellingCategoriesCard({
                       {c.totalQuantity ?? c.total_quantity}
                     </td>
                     <td className="px-3 pr-4 text-right font-medium text-content financial-value">
-                      {formatPaise(c.totalRevenuePaise ?? c.total_revenue_paise)}
+                      {formatCurrency(c.totalRevenueCents ?? c.total_revenue_cents)}
                     </td>
                   </tr>
                 ))
@@ -113,7 +113,7 @@ export default function TopSellingCategoriesCard({
           </div>
           <div>
             <span className="text-content-muted mr-1.5">Total Revenue:</span>
-            <span className="font-semibold text-content financial-value">{formatPaise(totalCategoryRevenue)}</span>
+            <span className="font-semibold text-content financial-value">{formatCurrency(totalCategoryRevenue)}</span>
           </div>
         </div>
       )}

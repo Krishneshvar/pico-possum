@@ -1,6 +1,6 @@
 import { toast } from '../../../../stores/toast.store';
 import { strings } from '../../../../lib/strings';
-import { formatPaise, rupeesToPaise } from '../../../../lib/formatters';
+import { formatCurrency, unitsToCents } from '../../../../lib/formatters';
 
 export function createPosKeyHandlers({
   bill,

@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
-import { formatPaise, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
+import { formatCurrency, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
@@ -65,7 +65,7 @@ export default function ProductFlowView() {
     const salesOnly = flowItems.filter((f) => f.quantity < 0 || (f.eventType ?? f.event_type) === 'SALE');
     const itemsToCount = salesOnly.length > 0 ? salesOnly : flowItems;
     const unitsSold = itemsToCount.reduce((acc, r) => acc + Math.abs(r.quantity || 0), 0);
-    const totalRevenue = itemsToCount.reduce((acc, r) => acc + ((r.totalPaise ?? r.total_paise) || 0), 0);
+    const totalRevenue = itemsToCount.reduce((acc, r) => acc + ((r.totalCents ?? r.total_cents) || 0), 0);
     const avgPrice = unitsSold > 0 ? Math.round(totalRevenue / unitsSold) : 0;
 
     return {
@@ -158,18 +158,18 @@ export default function ProductFlowView() {
       },
     },
     {
-      key: 'unitPricePaise',
+      key: 'unitPriceCents',
       label: strings.productFlow.columns.soldUnitPrice,
       headerClassName: 'text-right',
       className: 'text-right text-content-secondary financial-value',
-      render: (r) => formatPaise(r.unitPricePaise ?? r.unit_price_paise),
+      render: (r) => formatCurrency(r.unitPriceCents ?? r.unit_price_cents),
     },
     {
-      key: 'totalPaise',
+      key: 'totalCents',
       label: strings.productFlow.columns.soldTotalAmount,
       headerClassName: 'text-right',
       className: 'text-right font-medium text-content financial-value',
-      render: (r) => formatPaise(r.totalPaise ?? r.total_paise),
+      render: (r) => formatCurrency(r.totalCents ?? r.total_cents),
     },
     {
       key: 'paymentMethod',

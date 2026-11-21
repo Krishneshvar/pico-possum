@@ -1,5 +1,5 @@
 import { Flame } from 'lucide-react';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { nextSortState } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
 import { strings } from '../../../lib/strings';
@@ -46,7 +46,7 @@ export default function TopSellingProductsCard({
                   Qty Sold
                 </SortableTh>
                 <SortableTh
-                  sortKey="totalRevenuePaise"
+                  sortKey="totalRevenueCents"
                   sort={topProdSort}
                   onSort={(key) => setTopProdSort((p) => nextSortState(p, key))}
                   align="right"
@@ -87,7 +87,7 @@ export default function TopSellingProductsCard({
                       {p.totalQuantity ?? p.total_quantity}
                     </td>
                     <td className="px-3 pr-4 text-right font-medium text-content financial-value">
-                      {formatPaise(p.totalRevenuePaise ?? p.total_revenue_paise)}
+                      {formatCurrency(p.totalRevenueCents ?? p.total_revenue_cents)}
                     </td>
                   </tr>
                 ))
@@ -106,7 +106,7 @@ export default function TopSellingProductsCard({
           </div>
           <div>
             <span className="text-content-muted mr-1.5">Total Revenue:</span>
-            <span className="font-semibold text-content financial-value">{formatPaise(totalProductRevenue)}</span>
+            <span className="font-semibold text-content financial-value">{formatCurrency(totalProductRevenue)}</span>
           </div>
         </div>
       )}

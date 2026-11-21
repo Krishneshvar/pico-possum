@@ -4,7 +4,7 @@ import { Users, Plus, Phone, MapPin, Edit2, Trash2, Receipt } from 'lucide-react
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatDate, formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { formatDate, formatCurrency, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
@@ -96,7 +96,7 @@ export default function CustomersView() {
 
     const rows = customers.map((c) => {
       const totalSales = c.totalSales ?? c.total_sales ?? 0;
-      const totalSpent = c.totalSpentPaise ?? c.total_spent_paise ?? 0;
+      const totalSpent = c.totalSpentCents ?? c.total_spent_cents ?? 0;
       const lastVisit = c.lastSaleDate ?? c.last_sale_date;
       return [
         escapeCsv(c.name || ''),
@@ -135,7 +135,7 @@ export default function CustomersView() {
 
     const rows = customers.map((c) => {
       const totalSales = c.totalSales ?? c.total_sales ?? 0;
-      const totalSpent = c.totalSpentPaise ?? c.total_spent_paise ?? 0;
+      const totalSpent = c.totalSpentCents ?? c.total_spent_cents ?? 0;
       const lastVisit = c.lastSaleDate ?? c.last_sale_date;
       return [
         c.name || '',
@@ -202,11 +202,11 @@ export default function CustomersView() {
       ),
     },
     {
-      key: 'totalSpentPaise',
+      key: 'totalSpentCents',
       label: strings.customers.columns.totalSpent,
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.totalSpentPaise ?? r.total_spent_paise ?? 0),
+      render: (r) => formatCurrency(r.totalSpentCents ?? r.total_spent_cents ?? 0),
     },
     {
       key: 'lastVisit',

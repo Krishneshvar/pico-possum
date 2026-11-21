@@ -82,7 +82,7 @@ src-tauri/src/
 - **Separation of Concerns**: IPC commands in `commands/` must remain thin; all core business validation and calculation belongs in `application/`.
 - **Validation**: Every payload must be validated in `application/validation_svc.rs` before database execution.
 - **Maintainability**: No individual source file should exceed 500 lines. Break large components into submodules.
-- **No Hardcoded Currency**: Never hardcode currency symbols like `₹` or `$`. Use `formatPaise` and `getCurrencySymbol` from `src/lib/formatters.js`.
+- **No Hardcoded Currency**: Never hardcode currency symbols like `$` or `€`. Use `formatCurrency` and `getCurrencySymbol` from `src/lib/formatters.js`.
 
 ---
 

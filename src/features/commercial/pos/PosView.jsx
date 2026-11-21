@@ -5,7 +5,7 @@ import { tauriApi } from '../../../lib/tauri';
 import { usePosStore, computeBillTotals } from '../../../stores/pos.store';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { formatCurrency, getCurrencySymbol } from '../../../lib/formatters';
 import { validateUnitPriceAgainstMrp } from '../../../lib/validation';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import PosBillEditor from './PosBillEditor';
@@ -181,8 +181,8 @@ export default function PosView() {
       currentBill.paymentMethod === 'CASH' ||
       currentBill.paymentMethod === 'GIFT_CARD';
     const isFull = currentBill.isFullPayment !== false;
-    const tendered = currentBill.amountTenderedPaise || 0;
-    const total = totals.totalPaise;
+    const tendered = currentBill.amountTenderedCents || 0;
+    const total = totals.totalCents;
 
     // Amount tendered checks apply to cash and gift card payments; digital methods (UPI, Card) settle the exact amount
     if (requiresTender) {
@@ -191,7 +191,7 @@ export default function PosView() {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
           toast.info(
-            strings.pos.view.enterTenderedAmount(formatPaise(total)),
+            strings.pos.view.enterTenderedAmount(formatCurrency(total)),
             { title: strings.pos.view.tenderRequiredTitle }
           );
           return;
@@ -201,7 +201,7 @@ export default function PosView() {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
           toast.info(
-            strings.pos.view.enterPartialPayment(formatPaise(total)),
+            strings.pos.view.enterPartialPayment(formatCurrency(total)),
             { title: strings.pos.view.tenderRequiredTitle }
           );
           return;
@@ -210,7 +210,7 @@ export default function PosView() {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
           toast.warning(
-            strings.pos.toasts.partialPaymentLimit(formatPaise(total)),
+            strings.pos.toasts.partialPaymentLimit(formatCurrency(total)),
             { title: strings.pos.toasts.partialPaymentLimitTitle }
           );
           return;
@@ -232,7 +232,7 @@ export default function PosView() {
     }
 
     for (const item of currentBill.items) {
-      const priceErr = validateUnitPriceAgainstMrp(item.unitPricePaise, item.mrpPaise, item.name);
+      const priceErr = validateUnitPriceAgainstMrp(item.unitPriceCents, item.mrpCents, item.name);
       if (priceErr) {
         toast.warning(priceErr);
         return;
@@ -247,12 +247,12 @@ export default function PosView() {
       items: currentBill.items.map((it) => ({
         productId: it.productId,
         quantity: it.quantity,
-        unitPricePaise: it.unitPricePaise,
-        discountPaise: it.discountPaise || 0,
+        unitPriceCents: it.unitPriceCents,
+        discountCents: it.discountCents || 0,
       })),
-      discountPaise: totals.discountPaise,
+      discountCents: totals.discountCents,
       paymentMethod: currentBill.paymentMethod,
-      paidPaise: totals.tenderedPaise,
+      paidCents: totals.tenderedCents,
       notes: currentBill.notes?.trim() || null,
     };
 
@@ -356,15 +356,15 @@ export default function PosView() {
     currentBill.paymentMethod === 'CASH' ||
     currentBill.paymentMethod === 'GIFT_CARD';
   const isFullPayment = currentBill.isFullPayment !== false;
-  const tenderedPaise = currentBill.amountTenderedPaise || 0;
-  const totalPaise = totals.totalPaise;
+  const tenderedCents = currentBill.amountTenderedCents || 0;
+  const totalCents = totals.totalCents;
 
   // Amount tendered checks apply to cash and gift card payments; digital methods (UPI, Card) settle the exact amount
   const isPaymentValid = !requiresTender
     ? true
     : isFullPayment
-      ? totalPaise === 0 || tenderedPaise >= totalPaise
-      : totalPaise > 0 && tenderedPaise > 0 && tenderedPaise < totalPaise;
+      ? totalCents === 0 || tenderedCents >= totalCents
+      : totalCents > 0 && tenderedCents > 0 && tenderedCents < totalCents;
 
   const canCompleteSale =
     !saleMutation.isPending &&
@@ -434,13 +434,13 @@ export default function PosView() {
             </div>
 
             {/* Change banner */}
-            {(completedSale.changePaise ?? completedSale.change_paise ?? 0) > 0 && (
+            {(completedSale.changeCents ?? completedSale.change_cents ?? 0) > 0 && (
               <div className="bg-surface-secondary p-3.5 rounded-xl border border-border-default text-center">
                 <div className="text-[11px] text-text-muted uppercase font-bold tracking-wider">
                   {strings.pos.view.changeToReturn}
                 </div>
                 <div className="text-2xl font-black text-text-primary financial-value mt-0.5">
-                  {formatPaise(completedSale.changePaise ?? completedSale.change_paise)}
+                  {formatCurrency(completedSale.changeCents ?? completedSale.change_cents)}
                 </div>
               </div>
             )}

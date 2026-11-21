@@ -1,5 +1,5 @@
 import { Banknote, QrCode, CreditCard, Gift } from 'lucide-react';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { strings } from '../../../lib/strings';
 
 export default function PaymentDistributionSection({
@@ -21,7 +21,7 @@ export default function PaymentDistributionSection({
           <p className="text-xs text-content-secondary">{strings.reports.payments.subtitle}</p>
         </div>
         <span className="text-xs font-semibold text-content financial-value">
-          {strings.reports.payments.total(formatPaise(totalRev))}
+          {strings.reports.payments.total(formatCurrency(totalRev))}
         </span>
       </div>
 
@@ -33,28 +33,28 @@ export default function PaymentDistributionSection({
               <div
                 style={{ width: `${cashPct}%`, backgroundColor: '#2563EB' }}
                 className="h-full transition-all"
-                title={strings.reports.payments.barTooltip(strings.reports.payments.cash, formatPaise(cashRev), cashPct.toFixed(1))}
+                title={strings.reports.payments.barTooltip(strings.reports.payments.cash, formatCurrency(cashRev), cashPct.toFixed(1))}
               />
             )}
             {upiPct > 0 && (
               <div
                 style={{ width: `${upiPct}%`, backgroundColor: '#0F766E' }}
                 className="h-full transition-all"
-                title={strings.reports.payments.barTooltip(strings.reports.payments.upiQr, formatPaise(upiRev), upiPct.toFixed(1))}
+                title={strings.reports.payments.barTooltip(strings.reports.payments.upiQr, formatCurrency(upiRev), upiPct.toFixed(1))}
               />
             )}
             {cardPct > 0 && (
               <div
                 style={{ width: `${cardPct}%`, backgroundColor: '#7C3AED' }}
                 className="h-full transition-all"
-                title={strings.reports.payments.barTooltip(strings.reports.payments.card, formatPaise(cardRev), cardPct.toFixed(1))}
+                title={strings.reports.payments.barTooltip(strings.reports.payments.card, formatCurrency(cardRev), cardPct.toFixed(1))}
               />
             )}
             {giftCardPct > 0 && (
               <div
                 style={{ width: `${giftCardPct}%`, backgroundColor: '#D97706' }}
                 className="h-full transition-all"
-                title={strings.reports.payments.barTooltip(strings.reports.payments.giftCard, formatPaise(giftCardRev), giftCardPct.toFixed(1))}
+                title={strings.reports.payments.barTooltip(strings.reports.payments.giftCard, formatCurrency(giftCardRev), giftCardPct.toFixed(1))}
               />
             )}
           </div>
@@ -64,26 +64,26 @@ export default function PaymentDistributionSection({
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#2563EB' }} />
               <span className="font-medium text-content">{strings.reports.payments.cash}:</span>
-              <span className="financial-value">{formatPaise(cashRev)}</span>
+              <span className="financial-value">{formatCurrency(cashRev)}</span>
               <span className="text-content-muted">({cashPct.toFixed(1)}%)</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#0F766E' }} />
               <span className="font-medium text-content">{strings.reports.payments.upiQr}:</span>
-              <span className="financial-value">{formatPaise(upiRev)}</span>
+              <span className="financial-value">{formatCurrency(upiRev)}</span>
               <span className="text-content-muted">({upiPct.toFixed(1)}%)</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#7C3AED' }} />
               <span className="font-medium text-content">{strings.reports.payments.card}:</span>
-              <span className="financial-value">{formatPaise(cardRev)}</span>
+              <span className="financial-value">{formatCurrency(cardRev)}</span>
               <span className="text-content-muted">({cardPct.toFixed(1)}%)</span>
             </span>
             {giftCardPct > 0 && (
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#D97706' }} />
                 <span className="font-medium text-content">{strings.reports.payments.giftCard}:</span>
-                <span className="financial-value">{formatPaise(giftCardRev)}</span>
+                <span className="financial-value">{formatCurrency(giftCardRev)}</span>
                 <span className="text-content-muted">({giftCardPct.toFixed(1)}%)</span>
               </span>
             )}
@@ -98,7 +98,7 @@ export default function PaymentDistributionSection({
             <Banknote className="w-4 h-4 text-brand" /> Cash
           </div>
           <div className="text-lg font-semibold text-content financial-value">
-            {formatPaise(cashRev)}
+            {formatCurrency(cashRev)}
           </div>
           <div className="text-[11px] text-content-muted">
             {cashPct.toFixed(1)}% of total revenue
@@ -110,7 +110,7 @@ export default function PaymentDistributionSection({
             <QrCode className="w-4 h-4 text-teal-600" /> UPI / QR
           </div>
           <div className="text-lg font-semibold text-content financial-value">
-            {formatPaise(upiRev)}
+            {formatCurrency(upiRev)}
           </div>
           <div className="text-[11px] text-content-muted">
             {upiPct.toFixed(1)}% of total revenue
@@ -122,7 +122,7 @@ export default function PaymentDistributionSection({
             <CreditCard className="w-4 h-4 text-purple-600" /> Card
           </div>
           <div className="text-lg font-semibold text-content financial-value">
-            {formatPaise(cardRev)}
+            {formatCurrency(cardRev)}
           </div>
           <div className="text-[11px] text-content-muted">
             {cardPct.toFixed(1)}% of total revenue
@@ -134,7 +134,7 @@ export default function PaymentDistributionSection({
             <Gift className="w-4 h-4 text-amber-600" /> Gift Card
           </div>
           <div className="text-lg font-semibold text-content financial-value">
-            {formatPaise(giftCardRev)}
+            {formatCurrency(giftCardRev)}
           </div>
           <div className="text-[11px] text-content-muted">
             {giftCardPct.toFixed(1)}% of total revenue

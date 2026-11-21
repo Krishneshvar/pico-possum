@@ -4,7 +4,7 @@ import { Save } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { computeBillTotals } from '../../../stores/pos.store';
 import { strings } from '../../../lib/strings';
 import { validateUnitPriceAgainstMrp } from '../../../lib/validation';
@@ -55,17 +55,17 @@ export function useBillEditDraft({
         items: items.map((it) => {
           const productId = it.productId ?? it.product_id;
           const product = catalogProducts.find((p) => p.id === productId);
-          const unitPrice = it.unitPricePaise ?? it.unit_price_paise;
+          const unitPrice = it.unitPriceCents ?? it.unit_price_cents;
           return {
             productId,
             name: it.productName ?? it.product_name,
             sku: it.productSku ?? it.product_sku ?? product?.sku ?? '',
-            unitPricePaise: unitPrice,
-            mrpPaise: product?.mrpPaise ?? product?.mrp_paise ?? unitPrice,
-            costPricePaise: product?.costPricePaise ?? product?.cost_price_paise ?? it.costPricePaise ?? it.cost_price_paise ?? 0,
+            unitPriceCents: unitPrice,
+            mrpCents: product?.mrpCents ?? product?.mrp_cents ?? unitPrice,
+            costPriceCents: product?.costPriceCents ?? product?.cost_price_cents ?? it.costPriceCents ?? it.cost_price_cents ?? 0,
             taxRate: it.taxRate ?? it.tax_rate ?? 0,
             quantity: it.quantity,
-            discountPaise: it.discountPaise ?? it.discount_paise ?? 0,
+            discountCents: it.discountCents ?? it.discount_cents ?? 0,
           };
         }),
         customer:
@@ -78,10 +78,10 @@ export function useBillEditDraft({
               }
             : null,
         discountType: 'FIXED',
-        discountValue: ((sale.discountPaise ?? sale.discount_paise) || 0) / 100,
+        discountValue: ((sale.discountCents ?? sale.discount_cents) || 0) / 100,
         paymentMethod: (sale.paymentMethod ?? sale.payment_method) || 'CASH',
-        isFullPayment: (sale.paidPaise ?? sale.paid_paise) === (sale.totalPaise ?? sale.total_paise),
-        amountTenderedPaise: (sale.paidPaise ?? sale.paid_paise) || 0,
+        isFullPayment: (sale.paidCents ?? sale.paid_cents) === (sale.totalCents ?? sale.total_cents),
+        amountTenderedCents: (sale.paidCents ?? sale.paid_cents) || 0,
         notes: sale.notes || '',
       });
     },
@@ -141,10 +141,10 @@ export function useBillEditDraft({
       draftBill.paymentMethod === 'GIFT_CARD';
     if (!requiresTender) return true;
     const isFull = draftBill.isFullPayment !== false;
-    const tendered = draftBill.amountTenderedPaise || 0;
-    const total = draftTotals.totalPaise;
+    const tendered = draftBill.amountTenderedCents || 0;
+    const total = draftTotals.totalCents;
     return isFull ? total === 0 || tendered >= total : total > 0 && tendered > 0 && tendered < total;
-  }, [draftBill, draftTotals.totalPaise]);
+  }, [draftBill, draftTotals.totalCents]);
 
   const addProductToDraft = (product) => {
     if (!allowNegativeStock) {
@@ -179,12 +179,12 @@ export function useBillEditDraft({
               productId: product.id,
               name: product.name,
               sku: product.sku || '',
-              unitPricePaise: (product.mrpPaise ?? product.mrp_paise) || 0,
-              mrpPaise: (product.mrpPaise ?? product.mrp_paise) || 0,
-              costPricePaise: (product.costPricePaise ?? product.cost_price_paise) || 0,
+              unitPriceCents: (product.mrpCents ?? product.mrp_cents) || 0,
+              mrpCents: (product.mrpCents ?? product.mrp_cents) || 0,
+              costPriceCents: (product.costPriceCents ?? product.cost_price_cents) || 0,
               taxRate: (product.taxRate ?? product.tax_rate) || 0,
               quantity: 1,
-              discountPaise: 0,
+              discountCents: 0,
             },
           ];
       return { ...prev, items };
@@ -224,33 +224,33 @@ export function useBillEditDraft({
     );
   };
 
-  const updateDraftItemPrice = (productId, unitPricePaise) => {
+  const updateDraftItemPrice = (productId, unitPriceCents) => {
     setDraftBill((prev) =>
       prev
         ? {
             ...prev,
             items: prev.items.map((it) => {
               if (it.productId !== productId) return it;
-              const mrp = it.mrpPaise ?? it.unitPricePaise;
+              const mrp = it.mrpCents ?? it.unitPriceCents;
               const capped =
                 mrp != null
-                  ? Math.min(Math.max(0, unitPricePaise || 0), mrp)
-                  : Math.max(0, unitPricePaise || 0);
-              return { ...it, unitPricePaise: capped };
+                  ? Math.min(Math.max(0, unitPriceCents || 0), mrp)
+                  : Math.max(0, unitPriceCents || 0);
+              return { ...it, unitPriceCents: capped };
             }),
           }
         : prev
     );
   };
 
-  const updateDraftItemDiscount = (productId, discountPaise) => {
+  const updateDraftItemDiscount = (productId, discountCents) => {
     setDraftBill((prev) =>
       prev
         ? {
             ...prev,
             items: prev.items.map((it) =>
               it.productId === productId
-                ? { ...it, discountPaise: Math.max(0, discountPaise || 0) }
+                ? { ...it, discountCents: Math.max(0, discountCents || 0) }
                 : it
             ),
           }
@@ -288,9 +288,9 @@ export function useBillEditDraft({
     setDraftBill((prev) => (prev ? { ...prev, isFullPayment } : prev));
   };
 
-  const setDraftAmountTendered = (amountTenderedPaise) => {
+  const setDraftAmountTendered = (amountTenderedCents) => {
     setDraftBill((prev) =>
-      prev ? { ...prev, amountTenderedPaise: Math.max(0, amountTenderedPaise || 0) } : prev
+      prev ? { ...prev, amountTenderedCents: Math.max(0, amountTenderedCents || 0) } : prev
     );
   };
 
@@ -348,15 +348,15 @@ export function useBillEditDraft({
       draftBill.paymentMethod === 'CASH' ||
       draftBill.paymentMethod === 'GIFT_CARD';
     const isFull = draftBill.isFullPayment !== false;
-    const tendered = draftBill.amountTenderedPaise || 0;
-    const total = draftTotals.totalPaise;
+    const tendered = draftBill.amountTenderedCents || 0;
+    const total = draftTotals.totalCents;
 
     if (requiresTender) {
       if (isFull) {
         if (total > 0 && tendered < total) {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
-          const message = b.validation.fullPaymentRequired(formatPaise(total));
+          const message = b.validation.fullPaymentRequired(formatCurrency(total));
           setEditError(message);
           toast.warning(message);
           return;
@@ -373,7 +373,7 @@ export function useBillEditDraft({
         if (total > 0 && tendered >= total) {
           amountTenderedInputRef.current?.focus();
           amountTenderedInputRef.current?.select();
-          const message = b.validation.partialPaymentTooHigh(formatPaise(total));
+          const message = b.validation.partialPaymentTooHigh(formatCurrency(total));
           setEditError(message);
           toast.warning(message);
           return;
@@ -382,7 +382,7 @@ export function useBillEditDraft({
     }
 
     for (const item of draftBill.items) {
-      const priceErr = validateUnitPriceAgainstMrp(item.unitPricePaise, item.mrpPaise, item.name);
+      const priceErr = validateUnitPriceAgainstMrp(item.unitPriceCents, item.mrpCents, item.name);
       if (priceErr) {
         setEditError(priceErr);
         toast.warning(priceErr);
@@ -416,12 +416,12 @@ export function useBillEditDraft({
       items: draftBill.items.map((it) => ({
         productId: it.productId,
         quantity: Number(it.quantity),
-        unitPricePaise: Number(it.unitPricePaise),
-        discountPaise: Number(it.discountPaise || 0),
+        unitPriceCents: Number(it.unitPriceCents),
+        discountCents: Number(it.discountCents || 0),
       })),
-      discountPaise: draftTotals.discountPaise,
+      discountCents: draftTotals.discountCents,
       paymentMethod: draftBill.paymentMethod,
-      paidPaise: requiresTender ? draftTotals.tenderedPaise : draftTotals.totalPaise,
+      paidCents: requiresTender ? draftTotals.tenderedCents : draftTotals.totalCents,
       notes: amendmentReason
         ? `[Amended: ${amendmentReason}] ${draftBill.notes || ''}`.trim()
         : draftBill.notes || null,

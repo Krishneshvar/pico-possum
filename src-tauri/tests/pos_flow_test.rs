@@ -47,8 +47,8 @@ async fn test_full_pos_lifecycle() {
             name: "Dairy Milk Silk".to_string(),
             sku: Some("DMS-100".to_string()),
             category_id: Some(cat.id.clone()),
-            cost_price_paise: Some(8000), // ₹80.00
-            mrp_paise: 9500,              // ₹95.00
+            cost_price_cents: Some(8000), // $80.00
+            mrp_cents: 9500,              // $95.00
             tax_rate: Some(18.0),
             initial_stock: Some(50),
             min_stock_alert: Some(5),
@@ -59,7 +59,7 @@ async fn test_full_pos_lifecycle() {
     .expect("Failed to create product");
 
     assert_eq!(prod.current_stock, 50);
-    assert_eq!(prod.mrp_paise, 9500);
+    assert_eq!(prod.mrp_cents, 9500);
 
     // Verify stock ledger has initial count
     let movements = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
@@ -81,7 +81,7 @@ async fn test_full_pos_lifecycle() {
     .await
     .expect("Failed to create customer");
 
-    // 4. Process Sale (Cart: 2x Dairy Milk Silk @ 9500 paise = 19000 paise, discount 1000 paise => 18000 paise)
+    // 4. Process Sale (Cart: 2x Dairy Milk Silk @ 9500 cents = 19000 cents, discount 1000 cents => 18000 cents)
     let sale_res = SalesService::process_sale(
         &pool,
         CreateSalePayload {
@@ -92,12 +92,12 @@ async fn test_full_pos_lifecycle() {
             items: vec![CreateSaleItemPayload {
                 product_id: prod.id.clone(),
                 quantity: 2,
-                unit_price_paise: 9500,
-                discount_paise: Some(0),
+                unit_price_cents: 9500,
+                discount_cents: Some(0),
             }],
-            discount_paise: Some(1000),
+            discount_cents: Some(1000),
             payment_method: "CASH".to_string(),
-            paid_paise: 20000,
+            paid_cents: 20000,
             notes: Some("Test POS sale".to_string()),
         },
     )
@@ -105,9 +105,9 @@ async fn test_full_pos_lifecycle() {
     .expect("Failed to process sale");
 
     assert!(sale_res.sale.invoice_number.starts_with("S"), "Invoice should start with S prefix");
-    assert_eq!(sale_res.sale.total_paise, 18000);
+    assert_eq!(sale_res.sale.total_cents, 18000);
     assert_eq!(sale_res.sale.status, "PAID");
-    assert_eq!(sale_res.change_paise, 2000);
+    assert_eq!(sale_res.change_cents, 2000);
 
     // 5. Verify product stock was decremented from 50 to 48
     let updated_prod = InventoryService::get_product_by_id(&pool, &prod.id)
@@ -260,7 +260,7 @@ async fn test_bill_edit_lifecycle() {
         CreateProductPayload {
             name: "Product A".into(), sku: Some("PA-1".into()),
             category_id: Some(cat.id.clone()),
-            cost_price_paise: Some(500), mrp_paise: 1000,
+            cost_price_cents: Some(500), mrp_cents: 1000,
             tax_rate: Some(0.0), initial_stock: Some(100),
             min_stock_alert: Some(5), status: Some("active".into()),
         },
@@ -271,7 +271,7 @@ async fn test_bill_edit_lifecycle() {
         CreateProductPayload {
             name: "Product B".into(), sku: Some("PB-1".into()),
             category_id: Some(cat.id.clone()),
-            cost_price_paise: Some(800), mrp_paise: 1500,
+            cost_price_cents: Some(800), mrp_cents: 1500,
             tax_rate: Some(0.0), initial_stock: Some(50),
             min_stock_alert: Some(5), status: Some("active".into()),
         },
@@ -288,17 +288,17 @@ async fn test_bill_edit_lifecycle() {
             items: vec![CreateSaleItemPayload {
                 product_id: prod_a.id.clone(),
                 quantity: 3,
-                unit_price_paise: 1000,
-                discount_paise: Some(0),
+                unit_price_cents: 1000,
+                discount_cents: Some(0),
             }],
-            discount_paise: Some(0),
+            discount_cents: Some(0),
             payment_method: "CASH".into(),
-            paid_paise: 3000,
+            paid_cents: 3000,
             notes: None,
         },
     ).await.expect("Original sale failed");
 
-    assert_eq!(sale_res.sale.total_paise, 3000);
+    assert_eq!(sale_res.sale.total_cents, 3000);
 
     // Verify stock: A went 100 → 97
     let a_after_sale = InventoryService::get_product_by_id(&pool, &prod_a.id).await.unwrap();
@@ -317,24 +317,24 @@ async fn test_bill_edit_lifecycle() {
                 UpdateSaleItemPayload {
                     product_id: prod_a.id.clone(),
                     quantity: 1,
-                    unit_price_paise: 1000,
-                    discount_paise: Some(0),
+                    unit_price_cents: 1000,
+                    discount_cents: Some(0),
                 },
                 UpdateSaleItemPayload {
                     product_id: prod_b.id.clone(),
                     quantity: 2,
-                    unit_price_paise: 1500,
-                    discount_paise: Some(0),
+                    unit_price_cents: 1500,
+                    discount_cents: Some(0),
                 },
             ],
-            discount_paise: Some(0),
+            discount_cents: Some(0),
             payment_method: "UPI".into(),
-            paid_paise: 4000,
+            paid_cents: 4000,
             notes: Some("Corrected bill".into()),
         },
     ).await.expect("Bill edit failed");
 
-    assert_eq!(updated.sale.total_paise, 4000); // 1*1000 + 2*1500
+    assert_eq!(updated.sale.total_cents, 4000); // 1*1000 + 2*1500
     assert_eq!(updated.sale.customer_name, Some("Updated Customer".into()));
     assert_eq!(updated.sale.payment_method, "UPI".to_string());
     assert_eq!(updated.items.len(), 2);
@@ -361,14 +361,14 @@ async fn test_bill_edit_lifecycle() {
     let a_flow = InventoryService::get_product_flow(&pool, Some(prod_a.id.clone()), None, None, 10).await.unwrap();
     assert_eq!(a_flow.len(), 1);
     assert_eq!(a_flow[0].quantity, -1); // 1 unit sold (stored as -1 qty change in flow)
-    assert_eq!(a_flow[0].unit_price_paise, 1000);
-    assert_eq!(a_flow[0].total_paise, 1000);
+    assert_eq!(a_flow[0].unit_price_cents, 1000);
+    assert_eq!(a_flow[0].total_cents, 1000);
 
     let b_flow = InventoryService::get_product_flow(&pool, Some(prod_b.id.clone()), None, None, 10).await.unwrap();
     assert_eq!(b_flow.len(), 1);
     assert_eq!(b_flow[0].quantity, -2); // 2 units sold
-    assert_eq!(b_flow[0].unit_price_paise, 1500);
-    assert_eq!(b_flow[0].total_paise, 3000);
+    assert_eq!(b_flow[0].unit_price_cents, 1500);
+    assert_eq!(b_flow[0].total_cents, 3000);
 
     // Cancel bill and verify it drops out of product flow
     SalesService::cancel_sale(&pool, &updated.sale.id, "Customer returned").await.unwrap();
@@ -404,8 +404,8 @@ async fn test_bill_input_item_order_preserved() {
         name: "Zucchini Squash".to_string(),
         sku: Some("SKU-Z".to_string()),
         category_id: None,
-        mrp_paise: 4000,
-        cost_price_paise: Some(2000),
+        mrp_cents: 4000,
+        cost_price_cents: Some(2000),
         tax_rate: Some(0.0),
         initial_stock: Some(100),
         min_stock_alert: Some(5),
@@ -416,8 +416,8 @@ async fn test_bill_input_item_order_preserved() {
         name: "Apple Royal Gala".to_string(),
         sku: Some("SKU-A".to_string()),
         category_id: None,
-        mrp_paise: 8000,
-        cost_price_paise: Some(4000),
+        mrp_cents: 8000,
+        cost_price_cents: Some(4000),
         tax_rate: Some(0.0),
         initial_stock: Some(100),
         min_stock_alert: Some(5),
@@ -428,8 +428,8 @@ async fn test_bill_input_item_order_preserved() {
         name: "Banana Cavendish".to_string(),
         sku: Some("SKU-B".to_string()),
         category_id: None,
-        mrp_paise: 2500,
-        cost_price_paise: Some(1000),
+        mrp_cents: 2500,
+        cost_price_cents: Some(1000),
         tax_rate: Some(0.0),
         initial_stock: Some(100),
         min_stock_alert: Some(5),
@@ -440,8 +440,8 @@ async fn test_bill_input_item_order_preserved() {
         name: "Carrot Organic".to_string(),
         sku: Some("SKU-C".to_string()),
         category_id: None,
-        mrp_paise: 3000,
-        cost_price_paise: Some(1500),
+        mrp_cents: 3000,
+        cost_price_cents: Some(1500),
         tax_rate: Some(0.0),
         initial_stock: Some(100),
         min_stock_alert: Some(5),
@@ -453,26 +453,26 @@ async fn test_bill_input_item_order_preserved() {
         CreateSaleItemPayload {
             product_id: prod_z.id.clone(),
             quantity: 1,
-            unit_price_paise: 4000,
-            discount_paise: Some(0),
+            unit_price_cents: 4000,
+            discount_cents: Some(0),
         },
         CreateSaleItemPayload {
             product_id: prod_a.id.clone(),
             quantity: 2,
-            unit_price_paise: 8000,
-            discount_paise: Some(0),
+            unit_price_cents: 8000,
+            discount_cents: Some(0),
         },
         CreateSaleItemPayload {
             product_id: prod_b.id.clone(),
             quantity: 3,
-            unit_price_paise: 2500,
-            discount_paise: Some(0),
+            unit_price_cents: 2500,
+            discount_cents: Some(0),
         },
         CreateSaleItemPayload {
             product_id: prod_c.id.clone(),
             quantity: 4,
-            unit_price_paise: 3000,
-            discount_paise: Some(0),
+            unit_price_cents: 3000,
+            discount_cents: Some(0),
         },
     ];
 
@@ -482,9 +482,9 @@ async fn test_bill_input_item_order_preserved() {
         customer_phone: None,
         customer_address: None,
         items: input_items,
-        discount_paise: Some(0),
+        discount_cents: Some(0),
         payment_method: "CASH".to_string(),
-        paid_paise: 50000,
+        paid_cents: 50000,
         notes: None,
     }).await.expect("Sale processing should succeed");
 
@@ -515,20 +515,20 @@ async fn test_bill_input_item_order_preserved() {
         UpdateSaleItemPayload {
             product_id: prod_c.id.clone(),
             quantity: 5,
-            unit_price_paise: 3000,
-            discount_paise: Some(0),
+            unit_price_cents: 3000,
+            discount_cents: Some(0),
         },
         UpdateSaleItemPayload {
             product_id: prod_z.id.clone(),
             quantity: 2,
-            unit_price_paise: 4000,
-            discount_paise: Some(0),
+            unit_price_cents: 4000,
+            discount_cents: Some(0),
         },
         UpdateSaleItemPayload {
             product_id: prod_a.id.clone(),
             quantity: 1,
-            unit_price_paise: 8000,
-            discount_paise: Some(0),
+            unit_price_cents: 8000,
+            discount_cents: Some(0),
         },
     ];
 
@@ -539,9 +539,9 @@ async fn test_bill_input_item_order_preserved() {
         customer_phone: None,
         customer_address: None,
         items: amended_items,
-        discount_paise: Some(0),
+        discount_cents: Some(0),
         payment_method: "CASH".to_string(),
-        paid_paise: 50000,
+        paid_cents: 50000,
         notes: None,
     }).await.expect("Sale amendment should succeed");
 
@@ -585,8 +585,8 @@ async fn test_product_deletion_clears_stock_and_records_movement() {
             name: "Deletion Stock Test Item".to_string(),
             sku: Some("DEL-005".to_string()),
             category_id: None,
-            cost_price_paise: Some(1000),
-            mrp_paise: 2000,
+            cost_price_cents: Some(1000),
+            mrp_cents: 2000,
             tax_rate: Some(0.0),
             initial_stock: Some(5),
             min_stock_alert: Some(1),

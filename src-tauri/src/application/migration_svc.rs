@@ -184,19 +184,19 @@ impl MigrationService {
             let new_uuid = Uuid::new_v4().to_string();
             product_map.insert(old_id, new_uuid.clone());
 
-            let mrp_paise = (mrp_num * 100.0).round() as i64;
-            let cost_price_paise = (cost_num * 100.0).round() as i64;
+            let mrp_cents = (mrp_num * 100.0).round() as i64;
+            let cost_price_cents = (cost_num * 100.0).round() as i64;
             let target_cat_id = old_cat_id.and_then(|cid| category_map.get(&cid).cloned());
             let is_deleted = deleted_at.is_some();
             let c_at = created_at.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
             let u_at = updated_at.unwrap_or_else(|| c_at.clone());
 
             sqlx::query(
-                "INSERT INTO products (id, name, sku, category_id, mrp_paise, cost_price_paise, tax_rate, current_stock, status, is_deleted, created_at, updated_at)
+                "INSERT INTO products (id, name, sku, category_id, mrp_cents, cost_price_cents, tax_rate, current_stock, status, is_deleted, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(sku) DO UPDATE SET
                     name = excluded.name,
-                    mrp_paise = excluded.mrp_paise,
+                    mrp_cents = excluded.mrp_cents,
                     current_stock = excluded.current_stock,
                     updated_at = excluded.updated_at"
             )
@@ -204,8 +204,8 @@ impl MigrationService {
             .bind(&name)
             .bind(&sku)
             .bind(&target_cat_id)
-            .bind(mrp_paise)
-            .bind(cost_price_paise)
+            .bind(mrp_cents)
+            .bind(cost_price_cents)
             .bind(tax_rate)
             .bind(cached_stock)
             .bind(&status)
@@ -250,11 +250,11 @@ impl MigrationService {
             sale_map.insert(old_id, new_sale_uuid.clone());
 
             let target_cust_id = old_cust_id.and_then(|cid| customer_map.get(&cid).cloned());
-            let total_paise = (total_f64 * 100.0).round() as i64;
-            let paid_paise = (paid_f64 * 100.0).round() as i64;
-            let discount_paise = (discount_f64 * 100.0).round() as i64;
-            let tax_paise = (tax_f64 * 100.0).round() as i64;
-            let subtotal_paise = total_paise + discount_paise;
+            let total_cents = (total_f64 * 100.0).round() as i64;
+            let paid_cents = (paid_f64 * 100.0).round() as i64;
+            let discount_cents = (discount_f64 * 100.0).round() as i64;
+            let tax_cents = (tax_f64 * 100.0).round() as i64;
+            let subtotal_cents = total_cents + discount_cents;
 
             let payment_method = match raw_pm.as_deref().unwrap_or("Cash").to_uppercase().as_str() {
                 "CARD" => "CARD",
@@ -266,7 +266,7 @@ impl MigrationService {
             let s_date = sale_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
             sqlx::query(
-                "INSERT INTO sales (id, invoice_number, customer_id, customer_name, customer_phone, biller_name, subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise, payment_method, status, fulfillment_status, notes, created_at)
+                "INSERT INTO sales (id, invoice_number, customer_id, customer_name, customer_phone, biller_name, subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents, payment_method, status, fulfillment_status, notes, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
                  ON CONFLICT(invoice_number) DO NOTHING"
             )
@@ -276,11 +276,11 @@ impl MigrationService {
             .bind(&customer_name)
             .bind(&customer_phone)
             .bind(&biller_name)
-            .bind(subtotal_paise)
-            .bind(discount_paise)
-            .bind(tax_paise)
-            .bind(total_paise)
-            .bind(paid_paise)
+            .bind(subtotal_cents)
+            .bind(discount_cents)
+            .bind(tax_cents)
+            .bind(total_cents)
+            .bind(paid_cents)
             .bind(payment_method)
             .bind(&status)
             .bind(&fulfillment_status)
@@ -316,7 +316,7 @@ impl MigrationService {
                 let src: Option<String> = row.get("source_file");
 
                 let uid = Uuid::new_v4().to_string();
-                let paise = (net_num * 100.0).round() as i64;
+                let cents = (net_num * 100.0).round() as i64;
                 let pm = match raw_pm.as_deref().unwrap_or("Cash").to_uppercase().as_str() {
                     "CARD" => "CARD",
                     "UPI" => "UPI",
@@ -326,16 +326,16 @@ impl MigrationService {
                 let dt = s_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
                 let res = sqlx::query(
-                    "INSERT INTO sales (id, invoice_number, customer_id, customer_name, customer_phone, biller_name, subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise, payment_method, status, fulfillment_status, notes, created_at)
+                    "INSERT INTO sales (id, invoice_number, customer_id, customer_name, customer_phone, biller_name, subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents, payment_method, status, fulfillment_status, notes, created_at)
                      VALUES (?, ?, NULL, ?, NULL, NULL, ?, 0, 0, ?, ?, ?, 'LEGACY', 'FULFILLED', ?, ?)
                      ON CONFLICT(invoice_number) DO NOTHING"
                 )
                 .bind(&uid)
                 .bind(&inv)
                 .bind(&c_name)
-                .bind(paise)
-                .bind(paise)
-                .bind(paise)
+                .bind(cents)
+                .bind(cents)
+                .bind(cents)
                 .bind(pm)
                 .bind(&src)
                 .bind(&dt)
@@ -376,11 +376,11 @@ impl MigrationService {
                 let p_name: String = row.try_get("product_name").unwrap_or_else(|_| "Item".to_string());
                 let p_sku: Option<String> = row.try_get("product_sku").ok();
 
-                let unit_price_paise = (price_num * 100.0).round() as i64;
-                let cost_price_paise = (cost_num * 100.0).round() as i64;
-                let discount_paise = (disc_num * 100.0).round() as i64;
-                let tax_paise = (tax_num * 100.0).round() as i64;
-                let total_paise = (unit_price_paise * quantity) - discount_paise;
+                let unit_price_cents = (price_num * 100.0).round() as i64;
+                let cost_price_cents = (cost_num * 100.0).round() as i64;
+                let discount_cents = (disc_num * 100.0).round() as i64;
+                let tax_cents = (tax_num * 100.0).round() as i64;
+                let total_cents = (unit_price_cents * quantity) - discount_cents;
 
                 let item_uuid = Uuid::new_v4().to_string();
                 let order_entry = sale_item_order_map.entry(sale_uuid.clone()).or_insert(0);
@@ -388,7 +388,7 @@ impl MigrationService {
                 *order_entry += 1;
 
                 sqlx::query(
-                    "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_paise, cost_price_paise, discount_paise, tax_rate, tax_paise, total_paise, item_order)
+                    "INSERT INTO sale_items (id, sale_id, product_id, product_name, product_sku, quantity, unit_price_cents, cost_price_cents, discount_cents, tax_rate, tax_cents, total_cents, item_order)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 )
                 .bind(&item_uuid)
@@ -397,12 +397,12 @@ impl MigrationService {
                 .bind(&p_name)
                 .bind(&p_sku)
                 .bind(quantity)
-                .bind(unit_price_paise)
-                .bind(cost_price_paise)
-                .bind(discount_paise)
+                .bind(unit_price_cents)
+                .bind(cost_price_cents)
+                .bind(discount_cents)
                 .bind(tax_rate)
-                .bind(tax_paise)
-                .bind(total_paise)
+                .bind(tax_cents)
+                .bind(total_cents)
                 .bind(current_order)
                 .execute(&mut *tx)
                 .await?;

@@ -6,7 +6,7 @@ import {
   Calendar,
   Printer,
 } from 'lucide-react';
-import { formatPaise, formatDateTime } from '../../../lib/formatters';
+import { formatCurrency, formatDateTime } from '../../../lib/formatters';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import SortableTh from '../../../components/common/SortableTh';
 import { strings } from '../../../lib/strings';
@@ -76,7 +76,7 @@ export default function BillDetailReadView({
                     {b.columns.productName}
                   </SortableTh>
                   <SortableTh
-                    sortKey="unitPricePaise"
+                    sortKey="unitPriceCents"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -94,7 +94,7 @@ export default function BillDetailReadView({
                     {b.columns.quantity}
                   </SortableTh>
                   <SortableTh
-                    sortKey="discountPaise"
+                    sortKey="discountCents"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -112,7 +112,7 @@ export default function BillDetailReadView({
                     {b.columns.taxPercent}
                   </SortableTh>
                   <SortableTh
-                    sortKey="totalPaise"
+                    sortKey="totalCents"
                     sort={lineSort}
                     onSort={(key) => onLineSortChange((p) => nextSortState(p, key))}
                     align="right"
@@ -126,10 +126,10 @@ export default function BillDetailReadView({
                 {sortedItems.map((it, idx) => {
                   const pName = it.productName ?? it.product_name;
                   const pSku = it.productSku ?? it.product_sku;
-                  const unitPrice = it.unitPricePaise ?? it.unit_price_paise;
-                  const discount = it.discountPaise ?? it.discount_paise ?? 0;
+                  const unitPrice = it.unitPriceCents ?? it.unit_price_cents;
+                  const discount = it.discountCents ?? it.discount_cents ?? 0;
                   const taxRate = it.taxRate ?? it.tax_rate;
-                  const total = it.totalPaise ?? it.total_paise;
+                  const total = it.totalCents ?? it.total_cents;
                   return (
                     <tr key={it.id || idx} className="hover:bg-surface-secondary/60 transition-colors">
                       <td className="py-3 px-4 text-text-muted font-mono text-center">{idx + 1}</td>
@@ -140,19 +140,19 @@ export default function BillDetailReadView({
                         )}
                       </td>
                       <td className="py-3 px-4 text-right financial-value text-text-secondary">
-                        {formatPaise(unitPrice)}
+                        {formatCurrency(unitPrice)}
                       </td>
                       <td className="py-3 px-4 text-center font-bold text-text-primary financial-value">
                         {it.quantity}
                       </td>
                       <td className="py-3 px-4 text-right financial-value text-amber-600">
-                        {discount > 0 ? `-${formatPaise(discount)}` : '—'}
+                        {discount > 0 ? `-${formatCurrency(discount)}` : '—'}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-text-muted">
                         {taxRate != null ? `${taxRate}%` : '0%'}
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-text-primary financial-value">
-                        {formatPaise(total)}
+                        {formatCurrency(total)}
                       </td>
                     </tr>
                   );
@@ -228,24 +228,24 @@ export default function BillDetailReadView({
               <div className="flex justify-between">
                 <span className="text-text-muted">{c.labels.subtotal}</span>
                 <span className="financial-value font-medium text-text-primary">
-                  {formatPaise(sale.subtotalPaise ?? sale.subtotal_paise)}
+                  {formatCurrency(sale.subtotalCents ?? sale.subtotal_cents)}
                 </span>
               </div>
 
-              {(sale.discountPaise ?? sale.discount_paise) > 0 && (
+              {(sale.discountCents ?? sale.discount_cents) > 0 && (
                 <div className="flex justify-between text-amber-600">
                   <span>{c.labels.discount}</span>
                   <span className="financial-value font-medium">
-                    -{formatPaise(sale.discountPaise ?? sale.discount_paise)}
+                    -{formatCurrency(sale.discountCents ?? sale.discount_cents)}
                   </span>
                 </div>
               )}
 
-              {(sale.taxPaise ?? sale.tax_paise) > 0 && (
+              {(sale.taxCents ?? sale.tax_cents) > 0 && (
                 <div className="flex justify-between text-text-muted">
                   <span>{b.detail.summary.gst}</span>
                   <span className="financial-value font-medium text-text-primary">
-                    {formatPaise(sale.taxPaise ?? sale.tax_paise)}
+                    {formatCurrency(sale.taxCents ?? sale.tax_cents)}
                   </span>
                 </div>
               )}
@@ -255,7 +255,7 @@ export default function BillDetailReadView({
                   {b.detail.summary.grandTotal}
                 </span>
                 <span className="text-xl font-bold financial-value text-text-primary">
-                  {formatPaise(sale.totalPaise ?? sale.total_paise)}
+                  {formatCurrency(sale.totalCents ?? sale.total_cents)}
                 </span>
               </div>
             </div>
@@ -265,18 +265,18 @@ export default function BillDetailReadView({
               <div className="flex justify-between text-text-muted">
                 <span>{b.detail.summary.paidAmount((sale.paymentMethod ?? sale.payment_method) ? (sale.paymentMethod ?? sale.payment_method).replace(/_/g, ' ') : 'CASH')}</span>
                 <span className="financial-value font-semibold text-text-primary">
-                  {formatPaise(sale.paidPaise ?? sale.paid_paise)}
+                  {formatCurrency(sale.paidCents ?? sale.paid_cents)}
                 </span>
               </div>
-              {(sale.paidPaise ?? sale.paid_paise) > (sale.totalPaise ?? sale.total_paise) ? (
+              {(sale.paidCents ?? sale.paid_cents) > (sale.totalCents ?? sale.total_cents) ? (
                 <div className="flex justify-between text-success font-semibold">
                   <span>{b.detail.summary.changeReturned}</span>
-                  <span className="financial-value">{formatPaise((sale.paidPaise ?? sale.paid_paise) - (sale.totalPaise ?? sale.total_paise))}</span>
+                  <span className="financial-value">{formatCurrency((sale.paidCents ?? sale.paid_cents) - (sale.totalCents ?? sale.total_cents))}</span>
                 </div>
-              ) : (sale.paidPaise ?? sale.paid_paise) < (sale.totalPaise ?? sale.total_paise) ? (
+              ) : (sale.paidCents ?? sale.paid_cents) < (sale.totalCents ?? sale.total_cents) ? (
                 <div className="flex justify-between text-danger font-semibold">
                   <span>{b.detail.summary.balanceDue}</span>
-                  <span className="financial-value">{formatPaise((sale.totalPaise ?? sale.total_paise) - (sale.paidPaise ?? sale.paid_paise))}</span>
+                  <span className="financial-value">{formatCurrency((sale.totalCents ?? sale.total_cents) - (sale.paidCents ?? sale.paid_cents))}</span>
                 </div>
               ) : (
                 <div className="flex justify-between text-text-muted text-[11px]">

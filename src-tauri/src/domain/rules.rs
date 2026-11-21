@@ -20,8 +20,8 @@ impl BusinessRules {
         format!("S{:02}{}{:07}", yy, code, sequence)
     }
 
-    pub fn format_paise(paise: i64, symbol: &str) -> String {
-        let rupees = paise as f64 / 100.0;
-        format!("{}{:.2}", symbol, rupees)
+    pub fn format_currency(cents: i64, symbol: &str) -> String {
+        let units = cents as f64 / 100.0;
+        format!("{}{:.2}", symbol, units)
     }
 }

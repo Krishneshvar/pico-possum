@@ -58,7 +58,7 @@ pub async fn get_customer_sales(
 ) -> Result<Vec<Sale>, AppError> {
     let sales = sqlx::query_as::<_, Sale>(
         "SELECT id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
-                subtotal_paise, discount_paise, tax_paise, total_paise, paid_paise,
+                subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
                 payment_method, status, fulfillment_status, notes, created_at
          FROM sales
          WHERE customer_id = ?

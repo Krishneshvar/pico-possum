@@ -1,4 +1,4 @@
-import { formatPaise, rupeesToPaise } from '../../../../lib/formatters';
+import { formatCurrency, unitsToCents } from '../../../../lib/formatters';
 import { strings } from '../../../../lib/strings';
 import { toast } from '../../../../stores/toast.store';
 import PosCartRow from './PosCartRow';
@@ -61,7 +61,7 @@ export default function PosCartTable({
           {strings.pos.editor.grandTotal}
         </span>
         <span className="text-2xl font-extrabold text-text-primary financial-value">
-          {formatPaise(totals.totalPaise)}
+          {formatCurrency(totals.totalCents ?? totals.total_cents)}
         </span>
       </div>
 
@@ -184,25 +184,25 @@ export default function PosCartTable({
                 step="0.01"
                 min="0"
                 max={
-                  (bill.items.find((it) => it.productId === expandedRowId)?.mrpPaise || 0) > 0
+                  (bill.items.find((it) => it.productId === expandedRowId)?.mrpCents || 0) > 0
                     ? (
-                        bill.items.find((it) => it.productId === expandedRowId).mrpPaise / 100
+                        bill.items.find((it) => it.productId === expandedRowId).mrpCents / 100
                       ).toFixed(2)
                     : undefined
                 }
                 value={(
-                  (bill.items.find((it) => it.productId === expandedRowId)?.unitPricePaise || 0) / 100
+                  (bill.items.find((it) => it.productId === expandedRowId)?.unitPriceCents || 0) / 100
                 ).toFixed(2)}
                 onChange={(e) => {
                   const rowItem = bill.items.find((it) => it.productId === expandedRowId);
-                  const mrpPaise = rowItem?.mrpPaise ?? rowItem?.unitPricePaise;
-                  const parsed = rupeesToPaise(e.target.value);
-                  if (mrpPaise != null && parsed > mrpPaise) {
+                  const maxPriceCents = rowItem?.priceCents ?? rowItem?.mrpCents ?? rowItem?.unitPriceCents;
+                  const parsed = unitsToCents(e.target.value);
+                  if (maxPriceCents != null && parsed > maxPriceCents) {
                     toast.warning(
-                      strings.pos.editor.priceExceedsMrp(formatPaise(mrpPaise)),
+                      strings.pos.editor.priceExceedsMrp(formatCurrency(maxPriceCents)),
                       { title: strings.pos.editor.priceExceedsMrpTitle }
                     );
-                    onUpdateItemPrice(expandedRowId, mrpPaise);
+                    onUpdateItemPrice(expandedRowId, maxPriceCents);
                     return;
                   }
                   onUpdateItemPrice(expandedRowId, parsed);
@@ -217,10 +217,10 @@ export default function PosCartTable({
                 step="0.01"
                 placeholder={strings.pos.editor.amountPlaceholder}
                 value={
-                  (bill.items.find((it) => it.productId === expandedRowId)?.discountPaise || 0) / 100 || ''
+                  (bill.items.find((it) => it.productId === expandedRowId)?.discountCents || 0) / 100 || ''
                 }
                 onChange={(e) =>
-                  onUpdateItemDiscount(expandedRowId, rupeesToPaise(e.target.value))
+                  onUpdateItemDiscount(expandedRowId, unitsToCents(e.target.value))
                 }
                 className="w-20 px-2 py-1 rounded border border-border-strong bg-surface text-text-primary font-mono text-xs focus:border-brand focus:outline-none"
               />
@@ -250,7 +250,7 @@ export default function PosCartTable({
           <span>
             Cart Subtotal:{' '}
             <strong className="text-text-primary font-bold financial-value text-sm ml-1">
-              {formatPaise(totals.subtotalPaise)}
+              {formatCurrency(totals.subtotalCents ?? totals.subtotal_cents)}
             </strong>
           </span>
         </div>

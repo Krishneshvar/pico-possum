@@ -98,7 +98,7 @@ src-tauri/src/                Rust backend
 └── errors/                   Typed application errors
 ```
 
-- **Money is stored as integer paise** (`1/100` of a rupee) throughout the database and API to avoid floating-point rounding errors.
+- **Money is stored as integer cents / minor units** (e.g. `1/100` of a currency unit) throughout the database and API to avoid floating-point rounding errors.
 - The SQLite schema is created/upgraded automatically at startup and includes products, categories, customers, sales, sale items, stock movements, audit logs, settings, invoice sequences, and open POS bills.
 - The frontend communicates with Rust exclusively through typed Tauri commands exposed in `src/lib/tauri.js`.
 - On graceful exit the app checkpoints the SQLite WAL and creates an exit backup before closing.
@@ -219,7 +219,7 @@ PicoPOSSUM can detect a previous Java POS installation at:
 <OS data directory>/pico-possum/database/pico-possum.db
 ```
 
-If detected, **Settings → Imports & Migration** offers a one-click import of users, categories, customers, products, sales, sale items, stock movements, and settings. Old monetary values are converted to paise automatically, and the migration is recorded in the audit log.
+If detected, **Settings → Imports & Migration** offers a one-click import of users, categories, customers, products, sales, sale items, stock movements, and settings. Old monetary values are converted to cents automatically, and the migration is recorded in the audit log.
 
 A legacy database can also be restored directly from **Settings → Backup & Restore**; the app detects and converts it during the restore process.
 

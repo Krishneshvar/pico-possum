@@ -1,6 +1,6 @@
 import { User, X, StickyNote } from 'lucide-react';
 import Select from '../../../../components/common/Select';
-import { formatPaise, rupeesToPaise } from '../../../../lib/formatters';
+import { formatCurrency, unitsToCents } from '../../../../lib/formatters';
 import { toast } from '../../../../stores/toast.store';
 import { strings } from '../../../../lib/strings';
 
@@ -144,7 +144,7 @@ export default function PosCheckoutSidebar({
             <div className="pt-1.5 border-t border-border-default/60 flex items-center justify-between text-xs text-text-muted">
               <span>{strings.pos.editor.exactAmountPayable}</span>
               <span className="font-semibold text-text-primary financial-value">
-                {formatPaise(totals.totalPaise)}
+                {formatCurrency(totals.totalCents ?? totals.total_cents)}
               </span>
             </div>
           )}
@@ -176,7 +176,7 @@ export default function PosCheckoutSidebar({
                   type="button"
                   onClick={() => {
                     onSetFullPayment(false);
-                    if (totals.totalPaise > 0 && (bill.amountTenderedPaise || 0) >= totals.totalPaise) {
+                    if (totals.totalCents > 0 && (bill.amountTenderedCents || 0) >= totals.totalCents) {
                       onSetAmountTendered(0);
                       setCashTenderedInput('');
                     }
@@ -221,38 +221,39 @@ export default function PosCheckoutSidebar({
                   const rawValue = e.target.value;
                   if (rawValue !== '' && !/^\d*\.?\d*$/.test(rawValue)) return;
 
-                  const inputPaise = rupeesToPaise(rawValue);
+                  const inputCents = unitsToCents(rawValue);
                   const isFull = bill.isFullPayment !== false;
+                  const total = totals.totalCents ?? totals.total_cents ?? 0;
 
-                  if (!isFull && totals.totalPaise > 0 && inputPaise >= totals.totalPaise) {
+                  if (!isFull && total > 0 && inputCents >= total) {
                     toast.warning(
-                      strings.pos.toasts.partialPaymentLimit(formatPaise(totals.totalPaise)),
+                      strings.pos.toasts.partialPaymentLimit(formatCurrency(total)),
                       { title: strings.pos.toasts.partialPaymentLimitTitle }
                     );
                     return;
                   }
 
                   setCashTenderedInput(rawValue);
-                  onSetAmountTendered(inputPaise);
+                  onSetAmountTendered(inputCents);
                 }}
                 onBlur={() => {
                   if (cashInputFocusedRef) cashInputFocusedRef.current = false;
-                  const paise = bill.amountTenderedPaise || 0;
-                  setCashTenderedInput(paise > 0 ? (paise / 100).toFixed(2) : '');
+                  const cents = bill.amountTenderedCents || 0;
+                  setCashTenderedInput(cents > 0 ? (cents / 100).toFixed(2) : '');
                 }}
                 className="w-full pl-7 pr-3 py-1.5 bg-surface-secondary border border-border-strong rounded-lg text-base financial-value text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand"
               />
             </div>
 
             {/* Settlement Feedback */}
-            {totals.totalPaise > 0 && (
+            {(totals.totalCents ?? totals.total_cents ?? 0) > 0 && (
               <div className="pt-1.5 border-t border-border-default/60 space-y-1">
                 {bill.isFullPayment !== false ? (
-                  (bill.amountTenderedPaise || 0) >= totals.totalPaise ? (
+                  (bill.amountTenderedCents || 0) >= (totals.totalCents ?? totals.total_cents ?? 0) ? (
                     <div className="flex items-center justify-between text-xs font-semibold text-success">
                       <span>{strings.pos.editor.changeToReturn}</span>
                       <span className="financial-value">
-                        {formatPaise((bill.amountTenderedPaise || 0) - totals.totalPaise)}
+                        {formatCurrency((bill.amountTenderedCents || 0) - (totals.totalCents ?? totals.total_cents ?? 0))}
                       </span>
                     </div>
                   ) : (
@@ -260,11 +261,11 @@ export default function PosCheckoutSidebar({
                       <div className="flex items-center justify-between text-xs font-medium text-warning">
                         <span>{strings.pos.editor.balanceDue}</span>
                         <span className="financial-value">
-                          {formatPaise(totals.totalPaise - (bill.amountTenderedPaise || 0))}
+                          {formatCurrency((totals.totalCents ?? totals.total_cents ?? 0) - (bill.amountTenderedCents || 0))}
                         </span>
                       </div>
                       <p className="text-[10px] text-text-muted">
-                        {strings.pos.editor.tenderAtLeast(formatPaise(totals.totalPaise))}
+                        {strings.pos.editor.tenderAtLeast(formatCurrency(totals.totalCents ?? totals.total_cents ?? 0))}
                       </p>
                     </div>
                   )
@@ -273,11 +274,11 @@ export default function PosCheckoutSidebar({
                     <div className="flex items-center justify-between text-xs font-medium text-warning">
                       <span>{strings.pos.editor.remainingBalanceDue}</span>
                       <span className="financial-value">
-                        {formatPaise(totals.totalPaise - (bill.amountTenderedPaise || 0))}
+                        {formatCurrency((totals.totalCents ?? totals.total_cents ?? 0) - (bill.amountTenderedCents || 0))}
                       </span>
                     </div>
                     <p className="text-[10px] text-text-muted">
-                      {strings.pos.editor.partialPaymentHint(formatPaise(totals.totalPaise))}
+                      {strings.pos.editor.partialPaymentHint(formatCurrency(totals.totalCents ?? totals.total_cents ?? 0))}
                     </p>
                   </div>
                 )}

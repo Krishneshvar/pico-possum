@@ -220,9 +220,9 @@ impl BackupService {
             Err(_) => return Ok(false),
         };
 
-        // Check if products table has mrp_paise (present in new app, absent in Java app)
-        let has_mrp_paise: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM pragma_table_info('products') WHERE name = 'mrp_paise'",
+        // Check if products table has modern minor unit columns (present in modern app, absent in Java app)
+        let has_cents: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('products') WHERE name = 'mrp_cents' OR name LIKE '%_cents' OR name LIKE '%_pai%'",
         )
         .fetch_one(&test_pool)
         .await
@@ -243,8 +243,8 @@ impl BackupService {
         .await
         .unwrap_or(0);
 
-        let is_legacy = (has_mrp_paise == 0 && has_legacy_mrp > 0)
-            || (has_mrp_paise == 0 && has_categories > 0);
+        let is_legacy = (has_cents == 0 && has_legacy_mrp > 0)
+            || (has_cents == 0 && has_categories > 0);
 
         Ok(is_legacy)
     }

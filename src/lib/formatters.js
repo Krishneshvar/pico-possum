@@ -3,8 +3,8 @@
 // while every view picks up the same currency symbol / date / time format.
 
 const DEFAULT_LOCALE = {
-  currencySymbol: '₹',
-  currencyCode: 'INR',
+  currencySymbol: '$',
+  currencyCode: 'USD',
   dateFormat: 'DD-MM-YYYY',
   timeFormat: '12h',
 };
@@ -107,27 +107,29 @@ export function getCurrencySymbol() {
 
 // ── Currency ────────────────────────────────────────────────────────────────
 
-export function formatPaise(paise, symbol = localeSettings.currencySymbol) {
-  if (paise === null || paise === undefined || isNaN(paise)) {
+export function formatCurrency(cents, symbol = localeSettings.currencySymbol) {
+  if (cents === null || cents === undefined || isNaN(cents)) {
     return `${symbol}0.00`;
   }
-  const isNegative = paise < 0;
-  const absPaise = Math.abs(paise);
-  const rupees = (absPaise / 100).toFixed(2);
+  const isNegative = cents < 0;
+  const absCents = Math.abs(cents);
+  const units = (absCents / 100).toFixed(2);
   const sym = symbol || '';
   const sep = sym.length > 1 && !/^[^\w\s]+$/.test(sym) ? ' ' : '';
-  return isNegative ? `-${sym}${sep}${rupees}` : `${sym}${sep}${rupees}`;
+  return isNegative ? `-${sym}${sep}${units}` : `${sym}${sep}${units}`;
 }
 
-export function paiseToRupees(paise) {
-  if (!paise || isNaN(paise)) return 0;
-  return Number((paise / 100).toFixed(2));
+export function centsToUnits(cents) {
+  if (!cents || isNaN(cents)) return 0;
+  return Number((cents / 100).toFixed(2));
 }
 
-export function rupeesToPaise(rupees) {
-  if (!rupees || isNaN(rupees)) return 0;
-  return Math.round(Number(rupees) * 100);
+export function unitsToCents(units) {
+  if (!units || isNaN(units)) return 0;
+  return Math.round(Number(units) * 100);
 }
+
+export const formatCents = formatCurrency;
 
 // ── Date & Time ─────────────────────────────────────────────────────────────
 

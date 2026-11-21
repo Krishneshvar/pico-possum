@@ -4,7 +4,7 @@ import { History, Eye, Printer, RotateCcw } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
-import { formatPaise, formatDate, formatTime, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
+import { formatCurrency, formatDate, formatTime, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
@@ -132,10 +132,10 @@ export default function BillsHistoryView() {
       const custName = s.customerName ?? s.customer_name ?? strings.bills.labels.walkInCustomer;
       const custPhone = s.customerPhone ?? s.customer_phone ?? '';
       const pm = s.paymentMethod ?? s.payment_method ?? '';
-      const subtotal = s.subtotalPaise ?? s.subtotal_paise ?? 0;
-      const discount = s.discountPaise ?? s.discount_paise ?? 0;
-      const tax = s.taxPaise ?? s.tax_paise ?? 0;
-      const total = s.totalPaise ?? s.total_paise ?? 0;
+      const subtotal = s.subtotalCents ?? s.subtotal_cents ?? 0;
+      const discount = s.discountCents ?? s.discount_cents ?? 0;
+      const tax = s.taxCents ?? s.tax_cents ?? 0;
+      const total = s.totalCents ?? s.total_cents ?? 0;
       return [
         escapeCsv(invNo),
         escapeCsv(formatDate(createdAt)),
@@ -188,10 +188,10 @@ export default function BillsHistoryView() {
       const custName = s.customerName ?? s.customer_name ?? strings.bills.labels.walkInCustomer;
       const custPhone = s.customerPhone ?? s.customer_phone ?? '';
       const pm = s.paymentMethod ?? s.payment_method ?? '';
-      const subtotal = s.subtotalPaise ?? s.subtotal_paise ?? 0;
-      const discount = s.discountPaise ?? s.discount_paise ?? 0;
-      const tax = s.taxPaise ?? s.tax_paise ?? 0;
-      const total = s.totalPaise ?? s.total_paise ?? 0;
+      const subtotal = s.subtotalCents ?? s.subtotal_cents ?? 0;
+      const discount = s.discountCents ?? s.discount_cents ?? 0;
+      const tax = s.taxCents ?? s.tax_cents ?? 0;
+      const total = s.totalCents ?? s.total_cents ?? 0;
       return [
         invNo,
         formatDate(createdAt),
@@ -276,11 +276,11 @@ export default function BillsHistoryView() {
       },
     },
     {
-      key: 'totalPaise',
+      key: 'totalCents',
       label: strings.bills.columns.totalAmount,
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.totalPaise ?? r.total_paise),
+      render: (r) => formatCurrency(r.totalCents ?? r.total_cents),
     },
     {
       key: 'status',
@@ -407,12 +407,12 @@ export default function BillsHistoryView() {
       },
       {
         type: 'range',
-        key: 'totalPaise',
+        key: 'totalCents',
         label: strings.common.labels.amount,
         unit: currencySymbol,
         transform: (v) => (v != null ? Number(v) / 100 : 0),
         filterFn: (row, range) => {
-          const val = (row.totalPaise ?? row.total_paise ?? 0) / 100;
+          const val = (row.totalCents ?? row.total_cents ?? 0) / 100;
           if (range.min !== '' && range.min !== null && val < Number(range.min)) return false;
           if (range.max !== '' && range.max !== null && val > Number(range.max)) return false;
           return true;

@@ -1,4 +1,4 @@
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { strings } from '../../../lib/strings';
 
 export default function SalesReportTotalsBar({ visibleColumns, totals }) {
@@ -18,19 +18,19 @@ export default function SalesReportTotalsBar({ visibleColumns, totals }) {
           if (col.totalKey === 'transactions') {
             displayVal = strings.salesReports.summary.transactions(totals.transactions);
           } else if (col.totalKey === 'cash') {
-            displayVal = formatPaise(totals.cash);
+            displayVal = formatCurrency(totals.cash);
           } else if (col.totalKey === 'upi') {
-            displayVal = formatPaise(totals.upi);
+            displayVal = formatCurrency(totals.upi);
           } else if (col.totalKey === 'card') {
-            displayVal = formatPaise(totals.card);
+            displayVal = formatCurrency(totals.card);
           } else if (col.totalKey === 'giftCard') {
-            displayVal = formatPaise(totals.giftCard);
+            displayVal = formatCurrency(totals.giftCard);
           } else if (col.totalKey === 'discount') {
-            displayVal = formatPaise(totals.discount);
+            displayVal = formatCurrency(totals.discount);
           } else if (col.totalKey === 'gross') {
-            displayVal = formatPaise(totals.gross);
+            displayVal = formatCurrency(totals.gross);
           } else if (col.totalKey === 'net') {
-            displayVal = formatPaise(totals.net);
+            displayVal = formatCurrency(totals.net);
           }
 
           return (

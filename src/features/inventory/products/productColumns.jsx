@@ -1,4 +1,4 @@
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 
 export function getProductColumns({ allowNegativeStock }) {
   return [
@@ -25,18 +25,18 @@ export function getProductColumns({ allowNegativeStock }) {
       render: (r) => r.sku || '—',
     },
     {
-      key: 'costPricePaise',
+      key: 'costPriceCents',
       label: 'Cost Price',
       headerClassName: 'text-right',
       className: 'text-right financial-value text-text-muted text-xs',
-      render: (r) => formatPaise(r.costPricePaise ?? r.cost_price_paise),
+      render: (r) => formatCurrency(r.costPriceCents ?? r.cost_price_cents),
     },
     {
-      key: 'mrpPaise',
-      label: 'MRP',
+      key: 'mrpCents',
+      label: 'Price',
       headerClassName: 'text-right',
       className: 'text-right financial-value font-bold text-text-primary text-xs',
-      render: (r) => formatPaise(r.mrpPaise ?? r.mrp_paise),
+      render: (r) => formatCurrency(r.priceCents ?? r.mrpCents ?? r.mrp_cents),
     },
     {
       key: 'taxRate',

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Calendar, Layers, Eye, EyeOff } from 'lucide-react';
-import { formatPaise } from '../../../lib/formatters';
+import { formatCurrency } from '../../../lib/formatters';
 import { strings } from '../../../lib/strings';
 
 const MONTH_LABELS = strings.reports.multiYear.months || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -43,7 +43,7 @@ export default function MultiYearComparisonChart({
         }
         const m = parseInt(item.month, 10);
         map[item.year][m] = {
-          revenue: item.totalRevenuePaise ?? item.total_revenue_paise ?? 0,
+          revenue: item.totalRevenueCents ?? item.total_revenue_cents ?? 0,
           transactions: item.totalTransactions ?? item.total_transactions ?? 0,
         };
       }
@@ -175,7 +175,7 @@ export default function MultiYearComparisonChart({
                   textAnchor="end"
                   className="fill-text-muted text-[10px] font-mono"
                 >
-                  {formatPaise(tickVal)}
+                  {formatCurrency(tickVal)}
                 </text>
               </g>
             );
@@ -303,7 +303,7 @@ export default function MultiYearComparisonChart({
               <div className="flex justify-between gap-4">
                 <span className="text-text-muted">{strings.reports.multiYear.revenue}</span>
                 <span className="font-bold financial-value text-text-primary">
-                  {formatPaise(hoveredPoint.value)}
+                  {formatCurrency(hoveredPoint.value)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">

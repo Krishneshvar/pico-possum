@@ -5,15 +5,15 @@ import Select from '../../../components/common/Select';
 import { tauriApi } from '../../../lib/tauri';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
-import { rupeesToPaise, getCurrencySymbol } from '../../../lib/formatters';
+import { unitsToCents, getCurrencySymbol } from '../../../lib/formatters';
 import { validateProductForm } from '../../../lib/validation';
 
 const DEFAULT_FORM = {
   name: '',
   sku: '',
   categoryId: '',
-  mrpRupees: '',
-  costPriceRupees: '',
+  mrp: '',
+  costPrice: '',
   taxRate: '0',
   initialStock: '0',
   status: 'active',
@@ -47,8 +47,8 @@ export default function ProductModal({
   useEffect(() => {
     setErrors({});
     if (product) {
-      const mrp = product.mrpPaise ?? product.mrp_paise ?? 0;
-      const costPrice = product.costPricePaise ?? product.cost_price_paise ?? 0;
+      const mrp = product.mrpCents ?? product.mrp_cents ?? 0;
+      const costPrice = product.costPriceCents ?? product.cost_price_cents ?? 0;
       const taxRate = product.taxRate ?? product.tax_rate ?? 0;
       const currentStock = product.currentStock ?? product.current_stock ?? 0;
       const minStockAlert = product.minStockAlert ?? product.min_stock_alert ?? 5;
@@ -58,8 +58,8 @@ export default function ProductModal({
         name: product.name || '',
         sku: product.sku || '',
         categoryId,
-        mrpRupees: (mrp / 100).toFixed(2),
-        costPriceRupees: (costPrice / 100).toFixed(2),
+        mrp: (mrp / 100).toFixed(2),
+        costPrice: (costPrice / 100).toFixed(2),
         taxRate: taxRate.toString(),
         initialStock: currentStock.toString(),
         status: product.status || 'active',
@@ -94,12 +94,14 @@ export default function ProductModal({
     }
 
     const minStockAlertVal = parseInt(formData.minStockAlert, 10);
+    const mrpCents = unitsToCents(formData.mrp);
+    const costPriceCents = unitsToCents(formData.costPrice);
     const payload = {
       name: formData.name.trim(),
       sku: formData.sku.trim() || null,
       categoryId: formData.categoryId || null,
-      mrpPaise: rupeesToPaise(formData.mrpRupees),
-      costPricePaise: rupeesToPaise(formData.costPriceRupees),
+      mrpCents,
+      costPriceCents,
       taxRate: parseFloat(formData.taxRate) || 0,
       status: formData.status || 'active',
       minStockAlert: !isNaN(minStockAlertVal) && minStockAlertVal >= 0 ? minStockAlertVal : 5,
@@ -203,14 +205,14 @@ export default function ProductModal({
                 <input
                   type="number"
                   step="0.01"
-                  value={formData.costPriceRupees}
-                  onChange={(e) => handleChange('costPriceRupees', e.target.value)}
+                  value={formData.costPrice}
+                  onChange={(e) => handleChange('costPrice', e.target.value)}
                   placeholder={strings.products.form.placeholders.zeroDecimal}
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono focus:outline-none ${
-                    errors.costPriceRupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.costPrice ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   }`}
                 />
-                {errors.costPriceRupees && <p className="text-[10px] text-danger mt-1">{errors.costPriceRupees}</p>}
+                {errors.costPrice && <p className="text-[10px] text-danger mt-1">{errors.costPrice}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">
@@ -220,14 +222,14 @@ export default function ProductModal({
                   type="number"
                   step="0.01"
                   required
-                  value={formData.mrpRupees}
-                  onChange={(e) => handleChange('mrpRupees', e.target.value)}
+                  value={formData.mrp}
+                  onChange={(e) => handleChange('mrp', e.target.value)}
                   placeholder={strings.products.form.placeholders.mrp}
                   className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary font-mono font-semibold focus:outline-none ${
-                    errors.mrpRupees ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
+                    errors.mrp ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
                   }`}
                 />
-                {errors.mrpRupees && <p className="text-[10px] text-danger mt-1">{errors.mrpRupees}</p>}
+                {errors.mrp && <p className="text-[10px] text-danger mt-1">{errors.mrp}</p>}
               </div>
               <div>
                 <label className="text-text-secondary block font-semibold mb-1">

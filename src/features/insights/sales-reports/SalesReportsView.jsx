@@ -66,25 +66,25 @@ export default function SalesReportsView() {
     const hasMax = maxNum !== null && !isNaN(maxNum);
 
     return rawData.filter((row) => {
-      let valPaise = 0;
-      const totalSalesPaise = row.totalSalesPaise ?? row.total_sales_paise ?? 0;
-      const totalDiscountPaise = row.totalDiscountPaise ?? row.total_discount_paise ?? 0;
-      const cashPaise = row.cashPaise ?? row.cash_paise ?? 0;
-      const upiPaise = row.upiPaise ?? row.upi_paise ?? 0;
-      const cardPaise = row.cardPaise ?? row.card_paise ?? 0;
-      const giftCardPaise = row.giftCardPaise ?? row.gift_card_paise ?? 0;
+      let valCents = 0;
+      const totalSalesCents = row.totalSalesCents ?? row.total_sales_cents ?? 0;
+      const totalDiscountCents = row.totalDiscountCents ?? row.total_discount_cents ?? 0;
+      const cashCents = row.cashCents ?? row.cash_cents ?? 0;
+      const upiCents = row.upiCents ?? row.upi_cents ?? 0;
+      const cardCents = row.cardCents ?? row.card_cents ?? 0;
+      const giftCardCents = row.giftCardCents ?? row.gift_card_cents ?? 0;
 
-      if (amountCol === 'gross') valPaise = totalSalesPaise;
+      if (amountCol === 'gross') valCents = totalSalesCents;
       else if (amountCol === 'net')
-        valPaise = totalSalesPaise - totalDiscountPaise;
-      else if (amountCol === 'cash') valPaise = cashPaise;
-      else if (amountCol === 'upi') valPaise = upiPaise;
-      else if (amountCol === 'card') valPaise = cardPaise;
-      else if (amountCol === 'giftCard') valPaise = giftCardPaise;
+        valCents = totalSalesCents - totalDiscountCents;
+      else if (amountCol === 'cash') valCents = cashCents;
+      else if (amountCol === 'upi') valCents = upiCents;
+      else if (amountCol === 'card') valCents = cardCents;
+      else if (amountCol === 'giftCard') valCents = giftCardCents;
 
-      const valRs = valPaise / 100;
-      if (hasMin && valRs < minNum) return false;
-      if (hasMax && valRs > maxNum) return false;
+      const valUnits = valCents / 100;
+      if (hasMin && valUnits < minNum) return false;
+      if (hasMax && valUnits > maxNum) return false;
       return true;
     });
   }, [rawData, amountCol, minAmount, maxAmount]);
@@ -92,17 +92,17 @@ export default function SalesReportsView() {
   const totals = useMemo(() => {
     return filteredData.reduce(
       (acc, r) => {
-        const totalSalesPaise = r.totalSalesPaise ?? r.total_sales_paise ?? 0;
-        const totalDiscountPaise = r.totalDiscountPaise ?? r.total_discount_paise ?? 0;
+        const totalSalesCents = r.totalSalesCents ?? r.total_sales_cents ?? 0;
+        const totalDiscountCents = r.totalDiscountCents ?? r.total_discount_cents ?? 0;
 
         acc.transactions += r.totalTransactions ?? r.total_transactions ?? 0;
-        acc.cash += r.cashPaise ?? r.cash_paise ?? 0;
-        acc.upi += r.upiPaise ?? r.upi_paise ?? 0;
-        acc.card += r.cardPaise ?? r.card_paise ?? 0;
-        acc.giftCard += r.giftCardPaise ?? r.gift_card_paise ?? 0;
-        acc.discount += totalDiscountPaise;
-        acc.gross += totalSalesPaise;
-        acc.net += Math.max(0, totalSalesPaise - totalDiscountPaise);
+        acc.cash += r.cashCents ?? r.cash_cents ?? 0;
+        acc.upi += r.upiCents ?? r.upi_cents ?? 0;
+        acc.card += r.cardCents ?? r.card_cents ?? 0;
+        acc.giftCard += r.giftCardCents ?? r.gift_card_cents ?? 0;
+        acc.discount += totalDiscountCents;
+        acc.gross += totalSalesCents;
+        acc.net += Math.max(0, totalSalesCents - totalDiscountCents);
         return acc;
       },
       { transactions: 0, cash: 0, upi: 0, card: 0, giftCard: 0, discount: 0, gross: 0, net: 0 }
