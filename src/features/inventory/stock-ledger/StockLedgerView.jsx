@@ -4,6 +4,7 @@ import { ArrowRightLeft, ArrowDownRight, ArrowUpRight, RefreshCw, Receipt, Exter
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
 
@@ -217,14 +218,11 @@ export default function StockLedgerView() {
           </div>
         </div>
 
-        <button
-          type="button"
+        <RefreshButton
           onClick={() => refetch()}
-          className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
+          isLoading={isLoading}
           title={s.refresh}
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        />
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

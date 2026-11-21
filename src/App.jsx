@@ -5,6 +5,7 @@ import NavBar from './components/layout/NavBar';
 import TabBar from './components/layout/TabBar';
 import ToastContainer from './components/common/ToastContainer';
 import { ConfirmDialogHost } from './components/common/ConfirmDialog';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { useWorkspaceStore } from './stores/workspaceStore';
 import { tauriApi } from './lib/tauri';
 import { applyGeneralSettings } from './lib/formatters';
@@ -43,7 +44,7 @@ const VIEW_REGISTRY = {
 };
 
 function WorkspaceContent() {
-  const { tabs, activeTabId, openOrFocus } = useWorkspaceStore();
+  const { tabs, activeTabId, closeTab } = useWorkspaceStore();
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   if (!activeTab) {
@@ -78,15 +79,22 @@ function WorkspaceContent() {
             className="absolute inset-0"
             style={{ display: tab.id === activeTabId ? 'flex' : 'none', flexDirection: 'column' }}
           >
-            <Suspense
-              fallback={
-                <div className="flex-1 flex items-center justify-center bg-canvas text-text-muted">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                </div>
-              }
+            <ErrorBoundary
+              tabId={tab.id}
+              viewId={tab.viewId}
+              tabTitle={tab.title}
+              onCloseTab={() => closeTab(tab.id)}
             >
-              <ViewComponent {...(tab.props ?? {})} />
-            </Suspense>
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center bg-canvas text-text-muted">
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  </div>
+                }
+              >
+                <ViewComponent {...(tab.props ?? {})} />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         );
       })}
@@ -146,7 +154,11 @@ function AppRoot() {
     );
   }
 
-  return <MainLayout authUser={authState.user} />;
+  return (
+    <ErrorBoundary isRootLevel>
+      <MainLayout authUser={authState.user} />
+    </ErrorBoundary>
+  );
 }
 
 export default function App() {

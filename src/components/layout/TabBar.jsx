@@ -29,11 +29,33 @@ export default function TabBar() {
   const [contextMenu, setContextMenu] = useState(null); // { x, y, tabId }
   const menuRef = useRef(null);
 
-  // Scroll active tab into view
+  const handleAttemptCloseTab = async (tabId) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    if (tab.isDirty) {
+      const { confirmed } = await confirmDialog({
+        title: strings.layout.tabs.unsavedTitle,
+        message: strings.layout.tabs.unsavedMessage(tab.title),
+        confirmLabel: strings.layout.tabs.discardAndClose,
+        cancelLabel: strings.layout.tabs.keepTabOpen,
+        tone: 'warning',
+      });
+      if (!confirmed) return;
+    }
+    closeTab(tabId);
+  };
+
+  // Scroll active tab into view safely
   useEffect(() => {
     if (!scrollRef.current) return;
-    const activeEl = scrollRef.current.querySelector('[data-active="true"]');
-    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    try {
+      const activeEl = scrollRef.current.querySelector('[data-active="true"]');
+      if (activeEl?.scrollIntoView) {
+        activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      }
+    } catch {
+      // Ignore scroll errors on detached or partially rendered elements
+    }
   }, [activeTabId]);
 
   // Global Ctrl+W / Cmd+W to close active tab
@@ -141,21 +163,6 @@ export default function TabBar() {
     setActiveTab(tabId);
   };
 
-  const handleAttemptCloseTab = async (tabId) => {
-    const tab = tabs.find((t) => t.id === tabId);
-    if (!tab) return;
-    if (tab.isDirty) {
-      const { confirmed } = await confirmDialog({
-        title: strings.layout.tabs.unsavedTitle,
-        message: strings.layout.tabs.unsavedMessage(tab.title),
-        confirmLabel: strings.layout.tabs.discardAndClose,
-        cancelLabel: strings.layout.tabs.keepTabOpen,
-        tone: 'warning',
-      });
-      if (!confirmed) return;
-    }
-    closeTab(tabId);
-  };
 
   const handleContextMenu = (e, tabId) => {
     e.preventDefault();

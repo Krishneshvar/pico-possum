@@ -130,6 +130,9 @@ export function unitsToCents(units) {
 }
 
 export const formatCents = formatCurrency;
+export const formatPaise = formatCurrency;
+export const paiseToRupees = centsToUnits;
+export const rupeesToPaise = unitsToCents;
 
 // ── Date & Time ─────────────────────────────────────────────────────────────
 

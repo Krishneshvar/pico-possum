@@ -16,6 +16,7 @@ import {
 import { tauriApi } from '../../../lib/tauri';
 import { formatDateTime } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { strings } from '../../../lib/strings';
 
 export default function AuditLogView() {
@@ -127,14 +128,11 @@ export default function AuditLogView() {
           </div>
         </div>
 
-        <button
+        <RefreshButton
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
+          isLoading={isLoading}
           title={a.refreshTitle}
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-brand" />
-          <span>{c.actions.refresh}</span>
-        </button>
+        />
       </div>
 
       {/* Main Audit DataTable */}

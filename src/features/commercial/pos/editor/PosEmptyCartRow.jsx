@@ -109,7 +109,7 @@ export default function PosEmptyCartRow({
                 if (cellRefs.current) cellRefs.current[`${itemsCount}-2`] = el;
               }}
               type="text"
-              placeholder="Search product (or scan barcode)..."
+              placeholder="Search... (ctrl + k)"
               value={emptyRowQuery}
               onChange={(e) => {
                 setEmptyRowQuery(e.target.value);

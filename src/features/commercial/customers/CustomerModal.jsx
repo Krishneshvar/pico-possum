@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { X, UserPlus, UserCheck } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
@@ -19,6 +19,17 @@ export default function CustomerModal({
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select?.();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   useEffect(() => {
     setErrors({});
@@ -123,6 +134,7 @@ export default function CustomerModal({
               {strings.customers.form.name} <span className="text-danger">*</span>
             </label>
             <input
+              ref={nameInputRef}
               type="text"
               required
               value={form.name}

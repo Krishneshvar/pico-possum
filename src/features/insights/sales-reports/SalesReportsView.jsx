@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
+  X,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { getCurrencySymbol } from '../../../lib/formatters';
@@ -16,6 +17,7 @@ import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker, { formatToIso } from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { strings } from '../../../lib/strings';
 import { defaultColKeys, getSalesReportColumns } from './SalesReportColumns';
 import SalesReportTotalsBar from './SalesReportTotalsBar';
@@ -34,6 +36,14 @@ export default function SalesReportsView() {
   const [amountCol, setAmountCol] = useState('gross');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
+
+  const hasActiveFilters = Boolean(
+    reportType !== 'today' ||
+    fromDate ||
+    toDate ||
+    minAmount !== '' ||
+    maxAmount !== ''
+  );
 
   // Column visibility
   const [visibleColKeys, setVisibleColKeys] = useState(defaultColKeys);
@@ -236,14 +246,10 @@ export default function SalesReportsView() {
             disabled={!filteredData.length || !visibleColumns.length}
           />
 
-          <button
-            type="button"
+          <RefreshButton
             onClick={() => refetch()}
-            className="p-1.5 rounded-lg bg-surface hover:bg-surface-secondary text-text-secondary hover:text-text-primary transition-colors border border-border-default cursor-pointer shadow-2xs"
-            title={strings.common.actions.refresh}
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
+            isLoading={isLoading}
+          />
         </div>
       </div>
 
@@ -293,14 +299,16 @@ export default function SalesReportsView() {
           {advancedOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
 
-        <button
-          type="button"
-          onClick={handleReset}
-          className="text-text-muted hover:text-text-primary px-2 py-1 rounded hover:bg-surface-secondary transition-colors ml-auto flex items-center gap-1 cursor-pointer"
-        >
-          <RotateCcw className="w-3 h-3" />
-          <span>{strings.common.actions.reset}</span>
-        </button>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1 text-[11px] font-medium text-danger hover:underline transition-colors cursor-pointer px-1 py-0.5"
+          >
+            <X className="w-3 h-3" />
+            <span>{strings.common.table.clearFilters}</span>
+          </button>
+        )}
       </div>
 
       {/* ── Row 3: Collapsible Advanced Filters ── */}

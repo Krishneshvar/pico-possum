@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   XCircle,
   AlertTriangle,
@@ -27,6 +27,28 @@ export default function ErrorDetailModal({
 }) {
   const [showTechnical, setShowTechnical] = useState(false);
   const [copied, setCopied] = useState(false);
+  const primaryBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        primaryBtnRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !error) return null;
 
@@ -179,9 +201,10 @@ export default function ErrorDetailModal({
             )}
 
             <button
+              ref={primaryBtnRef}
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand hover:bg-brand-hover text-white transition-colors cursor-pointer shadow-xs"
+              className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand hover:bg-brand-hover text-white transition-colors cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
             >
               {strings.common.actions.close}
             </button>

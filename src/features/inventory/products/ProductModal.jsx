@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import Select from '../../../components/common/Select';
@@ -32,6 +32,7 @@ export default function ProductModal({
 }) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [errors, setErrors] = useState({});
+  const nameInputRef = useRef(null);
 
   const isCreate = !product?.id;
   const autoNumericSku = generalSettings?.autoNumericSku ?? generalSettings?.auto_numeric_sku ?? true;
@@ -43,6 +44,16 @@ export default function ProductModal({
     queryFn: () => tauriApi.getNextSku(),
     enabled: Boolean(open && isCreate && autoNumericSku),
   });
+
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select?.();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   useEffect(() => {
     setErrors({});
@@ -141,6 +152,7 @@ export default function ProductModal({
                 Product Name <span className="text-danger">*</span>
               </label>
               <input
+                ref={nameInputRef}
                 type="text"
                 required
                 value={formData.name}

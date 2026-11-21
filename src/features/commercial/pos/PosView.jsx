@@ -17,6 +17,8 @@ export default function PosView() {
   const queryClient = useQueryClient();
   const searchInputRef = useRef(null);
   const amountTenderedInputRef = useRef(null);
+  const newSaleBtnRef = useRef(null);
+  const printReceiptBtnRef = useRef(null);
   const currencySymbol = getCurrencySymbol();
 
   // Store state
@@ -123,10 +125,32 @@ export default function PosView() {
     },
   });
 
+  useEffect(() => {
+    if (showPrintModal) {
+      const timer = setTimeout(() => {
+        printReceiptBtnRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [showPrintModal]);
+
   // Keyboard shortcuts listener
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isCmd = e.ctrlKey || e.metaKey;
+
+      if (showPrintModal) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          newSaleBtnRef.current?.focus();
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          printReceiptBtnRef.current?.focus();
+          return;
+        }
+      }
 
       // Ctrl + K -> Focus search
       if (isCmd && e.key.toLowerCase() === 'k') {
@@ -458,16 +482,18 @@ export default function PosView() {
             {/* Action buttons */}
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
+                ref={newSaleBtnRef}
                 type="button"
                 onClick={() => setShowPrintModal(false)}
-                className="py-2 px-3 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-border-default cursor-pointer"
+                className="py-2 px-3 rounded-xl bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-border-default cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <span>{strings.pos.view.newSale}</span>
               </button>
               <button
+                ref={printReceiptBtnRef}
                 type="button"
                 onClick={handlePrintReceipt}
-                className="py-2 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                className="py-2 px-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
               >
                 <Printer className="w-4 h-4" />
                 <span>{strings.pos.view.printReceipt}</span>

@@ -21,6 +21,7 @@ import TopSellingCategoriesCard from './TopSellingCategoriesCard';
 import TopSellingProductsCard from './TopSellingProductsCard';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { strings } from '../../../lib/strings';
 
 export default function ReportsView() {
@@ -178,6 +179,9 @@ export default function ReportsView() {
     setYearsBack(3);
   };
 
+  const hasActiveFilters = Boolean(fromDate || toDate || paymentMethod !== 'ALL');
+  const isLoading = loadingSummary || loadingTopProducts || loadingTopCategories || loadingMultiYear;
+
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas text-content overflow-hidden">
       {/* 1. Header Toolbar */}
@@ -194,23 +198,13 @@ export default function ReportsView() {
           </div>
         </div>
 
-        {/* Global Reset and Refresh Controls */}
+        {/* Global Controls */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors"
-            title={strings.reports.view.resetFilters}
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-content-muted" />
-            <span>{strings.common.actions.reset}</span>
-          </button>
-          <button
+          <RefreshButton
             onClick={refetchAll}
-            className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer"
+            isLoading={isLoading}
             title={strings.reports.view.refreshData}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          />
         </div>
       </div>
 
@@ -262,23 +256,36 @@ export default function ReportsView() {
             </div>
           </div>
 
-          {/* Payment Method Filter Dropdown */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-content-secondary font-medium flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-content-muted" />
-              <span>{strings.reports.view.paymentMethod}</span>
-            </span>
-            <Select
-              value={paymentMethod}
-              onChange={(val) => setPaymentMethod(val)}
-              options={[
-                { value: 'ALL', label: strings.reports.view.paymentOptions.all(pmCounts.ALL) },
-                { value: 'CASH', label: strings.reports.view.paymentOptions.cash(pmCounts.CASH) },
-                { value: 'UPI', label: strings.reports.view.paymentOptions.upiQr(pmCounts.UPI) },
-                { value: 'CARD', label: strings.reports.view.paymentOptions.card(pmCounts.CARD) },
-                { value: 'GIFT_CARD', label: strings.reports.view.paymentOptions.giftCard(pmCounts.GIFT_CARD) },
-              ]}
-            />
+          {/* Payment Method Filter Dropdown & Clear Filters */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-content-secondary font-medium flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-content-muted" />
+                <span>{strings.reports.view.paymentMethod}</span>
+              </span>
+              <Select
+                value={paymentMethod}
+                onChange={(val) => setPaymentMethod(val)}
+                options={[
+                  { value: 'ALL', label: strings.reports.view.paymentOptions.all(pmCounts.ALL) },
+                  { value: 'CASH', label: strings.reports.view.paymentOptions.cash(pmCounts.CASH) },
+                  { value: 'UPI', label: strings.reports.view.paymentOptions.upiQr(pmCounts.UPI) },
+                  { value: 'CARD', label: strings.reports.view.paymentOptions.card(pmCounts.CARD) },
+                  { value: 'GIFT_CARD', label: strings.reports.view.paymentOptions.giftCard(pmCounts.GIFT_CARD) },
+                ]}
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="flex items-center gap-1 text-[11px] font-medium text-danger hover:underline transition-colors cursor-pointer px-1 py-0.5"
+              >
+                <X className="w-3 h-3" />
+                <span>{strings.common.table.clearFilters}</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -13,13 +13,30 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
     <div className="p-4 rounded-xl bg-surface border border-border">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-base font-semibold text-content">
               {selectedProduct?.name}
             </h2>
             {selectedProduct?.sku && (
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-secondary border border-border text-content-secondary">
                 {strings.productFlow.productFlow.skuBadge(selectedProduct.sku)}
+              </span>
+            )}
+            {(selectedProduct?.isDeleted ?? selectedProduct?.is_deleted) ? (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-danger/10 text-danger border border-danger/20">
+                Deleted
+              </span>
+            ) : selectedProduct?.status === 'inactive' ? (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                Inactive
+              </span>
+            ) : selectedProduct?.status === 'discontinued' ? (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                Discontinued
+              </span>
+            ) : (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-success/10 text-success border border-success/20">
+                Active
               </span>
             )}
           </div>

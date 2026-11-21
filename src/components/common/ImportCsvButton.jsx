@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Upload,
   CheckCircle2,
@@ -42,6 +42,16 @@ export default function ImportCsvButton({
 
   const fileInputCsvRef = useRef(null);
   const fileInputXlsxRef = useRef(null);
+  const firstImportBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        firstImportBtnRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Resolve schema configuration
   const sym = getCurrencySymbol();
@@ -221,6 +231,7 @@ export default function ImportCsvButton({
               {!isProcessing && !result && (
                 <div className="flex items-center gap-3">
                   <button
+                    ref={firstImportBtnRef}
                     type="button"
                     onClick={() => {
                       if (fileInputCsvRef.current) {
@@ -228,7 +239,7 @@ export default function ImportCsvButton({
                         fileInputCsvRef.current.click();
                       }
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-brand/40 transition-colors cursor-pointer group"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-brand/40 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-brand"
                   >
                     <FileText className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
                     <span>{strings.common.importCsv.importFromCsv}</span>

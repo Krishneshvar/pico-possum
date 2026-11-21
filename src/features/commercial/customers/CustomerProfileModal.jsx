@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, ArrowRight } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
@@ -13,6 +13,28 @@ export default function CustomerProfileModal({
   onOpenBillDetail,
 }) {
   const [historySort, setHistorySort] = useState({ key: 'createdAt', dir: 'desc' });
+  const closeBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (customer) {
+      const timer = setTimeout(() => {
+        closeBtnRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [customer?.id]);
+
+  useEffect(() => {
+    if (!customer) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [customer, onClose]);
 
   const { data: customerSales = [], isLoading: loadingCustomerSales } = useQuery({
     queryKey: ['customerSales', customer?.id],
@@ -59,9 +81,10 @@ export default function CustomerProfileModal({
             </div>
           </div>
           <button
+            ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
+            className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <X className="w-5 h-5" />
           </button>

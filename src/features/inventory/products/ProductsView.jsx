@@ -10,6 +10,7 @@ import {
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { tauriApi } from '../../../lib/tauri';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
@@ -27,7 +28,7 @@ export default function ProductsView() {
   const [modalMode, setModalMode] = useState(null); // 'create' | 'edit' | 'stock'
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading, refetch } = useQuery({
     queryKey: ['products'],
     queryFn: () => tauriApi.getProducts(null, null),
   });
@@ -251,6 +252,11 @@ export default function ProductsView() {
             onExportXlsx={handleExportXlsx}
           />
 
+          <RefreshButton
+            onClick={() => refetch()}
+            isLoading={isLoading}
+          />
+
           <button
             type="button"
             onClick={handleOpenCreate}
@@ -306,8 +312,10 @@ export default function ProductsView() {
               transform: (v) => (v != null ? Number(v) / 100 : 0),
               filterFn: (row, range) => {
                 const val = (row.mrpCents ?? row.mrp_cents ?? 0) / 100;
-                if (range.min !== '' && range.min !== null && val < Number(range.min)) return false;
-                if (range.max !== '' && range.max !== null && val > Number(range.max)) return false;
+                const hasMin = range.min !== '' && range.min != null && !isNaN(Number(range.min));
+                const hasMax = range.max !== '' && range.max != null && !isNaN(Number(range.max));
+                if (hasMin && val < Number(range.min)) return false;
+                if (hasMax && val > Number(range.max)) return false;
                 return true;
               },
             },
@@ -352,12 +360,15 @@ export default function ProductsView() {
       />
 
       {/* ── Stock Adjustment Modal ── */}
-      <StockAdjustmentModal
-        product={modalMode === 'stock' ? selectedProduct : null}
-        onClose={() => setModalMode(null)}
-        onSubmit={handleStockSubmit}
-        isPending={adjustStockMutation.isPending}
-      />
+      {modalMode === 'stock' && selectedProduct && (
+        <StockAdjustmentModal
+          key={selectedProduct.id}
+          product={selectedProduct}
+          onClose={() => setModalMode(null)}
+          onSubmit={handleStockSubmit}
+          isPending={adjustStockMutation.isPending}
+        />
+      )}
     </div>
   );
 }

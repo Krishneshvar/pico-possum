@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 
+const isFilterValSet = (v) => v !== '' && v !== null && v !== undefined && String(v).trim() !== '';
+
 export function useTableFiltering({ data, filters = [], searchKeys = [], setPage }) {
   const [search, setSearch] = useState('');
   const [selectValues, setSelectValues] = useState({});
@@ -23,12 +25,32 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
   };
 
   const handleRangeMin = (key, val) => {
-    setRangeValues((p) => ({ ...p, [key]: { ...p[key], min: val } }));
+    setRangeValues((p) => {
+      const prev = p[key] ?? {};
+      const nextMin = val;
+      const nextMax = prev.max;
+      if (!isFilterValSet(nextMin) && !isFilterValSet(nextMax)) {
+        const next = { ...p };
+        delete next[key];
+        return next;
+      }
+      return { ...p, [key]: { ...prev, min: val } };
+    });
     setPage(1);
   };
 
   const handleRangeMax = (key, val) => {
-    setRangeValues((p) => ({ ...p, [key]: { ...p[key], max: val } }));
+    setRangeValues((p) => {
+      const prev = p[key] ?? {};
+      const nextMin = prev.min;
+      const nextMax = val;
+      if (!isFilterValSet(nextMin) && !isFilterValSet(nextMax)) {
+        const next = { ...p };
+        delete next[key];
+        return next;
+      }
+      return { ...p, [key]: { ...prev, max: val } };
+    });
     setPage(1);
   };
 
@@ -128,9 +150,17 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
     for (const [key, range] of Object.entries(rangeValues)) {
       if (!range) continue;
       const { min, max } = range;
+      const hasMin = isFilterValSet(min) && !Number.isNaN(Number(min));
+      const hasMax = isFilterValSet(max) && !Number.isNaN(Number(max));
+      if (!hasMin && !hasMax) continue;
+
       const filterDef = filters.find((f) => f.key === key);
       if (typeof filterDef?.filterFn === 'function') {
-        result = result.filter((row) => filterDef.filterFn(row, range));
+        const cleanRange = {
+          min: hasMin ? min : '',
+          max: hasMax ? max : '',
+        };
+        result = result.filter((row) => filterDef.filterFn(row, cleanRange));
       } else {
         const valFn =
           filterDef?.valueGetter ||
@@ -138,13 +168,13 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
             ? (row) => filterDef.transform(row[key])
             : (row) => row[key]);
 
-        if (min !== '' && min != null && !Number.isNaN(Number(min))) {
+        if (hasMin) {
           result = result.filter((row) => {
             const v = Number(valFn(row));
             return !Number.isNaN(v) && v >= Number(min);
           });
         }
-        if (max !== '' && max != null && !Number.isNaN(Number(max))) {
+        if (hasMax) {
           result = result.filter((row) => {
             const v = Number(valFn(row));
             return !Number.isNaN(v) && v <= Number(max);
@@ -182,12 +212,12 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
   }, [data, search, searchKeys, selectValues, multiValues, rangeValues, dateValues, filters]);
 
   const hasActiveFilters =
-    Boolean(search) ||
-    Object.values(selectValues).some((v) => v !== '' && v != null) ||
+    Boolean(search?.trim()) ||
+    Object.values(selectValues).some((v) => isFilterValSet(v)) ||
     Object.values(multiValues).some((arr) => Array.isArray(arr) && arr.length > 0) ||
-    Object.values(rangeValues).some((r) => r && (r.min !== '' || r.max !== '')) ||
-    Object.values(dateValues).some((d) => d && (d.from || d.to)) ||
-    filters.some((f) => f.type === 'daterange' && (f.fromVal || f.toVal));
+    Object.values(rangeValues).some((r) => r && (isFilterValSet(r.min) || isFilterValSet(r.max))) ||
+    Object.values(dateValues).some((d) => d && (isFilterValSet(d.from) || isFilterValSet(d.to))) ||
+    filters.some((f) => f.type === 'daterange' && (isFilterValSet(f.fromVal) || isFilterValSet(f.toVal)));
 
   const clearAllFilters = () => {
     setSearch('');

@@ -29,6 +29,16 @@ impl InventoryService {
     }
 
     #[inline]
+    pub async fn get_products_with_deleted(
+        pool: &SqlitePool,
+        category_id: Option<String>,
+        search: Option<String>,
+        include_deleted: bool,
+    ) -> Result<Vec<Product>, AppError> {
+        ProductService::get_products_with_deleted(pool, category_id, search, include_deleted).await
+    }
+
+    #[inline]
     pub async fn get_product_by_id(
         pool: &SqlitePool,
         id: &str,

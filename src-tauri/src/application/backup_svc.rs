@@ -275,8 +275,10 @@ impl BackupService {
             ));
         }
 
-        // Checkpoint WAL on current DB
+        // Checkpoint WAL on current DB and unmap memory sections
         let _ = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(pool).await;
+        let _ = sqlx::query("PRAGMA mmap_size = 0").execute(pool).await;
+        let _ = sqlx::query("PRAGMA shrink_memory").execute(pool).await;
 
         let live_db_path = AppPaths::get_database_path();
 

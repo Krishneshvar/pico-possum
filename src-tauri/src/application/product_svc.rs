@@ -54,6 +54,15 @@ impl ProductService {
         category_id: Option<String>,
         search: Option<String>,
     ) -> Result<Vec<Product>, AppError> {
+        Self::get_products_with_deleted(pool, category_id, search, false).await
+    }
+
+    pub async fn get_products_with_deleted(
+        pool: &SqlitePool,
+        category_id: Option<String>,
+        search: Option<String>,
+        include_deleted: bool,
+    ) -> Result<Vec<Product>, AppError> {
         let pattern = search.map(|s| format!("%{}%", s.trim()));
 
         let products = sqlx::query_as::<_, Product>(
@@ -63,13 +72,14 @@ impl ProductService {
                     p.created_at, p.updated_at
              FROM products p
              LEFT JOIN categories c ON c.id = p.category_id
-             WHERE p.is_deleted = 0
+             WHERE (?3 = 1 OR p.is_deleted = 0)
                AND (?1 IS NULL OR p.category_id = ?1)
                AND (?2 IS NULL OR p.name LIKE ?2 OR p.sku LIKE ?2)
              ORDER BY p.name ASC"
         )
         .bind(category_id)
         .bind(pattern)
+        .bind(if include_deleted { 1 } else { 0 })
         .fetch_all(pool)
         .await?;
 
@@ -87,7 +97,7 @@ impl ProductService {
                     p.created_at, p.updated_at
              FROM products p
              LEFT JOIN categories c ON c.id = p.category_id
-             WHERE p.id = ? AND p.is_deleted = 0"
+             WHERE p.id = ?"
         )
         .bind(id)
         .fetch_optional(pool)

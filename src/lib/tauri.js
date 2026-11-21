@@ -13,8 +13,8 @@ const invoke = async (cmd, args) => {
 
 export const tauriApi = {
   // Products
-  getProducts: (categoryId = null, search = null) =>
-    invoke('get_products', { categoryId, search }),
+  getProducts: (categoryId = null, search = null, includeDeleted = false) =>
+    invoke('get_products', { categoryId, search, includeDeleted }),
   getProductById: (id) => invoke('get_product_by_id', { id }),
   getNextSku: () => invoke('get_next_sku'),
   createProduct: (payload) => invoke('create_product', { payload }),

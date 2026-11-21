@@ -10,6 +10,7 @@ import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
@@ -20,7 +21,7 @@ export default function BillsHistoryView() {
   const [reprintSale, setReprintSale] = useState(null);
   const [filteredSales, setFilteredSales] = useState(null);
 
-  const { data: salesData, isLoading } = useQuery({
+  const { data: salesData, isLoading, refetch } = useQuery({
     queryKey: ['sales'],
     queryFn: () => tauriApi.getSales(500, 0, null),
   });
@@ -413,8 +414,10 @@ export default function BillsHistoryView() {
         transform: (v) => (v != null ? Number(v) / 100 : 0),
         filterFn: (row, range) => {
           const val = (row.totalCents ?? row.total_cents ?? 0) / 100;
-          if (range.min !== '' && range.min !== null && val < Number(range.min)) return false;
-          if (range.max !== '' && range.max !== null && val > Number(range.max)) return false;
+          const hasMin = range.min !== '' && range.min != null && !isNaN(Number(range.min));
+          const hasMax = range.max !== '' && range.max != null && !isNaN(Number(range.max));
+          if (hasMin && val < Number(range.min)) return false;
+          if (hasMax && val > Number(range.max)) return false;
           return true;
         },
       },
@@ -450,6 +453,11 @@ export default function BillsHistoryView() {
           <ExportButton
             onExportCsv={handleExportCsv}
             onExportXlsx={handleExportXlsx}
+          />
+
+          <RefreshButton
+            onClick={() => refetch()}
+            isLoading={isLoading}
           />
         </div>
       </div>

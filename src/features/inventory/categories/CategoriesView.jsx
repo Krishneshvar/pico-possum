@@ -18,6 +18,7 @@ import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import CategoryModal from './CategoryModal';
 import CategoryTree from './CategoryTree';
@@ -60,7 +61,7 @@ export default function CategoriesView() {
     document.addEventListener('mouseup', onMouseUp);
   }, [splitWidth]);
 
-  const { data: categories = [], isLoading } = useQuery({
+  const { data: categories = [], isLoading, refetch } = useQuery({
     queryKey: ['categories'],
     queryFn: () => tauriApi.getCategories(),
   });
@@ -375,6 +376,11 @@ export default function CategoriesView() {
           <ExportButton
             onExportCsv={handleExportCsv}
             onExportXlsx={handleExportXlsx}
+          />
+
+          <RefreshButton
+            onClick={() => refetch()}
+            isLoading={isLoading}
           />
 
           <button

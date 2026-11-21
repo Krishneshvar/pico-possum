@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import Select from '../../../components/common/Select';
 import { strings } from '../../../lib/strings';
@@ -17,6 +17,17 @@ export default function CategoryModal({
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
   const [errors, setErrors] = useState({});
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select?.();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   useEffect(() => {
     setErrors({});
@@ -86,6 +97,7 @@ export default function CategoryModal({
               {strings.categories.form.nameLabel} <span className="text-danger">*</span>
             </label>
             <input
+              ref={nameInputRef}
               type="text"
               required
               value={name}

@@ -10,6 +10,7 @@ import {
   RotateCcw,
   RefreshCw,
   ExternalLink,
+  X,
 } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { formatCurrency, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
@@ -17,6 +18,7 @@ import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
 import DatePicker from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import { strings } from '../../../lib/strings';
 import ProductFlowStats from './ProductFlowStats';
@@ -28,6 +30,8 @@ export default function ProductFlowView() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
+  const hasActiveFilters = Boolean(selectedProductId || fromDate || toDate);
+
   const { data: generalSettings } = useQuery({
     queryKey: ['generalSettings'],
     queryFn: () => tauriApi.getGeneralSettings(),
@@ -35,8 +39,8 @@ export default function ProductFlowView() {
   const currencySymbol = generalSettings?.currencySymbol || getCurrencySymbol();
 
   const { data: products = [] } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => tauriApi.getProducts(null, null),
+    queryKey: ['products', 'allFlowProducts'],
+    queryFn: () => tauriApi.getProducts(null, null, true),
   });
 
   const selectedProduct = useMemo(
@@ -230,29 +234,18 @@ export default function ProductFlowView() {
         </div>
 
         <div className="flex items-center gap-2">
-          {(selectedProductId || fromDate || toDate) && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content-secondary hover:text-content text-xs font-medium transition-colors cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-content-muted" />
-              <span>{strings.common.actions.reset}</span>
-            </button>
-          )}
           <ExportButton
             onExportCsv={handleExportCsv}
             onExportXlsx={handleExportXlsx}
             disabled={!hasSelectedProduct || !flowItems.length}
           />
 
-          <button
+          <RefreshButton
             onClick={() => refetch()}
             disabled={!hasSelectedProduct}
-            className="p-1.5 rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:bg-surface-secondary transition-colors disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+            isLoading={isLoading}
             title={strings.productFlow.productFlow.refreshTitle}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          />
         </div>
       </div>
 
@@ -269,10 +262,20 @@ export default function ProductFlowView() {
             placeholder={strings.productFlow.productFlow.selectProductPlaceholder}
             options={[
               { value: '', label: strings.productFlow.productFlow.selectProductPlaceholder },
-              ...products.map((p) => ({
-                value: String(p.id),
-                label: strings.productFlow.productFlow.productOption(p.name, p.sku),
-              })),
+              ...products.map((p) => {
+                const isDel = p.isDeleted ?? p.is_deleted;
+                const statusSuffix = isDel
+                  ? ' [Deleted]'
+                  : p.status === 'inactive'
+                  ? ' [Inactive]'
+                  : p.status === 'discontinued'
+                  ? ' [Discontinued]'
+                  : '';
+                return {
+                  value: String(p.id),
+                  label: `${strings.productFlow.productFlow.productOption(p.name, p.sku)}${statusSuffix}`,
+                };
+              }),
             ]}
             className="w-full"
           />
@@ -296,6 +299,17 @@ export default function ProductFlowView() {
             placeholder={strings.productFlow.filters.toPlaceholder}
           />
         </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1 text-[11px] font-medium text-danger hover:underline transition-colors cursor-pointer px-1 py-0.5"
+          >
+            <X className="w-3 h-3" />
+            <span>{strings.common.table.clearFilters}</span>
+          </button>
+        )}
       </div>
 
       {/* Main Content Area */}

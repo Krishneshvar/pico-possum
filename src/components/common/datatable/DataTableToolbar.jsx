@@ -64,7 +64,7 @@ export default function DataTableToolbar({
               placeholder={f.label}
               options={[
                 { value: '', label: strings.common.table.allFilter(f.label) },
-                ...f.options,
+                ...(Array.isArray(f.options) ? f.options : []),
               ]}
             />
           );

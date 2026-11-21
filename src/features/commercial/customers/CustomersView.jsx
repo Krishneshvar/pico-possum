@@ -9,6 +9,7 @@ import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
 import ExportButton from '../../../components/common/ExportButton';
+import RefreshButton from '../../../components/common/RefreshButton';
 import { exportToCsv, exportToXlsx, escapeCsv } from '../../../lib/exportUtils';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import CustomerModal from './CustomerModal';
@@ -29,7 +30,7 @@ export default function CustomersView() {
   });
   const currencySymbol = generalSettings?.currencySymbol || getCurrencySymbol();
 
-  const { data: customers = [], isLoading } = useQuery({
+  const { data: customers = [], isLoading, refetch } = useQuery({
     queryKey: ['customers'],
     queryFn: () => tauriApi.getCustomers(null),
   });
@@ -248,6 +249,11 @@ export default function CustomersView() {
           <ExportButton
             onExportCsv={handleExportCsv}
             onExportXlsx={handleExportXlsx}
+          />
+
+          <RefreshButton
+            onClick={() => refetch()}
+            isLoading={isLoading}
           />
 
           <button

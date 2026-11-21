@@ -62,32 +62,57 @@ export default function ConfirmDialog({
     onCancel?.();
   }, [isPending, onCancel]);
 
-  // Close on Escape.
+  const handleSubmit = useCallback((e) => {
+    e?.preventDefault();
+    if (cannotConfirm) return;
+    onConfirm?.(input ? inputValue.trim() : undefined);
+  }, [cannotConfirm, input, inputValue, onConfirm]);
+
+  // Keyboard navigation: Escape cancels, arrow keys toggle buttons, Enter activates focused button
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') handleCancel();
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancel();
+        return;
+      }
+
+      const isInputActive = inputRef.current && document.activeElement === inputRef.current;
+
+      if (isInputActive) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          confirmRef.current?.focus();
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        cancelRef.current?.focus();
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        confirmRef.current?.focus();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleCancel]);
 
-  // Focus management: For destructive dialogs, default focus is on Cancel!
+  // Focus management: initial focus on input or appropriate action button
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select?.();
-    } else if (tone === 'danger') {
-      cancelRef.current?.focus();
-    } else {
-      confirmRef.current?.focus();
-    }
+    const timer = setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select?.();
+      } else if (tone === 'danger') {
+        cancelRef.current?.focus();
+      } else {
+        confirmRef.current?.focus();
+      }
+    }, 40);
+    return () => clearTimeout(timer);
   }, [tone]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (cannotConfirm) return;
-    onConfirm?.(input ? inputValue.trim() : undefined);
-  };
 
   const dialog = (
     <div
@@ -158,8 +183,15 @@ export default function ConfirmDialog({
               ref={cancelRef}
               type="button"
               onClick={handleCancel}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCancel();
+                }
+              }}
               disabled={isPending}
-              className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50 cursor-pointer border border-border-default"
+              className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50 cursor-pointer border border-border-default focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
             >
               {cancelLabel}
             </button>
@@ -167,7 +199,7 @@ export default function ConfirmDialog({
               ref={confirmRef}
               type="submit"
               disabled={cannotConfirm}
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer ${styles.button}`}
+              className={`rounded-lg px-4 py-1.5 text-xs font-bold shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface ${styles.button}`}
             >
               {isPending ? strings.common.confirm.pleaseWait : confirmLabel}
             </button>

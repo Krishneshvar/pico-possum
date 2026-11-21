@@ -17,8 +17,9 @@ pub async fn get_products(
     pool: State<'_, SqlitePool>,
     category_id: Option<String>,
     search: Option<String>,
+    include_deleted: Option<bool>,
 ) -> Result<Vec<Product>, AppError> {
-    InventoryService::get_products(&pool, category_id, search).await
+    InventoryService::get_products_with_deleted(&pool, category_id, search, include_deleted.unwrap_or(false)).await
 }
 
 #[tauri::command]

@@ -213,14 +213,15 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
                           <label className="text-[11px] text-content-secondary block mb-1">
                             {strings.settings.receipt.footerText}
                           </label>
-                          <input
-                            type="text"
-                            value={opts.text || ''}
-                            onChange={(e) =>
-                              updateSectionOption(section.id, 'text', e.target.value)
-                            }
+                          <textarea
+                            rows={3}
+                            value={opts.text !== undefined ? opts.text : (bill.footerText || '')}
+                            onChange={(e) => {
+                              updateSectionOption(section.id, 'text', e.target.value);
+                              setBill((prev) => ({ ...prev, footerText: e.target.value }));
+                            }}
                             placeholder={strings.settings.receipt.footerPlaceholder}
-                            className="w-full bg-surface border border-border-strong rounded p-2 text-content text-xs"
+                            className="w-full bg-surface border border-border-strong rounded p-2 text-content text-xs resize-y font-sans leading-relaxed focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                           />
                         </div>
                       )}

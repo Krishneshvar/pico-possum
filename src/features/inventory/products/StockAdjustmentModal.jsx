@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, SlidersHorizontal, ShoppingBag } from 'lucide-react';
 import { strings } from '../../../lib/strings';
 import { toast } from '../../../stores/toast.store';
 import { validateStockAdjustment } from '../../../lib/validation';
+
+const DEFAULT_STATE = {
+  quantityChange: '',
+  movementType: 'MANUAL_STOCK_CORRECTION',
+  note: '',
+};
 
 export default function StockAdjustmentModal({
   product,
@@ -11,12 +17,25 @@ export default function StockAdjustmentModal({
   isPending = false,
   allowNegativeStock = false,
 }) {
-  const [stockAdjustment, setStockAdjustment] = useState({
-    quantityChange: '',
-    movementType: 'MANUAL_STOCK_CORRECTION',
-    note: '',
-  });
+  const [stockAdjustment, setStockAdjustment] = useState(DEFAULT_STATE);
   const [errors, setErrors] = useState({});
+  const qtyInputRef = useRef(null);
+
+  const resetForm = () => {
+    setStockAdjustment(DEFAULT_STATE);
+    setErrors({});
+  };
+
+  useEffect(() => {
+    if (product) {
+      resetForm();
+      const timer = setTimeout(() => {
+        qtyInputRef.current?.focus();
+        qtyInputRef.current?.select?.();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [product?.id]);
 
   if (!product) return null;
 
@@ -48,6 +67,11 @@ export default function StockAdjustmentModal({
     }));
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose?.();
+  };
+
   const handleConfirm = () => {
     const validation = validateStockAdjustment(
       stockAdjustment.quantityChange,
@@ -68,6 +92,7 @@ export default function StockAdjustmentModal({
       reason: stockAdjustment.movementType || 'MANUAL_STOCK_CORRECTION',
       note: stockAdjustment.note ? stockAdjustment.note.trim() : null,
     });
+    resetForm();
   };
 
   return (
@@ -80,7 +105,7 @@ export default function StockAdjustmentModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-secondary cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -158,6 +183,7 @@ export default function StockAdjustmentModal({
             </label>
             <div className="relative">
               <input
+                ref={qtyInputRef}
                 type="text"
                 inputMode="numeric"
                 value={stockAdjustment.quantityChange}
@@ -165,6 +191,14 @@ export default function StockAdjustmentModal({
                   const val = e.target.value.trim();
                   if (val === '' || val === '-' || val === '+' || /^[+-]?\d+$/.test(val)) {
                     updateQtyVal(val);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (isValidQty && !isPending) {
+                      handleConfirm();
+                    }
                   }
                 }}
                 placeholder={strings.products.stock.placeholders.quantity}
@@ -213,6 +247,14 @@ export default function StockAdjustmentModal({
                 setErrors((prev) => ({ ...prev, note: undefined }));
                 setStockAdjustment({ ...stockAdjustment, note: e.target.value });
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (isValidQty && !isPending) {
+                    handleConfirm();
+                  }
+                }
+              }}
               placeholder={strings.products.stock.placeholders.note}
               className={`w-full bg-surface-secondary border rounded-lg p-2 text-text-primary focus:outline-none ${
                 errors.note ? 'border-danger focus:border-danger' : 'border-border-strong focus:border-brand'
@@ -225,7 +267,7 @@ export default function StockAdjustmentModal({
         <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:bg-surface-secondary border border-border-default cursor-pointer"
           >
             Cancel
