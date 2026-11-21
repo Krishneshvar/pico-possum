@@ -129,19 +129,27 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
       if (!range) continue;
       const { min, max } = range;
       const filterDef = filters.find((f) => f.key === key);
-      const valFn = filterDef?.valueGetter || ((row) => row[key]);
+      if (typeof filterDef?.filterFn === 'function') {
+        result = result.filter((row) => filterDef.filterFn(row, range));
+      } else {
+        const valFn =
+          filterDef?.valueGetter ||
+          (filterDef?.transform
+            ? (row) => filterDef.transform(row[key])
+            : (row) => row[key]);
 
-      if (min !== '' && min != null && !Number.isNaN(Number(min))) {
-        result = result.filter((row) => {
-          const v = Number(valFn(row));
-          return !Number.isNaN(v) && v >= Number(min);
-        });
-      }
-      if (max !== '' && max != null && !Number.isNaN(Number(max))) {
-        result = result.filter((row) => {
-          const v = Number(valFn(row));
-          return !Number.isNaN(v) && v <= Number(max);
-        });
+        if (min !== '' && min != null && !Number.isNaN(Number(min))) {
+          result = result.filter((row) => {
+            const v = Number(valFn(row));
+            return !Number.isNaN(v) && v >= Number(min);
+          });
+        }
+        if (max !== '' && max != null && !Number.isNaN(Number(max))) {
+          result = result.filter((row) => {
+            const v = Number(valFn(row));
+            return !Number.isNaN(v) && v <= Number(max);
+          });
+        }
       }
     }
 

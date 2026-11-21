@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { strings } from '../../lib/strings';
 import { formatDate } from '../../lib/formatters';
@@ -6,6 +7,9 @@ import { formatDate } from '../../lib/formatters';
 const MONTH_NAMES = strings.common.datePicker.months;
 
 const SHORT_DAYS = strings.common.datePicker.weekdays;
+
+const VIEWPORT_PADDING = 8;
+const MENU_GAP = 4;
 
 /**
  * Format Date to YYYY-MM-DD in local time
@@ -53,7 +57,10 @@ export default function DatePicker({
   buttonClassName = '',
 }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
   const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
 
   const selectedDate = useMemo(() => parseIsoDate(value), [value]);
 
@@ -67,21 +74,65 @@ export default function DatePicker({
     }
   }, [value, open]);
 
+  const updatePosition = useCallback(() => {
+    const btn = triggerRef.current;
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setOpen(false);
+      return;
+    }
+
+    const popover = popoverRef.current;
+    const popoverHeight = popover?.offsetHeight || 280;
+    const popoverWidth = popover?.offsetWidth || 256;
+
+    let top = rect.bottom + MENU_GAP;
+    if (top + popoverHeight > window.innerHeight - VIEWPORT_PADDING) {
+      const above = rect.top - MENU_GAP - popoverHeight;
+      top =
+        above >= VIEWPORT_PADDING
+          ? above
+          : Math.max(VIEWPORT_PADDING, window.innerHeight - popoverHeight - VIEWPORT_PADDING);
+    }
+
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth - VIEWPORT_PADDING) {
+      left = Math.max(VIEWPORT_PADDING, window.innerWidth - popoverWidth - VIEWPORT_PADDING);
+    }
+
+    setCoords({ top, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const raf = requestAnimationFrame(updatePosition);
+    return () => cancelAnimationFrame(raf);
+  }, [open, updatePosition]);
+
   useEffect(() => {
     if (!open) return;
     const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && ref.current.contains(e.target)) return;
+      if (popoverRef.current && popoverRef.current.contains(e.target)) return;
+      setOpen(false);
     };
     const handleKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
     };
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleKey);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
     return () => {
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleKey);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   const viewYear = viewDate.getFullYear();
   const viewMonth = viewDate.getMonth();
@@ -170,6 +221,7 @@ export default function DatePicker({
     <div ref={ref} className={`relative inline-block ${className}`}>
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
@@ -192,9 +244,20 @@ export default function DatePicker({
       </button>
 
       {/* Popover Calendar */}
-      {open && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 bg-surface border border-border-default rounded-xl shadow-xl p-3 w-64 select-none animate-scale-in">
-          {/* Calendar Header */}
+      {open &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+            }}
+            className="z-[9999] bg-surface border border-border-default rounded-xl shadow-xl p-3 w-64 select-none animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* Calendar Header */}
           <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-border-default">
             <button
               type="button"
@@ -315,7 +378,8 @@ export default function DatePicker({
               {strings.common.datePicker.close}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,22 +1,78 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, X } from 'lucide-react';
 import { strings } from '../../../lib/strings';
+
+const VIEWPORT_PADDING = 8;
+const MENU_GAP = 4;
 
 export default function MultiSelectDropdown({ label, options = [], selected = [], onChange }) {
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [coords, setCoords] = useState({ top: 0, left: 0, minWidth: 160 });
   const ref = useRef(null);
   const triggerRef = useRef(null);
+  const menuRef = useRef(null);
   const optionRefs = useRef([]);
+
+  const updatePosition = useCallback(() => {
+    const btn = triggerRef.current;
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setOpen(false);
+      return;
+    }
+
+    const menu = menuRef.current;
+    const menuHeight = menu?.offsetHeight || 220;
+    const menuWidth = Math.max(rect.width, 160);
+
+    let top = rect.bottom + MENU_GAP;
+    if (top + menuHeight > window.innerHeight - VIEWPORT_PADDING) {
+      const above = rect.top - MENU_GAP - menuHeight;
+      top =
+        above >= VIEWPORT_PADDING
+          ? above
+          : Math.max(VIEWPORT_PADDING, window.innerHeight - menuHeight - VIEWPORT_PADDING);
+    }
+
+    let left = rect.left;
+    if (left + menuWidth > window.innerWidth - VIEWPORT_PADDING) {
+      left = Math.max(VIEWPORT_PADDING, window.innerWidth - menuWidth - VIEWPORT_PADDING);
+    }
+
+    setCoords({
+      top,
+      left,
+      minWidth: Math.max(rect.width, 160),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const raf = requestAnimationFrame(updatePosition);
+    return () => cancelAnimationFrame(raf);
+  }, [open, updatePosition, options.length]);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current?.contains(e.target)) return;
+      if (menuRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (open) {
@@ -124,76 +180,87 @@ export default function MultiSelectDropdown({ label, options = [], selected = []
         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div
-          role="listbox"
-          tabIndex={-1}
-          className="absolute z-50 mt-1 min-w-[160px] max-h-60 overflow-y-auto bg-surface border border-border-default rounded-xl shadow-lg py-1 text-xs focus:outline-none"
-        >
-          {activeCount > 0 && (
-            <button
-              ref={(el) => {
-                optionRefs.current[0] = el;
-              }}
-              type="button"
-              role="option"
-              aria-selected={false}
-              onClick={() => onChange([])}
-              onMouseEnter={() => setHighlightedIndex(0)}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-text-muted transition-colors border-b border-border-default cursor-pointer ${
-                highlightedIndex === 0
-                  ? 'bg-danger-bg text-danger'
-                  : 'hover:text-danger hover:bg-danger-bg'
-              }`}
-            >
-              <X className="w-3 h-3" />
-              <span>{strings.common.table.clearAll}</span>
-            </button>
-          )}
-
-          {options.map((opt, idx) => {
-            const isChecked = selected.includes(opt.value);
-            const itemIdx = activeCount > 0 ? idx + 1 : idx;
-            const isHighlighted = highlightedIndex === itemIdx;
-
-            return (
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            tabIndex={-1}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              minWidth: `${coords.minWidth}px`,
+            }}
+            className="z-[9999] max-h-60 overflow-y-auto bg-surface border border-border-default rounded-xl shadow-xl py-1 text-xs focus:outline-none animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {activeCount > 0 && (
               <button
-                key={opt.value}
                 ref={(el) => {
-                  optionRefs.current[itemIdx] = el;
+                  optionRefs.current[0] = el;
                 }}
                 type="button"
                 role="option"
-                aria-selected={isChecked}
-                onClick={() => toggle(opt.value)}
-                onMouseEnter={() => setHighlightedIndex(itemIdx)}
-                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors cursor-pointer ${
-                  isHighlighted
-                    ? isChecked
-                      ? 'bg-brand text-white'
-                      : 'bg-surface-secondary text-text-primary'
-                    : isChecked
-                    ? 'bg-brand-subtle text-brand font-medium'
-                    : 'text-text-primary hover:bg-surface-secondary'
+                aria-selected={false}
+                onClick={() => onChange([])}
+                onMouseEnter={() => setHighlightedIndex(0)}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-text-muted transition-colors border-b border-border-default cursor-pointer ${
+                  highlightedIndex === 0
+                    ? 'bg-danger-bg text-danger'
+                    : 'hover:text-danger hover:bg-danger-bg'
                 }`}
               >
-                <div
-                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                    isChecked
-                      ? isHighlighted
-                        ? 'bg-white border-white text-brand'
-                        : 'bg-brand border-brand text-white'
-                      : 'border-border-strong bg-surface'
+                <X className="w-3 h-3" />
+                <span>{strings.common.table.clearAll}</span>
+              </button>
+            )}
+
+            {options.map((opt, idx) => {
+              const isChecked = selected.includes(opt.value);
+              const itemIdx = activeCount > 0 ? idx + 1 : idx;
+              const isHighlighted = highlightedIndex === itemIdx;
+
+              return (
+                <button
+                  key={opt.value}
+                  ref={(el) => {
+                    optionRefs.current[itemIdx] = el;
+                  }}
+                  type="button"
+                  role="option"
+                  aria-selected={isChecked}
+                  onClick={() => toggle(opt.value)}
+                  onMouseEnter={() => setHighlightedIndex(itemIdx)}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors cursor-pointer ${
+                    isHighlighted
+                      ? isChecked
+                        ? 'bg-brand text-white'
+                        : 'bg-surface-secondary text-text-primary'
+                      : isChecked
+                      ? 'bg-brand-subtle text-brand font-medium'
+                      : 'text-text-primary hover:bg-surface-secondary'
                   }`}
                 >
-                  {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                </div>
-                <span className="truncate">{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  <div
+                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                      isChecked
+                        ? isHighlighted
+                          ? 'bg-white border-white text-brand'
+                          : 'bg-brand border-brand text-white'
+                        : 'border-border-strong bg-surface'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                  </div>
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

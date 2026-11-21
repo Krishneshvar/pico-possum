@@ -89,6 +89,42 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
     .execute(&pool)
     .await;
 
+    // Migration helper: clear remaining stock for already deleted products and record stock_movements
+    let deleted_prods: Vec<(String, i64, String)> = sqlx::query_as(
+        "SELECT id, current_stock, name FROM products WHERE is_deleted = 1 AND current_stock != 0"
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_default();
+
+    for (p_id, cur_stock, p_name) in deleted_prods {
+        let mv_id = uuid::Uuid::new_v4().to_string();
+        let delta = -cur_stock;
+        let note = format!("Stock cleared on product deletion (was {} units)", cur_stock);
+        let _ = sqlx::query(
+            "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
+             VALUES (?, ?, ?, 'PRODUCT_DELETED', NULL, ?)"
+        )
+        .bind(&mv_id)
+        .bind(&p_id)
+        .bind(delta)
+        .bind(&note)
+        .execute(&pool)
+        .await;
+
+        let _ = sqlx::query(
+            "UPDATE products SET current_stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        )
+        .bind(&p_id)
+        .execute(&pool)
+        .await;
+
+        AppLogger::info(
+            "Database",
+            format!("Cleared leftover {} units of stock for deleted product '{}'", cur_stock, p_name)
+        );
+    }
+
     // Seed default settings if missing
     seed_defaults(&pool).await?;
 

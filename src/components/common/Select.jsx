@@ -1,6 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 import { strings } from '../../lib/strings';
+
+const VIEWPORT_PADDING = 8;
+const MENU_GAP = 4;
 
 /**
  * Standard Modern Select Component
@@ -20,6 +24,7 @@ export default function Select({
 }) {
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
   const triggerRef = useRef(null);
   const listRef = useRef(null);
@@ -38,6 +43,49 @@ export default function Select({
 
   const selectedOption = selectedIndex >= 0 ? normalizedOptions[selectedIndex] : null;
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
+
+  const updatePosition = useCallback(() => {
+    const btn = triggerRef.current;
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setOpen(false);
+      return;
+    }
+
+    const menu = listRef.current;
+    const menuHeight = menu?.offsetHeight || 220;
+    const menuWidth = Math.max(rect.width, 160);
+
+    let top = rect.bottom + MENU_GAP;
+    if (top + menuHeight > window.innerHeight - VIEWPORT_PADDING) {
+      const above = rect.top - MENU_GAP - menuHeight;
+      top =
+        above >= VIEWPORT_PADDING
+          ? above
+          : Math.max(VIEWPORT_PADDING, window.innerHeight - menuHeight - VIEWPORT_PADDING);
+    }
+
+    let left = align === 'right' ? rect.right - menuWidth : rect.left;
+    left = Math.min(
+      Math.max(VIEWPORT_PADDING, left),
+      Math.max(VIEWPORT_PADDING, window.innerWidth - menuWidth - VIEWPORT_PADDING)
+    );
+
+    setCoords({
+      top,
+      left,
+      width: Math.max(rect.width, 160),
+    });
+  }, [align]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const raf = requestAnimationFrame(updatePosition);
+    return () => cancelAnimationFrame(raf);
+  }, [open, updatePosition, normalizedOptions.length]);
 
   // Sync highlightedIndex when opening
   useEffect(() => {
@@ -58,19 +106,23 @@ export default function Select({
     }
   }, [highlightedIndex, open]);
 
-  // Outside click listener
+  // Outside click and scroll listener
   useEffect(() => {
     if (!open) return;
     const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (ref.current && ref.current.contains(e.target)) return;
+      if (listRef.current && listRef.current.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handleClick);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
     return () => {
       document.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   // Keyboard navigation handler
   const handleKeyDown = (e) => {
@@ -160,49 +212,57 @@ export default function Select({
         />
       </button>
 
-      {open && (
-        <div
-          ref={listRef}
-          role="listbox"
-          tabIndex={-1}
-          className={`absolute top-full mt-1.5 z-50 bg-surface border border-border-default rounded-xl shadow-xl py-1 max-h-60 overflow-y-auto animate-scale-in min-w-full ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}
-        >
-          {normalizedOptions.map((opt, idx) => {
-            const isSelected = String(opt.value) === String(value ?? '');
-            const isHighlighted = highlightedIndex === idx;
+      {open &&
+        createPortal(
+          <div
+            ref={listRef}
+            role="listbox"
+            tabIndex={-1}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              minWidth: `${coords.width}px`,
+            }}
+            className="z-[9999] bg-surface border border-border-default rounded-xl shadow-xl py-1 max-h-60 overflow-y-auto animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {normalizedOptions.map((opt, idx) => {
+              const isSelected = String(opt.value) === String(value ?? '');
+              const isHighlighted = highlightedIndex === idx;
 
-            return (
-              <button
-                key={opt.value}
-                ref={(el) => (optionRefs.current[idx] = el)}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                  triggerRef.current?.focus();
-                }}
-                onMouseEnter={() => setHighlightedIndex(idx)}
-                className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-xs text-left transition-colors cursor-pointer ${
-                  isSelected
-                    ? isHighlighted
-                      ? 'bg-brand/15 text-brand font-semibold'
-                      : 'bg-brand-subtle text-brand font-semibold'
-                    : isHighlighted
-                    ? 'bg-surface-secondary text-text-primary font-medium'
-                    : 'text-text-primary hover:bg-surface-secondary'
-                }`}
-              >
-                <span className="truncate">{opt.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-brand shrink-0" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
+              return (
+                <button
+                  key={opt.value}
+                  ref={(el) => (optionRefs.current[idx] = el)}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                    triggerRef.current?.focus();
+                  }}
+                  onMouseEnter={() => setHighlightedIndex(idx)}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-xs text-left transition-colors cursor-pointer ${
+                    isSelected
+                      ? isHighlighted
+                        ? 'bg-brand/15 text-brand font-semibold'
+                        : 'bg-brand-subtle text-brand font-semibold'
+                      : isHighlighted
+                      ? 'bg-surface-secondary text-text-primary font-medium'
+                      : 'text-text-primary hover:bg-surface-secondary'
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-brand shrink-0" />}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

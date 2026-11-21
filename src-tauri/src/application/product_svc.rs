@@ -222,22 +222,62 @@ impl ProductService {
         pool: &SqlitePool,
         id: &str,
     ) -> Result<(), AppError> {
-        sqlx::query(
-            "UPDATE products SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        let mut tx = pool.begin().await?;
+
+        let row: Option<(i64, String)> = sqlx::query_as(
+            "SELECT current_stock, name FROM products WHERE id = ?"
         )
         .bind(id)
-        .execute(pool)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let (current_stock, product_name) = match row {
+            Some(r) => r,
+            None => return Err(AppError::NotFound(format!("Product {} not found", id))),
+        };
+
+        if current_stock != 0 {
+            let movement_id = Uuid::new_v4().to_string();
+            let delta = -current_stock;
+            let note = format!("Stock cleared on product deletion (was {} units)", current_stock);
+
+            sqlx::query(
+                "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
+                 VALUES (?, ?, ?, 'PRODUCT_DELETED', NULL, ?)"
+            )
+            .bind(&movement_id)
+            .bind(id)
+            .bind(delta)
+            .bind(&note)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        sqlx::query(
+            "UPDATE products SET is_deleted = 1, current_stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        )
+        .bind(id)
+        .execute(&mut *tx)
         .await?;
 
         let audit_id = Uuid::new_v4().to_string();
+        let audit_desc = if current_stock != 0 {
+            format!("Soft deleted product '{}' and cleared {} units of remaining stock", product_name, current_stock)
+        } else {
+            format!("Soft deleted product '{}'", product_name)
+        };
+
         sqlx::query(
             "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description)
-             VALUES (?, 'PRODUCT_SOFT_DELETED', 'PRODUCT', ?, 'Soft deleted product')"
+             VALUES (?, 'PRODUCT_SOFT_DELETED', 'PRODUCT', ?, ?)"
         )
         .bind(&audit_id)
         .bind(id)
-        .execute(pool)
+        .bind(&audit_desc)
+        .execute(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }

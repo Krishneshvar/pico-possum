@@ -58,6 +58,7 @@ export default function CategoryModal({
     onSubmit({
       name: name.trim(),
       parentId: parentId ? String(parentId) : null,
+      parent_id: parentId ? String(parentId) : null,
     });
   };
 

@@ -27,7 +27,7 @@ impl ReportsService {
              WHERE (?1 IS NULL OR sm.product_id = ?1)
                AND strftime('%Y-%m-%d', sm.created_at) >= ?2
                AND strftime('%Y-%m-%d', sm.created_at) <= ?3
-             ORDER BY sm.created_at DESC LIMIT ?4"
+             ORDER BY sm.created_at DESC, sm.rowid DESC LIMIT ?4"
         )
         .bind(product_id)
         .bind(from)

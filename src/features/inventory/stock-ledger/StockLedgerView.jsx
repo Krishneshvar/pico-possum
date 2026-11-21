@@ -34,6 +34,10 @@ const REASON_CONFIG = {
     label: s.movementTypes.sale,
     badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   },
+  PRODUCT_DELETED: {
+    label: s.movementTypes.productDeleted || 'Product Deleted',
+    badgeClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+  },
 };
 
 function normalizeMovementType(rawType) {
@@ -44,6 +48,7 @@ function normalizeMovementType(rawType) {
   if (upper === 'RETURN') return 'RETURN';
   if (upper === 'CANCELLED' || upper === 'CANCELED') return 'CANCELLED';
   if (upper === 'SALE') return 'SALE';
+  if (upper === 'PRODUCT_DELETED' || upper === 'DELETED') return 'PRODUCT_DELETED';
   if (
     upper === 'MANUAL_STOCK_CORRECTION' ||
     upper === 'MANUAL_ADJUSTMENT' ||
@@ -72,6 +77,7 @@ export default function StockLedgerView() {
       { value: 'RETURN', label: s.movementTypes.return },
       { value: 'CANCELLED', label: s.movementTypes.cancelled },
       { value: 'SALE', label: s.movementTypes.sale },
+      { value: 'PRODUCT_DELETED', label: s.movementTypes.productDeleted || 'Product Deleted' },
     ],
     []
   );
@@ -93,7 +99,14 @@ export default function StockLedgerView() {
       key: 'product_name',
       label: s.columns.product,
       className: 'font-semibold text-text-primary text-xs',
-      render: (r) => r.product_name || <span className="text-text-muted italic">{s.unknownItem}</span>,
+      render: (r) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span>{r.product_name || <span className="text-text-muted italic">{s.unknownItem}</span>}</span>
+          {r.movement_type === 'PRODUCT_DELETED' && (
+            <span className="text-[10px] text-text-muted font-normal italic">(Deleted)</span>
+          )}
+        </span>
+      ),
     },
     {
       key: 'movement_type',

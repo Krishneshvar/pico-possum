@@ -558,3 +558,84 @@ async fn test_bill_input_item_order_preserved() {
     assert_eq!(updated_details.items[2].item_order, 2);
 }
 
+#[tokio::test]
+async fn test_product_deletion_clears_stock_and_records_movement() {
+    let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
+    let target_db_file = temp_dir.path().join("test-product-deletion.db");
+
+    let options = SqliteConnectOptions::new()
+        .filename(&target_db_file)
+        .create_if_missing(true)
+        .foreign_keys(true);
+
+    let pool = SqlitePoolOptions::new()
+        .connect_with(options)
+        .await
+        .expect("Failed to connect to db");
+
+    sqlx::raw_sql(pico_possum_lib::infrastructure::database::schema::INIT_SCHEMA)
+        .execute(&pool)
+        .await
+        .expect("Failed to run schema");
+
+    // 1. Create a Product with 5 unit opening stock
+    let prod = InventoryService::create_product(
+        &pool,
+        CreateProductPayload {
+            name: "Deletion Stock Test Item".to_string(),
+            sku: Some("DEL-005".to_string()),
+            category_id: None,
+            cost_price_paise: Some(1000),
+            mrp_paise: 2000,
+            tax_rate: Some(0.0),
+            initial_stock: Some(5),
+            min_stock_alert: Some(1),
+            status: Some("active".to_string()),
+        },
+    )
+    .await
+    .expect("Failed to create product");
+
+    assert_eq!(prod.current_stock, 5);
+
+    // Verify initial stock movement is PURCHASE +5
+    let movements_before = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
+        .await
+        .expect("Failed to get stock movements");
+    assert_eq!(movements_before.len(), 1);
+    assert_eq!(movements_before[0].quantity_change, 5);
+    assert_eq!(movements_before[0].movement_type, "PURCHASE");
+
+    // 2. Delete the Product
+    InventoryService::delete_product(&pool, &prod.id)
+        .await
+        .expect("Failed to delete product");
+
+    // 3. Verify stock movements after deletion
+    let movements_after = InventoryService::get_stock_movements(&pool, Some(prod.id.clone()), None, None, 10)
+        .await
+        .expect("Failed to get stock movements after deletion");
+
+    assert_eq!(movements_after.len(), 2);
+    // Most recent movement should be PRODUCT_DELETED with -5
+    assert_eq!(movements_after[0].movement_type, "PRODUCT_DELETED");
+    assert_eq!(movements_after[0].quantity_change, -5);
+    assert!(movements_after[0].note.as_ref().unwrap().contains("5 units"));
+
+    // Total net stock change from movements must equal 0
+    let total_delta: i64 = movements_after.iter().map(|m| m.quantity_change).sum();
+    assert_eq!(total_delta, 0);
+
+    // 4. Verify product record has current_stock = 0 and is_deleted = 1
+    let (is_deleted, current_stock): (i64, i64) = sqlx::query_as(
+        "SELECT is_deleted, current_stock FROM products WHERE id = ?"
+    )
+    .bind(&prod.id)
+    .fetch_one(&pool)
+    .await
+    .expect("Product should still exist in soft-deleted state");
+
+    assert_eq!(is_deleted, 1);
+    assert_eq!(current_stock, 0);
+}
+

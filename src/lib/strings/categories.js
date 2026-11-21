@@ -56,6 +56,14 @@ const categories = {
     deleteMessage: (name) =>
       `Are you sure you want to delete category "${name}"? This action cannot be undone.`,
     deleteConfirm: 'Delete Category',
+    deleteConfirmBtn: 'Delete Category',
+    deleteCancelBtn: 'Cancel',
+    deleteWithChildrenAndProducts: (name, childCount, productCount) =>
+      `Category "${name}" has ${childCount} subcategory and ${productCount} products. Deleting it will un-nest its subcategories and remove category association from those products. Are you sure?`,
+    deleteWithChildren: (name, childCount) =>
+      `Category "${name}" has ${childCount} subcategory. Deleting it will promote subcategories to top-level. Are you sure?`,
+    deleteWithProducts: (name, productCount) =>
+      `Category "${name}" has ${productCount} assigned products. Are you sure you want to delete this category?`,
   },
 
   toasts: {
@@ -114,6 +122,7 @@ const categories = {
       return: 'Return',
       cancelled: 'Cancelled',
       sale: 'Sale',
+      productDeleted: 'Product Deleted',
     },
   },
 };

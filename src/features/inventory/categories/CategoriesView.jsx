@@ -109,8 +109,11 @@ export default function CategoriesView() {
 
   const createMutation = useMutation({
     mutationFn: (payload) => tauriApi.createCategory(payload),
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      if (payload?.parent_id) {
+        setExpandedIds((prev) => new Set([...prev, payload.parent_id]));
+      }
       setModalOpen(false);
       toast.success(strings.categories.toasts.created);
     },
@@ -122,8 +125,12 @@ export default function CategoriesView() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => tauriApi.updateCategory(id, payload),
-    onSuccess: () => {
+    onSuccess: (_data, { payload }) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      if (payload?.parent_id) {
+        setExpandedIds((prev) => new Set([...prev, payload.parent_id]));
+      }
       setModalOpen(false);
       setEditingCategory(null);
       toast.success(strings.categories.toasts.updated);
@@ -136,8 +143,12 @@ export default function CategoriesView() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => tauriApi.deleteCategory(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      if (selectedTreeId === id) {
+        setSelectedTreeId(null);
+      }
       toast.success(strings.categories.toasts.deleted);
     },
     onError: (err) =>
@@ -165,10 +176,13 @@ export default function CategoriesView() {
   };
 
   const handleDelete = async (category) => {
-    const hasChildren = categoryMap[category.id]?.children.length > 0;
+    const hasChildren = (categoryMap[category.id]?.children?.length || 0) > 0;
     const hasProducts = (productCounts[category.id] || 0) > 0;
 
-    let warningMessage = strings.categories.dialogs.deleteConfirm(category.name);
+    let warningMessage = typeof strings.categories.dialogs.deleteMessage === 'function'
+      ? strings.categories.dialogs.deleteMessage(category.name)
+      : `Are you sure you want to delete category "${category.name}"?`;
+
     if (hasChildren && hasProducts) {
       warningMessage = strings.categories.dialogs.deleteWithChildrenAndProducts(
         category.name,
@@ -187,11 +201,18 @@ export default function CategoriesView() {
       );
     }
 
+    const titleText = typeof strings.categories.dialogs.deleteTitle === 'function'
+      ? strings.categories.dialogs.deleteTitle(category.name)
+      : strings.categories.dialogs.deleteTitle || `Delete Category "${category.name}"?`;
+
     const { confirmed } = await confirmDialog({
-      title: strings.categories.dialogs.deleteTitle,
+      title: titleText,
       message: warningMessage,
-      confirmLabel: strings.categories.dialogs.deleteConfirmBtn,
-      cancelLabel: strings.categories.dialogs.deleteCancelBtn,
+      confirmLabel:
+        strings.categories.dialogs.deleteConfirmBtn ||
+        strings.categories.dialogs.deleteConfirm ||
+        'Delete Category',
+      cancelLabel: strings.categories.dialogs.deleteCancelBtn || strings.common.actions.cancel || 'Cancel',
       tone: 'danger',
       icon: Trash2,
     });
@@ -202,9 +223,10 @@ export default function CategoriesView() {
   };
 
   const handleModalSubmit = (values) => {
+    const parentId = values.parent_id !== undefined ? values.parent_id : values.parentId;
     const payload = {
       name: values.name.trim(),
-      parent_id: values.parent_id || null,
+      parent_id: parentId ? String(parentId) : null,
       description: values.description ? values.description.trim() : null,
     };
 
