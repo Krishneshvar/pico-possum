@@ -167,6 +167,20 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
            AND substr(invoice_number, 4, 2) = 'GC'"
     ).execute(&pool).await;
 
+    // Migration helper: sync invoice_sequences to at least the max sequence in sales
+    let _ = sqlx::query(
+        "INSERT INTO invoice_sequences (payment_code, last_sequence)
+         SELECT 'CH', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+         UNION ALL
+         SELECT 'CP', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+         UNION ALL
+         SELECT 'UP', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+         UNION ALL
+         SELECT 'GC', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+         ON CONFLICT(payment_code) DO UPDATE SET
+           last_sequence = MAX(invoice_sequences.last_sequence, excluded.last_sequence)"
+    ).execute(&pool).await;
+
     // Seed default settings if missing
     seed_defaults(&pool).await?;
 

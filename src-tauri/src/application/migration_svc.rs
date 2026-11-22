@@ -443,6 +443,20 @@ impl MigrationService {
             }
         }
 
+        // Sync invoice_sequences to at least max sequence from imported sales
+        let _ = sqlx::query(
+            "INSERT INTO invoice_sequences (payment_code, last_sequence)
+             SELECT 'CH', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+             UNION ALL
+             SELECT 'CP', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+             UNION ALL
+             SELECT 'UP', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+             UNION ALL
+             SELECT 'GC', COALESCE(MAX(CAST(substr(invoice_number, 6) AS INTEGER)), 0) FROM sales WHERE substr(invoice_number, 1, 1) = 'S'
+             ON CONFLICT(payment_code) DO UPDATE SET
+               last_sequence = MAX(invoice_sequences.last_sequence, excluded.last_sequence)"
+        ).execute(&mut *tx).await;
+
         // 7. Audit log the migration
         let audit_uuid = Uuid::new_v4().to_string();
         sqlx::query(
