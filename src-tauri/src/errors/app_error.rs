@@ -3,13 +3,13 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
+    #[error("{0}")]
+    Database(String),
 
-    #[error("Not found: {0}")]
+    #[error("{0}")]
     NotFound(String),
 
-    #[error("Validation error: {0}")]
+    #[error("{0}")]
     Validation(String),
 
     #[error("Insufficient stock for product '{product}': available {available}, requested {requested}")]
@@ -19,7 +19,7 @@ pub enum AppError {
         requested: i64,
     },
 
-    #[error("Migration error: {0}")]
+    #[error("{0}")]
     Migration(String),
 
     #[error("I/O error: {0}")]
@@ -28,14 +28,37 @@ pub enum AppError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
-    #[error("Printer error: {0}")]
+    #[error("{0}")]
     Printer(String),
 
-    #[error("Unauthorized: {0}")]
+    #[error("{0}")]
     Unauthorized(String),
 
-    #[error("Forbidden: {0}")]
+    #[error("{0}")]
     Forbidden(String),
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        let msg = err.to_string();
+        if msg.contains("UNIQUE constraint failed: products.sku") {
+            AppError::Validation("A product with this SKU already exists. Please choose a unique SKU.".to_string())
+        } else if msg.contains("UNIQUE constraint failed: products.name") {
+            AppError::Validation("A product with this name already exists. Please choose a unique name.".to_string())
+        } else if msg.contains("UNIQUE constraint failed: categories.name") {
+            AppError::Validation("A category with this name already exists.".to_string())
+        } else if msg.contains("UNIQUE constraint failed: users.username") {
+            AppError::Validation("A user with this username already exists.".to_string())
+        } else if msg.contains("UNIQUE constraint failed: sales.invoice_number") {
+            AppError::Validation("A bill with this invoice number already exists.".to_string())
+        } else if msg.contains("FOREIGN KEY constraint failed") {
+            AppError::Validation("This item is linked to other transactions and cannot be deleted or modified.".to_string())
+        } else if msg.contains("database is locked") || msg.contains("busy") {
+            AppError::Database("The database is currently busy. Please try again in a moment.".to_string())
+        } else {
+            AppError::Database(msg)
+        }
+    }
 }
 
 impl Serialize for AppError {
