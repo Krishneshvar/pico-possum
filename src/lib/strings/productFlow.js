@@ -12,6 +12,7 @@ const productFlow = {
     refreshTitle: 'Refresh Product Flow',
     selectProduct: 'Select Product:',
     selectProductPlaceholder: '-- Choose a product to inspect history --',
+    searchProductPlaceholder: 'Search product by name or SKU...',
     productOption: (name, sku) => `${name}${sku ? ` (SKU: ${sku})` : ''}`,
     skuBadge: (sku) => `SKU: ${sku}`,
     summarySubtitle: 'Transaction audit and historical customer sales records',

@@ -16,6 +16,7 @@ import { tauriApi } from '../../../lib/tauri';
 import { formatCurrency, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import DataTable from '../../../components/common/DataTable';
 import Select from '../../../components/common/Select';
+import SearchableSelect from '../../../components/common/SearchableSelect';
 import DatePicker from '../../../components/common/DatePicker';
 import ExportButton from '../../../components/common/ExportButton';
 import RefreshButton from '../../../components/common/RefreshButton';
@@ -47,6 +48,19 @@ export default function ProductFlowView() {
     () => products.find((p) => p.id === selectedProductId) || null,
     [products, selectedProductId]
   );
+
+  const productOptions = useMemo(() => {
+    return products.map((p) => {
+      const isDel = p.isDeleted ?? p.is_deleted;
+      const status = isDel ? 'Deleted' : p.status !== 'active' ? p.status : '';
+      return {
+        value: String(p.id),
+        label: p.name,
+        sku: p.sku || '',
+        status,
+      };
+    });
+  }, [products]);
 
   const hasSelectedProduct = Boolean(selectedProductId);
 
@@ -251,32 +265,16 @@ export default function ProductFlowView() {
 
       {/* Control Filter Bar */}
       <div className="px-6 py-3.5 border-b border-border bg-surface flex items-center gap-4 flex-wrap text-xs">
-        {/* Product Picker */}
-        <div className="flex items-center gap-2 min-w-64 flex-1 max-w-md">
+        {/* Product Picker Searchbar with Dropdown */}
+        <div className="flex items-center gap-2 min-w-80 flex-1 max-w-lg">
           <span className="text-content-secondary font-medium shrink-0">
             {strings.productFlow.productFlow.selectProduct}
           </span>
-          <Select
+          <SearchableSelect
             value={selectedProductId}
             onChange={(val) => setSelectedProductId(val)}
-            placeholder={strings.productFlow.productFlow.selectProductPlaceholder}
-            options={[
-              { value: '', label: strings.productFlow.productFlow.selectProductPlaceholder },
-              ...products.map((p) => {
-                const isDel = p.isDeleted ?? p.is_deleted;
-                const statusSuffix = isDel
-                  ? ' [Deleted]'
-                  : p.status === 'inactive'
-                  ? ' [Inactive]'
-                  : p.status === 'discontinued'
-                  ? ' [Discontinued]'
-                  : '';
-                return {
-                  value: String(p.id),
-                  label: `${strings.productFlow.productFlow.productOption(p.name, p.sku)}${statusSuffix}`,
-                };
-              }),
-            ]}
+            placeholder={strings.productFlow.productFlow.searchProductPlaceholder || 'Search product by name, SKU...'}
+            options={productOptions}
             className="w-full"
           />
         </div>
