@@ -15,11 +15,16 @@ impl CustomerService {
         let pattern = search.map(|s| format!("%{}%", s.trim()));
 
         let customers = sqlx::query_as::<_, Customer>(
-            "SELECT id, name, phone, address, is_deleted, created_at, updated_at
-             FROM customers
-             WHERE is_deleted = 0
-               AND (?1 IS NULL OR name LIKE ?1 OR phone LIKE ?1)
-             ORDER BY name ASC"
+            "SELECT c.id, c.name, c.phone, c.address, c.is_deleted, c.created_at, c.updated_at,
+                    COUNT(DISTINCT CASE WHEN s.status != 'CANCELLED' THEN s.id ELSE NULL END) as total_sales,
+                    COALESCE(SUM(CASE WHEN s.status != 'CANCELLED' THEN s.total_cents ELSE 0 END), 0) as total_spent_cents,
+                    MAX(CASE WHEN s.status != 'CANCELLED' THEN s.created_at ELSE NULL END) as last_sale_date
+             FROM customers c
+             LEFT JOIN sales s ON (s.customer_id = c.id OR (c.phone IS NOT NULL AND c.phone != '' AND s.customer_phone = c.phone))
+             WHERE c.is_deleted = 0
+               AND (?1 IS NULL OR c.name LIKE ?1 OR c.phone LIKE ?1)
+             GROUP BY c.id
+             ORDER BY c.name ASC"
         )
         .bind(pattern)
         .fetch_all(pool)

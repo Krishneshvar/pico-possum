@@ -113,6 +113,15 @@ pub struct Customer {
     pub created_at: String,
     #[serde(alias = "updated_at")]
     pub updated_at: String,
+    #[serde(default, alias = "total_sales")]
+    #[sqlx(default)]
+    pub total_sales: i64,
+    #[serde(default, alias = "total_spent_cents")]
+    #[sqlx(default)]
+    pub total_spent_cents: i64,
+    #[serde(default, alias = "last_sale_date")]
+    #[sqlx(default)]
+    pub last_sale_date: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

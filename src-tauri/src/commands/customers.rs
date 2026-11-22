@@ -61,7 +61,8 @@ pub async fn get_customer_sales(
                 subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
                 payment_method, status, fulfillment_status, notes, created_at
          FROM sales
-         WHERE customer_id = ?
+         WHERE customer_id = ?1
+            OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = (SELECT phone FROM customers WHERE id = ?1 AND phone IS NOT NULL AND phone != ''))
          ORDER BY created_at DESC"
     )
     .bind(&customer_id)

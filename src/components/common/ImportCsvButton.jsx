@@ -75,6 +75,8 @@ export default function ImportCsvButton({
     error: null,
   });
 
+  const isProcessing = progressModal.isProcessing;
+
   const fileInputCsvRef = useRef(null);
   const fileInputXlsxRef = useRef(null);
   const firstImportBtnRef = useRef(null);
