@@ -74,7 +74,7 @@ impl ProductService {
              LEFT JOIN categories c ON c.id = p.category_id
              WHERE (?3 = 1 OR p.is_deleted = 0)
                AND (?1 IS NULL OR p.category_id = ?1)
-               AND (?2 IS NULL OR p.name LIKE ?2 OR p.sku LIKE ?2)
+               AND (?2 IS NULL OR p.name LIKE ?2 OR p.sku LIKE ?2 OR c.name LIKE ?2)
              ORDER BY p.name ASC"
         )
         .bind(category_id)
@@ -258,17 +258,21 @@ impl ProductService {
     ) -> Result<(), AppError> {
         let mut tx = pool.begin().await?;
 
-        let row: Option<(i64, String)> = sqlx::query_as(
-            "SELECT current_stock, name FROM products WHERE id = ?"
+        let row: Option<(i64, String, i64)> = sqlx::query_as(
+            "SELECT current_stock, name, is_deleted FROM products WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&mut *tx)
         .await?;
 
-        let (current_stock, product_name) = match row {
+        let (current_stock, product_name, is_deleted) = match row {
             Some(r) => r,
             None => return Err(AppError::NotFound(format!("Product {} not found", id))),
         };
+
+        if is_deleted != 0 {
+            return Err(AppError::NotFound(format!("Product {} is already deleted", id)));
+        }
 
         if current_stock != 0 {
             let movement_id = Uuid::new_v4().to_string();

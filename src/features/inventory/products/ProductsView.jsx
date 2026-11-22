@@ -367,6 +367,7 @@ export default function ProductsView() {
           onClose={() => setModalMode(null)}
           onSubmit={handleStockSubmit}
           isPending={adjustStockMutation.isPending}
+          allowNegativeStock={allowNegativeStock}
         />
       )}
     </div>

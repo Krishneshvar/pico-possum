@@ -117,25 +117,36 @@ impl InventoryService {
             }
         };
 
-        let mut tx = pool.begin().await?;
-
         let allow_negative_stock = SettingsService::get_general_settings(pool)
             .await?
             .allow_negative_stock;
 
-        if !allow_negative_stock && payload.quantity_change < 0 {
-            let current: i64 = sqlx::query_scalar("SELECT current_stock FROM products WHERE id = ?")
-                .bind(&payload.product_id)
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(format!("Product {} not found", payload.product_id)))?;
+        let mut tx = pool.begin().await?;
 
-            if current + payload.quantity_change < 0 {
-                return Err(AppError::Validation(format!(
-                    "Cannot deduct {} units: current stock is {} and negative stock is disabled",
-                    -payload.quantity_change, current
-                )));
-            }
+        let row: Option<(i64, i64)> = sqlx::query_as(
+            "SELECT current_stock, is_deleted FROM products WHERE id = ?"
+        )
+        .bind(&payload.product_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let (current, is_deleted) = match row {
+            Some(r) => r,
+            None => return Err(AppError::NotFound(format!("Product {} not found", payload.product_id))),
+        };
+
+        if is_deleted != 0 {
+            return Err(AppError::Validation(format!(
+                "Cannot adjust stock for deleted product {}",
+                payload.product_id
+            )));
+        }
+
+        if !allow_negative_stock && payload.quantity_change < 0 && current + payload.quantity_change < 0 {
+            return Err(AppError::Validation(format!(
+                "Cannot deduct {} units: current stock is {} and negative stock is disabled",
+                -payload.quantity_change, current
+            )));
         }
 
         let movement_id = Uuid::new_v4().to_string();
@@ -152,7 +163,7 @@ impl InventoryService {
         .await?;
 
         sqlx::query(
-            "UPDATE products SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            "UPDATE products SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_deleted = 0"
         )
         .bind(payload.quantity_change)
         .bind(&payload.product_id)
