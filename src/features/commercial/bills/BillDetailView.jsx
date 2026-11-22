@@ -18,6 +18,7 @@ import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
+import { executeDirectPrint } from '../../../components/receipt/directPrint';
 import PosBillEditor from '../pos/PosBillEditor';
 import CustomerModal from '../customers/CustomerModal';
 import BillDetailReadView from './BillDetailReadView';
@@ -110,11 +111,15 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
       toast.error(b.toasts.cancelFailed(err), { title: b.toasts.cancelFailedTitle }),
   });
 
-  const handleReprint = () => {
+  const handleReprint = async () => {
     if (!saleDetails) return;
     setReprintSale(saleDetails);
-    toast.info(b.toasts.receiptPreparing);
-    setTimeout(() => window.print(), 100);
+    await executeDirectPrint({
+      sale: saleDetails.sale,
+      items: saleDetails.items,
+      billSettings,
+      generalSettings,
+    });
   };
 
   const handleBack = () => {
@@ -358,7 +363,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
 
       {/* Hidden Receipt Component */}
       {reprintSale && (
-        <div className="hidden">
+        <div className="print-only-container">
           <ReceiptPrinter
             sale={reprintSale.sale}
             items={reprintSale.items}

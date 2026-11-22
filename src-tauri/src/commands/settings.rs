@@ -45,6 +45,11 @@ pub async fn test_print(printer_name: Option<String>) -> Result<(), AppError> {
     PrinterService::test_print(printer_name)
 }
 
+#[tauri::command]
+pub async fn print_receipt(printer_name: Option<String>, content: String) -> Result<(), AppError> {
+    PrinterService::print_receipt(printer_name, &content)
+}
+
 // ── Backup & Restore ─────────────────────────────────────────────────────────
 
 #[tauri::command]

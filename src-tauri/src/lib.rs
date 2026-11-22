@@ -124,6 +124,7 @@ pub fn run() {
             commands::settings::update_bill_settings,
             commands::settings::list_printers,
             commands::settings::test_print,
+            commands::settings::print_receipt,
             commands::settings::get_backup_status,
             commands::settings::list_backups,
             commands::settings::create_manual_backup,

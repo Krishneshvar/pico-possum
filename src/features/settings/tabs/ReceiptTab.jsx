@@ -190,19 +190,151 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
                         </div>
                       )}
 
+                      {section.id === 'storeHeader' && (
+                        <>
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="text-[11px] text-content-secondary block mb-1">
+                              {strings.settings.general.storeName}
+                            </label>
+                            <input
+                              type="text"
+                              value={opts.storeName ?? ''}
+                              onChange={(e) => {
+                                updateSectionOption(section.id, 'storeName', e.target.value);
+                                setBill((prev) => ({ ...prev, storeName: e.target.value }));
+                              }}
+                              placeholder={general?.storeName || general?.store_name || strings.receipt.defaults.storeName}
+                              className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs"
+                            />
+                            <span className="text-[10px] text-content-muted mt-0.5 block">
+                              Leave empty to use Store Profile
+                            </span>
+                          </div>
+
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="text-[11px] text-content-secondary block mb-1">
+                              {strings.settings.general.phone}
+                            </label>
+                            <input
+                              type="text"
+                              value={opts.phone ?? ''}
+                              onChange={(e) => {
+                                updateSectionOption(section.id, 'phone', e.target.value);
+                                setBill((prev) => ({ ...prev, phone: e.target.value }));
+                              }}
+                              placeholder={general?.phone || 'e.g. +91 9876543210'}
+                              className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs font-mono"
+                            />
+                            <span className="text-[10px] text-content-muted mt-0.5 block">
+                              Leave empty to use Store Profile
+                            </span>
+                          </div>
+
+                          <div className="col-span-2">
+                            <label className="text-[11px] text-content-secondary block mb-1">
+                              {strings.settings.general.address}
+                            </label>
+                            <input
+                              type="text"
+                              value={opts.storeDetails ?? ''}
+                              onChange={(e) => {
+                                updateSectionOption(section.id, 'storeDetails', e.target.value);
+                                setBill((prev) => ({ ...prev, storeDetails: e.target.value }));
+                              }}
+                              placeholder={general?.address || 'Store address or location'}
+                              className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs"
+                            />
+                            <span className="text-[10px] text-content-muted mt-0.5 block">
+                              Leave empty to use Store Profile
+                            </span>
+                          </div>
+
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="text-[11px] text-content-secondary block mb-1">
+                              {strings.settings.storeTax.gstin}
+                            </label>
+                            <input
+                              type="text"
+                              value={opts.gst ?? ''}
+                              onChange={(e) => {
+                                updateSectionOption(section.id, 'gst', e.target.value);
+                                setBill((prev) => ({ ...prev, gst: e.target.value }));
+                              }}
+                              placeholder={general?.gstin || 'Tax registration ID'}
+                              className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs font-mono"
+                            />
+                            <span className="text-[10px] text-content-muted mt-0.5 block">
+                              Leave empty to use Store & Tax GSTIN
+                            </span>
+                          </div>
+                        </>
+                      )}
+
+                      {section.id === 'billMetadata' && (
+                        <div className="col-span-2 flex flex-wrap gap-4 pt-1">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={opts.showCustomer ?? true}
+                              onChange={(e) =>
+                                updateSectionOption(section.id, 'showCustomer', e.target.checked)
+                              }
+                              className="w-3.5 h-3.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
+                            />
+                            <span className="text-[11px] text-content-secondary">
+                              Print Customer Name
+                            </span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={opts.showCashier ?? true}
+                              onChange={(e) =>
+                                updateSectionOption(section.id, 'showCashier', e.target.checked)
+                              }
+                              className="w-3.5 h-3.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
+                            />
+                            <span className="text-[11px] text-content-secondary">
+                              Print Cashier Name
+                            </span>
+                          </label>
+                        </div>
+                      )}
+
                       {section.id === 'itemsTable' && (
                         <div className="col-span-2">
                           <label className="flex items-center gap-2 cursor-pointer pt-1">
                             <input
                               type="checkbox"
-                              checked={opts.showTax ?? false}
-                              onChange={(e) =>
-                                updateSectionOption(section.id, 'showTax', e.target.checked)
-                              }
+                              checked={opts.showTax ?? (bill.showTax ?? false)}
+                              onChange={(e) => {
+                                updateSectionOption(section.id, 'showTax', e.target.checked);
+                                setBill((prev) => ({ ...prev, showTax: e.target.checked }));
+                              }}
                               className="w-3.5 h-3.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
                             />
                             <span className="text-[11px] text-content-secondary">
                               {strings.settings.receipt.printTaxColumn}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+
+                      {section.id === 'totals' && (
+                        <div className="col-span-2">
+                          <label className="flex items-center gap-2 cursor-pointer pt-1">
+                            <input
+                              type="checkbox"
+                              checked={opts.showTax ?? (bill.showTax ?? false)}
+                              onChange={(e) => {
+                                updateSectionOption(section.id, 'showTax', e.target.checked);
+                                setBill((prev) => ({ ...prev, showTax: e.target.checked }));
+                              }}
+                              className="w-3.5 h-3.5 rounded border-border-strong text-brand focus:ring-brand cursor-pointer"
+                            />
+                            <span className="text-[11px] text-content-secondary">
+                              Print tax amount breakdown in totals
                             </span>
                           </label>
                         </div>
@@ -262,7 +394,7 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
           </div>
 
           <div className="bg-neutral-100 dark:bg-neutral-900 p-4 rounded-lg flex justify-center border border-border overflow-x-auto">
-            <div className="bg-white text-black font-mono p-4 shadow-md border border-neutral-300">
+            <div className="bg-white text-black p-4 shadow-md border border-neutral-300" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
               <ReceiptPrinter
                 sale={sampleSale}
                 items={sampleItems}

@@ -56,7 +56,7 @@ export default function SaleCompleteModal({
         )}
 
         {/* Hidden printable receipt container */}
-        <div className="hidden">
+        <div className="print-only-container">
           <ReceiptPrinter
             sale={completedSale.sale}
             items={completedSale.items}

@@ -30,7 +30,7 @@ const receipt = {
 
   defaults: {
     storeName: 'STORE NAME',
-    cashCustomer: 'Cash Customer',
+    cashCustomer: 'Walk-in Customer',
     footerText: 'Thank you for your visit!',
   },
 

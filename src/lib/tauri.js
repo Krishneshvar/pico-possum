@@ -73,6 +73,7 @@ export const tauriApi = {
   // Hardware & Printing
   listPrinters: () => invoke('list_printers'),
   testPrint: (printerName = null) => invoke('test_print', { printerName }),
+  printReceipt: (content, printerName = null) => invoke('print_receipt', { printerName, content }),
 
   // Backup & Restore
   getBackupStatus: () => invoke('get_backup_status'),

@@ -9,6 +9,7 @@ import { validateUnitPriceAgainstMrp } from '../../../lib/validation';
 import PosBillEditor from './PosBillEditor';
 import CustomerModal from '../customers/CustomerModal';
 import SaleCompleteModal from './SaleCompleteModal';
+import { executeDirectPrint } from '../../../components/receipt/directPrint';
 import { strings } from '../../../lib/strings';
 import { logger } from '../../../lib/logger';
 
@@ -107,6 +108,14 @@ export default function PosView() {
       setCompletedSale(response);
       setShowPrintModal(true);
       clearCurrentBill();
+      if (billSettings?.autoPrintReceipt) {
+        executeDirectPrint({
+          sale: response.sale,
+          items: response.items,
+          billSettings,
+          generalSettings,
+        }).catch(() => {});
+      }
       const invNo = response.sale.invoiceNumber ?? response.sale.invoice_number;
       logger.info('POS', `Sale completed: ${invNo}`);
       toast.success(
@@ -346,9 +355,14 @@ export default function PosView() {
     updateItemQty(productId, nextQty);
   };
 
-  const handlePrintReceipt = () => {
-    toast.info(strings.pos.view.printDialogOpening);
-    window.print();
+  const handlePrintReceipt = async () => {
+    if (!completedSale) return;
+    await executeDirectPrint({
+      sale: completedSale.sale,
+      items: completedSale.items,
+      billSettings,
+      generalSettings,
+    });
   };
 
   const handleClearCart = async () => {

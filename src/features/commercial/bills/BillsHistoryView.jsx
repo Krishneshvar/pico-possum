@@ -6,6 +6,7 @@ import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
 import { formatCurrency, formatDate, formatTime, formatDateTime, getCurrencySymbol } from '../../../lib/formatters';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
+import { executeDirectPrint } from '../../../components/receipt/directPrint';
 import DataTable from '../../../components/common/DataTable';
 import DropdownActions from '../../../components/common/DropdownActions';
 import ImportCsvButton from '../../../components/common/ImportCsvButton';
@@ -73,10 +74,14 @@ export default function BillsHistoryView() {
     );
   };
 
-  const handleReprint = (details) => {
+  const handleReprint = async (details) => {
     setReprintSale(details);
-    toast.info(strings.bills.toasts.receiptPreparing);
-    setTimeout(() => window.print(), 100);
+    await executeDirectPrint({
+      sale: details.sale,
+      items: details.items,
+      billSettings,
+      generalSettings,
+    });
   };
 
   const handleCancelSale = async (saleId, invoiceNumber) => {
@@ -404,7 +409,7 @@ export default function BillsHistoryView() {
 
       {/* Hidden printable receipt container */}
       {reprintSale && (
-        <div className="hidden">
+        <div className="print-only-container">
           <ReceiptPrinter
             sale={reprintSale.sale}
             items={reprintSale.items}

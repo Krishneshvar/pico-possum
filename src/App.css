@@ -241,6 +241,10 @@ input[type="number"] {
 }
 
 /* Thermal receipt printable style */
+.print-only-container {
+  display: none;
+}
+
 @media print {
   @page {
     margin: 0;
@@ -256,8 +260,12 @@ input[type="number"] {
   body * {
     visibility: hidden;
   }
+  .print-only-container {
+    display: block !important;
+  }
   #thermal-receipt, #thermal-receipt * {
     visibility: visible;
+    font-family: 'Times New Roman', Times, serif !important;
   }
   #thermal-receipt {
     position: absolute;
@@ -268,5 +276,6 @@ input[type="number"] {
     padding: 0;
     color: black !important;
     background: white !important;
+    font-family: 'Times New Roman', Times, serif !important;
   }
 }

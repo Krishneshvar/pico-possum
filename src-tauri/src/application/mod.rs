@@ -11,6 +11,7 @@ pub mod reports_svc;
 pub mod sale_amend_svc;
 pub mod sales_svc;
 pub mod settings_svc;
+pub mod thermal_print_script;
 pub mod validation_svc;
 
 pub use auth_svc::{AuthService, AuthSessionManager};

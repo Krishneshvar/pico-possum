@@ -34,10 +34,10 @@ const DEFAULT_SECTIONS = [
     options: {
       alignment: 'center',
       fontSize: 'medium',
-      storeName: strings.settings.sampleData.storeName,
-      storeDetails: strings.settings.sampleData.address,
-      phone: strings.settings.sampleData.phone,
-      gst: strings.settings.sampleData.gstin,
+      storeName: '',
+      storeDetails: '',
+      phone: '',
+      gst: '',
     },
   },
   {
@@ -47,6 +47,8 @@ const DEFAULT_SECTIONS = [
     options: {
       alignment: 'left',
       fontSize: 'small',
+      showCustomer: true,
+      showCashier: true,
     },
   },
   {
@@ -103,10 +105,10 @@ export default function SettingsView() {
   // ── Bill Structure State ───────────────────────────────────────────────────
   const [bill, setBill] = useState({
     paperWidth: '80mm',
-    storeName: strings.settings.sampleData.storeName,
-    storeDetails: strings.settings.sampleData.address,
-    phone: strings.settings.sampleData.phone,
-    gst: strings.settings.sampleData.gstin,
+    storeName: '',
+    storeDetails: '',
+    phone: '',
+    gst: '',
     showTax: false,
     footerText: strings.settings.sampleData.footer,
     sections: DEFAULT_SECTIONS,
@@ -148,6 +150,8 @@ export default function SettingsView() {
         paperWidth: billData.paperWidth ?? billData.paper_width ?? prev.paperWidth,
         storeName: billData.storeName ?? billData.store_name ?? prev.storeName,
         storeDetails: billData.storeDetails ?? billData.store_details ?? prev.storeDetails,
+        phone: billData.phone ?? prev.phone,
+        gst: billData.gst ?? prev.gst,
         showTax: billData.showTax ?? billData.show_tax ?? prev.showTax,
         footerText: billData.footerText ?? billData.footer_text ?? prev.footerText,
         sections: billData.sections && billData.sections.length > 0 ? billData.sections : prev.sections,
@@ -161,6 +165,7 @@ export default function SettingsView() {
     onSuccess: (_data, variables) => {
       applyGeneralSettings(variables);
       queryClient.invalidateQueries({ queryKey: ['generalSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['billSettings'] });
       queryClient.invalidateQueries({ queryKey: ['nextSku'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(strings.settings.toasts.settingsSaved);
