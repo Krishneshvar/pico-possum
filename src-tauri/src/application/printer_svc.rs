@@ -115,7 +115,8 @@ impl PrinterService {
             let paper_width_val = paper_width.unwrap_or_else(|| "80mm".to_string());
 
             let mut cmd = Command::new("powershell");
-            cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", &script_path.to_string_lossy()]);
+            cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"]);
+            cmd.arg("-File").arg(&script_path);
             cmd.arg("-Target").arg(&target);
             cmd.arg("-PaperWidth").arg(&paper_width_val);
 
@@ -193,9 +194,10 @@ impl PrinterService {
                 let _ = std::fs::write(&data_path, content.as_bytes());
 
                 let mut cmd = Command::new("powershell");
-                cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", &script_path.to_string_lossy()]);
+                cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"]);
+                cmd.arg("-File").arg(&script_path);
                 cmd.arg("-Target").arg(target_str);
-                cmd.arg("-DataFile").arg(&data_path.to_string_lossy());
+                cmd.arg("-DataFile").arg(&data_path);
 
                 let output = cmd.output()
                     .map_err(|e| AppError::Printer(format!("Failed to execute Windows receipt print: {}", e)));
@@ -235,9 +237,10 @@ $doc.Print()
                 let _ = std::fs::write(&data_path, content.as_bytes());
 
                 let mut cmd = Command::new("powershell");
-                cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", &script_path.to_string_lossy()]);
+                cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"]);
+                cmd.arg("-File").arg(&script_path);
                 cmd.arg("-Target").arg(target_str);
-                cmd.arg("-DataFile").arg(&data_path.to_string_lossy());
+                cmd.arg("-DataFile").arg(&data_path);
 
                 let output = cmd.output()
                     .map_err(|e| AppError::Printer(format!("Failed to execute Windows text print: {}", e)));
