@@ -249,3 +249,53 @@ async fn test_stock_restrictions_and_allow_negative_stock() {
         .unwrap();
     assert_eq!(negative.current_stock, -5);
 }
+
+#[tokio::test]
+async fn test_legacy_settings_missing_phone_updates_product_cleanly() {
+    let pool = setup_db().await;
+
+    // Legacy settings JSON imported from Java app (missing phone, address, gstin, autoNumericSku)
+    let legacy_json = r#"{"storeName":"","language":"en","currencyCode":"INR","currencySymbol":"₹","dateFormat":"DD/MM/YYYY","timeFormat":"12 hour format","defaultPrinterName":""}"#;
+    sqlx::query("INSERT INTO app_settings (key, value) VALUES ('general_settings', ?)")
+        .bind(legacy_json)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Verify get_general_settings succeeds and supplies defaults for missing fields
+    let settings = InventoryService::get_general_settings(&pool)
+        .await
+        .expect("Should deserialize legacy settings without missing field error");
+    assert_eq!(settings.phone, "");
+    assert_eq!(settings.currency_code, "INR");
+    assert_eq!(settings.currency_symbol, "₹");
+    assert!(settings.auto_numeric_sku);
+
+    // Create a product
+    let created = InventoryService::create_product(&pool, product_payload("Legacy Test Prod", None, 10))
+        .await
+        .expect("Product creation should succeed");
+
+    // Update product (previously failed with 'Serialization error: missing field `phone`')
+    let update_res = InventoryService::update_product(
+        &pool,
+        &created.id,
+        UpdateProductPayload {
+            name: "Updated Legacy Prod".to_string(),
+            sku: created.sku.clone(),
+            category_id: None,
+            mrp_cents: 1500,
+            cost_price_cents: 800,
+            tax_rate: 0.0,
+            min_stock_alert: Some(5),
+            status: "active".to_string(),
+        },
+    )
+    .await;
+
+    assert!(update_res.is_ok(), "Product update must succeed when legacy settings lack phone");
+    let updated = update_res.unwrap();
+    assert_eq!(updated.name, "Updated Legacy Prod");
+    assert_eq!(updated.mrp_cents, 1500);
+}
+

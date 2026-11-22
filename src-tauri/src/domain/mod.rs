@@ -1,3 +1,4 @@
+pub mod app_models;
 pub mod models;
 pub mod rules;
 

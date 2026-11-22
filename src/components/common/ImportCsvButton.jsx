@@ -1,27 +1,58 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   Upload,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Loader2,
   X,
-  ChevronDown,
-  ChevronUp,
   FileSpreadsheet,
   FileText,
   ShieldAlert,
-  Lightbulb,
-  Copy,
-  Check,
 } from 'lucide-react';
 import { tauriApi } from '../../lib/tauri';
 import { toast } from '../../stores/toast.store';
 import { getCurrencySymbol } from '../../lib/formatters';
-import { formatHumanError, formatRowError } from '../../lib/formatHumanError';
+import { formatHumanError } from '../../lib/formatHumanError';
 import { strings } from '../../lib/strings';
+import DataProgressModal from './DataProgressModal';
 
 const getEntitySchemas = (sym) => strings.common.importSchemas(sym);
+
+const createImportSteps = (activeStep = 'read', errorDetail = null) => [
+  {
+    id: 'read',
+    label: 'Read and parse file content',
+    detail: 'Reading bytes and extracting spreadsheet rows',
+    status: activeStep === 'read' ? 'active' : 'completed',
+  },
+  {
+    id: 'validate',
+    label: 'Validate schema headers & field constraints',
+    detail: 'Checking columns against required schema definition',
+    status:
+      activeStep === 'validate'
+        ? 'active'
+        : ['insert', 'complete'].includes(activeStep)
+        ? 'completed'
+        : 'pending',
+  },
+  {
+    id: 'insert',
+    label: 'Save records to database',
+    detail: errorDetail || 'Executing SQLite batch transaction and inventory movements',
+    status:
+      activeStep === 'insert'
+        ? 'active'
+        : activeStep === 'complete'
+        ? 'completed'
+        : activeStep === 'error'
+        ? 'error'
+        : 'pending',
+  },
+  {
+    id: 'finalize',
+    label: 'Finalize & sync catalog',
+    detail: 'Refreshing application cache and query stores',
+    status: activeStep === 'complete' ? 'completed' : 'pending',
+  },
+];
 
 export default function ImportCsvButton({
   entity = 'products',
@@ -32,13 +63,17 @@ export default function ImportCsvButton({
   className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [showErrorsList, setShowErrorsList] = useState(false);
-  const [showTechnicalError, setShowTechnicalError] = useState(false);
-  const [copiedError, setCopiedError] = useState(false);
+  const [progressModal, setProgressModal] = useState({
+    isOpen: false,
+    fileName: '',
+    fileSize: null,
+    progressPercent: 0,
+    statusMessage: '',
+    steps: [],
+    isProcessing: false,
+    result: null,
+    error: null,
+  });
 
   const fileInputCsvRef = useRef(null);
   const fileInputXlsxRef = useRef(null);
@@ -70,20 +105,11 @@ export default function ImportCsvButton({
   const schema = schemas[resolvedKey] || schemas.products;
 
   const handleOpenModal = () => {
-    setSelectedFile(null);
-    setResult(null);
-    setError(null);
-    setShowErrorsList(false);
-    setIsProcessing(false);
     setIsOpen(true);
   };
 
   const handleClose = () => {
     setIsOpen(false);
-    setSelectedFile(null);
-    setResult(null);
-    setError(null);
-    setIsProcessing(false);
   };
 
   const processFile = async (file) => {
@@ -94,19 +120,31 @@ export default function ImportCsvButton({
     const isXlsx = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
 
     if (!isCsv && !isXlsx) {
-      setError(strings.common.importCsv.unsupportedFileType);
+      toast.error(strings.common.importCsv.unsupportedFileType);
       return;
     }
 
-    setSelectedFile(file);
-    setIsProcessing(true);
-    setResult(null);
-    setError(null);
-    setShowErrorsList(false);
+    setIsOpen(false);
+    setProgressModal({
+      isOpen: true,
+      fileName: file.name,
+      fileSize: file.size ? `${(file.size / 1024).toFixed(1)} KB` : null,
+      progressPercent: 25,
+      statusMessage: `Reading and parsing ${file.name}...`,
+      steps: createImportSteps('read'),
+      isProcessing: true,
+      result: null,
+      error: null,
+    });
 
     try {
       let csvContent = '';
       if (isXlsx) {
+        setProgressModal((prev) => ({
+          ...prev,
+          progressPercent: 35,
+          statusMessage: 'Extracting spreadsheet rows from Excel workbook...',
+        }));
         const XLSX = await import('xlsx');
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, {
@@ -126,6 +164,20 @@ export default function ImportCsvButton({
       } else {
         csvContent = await file.text();
       }
+
+      setProgressModal((prev) => ({
+        ...prev,
+        progressPercent: 55,
+        statusMessage: 'Validating column headers and schema rules...',
+        steps: createImportSteps('validate'),
+      }));
+
+      setProgressModal((prev) => ({
+        ...prev,
+        progressPercent: 80,
+        statusMessage: 'Saving records and stock movements to database...',
+        steps: createImportSteps('insert'),
+      }));
 
       let res;
       if (onImport) {
@@ -148,16 +200,38 @@ export default function ImportCsvButton({
         });
       }
 
-      setResult(res);
+      setProgressModal({
+        isOpen: true,
+        fileName: file.name,
+        fileSize: file.size ? `${(file.size / 1024).toFixed(1)} KB` : null,
+        progressPercent: 100,
+        statusMessage: `Import complete! ${res?.imported ?? 0} records imported.`,
+        steps: createImportSteps('complete'),
+        isProcessing: false,
+        result: res,
+        error: null,
+      });
+
       toast.success(strings.common.importCsv.importComplete(res?.imported ?? 0));
       if (onComplete) onComplete(res);
       if (onSuccess) onSuccess(res);
     } catch (err) {
       const parsed = formatHumanError(err, `import_${resolvedKey}`);
-      setError(parsed);
+      setProgressModal({
+        isOpen: true,
+        fileName: file.name,
+        fileSize: file.size ? `${(file.size / 1024).toFixed(1)} KB` : null,
+        progressPercent: 100,
+        statusMessage: 'Import failed',
+        steps: [
+          { id: 'read', label: 'Read and parse file content', status: 'completed' },
+          { id: 'insert', label: 'Save records to database', status: 'error', detail: parsed.message },
+        ],
+        isProcessing: false,
+        result: null,
+        error: parsed,
+      });
       toast.error(parsed.message, { title: parsed.title });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -228,38 +302,36 @@ export default function ImportCsvButton({
             {/* Modal Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Top: Sleek Import Action Buttons */}
-              {!isProcessing && !result && (
-                <div className="flex items-center gap-3">
-                  <button
-                    ref={firstImportBtnRef}
-                    type="button"
-                    onClick={() => {
-                      if (fileInputCsvRef.current) {
-                        fileInputCsvRef.current.value = '';
-                        fileInputCsvRef.current.click();
-                      }
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-brand/40 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-brand"
-                  >
-                    <FileText className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
-                    <span>{strings.common.importCsv.importFromCsv}</span>
-                  </button>
+              <div className="flex items-center gap-3">
+                <button
+                  ref={firstImportBtnRef}
+                  type="button"
+                  onClick={() => {
+                    if (fileInputCsvRef.current) {
+                      fileInputCsvRef.current.value = '';
+                      fileInputCsvRef.current.click();
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-brand/40 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-brand"
+                >
+                  <FileText className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+                  <span>{strings.common.importCsv.importFromCsv}</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (fileInputXlsxRef.current) {
-                        fileInputXlsxRef.current.value = '';
-                        fileInputXlsxRef.current.click();
-                      }
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-emerald-500/40 transition-colors cursor-pointer group"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-                    <span>{strings.common.importCsv.importFromExcel}</span>
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fileInputXlsxRef.current) {
+                      fileInputXlsxRef.current.value = '';
+                      fileInputXlsxRef.current.click();
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border-default bg-surface hover:bg-surface-secondary text-text-primary text-xs font-semibold shadow-2xs hover:border-emerald-500/40 transition-colors cursor-pointer group"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+                  <span>{strings.common.importCsv.importFromExcel}</span>
+                </button>
+              </div>
 
               {/* Warning / Strict Schema Notice */}
               <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200">
@@ -325,174 +397,38 @@ export default function ImportCsvButton({
                   ))}
                 </div>
               </div>
-
-              {/* Processing Spinner State */}
-              {isProcessing && (
-                <div className="flex flex-col items-center justify-center py-8 text-center bg-surface-secondary/30 rounded-xl border border-border-default">
-                  <Loader2 className="w-8 h-8 text-brand animate-spin mb-3" />
-                  <p className="text-xs font-bold text-text-primary">{strings.common.importCsv.processingFile(selectedFile?.name)}</p>
-                  <p className="text-[11px] text-text-muted mt-1 max-w-sm">
-                    {strings.common.importCsv.processingDetail}
-                  </p>
-                </div>
-              )}
-
-              {/* Error State */}
-              {!isProcessing && error && (
-                <div className="p-4 rounded-xl bg-danger-bg border border-danger/30 text-text-primary space-y-3">
-                  <div className="flex items-center gap-2 text-danger">
-                    <XCircle className="w-5 h-5 shrink-0" />
-                    <span className="font-bold text-xs">{error.title || strings.common.importCsv.importFailed}</span>
-                  </div>
-                  <p className="text-xs text-text-primary leading-relaxed bg-surface p-3 rounded-lg border border-border-default">
-                    {error.message}
-                  </p>
-
-                  {error.hint && (
-                    <div className="flex items-start gap-2.5 p-3 rounded-lg bg-brand-subtle border border-brand/20 text-text-primary text-xs">
-                      <Lightbulb className="w-4 h-4 text-brand shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-brand block mb-0.5">How to resolve this:</span>
-                        <span className="text-text-secondary leading-relaxed">{error.hint}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {error.technical && (
-                    <div className="border border-border-default rounded-lg overflow-hidden bg-surface">
-                      <button
-                        type="button"
-                        onClick={() => setShowTechnicalError(!showTechnicalError)}
-                        className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] text-text-secondary hover:text-text-primary bg-surface-secondary/50 transition-colors cursor-pointer"
-                      >
-                        <span className="flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-text-muted" />
-                          <span>Technical Details</span>
-                        </span>
-                        {showTechnicalError ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </button>
-                      {showTechnicalError && (
-                        <div className="p-2.5 border-t border-border-default space-y-1.5 font-mono text-[10px] text-text-secondary break-all select-text">
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(error.technical);
-                                setCopiedError(true);
-                                setTimeout(() => setCopiedError(false), 2000);
-                              }}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-border-default hover:bg-surface-secondary text-text-muted hover:text-text-primary cursor-pointer"
-                            >
-                              {copiedError ? <Check className="w-2.5 h-2.5 text-success" /> : <Copy className="w-2.5 h-2.5" />}
-                              <span>{copiedError ? 'Copied' : 'Copy'}</span>
-                            </button>
-                          </div>
-                          <pre className="whitespace-pre-wrap">{error.technical}</pre>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="pt-1 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setError(null);
-                        setSelectedFile(null);
-                        setShowTechnicalError(false);
-                      }}
-                      className="text-xs font-semibold text-brand hover:underline cursor-pointer"
-                    >
-                      {strings.common.importCsv.tryAnotherFile}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Success Result State */}
-              {!isProcessing && result && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-success-bg border border-success/30 text-success">
-                    <CheckCircle2 className="w-6 h-6 shrink-0" />
-                    <div>
-                      <div className="font-bold text-sm">
-                        {strings.common.importCsv.successTitle(result.imported, schema.singular)}
-                      </div>
-                      <div className="text-[11px] opacity-80 mt-0.5">
-                        {strings.common.importCsv.totalRows(result.totalRows ?? result.total_rows)}<span className="font-mono">{selectedFile?.name}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {result.skipped > 0 && (
-                    <div className="p-3.5 rounded-xl bg-warning-bg border border-warning/30 text-warning">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 shrink-0" />
-                          <span className="text-xs font-semibold">
-                            {strings.common.importCsv.skippedRows(result.skipped)}
-                          </span>
-                        </div>
-                        {result.errors && result.errors.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setShowErrorsList(!showErrorsList)}
-                            className="inline-flex items-center gap-1 text-xs hover:underline cursor-pointer"
-                          >
-                            <span>{showErrorsList ? strings.common.actions.hideDetails : strings.common.actions.viewDetails}</span>
-                            {showErrorsList ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          </button>
-                        )}
-                      </div>
-
-                      {showErrorsList && result.errors && result.errors.length > 0 && (
-                        <div className="mt-2.5 max-h-40 overflow-y-auto space-y-1 text-[11px] bg-surface p-2.5 rounded-lg border border-warning/20 font-mono text-text-secondary">
-                          {result.errors.map((errStr, idx) => (
-                            <div key={idx} className="truncate">
-                              {formatRowError(errStr)}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-3.5 border-t border-border-default shrink-0 bg-surface">
-              {result && !isProcessing ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResult(null);
-                    setSelectedFile(null);
-                    setError(null);
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default bg-surface hover:bg-surface-secondary text-text-secondary cursor-pointer transition-colors"
-                >
-                  {strings.common.importCsv.importAnotherFile}
-                </button>
-              ) : (
-                <div />
-              )}
-
-              <div className="flex items-center gap-2">
-                {!isProcessing && (
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand hover:bg-brand-hover text-white transition-colors cursor-pointer shadow-xs"
-                  >
-                    {result ? strings.common.importCsv.done : strings.common.actions.cancel}
-                  </button>
-                )}
-              </div>
+            <div className="flex items-center justify-end px-6 py-3.5 border-t border-border-default shrink-0 bg-surface">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-default hover:bg-surface-secondary text-text-secondary transition-colors cursor-pointer"
+              >
+                {strings.common.actions.close}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Real-time Import Progress & Status Modal */}
+      <DataProgressModal
+        isOpen={progressModal.isOpen}
+        onClose={() => setProgressModal((prev) => ({ ...prev, isOpen: false }))}
+        title={`Importing ${schema.title || schema.singular || 'Records'}`}
+        operationType="import"
+        entityLabel={schema.singular || 'Records'}
+        fileName={progressModal.fileName}
+        fileSize={progressModal.fileSize}
+        progressPercent={progressModal.progressPercent}
+        statusMessage={progressModal.statusMessage}
+        steps={progressModal.steps}
+        isProcessing={progressModal.isProcessing}
+        result={progressModal.result}
+        error={progressModal.error}
+      />
     </>
   );
 }

@@ -22,6 +22,7 @@ import iconShell from '../../assets/icon-shell.png';
 export default function AuthScreen({ authState, onAuthenticated }) {
   const queryClient = useQueryClient();
   const requiresSetup = authState?.requiresSetup ?? authState?.requires_setup ?? false;
+  const nameInputRef = useRef(null);
   const passwordInputRef = useRef(null);
 
   // Form states
@@ -32,10 +33,14 @@ export default function AuthScreen({ authState, onAuthenticated }) {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Auto focus password
+  // Auto focus field based on setup / login mode
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      passwordInputRef.current?.focus();
+      if (requiresSetup) {
+        nameInputRef.current?.focus();
+      } else {
+        passwordInputRef.current?.focus();
+      }
     }, 50);
     return () => window.clearTimeout(timer);
   }, [requiresSetup]);
@@ -219,6 +224,7 @@ export default function AuthScreen({ authState, onAuthenticated }) {
               <div className="relative">
                 <User className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
+                  ref={nameInputRef}
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}

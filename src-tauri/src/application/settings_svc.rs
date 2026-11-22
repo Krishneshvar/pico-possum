@@ -2,6 +2,7 @@ use sqlx::{Row, SqlitePool};
 
 use crate::domain::models::{BillSettings, GeneralSettings};
 use crate::errors::AppError;
+use crate::infrastructure::logger::AppLogger;
 
 pub struct SettingsService;
 
@@ -13,22 +14,15 @@ impl SettingsService {
 
         if let Some(r) = row {
             let val: String = r.get("value");
-            let s: GeneralSettings = serde_json::from_str(&val)?;
-            Ok(s)
+            match serde_json::from_str::<GeneralSettings>(&val) {
+                Ok(s) => Ok(s),
+                Err(err) => {
+                    AppLogger::warn("SettingsService", format!("Failed to parse general_settings JSON: {}. Using default settings.", err));
+                    Ok(GeneralSettings::default())
+                }
+            }
         } else {
-            Ok(GeneralSettings {
-                store_name: "Pico POS".to_string(),
-                phone: "".to_string(),
-                address: "".to_string(),
-                gstin: "".to_string(),
-                currency_symbol: "$".to_string(),
-                currency_code: "USD".to_string(),
-                date_format: "DD/MM/YYYY".to_string(),
-                time_format: "12h".to_string(),
-                default_printer_name: "".to_string(),
-                auto_numeric_sku: true,
-                allow_negative_stock: false,
-            })
+            Ok(GeneralSettings::default())
         }
     }
 
@@ -55,19 +49,45 @@ impl SettingsService {
 
         if let Some(r) = row {
             let val: String = r.get("value");
-            let s: BillSettings = serde_json::from_str(&val)?;
-            Ok(s)
+            match serde_json::from_str::<BillSettings>(&val) {
+                Ok(mut s) => {
+                    if (s.store_name.is_empty() || s.phone.is_empty()) && s.sections.is_some() {
+                        if let Some(ref sec_vec) = s.sections {
+                            for sec in sec_vec {
+                                if let Some(opts) = sec.get("options") {
+                                    if s.store_name.is_empty() {
+                                        if let Some(sn) = opts.get("storeName").and_then(|v| v.as_str()) {
+                                            s.store_name = sn.to_string();
+                                        }
+                                    }
+                                    if s.phone.is_empty() {
+                                        if let Some(ph) = opts.get("phone").and_then(|v| v.as_str()) {
+                                            s.phone = ph.to_string();
+                                        }
+                                    }
+                                    if s.store_details.is_empty() {
+                                        if let Some(sd) = opts.get("storeDetails").and_then(|v| v.as_str()) {
+                                            s.store_details = sd.to_string();
+                                        }
+                                    }
+                                    if s.gst.is_empty() {
+                                        if let Some(gst) = opts.get("gst").and_then(|v| v.as_str()) {
+                                            s.gst = gst.to_string();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Ok(s)
+                }
+                Err(err) => {
+                    AppLogger::warn("SettingsService", format!("Failed to parse bill_settings JSON: {}. Using default settings.", err));
+                    Ok(BillSettings::default())
+                }
+            }
         } else {
-            Ok(BillSettings {
-                paper_width: "80mm".to_string(),
-                store_name: "Pico POS".to_string(),
-                store_details: "Retail".to_string(),
-                phone: "".to_string(),
-                gst: "".to_string(),
-                show_tax: false,
-                footer_text: "Thank you for shopping!".to_string(),
-                sections: None,
-            })
+            Ok(BillSettings::default())
         }
     }
 

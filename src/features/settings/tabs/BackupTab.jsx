@@ -7,6 +7,7 @@ import { confirmDialog } from '../../../stores/confirm.store';
 import { formatDateTime } from '../../../lib/formatters';
 import SortableTh from '../../../components/common/SortableTh';
 import ErrorDetailModal from '../../../components/common/ErrorDetailModal';
+import DataProgressModal from '../../../components/common/DataProgressModal';
 import { formatHumanError } from '../../../lib/formatHumanError';
 import { nextSortState, sortRows } from '../../../lib/sort';
 import { strings } from '../../../lib/strings';
@@ -16,6 +17,44 @@ export default function BackupTab() {
   const restoreFileInputRef = useRef(null);
   const [backupSort, setBackupSort] = useState({ key: null, dir: null });
   const [restoreError, setRestoreError] = useState(null);
+  const [restoreProgress, setRestoreProgress] = useState({
+    isOpen: false,
+    fileName: '',
+    fileSize: null,
+    progressPercent: 0,
+    statusMessage: '',
+    steps: [],
+    isProcessing: false,
+    result: null,
+    error: null,
+  });
+
+  const createRestoreSteps = (activeStep = 'validate') => [
+    {
+      id: 'validate',
+      label: 'Validate backup archive & SQLite integrity',
+      detail: 'Verifying file format and database header signatures',
+      status: activeStep === 'validate' ? 'active' : 'completed',
+    },
+    {
+      id: 'snapshot',
+      label: 'Create safety pre-restore backup',
+      detail: 'Generating point-in-time recovery safety snapshot',
+      status: activeStep === 'snapshot' ? 'active' : ['restore', 'finalize', 'complete'].includes(activeStep) ? 'completed' : 'pending',
+    },
+    {
+      id: 'restore',
+      label: 'Restore database records & migrate schemas',
+      detail: 'Migrating tables, restoring products, sales, and rebuilding indices',
+      status: activeStep === 'restore' ? 'active' : ['finalize', 'complete'].includes(activeStep) ? 'completed' : 'pending',
+    },
+    {
+      id: 'finalize',
+      label: 'Finalize & refresh application workspace',
+      detail: 'Syncing system cache and reloading data stores',
+      status: activeStep === 'finalize' ? 'active' : activeStep === 'complete' ? 'completed' : 'pending',
+    },
+  ];
 
   const { data: backupStatus } = useQuery({
     queryKey: ['backupStatus'],
@@ -66,6 +105,75 @@ export default function BackupTab() {
     },
   });
 
+  const startRestoreWithProgress = (arg, fileName, fileSize = null) => {
+    setRestoreProgress({
+      isOpen: true,
+      fileName,
+      fileSize,
+      progressPercent: 20,
+      statusMessage: 'Inspecting backup file and checking SQLite integrity...',
+      steps: createRestoreSteps('validate'),
+      isProcessing: true,
+      result: null,
+      error: null,
+    });
+
+    const timer1 = setTimeout(() => {
+      setRestoreProgress((prev) => ({
+        ...prev,
+        progressPercent: 45,
+        statusMessage: 'Creating automatic safety pre-restore snapshot...',
+        steps: createRestoreSteps('snapshot'),
+      }));
+    }, 350);
+
+    const timer2 = setTimeout(() => {
+      setRestoreProgress((prev) => ({
+        ...prev,
+        progressPercent: 75,
+        statusMessage: 'Restoring tables and executing schema migrations...',
+        steps: createRestoreSteps('restore'),
+      }));
+    }, 800);
+
+    restoreBackupMutation.mutate(arg, {
+      onSuccess: (res) => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        setRestoreProgress({
+          isOpen: true,
+          fileName,
+          fileSize,
+          progressPercent: 100,
+          statusMessage: 'Restoration completed successfully!',
+          steps: createRestoreSteps('complete'),
+          isProcessing: false,
+          result: res,
+          error: null,
+        });
+      },
+      onError: (err) => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        const parsed = formatHumanError(err, 'restore');
+        setRestoreProgress({
+          isOpen: true,
+          fileName,
+          fileSize,
+          progressPercent: 100,
+          statusMessage: 'Restore operation failed',
+          steps: [
+            { id: 'validate', label: 'Validate backup archive & SQLite integrity', status: 'completed' },
+            { id: 'restore', label: 'Restore database records & migrate schemas', status: 'error', detail: parsed.message },
+          ],
+          isProcessing: false,
+          result: null,
+          error: parsed,
+        });
+      },
+    });
+  };
+
   return (
     <div className="max-w-3xl space-y-6">
       <input
@@ -88,12 +196,12 @@ export default function BackupTab() {
           if (!confirmed) return;
 
           if (file.path) {
-            restoreBackupMutation.mutate(file.path);
+            startRestoreWithProgress(file.path, file.name, `${(file.size / 1024).toFixed(1)} KB`);
           } else {
             try {
               const buffer = await file.arrayBuffer();
               const bytes = Array.from(new Uint8Array(buffer));
-              restoreBackupMutation.mutate({ filename: file.name, bytes });
+              startRestoreWithProgress({ filename: file.name, bytes }, file.name, `${(file.size / 1024).toFixed(1)} KB`);
             } catch (err) {
               const parsed = formatHumanError(err, 'restore');
               setRestoreError(err);
@@ -246,11 +354,11 @@ export default function BackupTab() {
                             tone: 'warning',
                           });
                           if (confirmed) {
-                            restoreBackupMutation.mutate(bk.filename);
+                            startRestoreWithProgress(bk.filename, bk.filename, `${Math.round((bk.sizeBytes ?? bk.size_bytes) / 1024)} KB`);
                           }
                         }}
                         disabled={restoreBackupMutation.isPending}
-                        className="px-3 py-1 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content text-xs font-medium transition-colors"
+                        className="px-3 py-1 rounded-lg bg-surface border border-border hover:bg-surface-secondary text-content text-xs font-medium transition-colors cursor-pointer"
                       >
                         {strings.settings.backup.restore}
                       </button>
@@ -262,6 +370,23 @@ export default function BackupTab() {
           </div>
         )}
       </div>
+
+      {/* Restore Progress & Status Modal */}
+      <DataProgressModal
+        isOpen={restoreProgress.isOpen}
+        onClose={() => setRestoreProgress((prev) => ({ ...prev, isOpen: false }))}
+        title="Restoring Database Backup"
+        operationType="restore"
+        entityLabel="Full Database Backup"
+        fileName={restoreProgress.fileName}
+        fileSize={restoreProgress.fileSize}
+        progressPercent={restoreProgress.progressPercent}
+        statusMessage={restoreProgress.statusMessage}
+        steps={restoreProgress.steps}
+        isProcessing={restoreProgress.isProcessing}
+        result={restoreProgress.result}
+        error={restoreProgress.error}
+      />
 
       {/* Restore Error Detail Modal Overlay */}
       <ErrorDetailModal
