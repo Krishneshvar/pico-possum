@@ -35,6 +35,44 @@ fn get_i64_val(row: &SqliteRow, col: &str, default: i64) -> i64 {
 }
 
 impl MigrationService {
+    pub fn infer_payment_method(
+        raw_name: Option<&str>,
+        pm_id: Option<i64>,
+        pm_map: &HashMap<i64, String>,
+        invoice_number: &str,
+    ) -> &'static str {
+        if let Some(name) = raw_name {
+            let u = name.trim().to_uppercase();
+            if !u.is_empty() {
+                if u.contains("GIFT") || u == "GC" || u == "X" { return "GIFT_CARD"; }
+                if u.contains("CARD") || u == "CP" || u == "K" || u == "P" { return "CARD"; }
+                if u.contains("UPI") || u == "UP" || u == "U" { return "UPI"; }
+                if u.contains("CASH") || u == "CH" || u == "C" { return "CASH"; }
+            }
+        }
+        if let Some(id) = pm_id {
+            if let Some(mapped) = pm_map.get(&id) {
+                return match mapped.as_str() {
+                    "GIFT_CARD" => "GIFT_CARD",
+                    "CARD" => "CARD",
+                    "UPI" => "UPI",
+                    _ => "CASH",
+                };
+            }
+        }
+        let inv = invoice_number.trim().to_uppercase();
+        if inv.starts_with('S') && inv.len() >= 5 && inv[1..3].chars().all(|c| c.is_ascii_digit()) {
+            match &inv[3..5] {
+                "GC" => return "GIFT_CARD",
+                "CP" => return "CARD",
+                "UP" => return "UPI",
+                "CH" => return "CASH",
+                _ => {}
+            }
+        }
+        "CASH"
+    }
+
     pub fn detect_legacy_path() -> Option<String> {
         AppPaths::detect_legacy_db_path().map(|p| p.to_string_lossy().to_string())
     }
@@ -179,13 +217,28 @@ impl MigrationService {
         }
 
         // 4. Sales & Sale Items
+        let mut legacy_pm_map: HashMap<i64, String> = HashMap::new();
+        let has_pm_tbl: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'payment_methods'")
+            .fetch_one(&legacy_pool).await.unwrap_or(0);
+        if has_pm_tbl > 0 {
+            let pm_rows: Vec<SqliteRow> = sqlx::query("SELECT id, name, code FROM payment_methods")
+                .fetch_all(&legacy_pool).await.unwrap_or_default();
+            for r in pm_rows {
+                let id: i64 = r.get("id");
+                let n: Option<String> = r.try_get("name").ok();
+                let c: Option<String> = r.try_get("code").ok();
+                legacy_pm_map.insert(id, Self::infer_payment_method(n.as_deref().or(c.as_deref()), None, &HashMap::new(), "").to_string());
+            }
+        }
+
         let sale_rows: Vec<SqliteRow> = sqlx::query(
             "SELECT id, invoice_number, sale_date, biller_name,
                     CAST(total_amount AS REAL) as total_amount,
                     CAST(paid_amount AS REAL) as paid_amount,
                     CAST(discount AS REAL) as discount,
                     CAST(tax_amount AS REAL) as tax_amount,
-                    status, fulfillment_status, customer_id, customer_name, customer_phone, payment_method_name
+                    status, fulfillment_status, customer_id, customer_name, customer_phone,
+                    payment_method_id, payment_method_name
              FROM sales"
         )
         .fetch_all(&legacy_pool).await.unwrap_or_default();
@@ -207,7 +260,8 @@ impl MigrationService {
             let old_cust_id: Option<i64> = row.get("customer_id");
             let customer_name: Option<String> = row.get("customer_name");
             let customer_phone: Option<String> = row.get("customer_phone");
-            let raw_pm: Option<String> = row.get("payment_method_name");
+            let old_pm_id: Option<i64> = row.try_get("payment_method_id").ok().flatten();
+            let raw_pm: Option<String> = row.try_get("payment_method_name").ok().flatten();
 
             let new_sale_uuid = Uuid::new_v4().to_string();
             sale_map.insert(old_id, new_sale_uuid.clone());
@@ -219,12 +273,7 @@ impl MigrationService {
             let tax_cents = (tax_f64 * 100.0).round() as i64;
             let subtotal_cents = total_cents + discount_cents;
 
-            let payment_method = match raw_pm.as_deref().unwrap_or("Cash").to_uppercase().as_str() {
-                "CARD" => "CARD",
-                "UPI" => "UPI",
-                "GIFT CARD" | "GIFT_CARD" => "GIFT_CARD",
-                _ => "CASH",
-            };
+            let payment_method = Self::infer_payment_method(raw_pm.as_deref(), old_pm_id, &legacy_pm_map, &invoice_number);
             let s_date = sale_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
             sqlx::query(
@@ -248,7 +297,9 @@ impl MigrationService {
 
         if has_legacy_sales > 0 {
             let leg_rows: Vec<SqliteRow> = sqlx::query(
-                "SELECT invoice_number, sale_date, customer_name, CAST(net_amount AS REAL) as net_amount, payment_method_name, source_file FROM legacy_sales"
+                "SELECT invoice_number, sale_date, customer_name, CAST(net_amount AS REAL) as net_amount,
+                        payment_method_id, payment_method_name, source_file
+                 FROM legacy_sales"
             )
             .fetch_all(&legacy_pool).await.unwrap_or_default();
 
@@ -257,17 +308,13 @@ impl MigrationService {
                 let s_date: Option<String> = row.get("sale_date");
                 let c_name: Option<String> = row.get("customer_name");
                 let net_num = get_f64_val(row, "net_amount");
-                let raw_pm: Option<String> = row.get("payment_method_name");
+                let old_pm_id: Option<i64> = row.try_get("payment_method_id").ok().flatten();
+                let raw_pm: Option<String> = row.try_get("payment_method_name").ok().flatten();
                 let src: Option<String> = row.get("source_file");
 
                 let uid = Uuid::new_v4().to_string();
                 let cents = (net_num * 100.0).round() as i64;
-                let pm = match raw_pm.as_deref().unwrap_or("Cash").to_uppercase().as_str() {
-                    "CARD" => "CARD",
-                    "UPI" => "UPI",
-                    "GIFT CARD" | "GIFT_CARD" => "GIFT_CARD",
-                    _ => "CASH",
-                };
+                let pm = Self::infer_payment_method(raw_pm.as_deref(), old_pm_id, &legacy_pm_map, &inv);
                 let dt = s_date.unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
                 let res = sqlx::query(

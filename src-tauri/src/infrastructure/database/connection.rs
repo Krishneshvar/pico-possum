@@ -145,6 +145,28 @@ pub async fn init_pool() -> Result<SqlitePool, AppError> {
         );
     }
 
+    // Migration helper: repair active sales where payment_method was incorrectly imported as CASH
+    let _ = sqlx::query(
+        "UPDATE sales SET payment_method = 'UPI'
+         WHERE (payment_method = 'CASH' OR payment_method IS NULL)
+           AND substr(invoice_number, 1, 1) = 'S'
+           AND substr(invoice_number, 4, 2) = 'UP'"
+    ).execute(&pool).await;
+
+    let _ = sqlx::query(
+        "UPDATE sales SET payment_method = 'CARD'
+         WHERE (payment_method = 'CASH' OR payment_method IS NULL)
+           AND substr(invoice_number, 1, 1) = 'S'
+           AND substr(invoice_number, 4, 2) = 'CP'"
+    ).execute(&pool).await;
+
+    let _ = sqlx::query(
+        "UPDATE sales SET payment_method = 'GIFT_CARD'
+         WHERE (payment_method = 'CASH' OR payment_method IS NULL)
+           AND substr(invoice_number, 1, 1) = 'S'
+           AND substr(invoice_number, 4, 2) = 'GC'"
+    ).execute(&pool).await;
+
     // Seed default settings if missing
     seed_defaults(&pool).await?;
 

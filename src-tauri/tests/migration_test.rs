@@ -130,4 +130,20 @@ async fn test_migration_uploaded_backup_preserves_mrps_and_amounts() {
         .unwrap_or(0);
     println!("Sale items with unit_price_cents = 0: {}", zero_price_items);
     assert_eq!(zero_price_items, 0, "Sale items should retain unit prices");
+
+    // Verify sales payment method preservation
+    let upi_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sales WHERE status != 'LEGACY' AND payment_method = 'UPI'")
+        .fetch_one(&target_pool).await.unwrap_or(0);
+    let card_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sales WHERE status != 'LEGACY' AND payment_method = 'CARD'")
+        .fetch_one(&target_pool).await.unwrap_or(0);
+    let gift_card_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sales WHERE status != 'LEGACY' AND payment_method = 'GIFT_CARD'")
+        .fetch_one(&target_pool).await.unwrap_or(0);
+    let cash_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sales WHERE status != 'LEGACY' AND payment_method = 'CASH'")
+        .fetch_one(&target_pool).await.unwrap_or(0);
+
+    println!("Active sales PM counts: UPI={}, Card={}, GiftCard={}, Cash={}", upi_count, card_count, gift_card_count, cash_count);
+    assert!(upi_count >= 1000, "UPI sales should be preserved (found {})", upi_count);
+    assert!(card_count >= 50, "Card sales should be preserved (found {})", card_count);
+    assert!(gift_card_count >= 600, "Gift Card sales should be preserved (found {})", gift_card_count);
+    assert!(cash_count >= 300, "Cash sales should be preserved (found {})", cash_count);
 }

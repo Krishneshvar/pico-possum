@@ -77,9 +77,9 @@ export default function ReportsView() {
   });
 
   // Sales list for computing counts
-  const { data: allSales = [] } = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => tauriApi.getSales(1000, 0, null),
+  const { data: allSales = [], refetch: refetchSalesCounts } = useQuery({
+    queryKey: ['sales-report-counts'],
+    queryFn: () => tauriApi.getSales(100000, 0, null),
   });
 
   const pmCounts = useMemo(() => {
@@ -92,12 +92,14 @@ export default function ReportsView() {
       counts.ALL++;
       const paymentMethod = s.paymentMethod ?? s.payment_method;
       const pm = (paymentMethod || 'CASH').toUpperCase();
-      if (pm === 'GIFT_CARD' || pm === 'GIFT CARD' || pm === 'GIFTCARD' || pm === 'GC' || pm === 'X') {
+      if (pm.includes('GIFT') || pm === 'GC' || pm === 'X') {
         counts.GIFT_CARD++;
-      } else if (counts[pm] !== undefined) {
-        counts[pm]++;
+      } else if (pm.includes('CARD') || pm === 'CP' || pm === 'K' || pm === 'P') {
+        counts.CARD++;
+      } else if (pm.includes('UPI') || pm === 'UP' || pm === 'U') {
+        counts.UPI++;
       } else {
-        counts.GIFT_CARD++;
+        counts.CASH++;
       }
     }
     return counts;
@@ -108,6 +110,7 @@ export default function ReportsView() {
     refetchTopProducts();
     refetchTopCategories();
     refetchMultiYear();
+    refetchSalesCounts();
   };
 
   // Sorted product rows
