@@ -5,6 +5,7 @@
 const DEFAULT_LOCALE = {
   currencySymbol: '$',
   currencyCode: 'USD',
+  currencyFormat: 'en-IN',
   dateFormat: 'DD-MM-YYYY',
   timeFormat: '12h',
 };
@@ -74,6 +75,7 @@ export function applyGeneralSettings(settings) {
   if (!settings) return;
   const currencySymbol = settings.currencySymbol ?? settings.currency_symbol;
   const currencyCode = settings.currencyCode ?? settings.currency_code;
+  const currencyFormat = settings.currencyFormat ?? settings.currency_format;
   const dateFormat = settings.dateFormat ?? settings.date_format;
   const timeFormat = settings.timeFormat ?? settings.time_format;
 
@@ -86,6 +88,10 @@ export function applyGeneralSettings(settings) {
       typeof currencyCode === 'string' && currencyCode.trim()
         ? currencyCode.trim()
         : localeSettings.currencyCode,
+    currencyFormat:
+      typeof currencyFormat === 'string' && currencyFormat.trim()
+        ? currencyFormat.trim()
+        : localeSettings.currencyFormat,
     dateFormat:
       typeof dateFormat === 'string' && dateFormat.trim()
         ? dateFormat.trim()
@@ -112,11 +118,22 @@ export function formatCurrency(cents, symbol = localeSettings.currencySymbol) {
     return `${symbol}0.00`;
   }
   const isNegative = cents < 0;
-  const absCents = Math.abs(cents);
-  const units = (absCents / 100).toFixed(2);
+  const absUnits = Math.abs(cents) / 100;
+  const locale = localeSettings.currencyFormat || 'en-IN';
+
+  let formattedUnits;
+  try {
+    formattedUnits = new Intl.NumberFormat(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(absUnits);
+  } catch {
+    formattedUnits = absUnits.toFixed(2);
+  }
+
   const sym = symbol || '';
   const sep = sym.length > 1 && !/^[^\w\s]+$/.test(sym) ? ' ' : '';
-  return isNegative ? `-${sym}${sep}${units}` : `${sym}${sep}${units}`;
+  return isNegative ? `-${sym}${sep}${formattedUnits}` : `${sym}${sep}${formattedUnits}`;
 }
 
 export function centsToUnits(cents) {

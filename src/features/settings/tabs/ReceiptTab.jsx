@@ -1,5 +1,8 @@
-import { Receipt, ArrowUp, ArrowDown, RefreshCw, Check } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { Receipt, ArrowUp, ArrowDown, RefreshCw, Check, Printer } from 'lucide-react';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
+import { tauriApi } from '../../../lib/tauri';
+import { toast } from '../../../stores/toast.store';
 import { strings } from '../../../lib/strings';
 
 const sampleSale = {
@@ -18,6 +21,19 @@ const sampleItems = [
 ];
 
 export default function ReceiptTab({ bill, setBill, general, onSave, isSaving }) {
+  const testPrintMutation = useMutation({
+    mutationFn: () =>
+      tauriApi.testPrint(
+        (general?.defaultPrinterName ?? general?.default_printer_name) || null,
+        (bill.paperWidth ?? bill.paper_width) || '80mm'
+      ),
+    onSuccess: () => toast.success(strings.settings.toasts.testPrintSent),
+    onError: (err) =>
+      toast.error(strings.settings.toasts.testPrintFailed(err.message), {
+        title: strings.settings.toasts.testPrintFailedTitle,
+      }),
+  });
+
   const moveSection = (index, direction) => {
     const newSections = [...bill.sections];
     const targetIndex = index + direction;
@@ -390,7 +406,20 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
             <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
               {strings.settings.receipt.previewTitle(bill.paperWidth ?? bill.paper_width)}
             </h3>
-            <span className="text-[11px] text-content-muted">{strings.settings.receipt.sampleTransaction}</span>
+            <button
+              type="button"
+              onClick={() => testPrintMutation.mutate()}
+              disabled={testPrintMutation.isPending}
+              className="px-2.5 py-1 rounded bg-surface-secondary hover:bg-border text-content text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-border"
+              title="Test Print Thermal Receipt"
+            >
+              {testPrintMutation.isPending ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Printer className="w-3.5 h-3.5" />
+              )}
+              <span>Test Print</span>
+            </button>
           </div>
 
           <div className="bg-neutral-100 dark:bg-neutral-900 p-4 rounded-lg flex justify-center border border-border overflow-x-auto">

@@ -95,6 +95,7 @@ export default function SettingsView() {
     gstin: '',
     currencySymbol: getCurrencySymbol() || '$',
     currencyCode: 'USD',
+    currencyFormat: 'en-IN',
     dateFormat: 'DD-MM-YYYY',
     timeFormat: '12 hour format',
     defaultPrinterName: '',
@@ -133,6 +134,7 @@ export default function SettingsView() {
         storeName: generalData.storeName ?? generalData.store_name ?? prev.storeName,
         currencySymbol: generalData.currencySymbol ?? generalData.currency_symbol ?? prev.currencySymbol,
         currencyCode: generalData.currencyCode ?? generalData.currency_code ?? prev.currencyCode,
+        currencyFormat: generalData.currencyFormat ?? generalData.currency_format ?? prev.currencyFormat ?? 'en-IN',
         dateFormat: (generalData.dateFormat ?? generalData.date_format)?.replace(/\//g, '-') || 'DD-MM-YYYY',
         timeFormat: (generalData.timeFormat ?? generalData.time_format)?.includes('24') ? '24 hour format' : '12 hour format',
         defaultPrinterName: generalData.defaultPrinterName ?? generalData.default_printer_name ?? prev.defaultPrinterName,
@@ -164,10 +166,7 @@ export default function SettingsView() {
     mutationFn: (data) => tauriApi.updateGeneralSettings(data),
     onSuccess: (_data, variables) => {
       applyGeneralSettings(variables);
-      queryClient.invalidateQueries({ queryKey: ['generalSettings'] });
-      queryClient.invalidateQueries({ queryKey: ['billSettings'] });
-      queryClient.invalidateQueries({ queryKey: ['nextSku'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries();
       toast.success(strings.settings.toasts.settingsSaved);
     },
     onError: (err) => toast.error(strings.settings.toasts.saveSettingsFailed(err)),
@@ -278,6 +277,7 @@ export default function SettingsView() {
             <PrintingTab
               general={general}
               setGeneral={setGeneral}
+              bill={bill}
               onSave={(data) => updateGeneralMutation.mutate(data)}
               isSaving={updateGeneralMutation.isPending}
             />

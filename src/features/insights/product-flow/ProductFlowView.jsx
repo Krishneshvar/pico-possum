@@ -311,34 +311,27 @@ export default function ProductFlowView() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col p-4">
         {hasSelectedProduct ? (
-          <div className="flex-1 flex flex-col p-4 space-y-3">
-            {/* Product Summary Card */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden border border-border rounded-xl bg-surface">
+            {/* Product Summary Header */}
             <ProductFlowStats
               selectedProduct={selectedProduct}
               summaryMetrics={summaryMetrics}
             />
 
             {/* Transaction Flow Table */}
-            <div className="flex-1 overflow-hidden border border-border rounded-xl bg-surface flex flex-col">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-content uppercase tracking-wider">
-                  {strings.productFlow.productFlow.transactionRecords}
-                </h3>
-              </div>
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <DataTable
-                  columns={columns}
-                  persistKey="product-flow"
-                  data={flowItems}
-                  keyFn={(r) => r.id}
-                  searchKeys={['invoiceNumber', 'customerName', 'paymentMethod']}
-                  pageSize={25}
-                  emptyMessage={strings.productFlow.productFlow.emptyTable}
-                  isLoading={isLoading}
-                />
-              </div>
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <DataTable
+                columns={columns}
+                persistKey="product-flow"
+                data={flowItems}
+                keyFn={(r) => r.id}
+                searchKeys={['invoiceNumber', 'customerName', 'paymentMethod']}
+                pageSize={25}
+                emptyMessage={strings.productFlow.productFlow.emptyTable}
+                isLoading={isLoading}
+              />
             </div>
           </div>
         ) : (

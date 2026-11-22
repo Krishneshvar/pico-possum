@@ -12,6 +12,8 @@ pub struct GeneralSettings {
     pub currency_symbol: String,
     #[serde(alias = "currency_code")]
     pub currency_code: String,
+    #[serde(alias = "currency_format")]
+    pub currency_format: String,
     #[serde(alias = "date_format")]
     pub date_format: String,
     #[serde(alias = "time_format")]
@@ -33,6 +35,7 @@ impl Default for GeneralSettings {
             gstin: "".to_string(),
             currency_symbol: "$".to_string(),
             currency_code: "USD".to_string(),
+            currency_format: "en-IN".to_string(),
             date_format: "DD/MM/YYYY".to_string(),
             time_format: "12h".to_string(),
             default_printer_name: "".to_string(),

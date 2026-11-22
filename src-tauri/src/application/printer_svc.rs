@@ -69,7 +69,7 @@ impl PrinterService {
         printers
     }
 
-    pub fn test_print(printer_name: Option<String>) -> Result<(), AppError> {
+    pub fn test_print(printer_name: Option<String>, paper_width: Option<String>) -> Result<(), AppError> {
         let printers = Self::list_printers();
         let target = printer_name
             .filter(|p| !p.trim().is_empty())
@@ -78,7 +78,13 @@ impl PrinterService {
 
         #[cfg(not(target_os = "windows"))]
         {
-            let test_content = "================================\n         PICO POSSUM POS        \n      THERMAL PRINTER TEST      \n================================\nStatus: Online & Ready\nFont: Times New Roman\n================================\nItem          Qty   Rate  Amount\nSample Test     1 100.00  100.00\n================================\nTOTAL:                    100.00\n================================\nThermal Print Configuration OK!\n\n\n\n";
+            let is_58 = paper_width.as_deref() == Some("58mm");
+            let test_content = if is_58 {
+                "================================\n        PICO POSSUM POS         \n      THERMAL TEST (58mm)       \n================================\nStatus: Online & Ready\nFont: Times New Roman\n================================\nItem        Qty    Rate   Amount\nSample Test   1  100.00   100.00\n================================\nTOTAL:                    100.00\n================================\nThermal Print Configuration OK!\n\n\n\n"
+            } else {
+                "==========================================\n             PICO POSSUM POS              \n           THERMAL PRINTER TEST           \n==========================================\nStatus: Online & Ready\nFont: Times New Roman\n==========================================\nItem                     Qty   Rate Amount\nSample Product Test        1 100.00 100.00\n==========================================\nTOTAL:                              100.00\n==========================================\n     Thermal Print Configuration OK!      \n\n\n\n"
+            };
+
             let mut child = Command::new("lp")
                 .args(["-d", &target])
                 .stdin(std::process::Stdio::piped())
@@ -106,9 +112,12 @@ impl PrinterService {
             let script_path = std::env::temp_dir().join(format!("pos_test_print_{}.ps1", uuid::Uuid::new_v4()));
             let _ = std::fs::write(&script_path, thermal_print_script::TEST_PRINT_SCRIPT);
 
+            let paper_width_val = paper_width.unwrap_or_else(|| "80mm".to_string());
+
             let mut cmd = Command::new("powershell");
             cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", &script_path.to_string_lossy()]);
             cmd.arg("-Target").arg(&target);
+            cmd.arg("-PaperWidth").arg(&paper_width_val);
 
             let output = cmd.output()
                 .map_err(|e| AppError::Printer(format!("Failed to execute Windows test print: {}", e)));
@@ -143,9 +152,22 @@ impl PrinterService {
                 .spawn()
                 .map_err(|e| AppError::Printer(format!("Failed to execute lp command: {}", e)))?;
 
+            let print_data = if content.trim_start().starts_with('{') {
+                if let Ok(v) = serde_json::from_str::<serde_json::Value>(content) {
+                    v.get("plainText")
+                        .and_then(|pt| pt.as_str())
+                        .map(ToOwned::to_owned)
+                        .unwrap_or_else(|| content.to_string())
+                } else {
+                    content.to_string()
+                }
+            } else {
+                content.to_string()
+            };
+
             if let Some(mut stdin) = child.stdin.take() {
                 use std::io::Write;
-                let _ = stdin.write_all(content.as_bytes());
+                let _ = stdin.write_all(print_data.as_bytes());
             }
 
             let output = child.wait_with_output()

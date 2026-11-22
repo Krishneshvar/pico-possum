@@ -4,7 +4,7 @@ import { strings } from '../../../lib/strings';
 
 export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
   return (
-    <div className="px-4 py-2.5 rounded-lg bg-surface border border-border">
+    <div className="px-4 py-2.5 border-b border-border bg-surface-secondary/40 flex-shrink-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -12,7 +12,7 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
               {selectedProduct?.name}
             </h2>
             {selectedProduct?.sku && (
-              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface-secondary border border-border text-content-secondary">
+              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface border border-border text-content-secondary">
                 {strings.productFlow.productFlow.skuBadge(selectedProduct.sku)}
               </span>
             )}
@@ -37,7 +37,7 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-secondary border border-border">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border">
             <ShoppingBag className="w-3.5 h-3.5 text-brand" />
             <span className="text-xs text-content-secondary">
               {strings.productFlow.productFlow.totalSold}:
@@ -47,7 +47,7 @@ export default function ProductFlowStats({ selectedProduct, summaryMetrics }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-secondary border border-border">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border">
             <Receipt className="w-3.5 h-3.5 text-success" />
             <span className="text-xs text-content-secondary">
               {strings.productFlow.productFlow.totalRevenue}:

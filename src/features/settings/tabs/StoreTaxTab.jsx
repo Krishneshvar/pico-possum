@@ -16,7 +16,7 @@ export default function StoreTaxTab({ general, setGeneral, onSave, isSaving }) {
         <h3 className="text-sm font-semibold text-content">
           {strings.settings.storeTax.currencyGstin}
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
             <label className="text-content font-medium block mb-1">
               {strings.settings.storeTax.currencySymbol}
@@ -35,11 +35,30 @@ export default function StoreTaxTab({ general, setGeneral, onSave, isSaving }) {
 
           <div>
             <label className="text-content font-medium block mb-1">
+              {strings.settings.storeTax.currencyFormat}
+            </label>
+            <select
+              value={general.currencyFormat ?? general.currency_format ?? 'en-IN'}
+              onChange={(e) => setGeneral({ ...general, currencyFormat: e.target.value })}
+              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-medium cursor-pointer"
+            >
+              <option value="en-IN">{strings.settings.storeTax.currencyFormats.indian}</option>
+              <option value="en-US">{strings.settings.storeTax.currencyFormats.international}</option>
+              <option value="de-DE">{strings.settings.storeTax.currencyFormats.european}</option>
+              <option value="fr-FR">{strings.settings.storeTax.currencyFormats.space}</option>
+            </select>
+            <span className="text-[11px] text-content-muted mt-1 block">
+              {strings.settings.storeTax.currencyFormatHint}
+            </span>
+          </div>
+
+          <div>
+            <label className="text-content font-medium block mb-1">
               {strings.settings.storeTax.gstin}
             </label>
             <input
               type="text"
-              value={general.gstin}
+              value={general.gstin ?? ''}
               onChange={(e) => setGeneral({ ...general, gstin: e.target.value })}
               placeholder={strings.settings.storeTax.gstinPlaceholder}
               className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-mono"

@@ -32,6 +32,7 @@ fn general_settings(auto_numeric_sku: bool, allow_negative_stock: bool) -> Gener
         gstin: "".to_string(),
         currency_symbol: "$".to_string(),
         currency_code: "USD".to_string(),
+        currency_format: "en-IN".to_string(),
         date_format: "DD/MM/YYYY".to_string(),
         time_format: "12h".to_string(),
         default_printer_name: "".to_string(),

@@ -5,14 +5,14 @@ import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { strings } from '../../../lib/strings';
 
-export default function PrintingTab({ general, setGeneral, onSave, isSaving }) {
+export default function PrintingTab({ general, setGeneral, bill, onSave, isSaving }) {
   const { data: printers = [], isLoading: scanningPrinters, refetch: refreshPrinters } = useQuery({
     queryKey: ['systemPrinters'],
     queryFn: () => tauriApi.listPrinters(),
   });
 
   const testPrintMutation = useMutation({
-    mutationFn: (printerName) => tauriApi.testPrint(printerName),
+    mutationFn: (printerName) => tauriApi.testPrint(printerName, (bill?.paperWidth ?? bill?.paper_width) || '80mm'),
     onSuccess: () => toast.success(strings.settings.toasts.testPrintSent),
     onError: (err) =>
       toast.error(strings.settings.toasts.testPrintFailed(err.message), {

@@ -19,34 +19,49 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
   const is58mm = (billSettings?.paperWidth ?? billSettings?.paper_width) === '58mm';
   const isPreview = sale?.invoiceNumber === strings.settings.sampleData.invoiceNumber;
 
-  const storeName =
-    billSettings?.storeName?.trim() ||
-    generalSettings?.storeName?.trim() ||
-    generalSettings?.store_name?.trim() ||
-    (isPreview ? strings.settings.sampleData.storeName : strings.receipt.defaults.storeName);
+  const headerSection = billSettings?.sections?.find((s) => s.id === 'storeHeader');
+  const showStoreHeader = headerSection?.visible ?? true;
+  const headerOpts = headerSection?.options || {};
 
-  const storeDetails =
-    billSettings?.storeDetails?.trim() ||
-    generalSettings?.address?.trim() ||
-    (isPreview ? (strings.settings.sampleData.address || '#12 Market Street, Downtown') : '');
+  const storeName = showStoreHeader
+    ? headerOpts.storeName?.trim() ||
+      (billSettings?.storeName ?? billSettings?.store_name)?.trim() ||
+      (generalSettings?.storeName ?? generalSettings?.store_name)?.trim() ||
+      (isPreview ? strings.settings.sampleData.storeName : strings.receipt.defaults.storeName)
+    : null;
 
-  const phone =
-    billSettings?.phone?.trim() ||
-    generalSettings?.phone?.trim() ||
-    (isPreview ? (strings.settings.sampleData.phone || '+91 98765 43210') : '');
+  const storeDetails = showStoreHeader
+    ? headerOpts.storeDetails?.trim() ||
+      (billSettings?.storeDetails ?? billSettings?.store_details)?.trim() ||
+      generalSettings?.address?.trim() ||
+      (isPreview ? (strings.settings.sampleData.address || '#12 Market Street, Downtown') : '')
+    : null;
 
-  const gstin =
-    billSettings?.gst?.trim() ||
-    generalSettings?.gstin?.trim() ||
-    (isPreview ? (strings.settings.sampleData.gstin || '29ABCDE1234F1Z5') : '');
+  const phone = showStoreHeader
+    ? headerOpts.phone?.trim() ||
+      billSettings?.phone?.trim() ||
+      generalSettings?.phone?.trim() ||
+      (isPreview ? (strings.settings.sampleData.phone || '+91 98765 43210') : '')
+    : null;
 
-  const invoiceNumber = sale.invoiceNumber ?? sale.invoice_number ?? '—';
+  const gstin = showStoreHeader
+    ? headerOpts.gst?.trim() ||
+      billSettings?.gst?.trim() ||
+      generalSettings?.gstin?.trim() ||
+      (isPreview ? (strings.settings.sampleData.gstin || '29ABCDE1234F1Z5') : '')
+    : null;
+
+  const metaSection = billSettings?.sections?.find((s) => s.id === 'billMetadata');
+  const showMetadata = metaSection?.visible ?? true;
+  const metaOpts = metaSection?.options || {};
+
+  const invoiceNumber = showMetadata ? (sale.invoiceNumber ?? sale.invoice_number ?? '—') : null;
   const createdAt = sale.createdAt ?? sale.created_at;
   const customerName = sale.customerName ?? sale.customer_name;
   const billerName = sale.billerName ?? sale.biller_name;
 
-  const showCustomer = billSettings?.sections?.find((s) => s.id === 'billMetadata')?.options?.showCustomer ?? true;
-  const showCashier = billSettings?.sections?.find((s) => s.id === 'billMetadata')?.options?.showCashier ?? true;
+  const showCustomer = showMetadata && (metaOpts.showCustomer ?? true);
+  const showCashier = showMetadata && (metaOpts.showCashier ?? true);
   const showTax = billSettings?.showTax ?? billSettings?.show_tax ?? false;
 
   const formattedItems = (items || []).map((it) => {
@@ -62,17 +77,25 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
       unitPriceCents,
       totalCents,
       taxRate,
+      rateStr: formatCurrency(unitPriceCents, '').trim(),
+      amtStr: formatCurrency(totalCents, '').trim(),
     };
   });
 
   const discountCents = sale.discountCents ?? sale.discount_cents ?? 0;
   const taxCents = sale.taxCents ?? sale.tax_cents ?? 0;
   const totalCents = sale.totalCents ?? sale.total_cents ?? 0;
-  const paidCents = sale.paidCents ?? sale.paid_cents ?? totalCents;
 
-  const footerText = billSettings?.footerText || strings.receipt.defaults.footerText;
+  const footerSection = billSettings?.sections?.find((s) => s.id === 'footer');
+  const showFooter = footerSection?.visible ?? true;
+  const footerOpts = footerSection?.options || {};
+  const footerText = showFooter
+    ? footerOpts.text || billSettings?.footerText || strings.receipt.defaults.footerText
+    : null;
+
   const isCancelled = sale.status === 'CANCELLED';
   const isAmended = !!sale.notes && sale.notes.includes('[Amended:');
+  const plainText = buildReceiptPlainText({ sale, items, billSettings, generalSettings });
 
   return {
     paperWidth: is58mm ? '58mm' : '80mm',
@@ -81,8 +104,8 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
     phone,
     gstin,
     invoiceNumber,
-    date: formatDate(createdAt),
-    time: formatTime(createdAt),
+    date: showMetadata ? formatDate(createdAt) : null,
+    time: showMetadata ? formatTime(createdAt) : null,
     customerName: showCustomer ? (customerName || strings.receipt.defaults.cashCustomer) : null,
     billerName: showCashier && billerName ? billerName : null,
     showTax,
@@ -90,10 +113,14 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
     discountCents,
     taxCents,
     totalCents,
+    totalStr: formatCurrency(totalCents, '').trim(),
+    discountStr: discountCents > 0 ? formatCurrency(discountCents, '').trim() : null,
+    taxStr: taxCents > 0 ? formatCurrency(taxCents, '').trim() : null,
     currencySymbol: generalSettings?.currencySymbol ?? generalSettings?.currency_symbol ?? '$',
     footerText,
     isCancelled,
     isAmended,
+    plainText,
   };
 }
 
@@ -125,27 +152,38 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
   const lines = [];
 
   // Store Header
+  const headerSection = billSettings?.sections?.find((s) => s.id === 'storeHeader');
+  const showStoreHeader = headerSection?.visible ?? true;
+  const headerOpts = headerSection?.options || {};
+
   const isPreview = sale?.invoiceNumber === strings.settings.sampleData.invoiceNumber;
-  const storeName =
-    billSettings?.storeName?.trim() ||
-    generalSettings?.storeName?.trim() ||
-    generalSettings?.store_name?.trim() ||
-    (isPreview ? strings.settings.sampleData.storeName : strings.receipt.defaults.storeName);
+  const storeName = showStoreHeader
+    ? headerOpts.storeName?.trim() ||
+      (billSettings?.storeName ?? billSettings?.store_name)?.trim() ||
+      (generalSettings?.storeName ?? generalSettings?.store_name)?.trim() ||
+      (isPreview ? strings.settings.sampleData.storeName : strings.receipt.defaults.storeName)
+    : null;
 
-  const storeDetails =
-    billSettings?.storeDetails?.trim() ||
-    generalSettings?.address?.trim() ||
-    (isPreview ? (strings.settings.sampleData.address || '#12 Market Street, Downtown') : '');
+  const storeDetails = showStoreHeader
+    ? headerOpts.storeDetails?.trim() ||
+      (billSettings?.storeDetails ?? billSettings?.store_details)?.trim() ||
+      generalSettings?.address?.trim() ||
+      (isPreview ? (strings.settings.sampleData.address || '#12 Market Street, Downtown') : '')
+    : null;
 
-  const phone =
-    billSettings?.phone?.trim() ||
-    generalSettings?.phone?.trim() ||
-    (isPreview ? (strings.settings.sampleData.phone || '+91 98765 43210') : '');
+  const phone = showStoreHeader
+    ? headerOpts.phone?.trim() ||
+      billSettings?.phone?.trim() ||
+      generalSettings?.phone?.trim() ||
+      (isPreview ? (strings.settings.sampleData.phone || '+91 98765 43210') : '')
+    : null;
 
-  const gstin =
-    billSettings?.gst?.trim() ||
-    generalSettings?.gstin?.trim() ||
-    (isPreview ? (strings.settings.sampleData.gstin || '29ABCDE1234F1Z5') : '');
+  const gstin = showStoreHeader
+    ? headerOpts.gst?.trim() ||
+      billSettings?.gst?.trim() ||
+      generalSettings?.gstin?.trim() ||
+      (isPreview ? (strings.settings.sampleData.gstin || '29ABCDE1234F1Z5') : '')
+    : null;
 
   if (storeName) lines.push(center(storeName.toUpperCase()));
   if (storeDetails) {
@@ -156,27 +194,35 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
   if (phone) lines.push(center(strings.receipt.labels.phoneLine(phone)));
   if (gstin) lines.push(center(strings.receipt.labels.gstinLine(gstin)));
 
-  lines.push(divider);
+  if (showStoreHeader && (storeName || storeDetails || phone || gstin)) {
+    lines.push(divider);
+  }
 
   // Bill Metadata
-  const invoiceNumber = sale.invoiceNumber ?? sale.invoice_number ?? '—';
-  const createdAt = sale.createdAt ?? sale.created_at;
-  const customerName = sale.customerName ?? sale.customer_name;
-  const billerName = sale.billerName ?? sale.biller_name;
+  const metaSection = billSettings?.sections?.find((s) => s.id === 'billMetadata');
+  const showMetadata = metaSection?.visible ?? true;
+  const metaOpts = metaSection?.options || {};
 
-  lines.push(justify(`${strings.receipt.labels.billNo}: ${invoiceNumber}`, `${formatDate(createdAt)}`));
-  const showCustomer = billSettings?.sections?.find((s) => s.id === 'billMetadata')?.options?.showCustomer ?? true;
-  if (showCustomer) {
-    const custDisplayName = customerName || strings.receipt.defaults.cashCustomer;
-    lines.push(justify(`${strings.receipt.labels.cust}: ${custDisplayName}`, `${formatTime(createdAt)}`));
-  } else {
-    lines.push(justify('', `${formatTime(createdAt)}`));
-  }
-  if (billerName) {
-    lines.push(`${strings.receipt.labels.cashier}: ${billerName}`);
-  }
+  if (showMetadata) {
+    const invoiceNumber = sale.invoiceNumber ?? sale.invoice_number ?? '—';
+    const createdAt = sale.createdAt ?? sale.created_at;
+    const customerName = sale.customerName ?? sale.customer_name;
+    const billerName = sale.billerName ?? sale.biller_name;
 
-  lines.push(divider);
+    lines.push(justify(`${strings.receipt.labels.billNo}: ${invoiceNumber}`, `${formatDate(createdAt)}`));
+    const showCustomer = metaOpts.showCustomer ?? true;
+    if (showCustomer) {
+      const custDisplayName = customerName || strings.receipt.defaults.cashCustomer;
+      lines.push(justify(`${strings.receipt.labels.cust}: ${custDisplayName}`, `${formatTime(createdAt)}`));
+    } else {
+      lines.push(justify('', `${formatTime(createdAt)}`));
+    }
+    const showCashier = metaOpts.showCashier ?? true;
+    if (showCashier && billerName) {
+      lines.push(`${strings.receipt.labels.cashier}: ${billerName}`);
+    }
+    lines.push(divider);
+  }
 
   // Items Table (ONLY Item Name, NO SKU)
   const showTax = billSettings?.showTax ?? billSettings?.show_tax ?? false;
@@ -230,7 +276,13 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
   lines.push(divider);
 
   // Footer
-  const footerText = billSettings?.footerText || strings.receipt.defaults.footerText;
+  const footerSection = billSettings?.sections?.find((s) => s.id === 'footer');
+  const showFooter = footerSection?.visible ?? true;
+  const footerOpts = footerSection?.options || {};
+  const footerText = showFooter
+    ? footerOpts.text || billSettings?.footerText || strings.receipt.defaults.footerText
+    : null;
+
   if (footerText) {
     footerText.split('\n').forEach((f) => {
       if (f.trim()) lines.push(center(f.trim()));

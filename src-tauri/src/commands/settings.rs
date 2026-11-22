@@ -41,8 +41,11 @@ pub async fn list_printers() -> Result<Vec<String>, AppError> {
 }
 
 #[tauri::command]
-pub async fn test_print(printer_name: Option<String>) -> Result<(), AppError> {
-    PrinterService::test_print(printer_name)
+pub async fn test_print(
+    printer_name: Option<String>,
+    paper_width: Option<String>,
+) -> Result<(), AppError> {
+    PrinterService::test_print(printer_name, paper_width)
 }
 
 #[tauri::command]
