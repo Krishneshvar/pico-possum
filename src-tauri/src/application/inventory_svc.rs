@@ -199,6 +199,11 @@ impl InventoryService {
     }
 
     #[inline]
+    pub async fn get_category_by_id(pool: &SqlitePool, id: &str) -> Result<Category, AppError> {
+        CategoryService::get_category_by_id(pool, id).await
+    }
+
+    #[inline]
     pub async fn create_category(
         pool: &SqlitePool,
         payload: CreateCategoryPayload,

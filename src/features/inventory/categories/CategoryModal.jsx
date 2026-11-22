@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
 import Select from '../../../components/common/Select';
 import { strings } from '../../../lib/strings';
@@ -40,6 +40,23 @@ export default function CategoryModal({
       setParentId(initialParentId ? String(initialParentId) : '');
     }
   }, [editingCategory, initialParentId, open]);
+
+  const descendantIds = useMemo(() => {
+    if (!editingCategory) return new Set();
+    const set = new Set([editingCategory.id]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const c of categories) {
+        const pId = c.parentId ?? c.parent_id;
+        if (pId && set.has(pId) && !set.has(c.id)) {
+          set.add(c.id);
+          added = true;
+        }
+      }
+    }
+    return set;
+  }, [editingCategory, categories]);
 
   if (!open) return null;
 
@@ -121,7 +138,7 @@ export default function CategoryModal({
               options={[
                 { value: '', label: strings.categories.form.noneTopLevel },
                 ...categories
-                  .filter((c) => !editingCategory || c.id !== editingCategory.id)
+                  .filter((c) => !descendantIds.has(c.id))
                   .map((c) => ({ value: String(c.id), label: c.name })),
               ]}
             />
