@@ -21,6 +21,14 @@ pub async fn get_customers(
 }
 
 #[tauri::command]
+pub async fn get_customer_by_id(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<Customer, AppError> {
+    CustomerService::get_customer_by_id(&pool, &id).await
+}
+
+#[tauri::command]
 pub async fn create_customer(
     pool: State<'_, SqlitePool>,
     session_mgr: State<'_, AuthSessionManager>,

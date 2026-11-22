@@ -234,6 +234,11 @@ impl InventoryService {
     }
 
     #[inline]
+    pub async fn get_customer_by_id(pool: &SqlitePool, id: &str) -> Result<Customer, AppError> {
+        CustomerService::get_customer_by_id(pool, id).await
+    }
+
+    #[inline]
     pub async fn create_customer(
         pool: &SqlitePool,
         payload: CreateCustomerPayload,

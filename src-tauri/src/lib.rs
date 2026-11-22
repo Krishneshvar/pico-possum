@@ -103,6 +103,7 @@ pub fn run() {
             commands::sales::delete_open_bill,
             // Customers
             commands::customers::get_customers,
+            commands::customers::get_customer_by_id,
             commands::customers::create_customer,
             commands::customers::update_customer,
             commands::customers::delete_customer,
