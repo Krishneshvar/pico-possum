@@ -101,6 +101,25 @@ impl SalesService {
 
                 if let Some(existing_id) = existing_by_phone {
                     resolved_customer_id = Some(existing_id);
+                } else {
+                    let existing_deleted: Option<String> = sqlx::query_scalar(
+                        "SELECT id FROM customers WHERE phone = ? AND is_deleted = 1 LIMIT 1"
+                    )
+                    .bind(phone)
+                    .fetch_optional(&mut *tx)
+                    .await?;
+
+                    if let Some(del_id) = existing_deleted {
+                        sqlx::query(
+                            "UPDATE customers SET name = ?, address = ?, is_deleted = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+                        )
+                        .bind(cust_name.unwrap_or("Customer"))
+                        .bind(cust_addr.unwrap_or(""))
+                        .bind(&del_id)
+                        .execute(&mut *tx)
+                        .await?;
+                        resolved_customer_id = Some(del_id);
+                    }
                 }
             }
         }
@@ -328,8 +347,11 @@ impl SalesService {
         offset: i64,
         query: Option<String>,
     ) -> Result<Vec<Sale>, AppError> {
-        let sales = if let Some(q) = query {
-            let search = format!("%{}%", q.trim());
+        let lim = limit.clamp(1, 100_000);
+        let off = std::cmp::max(0, offset);
+        let clean_query = query.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let sales = if let Some(q) = clean_query {
+            let search = format!("%{}%", q);
             sqlx::query_as::<_, Sale>(
                 "SELECT id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
                         subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
@@ -342,8 +364,8 @@ impl SalesService {
             .bind(&search)
             .bind(&search)
             .bind(&search)
-            .bind(limit)
-            .bind(offset)
+            .bind(lim)
+            .bind(off)
             .fetch_all(pool)
             .await?
         } else {
@@ -355,8 +377,8 @@ impl SalesService {
                  FROM sales
                  ORDER BY created_at DESC LIMIT ? OFFSET ?"
             )
-            .bind(limit)
-            .bind(offset)
+            .bind(lim)
+            .bind(off)
             .fetch_all(pool)
             .await?
         };
@@ -368,6 +390,7 @@ impl SalesService {
         pool: &SqlitePool,
         sale_id: &str,
     ) -> Result<SaleResponse, AppError> {
+        let trimmed_id = sale_id.trim();
         let sale = sqlx::query_as::<_, Sale>(
             "SELECT id, invoice_number, customer_id, customer_name, customer_phone, biller_name,
                     subtotal_cents, discount_cents, tax_cents, total_cents, paid_cents,
@@ -375,10 +398,10 @@ impl SalesService {
                     created_at
              FROM sales WHERE id = ?1 OR invoice_number = ?1"
         )
-        .bind(sale_id)
+        .bind(trimmed_id)
         .fetch_optional(pool)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("Sale {} not found", sale_id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("Sale {} not found", trimmed_id)))?;
 
         let items = sqlx::query_as::<_, SaleItem>(
             "SELECT id, sale_id, product_id, product_name, product_sku, quantity,

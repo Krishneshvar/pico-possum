@@ -261,6 +261,25 @@ impl SaleAmendmentService {
 
                 if let Some(existing_id) = existing_by_phone {
                     resolved_customer_id = Some(existing_id);
+                } else {
+                    let existing_del: Option<String> = sqlx::query_scalar(
+                        "SELECT id FROM customers WHERE phone = ? AND is_deleted = 1 LIMIT 1"
+                    )
+                    .bind(phone)
+                    .fetch_optional(&mut *tx)
+                    .await?;
+
+                    if let Some(del_id) = existing_del {
+                        sqlx::query(
+                            "UPDATE customers SET name = ?, address = ?, is_deleted = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+                        )
+                        .bind(cust_name.unwrap_or("Customer"))
+                        .bind(cust_addr.unwrap_or(""))
+                        .bind(&del_id)
+                        .execute(&mut *tx)
+                        .await?;
+                        resolved_customer_id = Some(del_id);
+                    }
                 }
             }
         }
@@ -330,12 +349,14 @@ impl SaleAmendmentService {
 
         // 9. Audit log entry
         let audit_id = Uuid::new_v4().to_string();
+        let pm_desc = if existing_sale.payment_method != payment_method {
+            format!(" | Payment changed: {} -> {}", existing_sale.payment_method, payment_method)
+        } else {
+            String::new()
+        };
         let desc = format!(
-            "Edited bill #{}: updated items/pricing. Total changed from {} to {}. Payment: {}",
-            existing_sale.invoice_number,
-            existing_sale.total_cents,
-            total_cents,
-            payment_method
+            "Edited bill #{}: Total: {} -> {}. Payment: {}{}",
+            existing_sale.invoice_number, existing_sale.total_cents, total_cents, payment_method, pm_desc
         );
         sqlx::query(
             "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description, created_at)
@@ -407,61 +428,45 @@ impl SaleAmendmentService {
         .fetch_all(&mut *tx)
         .await?;
 
+        let clean_reason = match reason.trim() {
+            "" => "Customer request / void",
+            r => r,
+        };
+
         for row in item_rows {
             let product_id: String = row.get("product_id");
             let quantity: i64 = row.get("quantity");
             let movement_id = Uuid::new_v4().to_string();
-            let note = format!("Cancelled sale {}: {}", sale.invoice_number, reason);
+            let note = format!("Cancelled sale {}: {}", sale.invoice_number, clean_reason);
 
             sqlx::query(
                 "INSERT INTO stock_movements (id, product_id, quantity_change, movement_type, reference_id, note)
                  VALUES (?, ?, ?, 'CANCELLED', ?, ?)"
             )
-            .bind(&movement_id)
-            .bind(&product_id)
-            .bind(quantity)
-            .bind(&sale.invoice_number)
-            .bind(&note)
-            .execute(&mut *tx)
-            .await?;
+            .bind(&movement_id).bind(&product_id).bind(quantity).bind(&sale.invoice_number).bind(&note)
+            .execute(&mut *tx).await?;
 
-            sqlx::query(
-                "UPDATE products SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-            )
-            .bind(quantity)
-            .bind(&product_id)
-            .execute(&mut *tx)
-            .await?;
+            sqlx::query("UPDATE products SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(quantity).bind(&product_id).execute(&mut *tx).await?;
         }
 
-        // Update sale status and fulfillment status while preserving existing notes
         let updated_notes = match &sale.notes {
-            Some(e) if !e.trim().is_empty() => format!("{} | [Cancelled: {}]", e.trim(), reason.trim()),
-            _ => format!("[Cancelled: {}]", reason.trim()),
+            Some(e) if !e.trim().is_empty() => format!("{} | [Cancelled: {}]", e.trim(), clean_reason),
+            _ => format!("[Cancelled: {}]", clean_reason),
         };
 
-        sqlx::query(
-            "UPDATE sales SET status = 'CANCELLED', fulfillment_status = 'CANCELLED', notes = ? WHERE id = ?"
-        )
-        .bind(&updated_notes)
-        .bind(sale_id)
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query("UPDATE sales SET status = 'CANCELLED', fulfillment_status = 'CANCELLED', notes = ? WHERE id = ?")
+            .bind(&updated_notes).bind(sale_id).execute(&mut *tx).await?;
 
-        // Audit log
         let audit_id = Uuid::new_v4().to_string();
-        let desc = format!("Cancelled sale {}. Reason: {}", sale.invoice_number, reason);
+        let desc = format!("Cancelled sale {}. Reason: {}", sale.invoice_number, clean_reason);
         sqlx::query(
             "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description, created_at)
              VALUES (?, 'SALE_CANCELLED', 'SALE', ?, ?, CURRENT_TIMESTAMP)"
         )
-        .bind(&audit_id)
-        .bind(sale_id)
-        .bind(&desc)
-        .execute(&mut *tx)
-        .await?;
+        .bind(&audit_id).bind(sale_id).bind(&desc).execute(&mut *tx).await?;
 
-        AppLogger::info("Sales", format!("Bill {} cancelled. Reason: {}", sale.invoice_number, reason));
+        AppLogger::info("Sales", format!("Bill {} cancelled. Reason: {}", sale.invoice_number, clean_reason));
         tx.commit().await?;
 
         let mut updated = sale;
