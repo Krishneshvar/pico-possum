@@ -1,14 +1,48 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { readTableState, writeTableState } from './tableState';
 
+const SNAKE_TO_CAMEL_KEYS = {
+  created_at: 'createdAt',
+  product_sku: 'productSku',
+  product_name: 'productName',
+  movement_type: 'movementType',
+  quantity_change: 'quantityChange',
+  reference_id: 'referenceId',
+  customer_name: 'customerName',
+  customer_phone: 'customerPhone',
+  invoice_number: 'invoiceNumber',
+  total_cents: 'totalCents',
+  paid_cents: 'paidCents',
+  payment_method: 'paymentMethod',
+  category_name: 'categoryName',
+  category_id: 'categoryId',
+  updated_at: 'updatedAt',
+  cost_price: 'costPrice',
+  mrp_cents: 'mrpCents',
+  current_stock: 'currentStock',
+};
+
+function resolveColOrder(columns, savedOrder) {
+  const currentKeys = columns.map((c) => c.key);
+  if (!Array.isArray(savedOrder) || savedOrder.length === 0) {
+    return currentKeys;
+  }
+  const normalizedSaved = savedOrder.map((k) => SNAKE_TO_CAMEL_KEYS[k] || k);
+  const kept = normalizedSaved.filter((k) => currentKeys.includes(k));
+
+  if (kept.length < Math.max(2, Math.floor(currentKeys.length / 2))) {
+    return currentKeys;
+  }
+
+  const missing = currentKeys.filter((k) => !kept.includes(k));
+  return [...kept, ...missing];
+}
+
 export function useTableColumns({ columns, persistKey }) {
   const persistedTableState = useMemo(() => readTableState(persistKey), [persistKey]);
 
   const [colOrder, setColOrder] = useState(() => {
-    const currentKeys = columns.map((c) => c.key);
-    const savedOrder = persistedTableState?.order ?? [];
-    const kept = savedOrder.filter((k) => currentKeys.includes(k));
-    return [...kept, ...currentKeys.filter((k) => !kept.includes(k))];
+    return resolveColOrder(columns, persistedTableState?.order);
   });
   const [draggedColKey, setDraggedColKey] = useState(null);
   const [dragOverColKey, setDragOverColKey] = useState(null);
@@ -32,6 +66,9 @@ export function useTableColumns({ columns, persistKey }) {
     const currentKeys = columns.map((c) => c.key);
     setColOrder((prev) => {
       const filteredPrev = prev.filter((k) => currentKeys.includes(k));
+      if (filteredPrev.length < Math.max(2, Math.floor(currentKeys.length / 2))) {
+        return currentKeys;
+      }
       const newKeys = currentKeys.filter((k) => !filteredPrev.includes(k));
       const next = [...filteredPrev, ...newKeys];
       const unchanged =

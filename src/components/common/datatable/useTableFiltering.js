@@ -2,6 +2,38 @@ import { useState, useMemo } from 'react';
 
 const isFilterValSet = (v) => v !== '' && v !== null && v !== undefined && String(v).trim() !== '';
 
+export function getRowIsoDate(val) {
+  if (!val) return '';
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const d = new Date(trimmed.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const day = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  }
+  return '';
+}
+
 export function useTableFiltering({ data, filters = [], searchKeys = [], setPage }) {
   const [search, setSearch] = useState('');
   const [selectValues, setSelectValues] = useState({});
@@ -190,20 +222,22 @@ export function useTableFiltering({ data, filters = [], searchKeys = [], setPage
       const dv = dateValues[dk] ?? {};
       const from = f.fromVal !== undefined ? f.fromVal : dv.from;
       const to = f.toVal !== undefined ? f.toVal : dv.to;
-      const dateGetter = f.dateGetter || ((row) => row[f.key]);
+      const dateGetter = f.dateGetter || ((row) => {
+        const k = f.key || f.fromKey || f.toKey;
+        if (k && row[k] !== undefined && row[k] !== null) return row[k];
+        return row.createdAt ?? row.created_at ?? row.saleDate ?? row.sale_date ?? row.date;
+      });
 
       if (from) {
-        const fromMidnight = new Date(`${from}T00:00:00`);
         result = result.filter((row) => {
-          const d = new Date(dateGetter(row));
-          return !Number.isNaN(d.getTime()) && d >= fromMidnight;
+          const rowIso = getRowIsoDate(dateGetter(row));
+          return Boolean(rowIso && rowIso >= from);
         });
       }
       if (to) {
-        const toEndOfDay = new Date(`${to}T23:59:59.999`);
         result = result.filter((row) => {
-          const d = new Date(dateGetter(row));
-          return !Number.isNaN(d.getTime()) && d <= toEndOfDay;
+          const rowIso = getRowIsoDate(dateGetter(row));
+          return Boolean(rowIso && rowIso <= to);
         });
       }
     }

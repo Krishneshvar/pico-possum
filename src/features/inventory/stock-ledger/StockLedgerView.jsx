@@ -67,7 +67,7 @@ export default function StockLedgerView() {
 
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ['stockMovements', fromDate, toDate],
-    queryFn: () => tauriApi.getStockMovements(null, fromDate || null, toDate || null, 500),
+    queryFn: () => tauriApi.getStockMovements(null, fromDate || null, toDate || null, 5000),
   });
 
   const movementTypeOptions = useMemo(
@@ -228,7 +228,7 @@ export default function StockLedgerView() {
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <DataTable
           columns={columns}
-          persistKey="stock-ledger"
+          persistKey="stock-ledger-v2"
           data={movements}
           keyFn={(r) => r.id}
           searchKeys={['productName', 'movementType', 'note', 'referenceId']}
@@ -246,6 +246,7 @@ export default function StockLedgerView() {
             },
             {
               type: 'daterange',
+              key: 'createdAt',
               fromKey: 'createdAt',
               toKey: 'createdAt',
               label: s.filters.date,
