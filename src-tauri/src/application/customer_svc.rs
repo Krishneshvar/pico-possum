@@ -39,16 +39,35 @@ impl CustomerService {
     ) -> Result<Customer, AppError> {
         ValidationService::validate_create_customer(&payload)?;
         let id = Uuid::new_v4().to_string();
+        let clean_name = payload.name.trim();
+        let clean_phone = payload.phone.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let clean_address = payload.address.as_deref().map(str::trim).filter(|s| !s.is_empty());
+
+        let mut tx = pool.begin().await?;
+
         sqlx::query(
             "INSERT INTO customers (id, name, phone, address, is_deleted)
              VALUES (?, ?, ?, ?, 0)"
         )
         .bind(&id)
-        .bind(&payload.name)
-        .bind(&payload.phone)
-        .bind(&payload.address)
-        .execute(pool)
+        .bind(clean_name)
+        .bind(clean_phone)
+        .bind(clean_address)
+        .execute(&mut *tx)
         .await?;
+
+        let audit_id = Uuid::new_v4().to_string();
+        let _ = sqlx::query(
+            "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description, created_at)
+             VALUES (?, 'CUSTOMER_CREATED', 'CUSTOMER', ?, ?, CURRENT_TIMESTAMP)"
+        )
+        .bind(&audit_id)
+        .bind(&id)
+        .bind(format!("Created customer '{}'", clean_name))
+        .execute(&mut *tx)
+        .await;
+
+        tx.commit().await?;
 
         let cust = sqlx::query_as::<_, Customer>(
             "SELECT id, name, phone, address, is_deleted, created_at, updated_at
@@ -67,22 +86,41 @@ impl CustomerService {
         payload: UpdateCustomerPayload,
     ) -> Result<Customer, AppError> {
         ValidationService::validate_update_customer(&payload)?;
+        let clean_name = payload.name.trim();
+        let clean_phone = payload.phone.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let clean_address = payload.address.as_deref().map(str::trim).filter(|s| !s.is_empty());
+
+        let mut tx = pool.begin().await?;
+
         let rows_affected = sqlx::query(
             "UPDATE customers
              SET name = ?, phone = ?, address = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ? AND is_deleted = 0"
         )
-        .bind(&payload.name)
-        .bind(&payload.phone)
-        .bind(&payload.address)
+        .bind(clean_name)
+        .bind(clean_phone)
+        .bind(clean_address)
         .bind(id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?
         .rows_affected();
 
         if rows_affected == 0 {
             return Err(AppError::NotFound(format!("Customer {id} not found")));
         }
+
+        let audit_id = Uuid::new_v4().to_string();
+        let _ = sqlx::query(
+            "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description, created_at)
+             VALUES (?, 'CUSTOMER_UPDATED', 'CUSTOMER', ?, ?, CURRENT_TIMESTAMP)"
+        )
+        .bind(&audit_id)
+        .bind(id)
+        .bind(format!("Updated customer '{}'", clean_name))
+        .execute(&mut *tx)
+        .await;
+
+        tx.commit().await?;
 
         let cust = sqlx::query_as::<_, Customer>(
             "SELECT id, name, phone, address, is_deleted, created_at, updated_at
@@ -96,17 +134,39 @@ impl CustomerService {
     }
 
     pub async fn delete_customer(pool: &SqlitePool, id: &str) -> Result<(), AppError> {
-        let rows_affected = sqlx::query(
+        let mut tx = pool.begin().await?;
+
+        let cust_name: Option<String> = sqlx::query_scalar(
+            "SELECT name FROM customers WHERE id = ? AND is_deleted = 0"
+        )
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let name = match cust_name {
+            Some(n) => n,
+            None => return Err(AppError::NotFound(format!("Customer {id} not found"))),
+        };
+
+        sqlx::query(
             "UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
         )
         .bind(id)
-        .execute(pool)
-        .await?
-        .rows_affected();
+        .execute(&mut *tx)
+        .await?;
 
-        if rows_affected == 0 {
-            return Err(AppError::NotFound(format!("Customer {id} not found")));
-        }
+        let audit_id = Uuid::new_v4().to_string();
+        let _ = sqlx::query(
+            "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description, created_at)
+             VALUES (?, 'CUSTOMER_DELETED', 'CUSTOMER', ?, ?, CURRENT_TIMESTAMP)"
+        )
+        .bind(&audit_id)
+        .bind(id)
+        .bind(format!("Soft deleted customer '{}'", name))
+        .execute(&mut *tx)
+        .await;
+
+        tx.commit().await?;
 
         Ok(())
     }

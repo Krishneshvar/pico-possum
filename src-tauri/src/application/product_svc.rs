@@ -116,6 +116,8 @@ impl ProductService {
         let mut tx = pool.begin().await?;
 
         let id = Uuid::new_v4().to_string();
+        let clean_name = payload.name.trim();
+        let clean_cat_id = payload.category_id.as_deref().map(str::trim).filter(|s| !s.is_empty());
         let initial_stock = payload.initial_stock.unwrap_or(0);
         let min_stock_alert = payload.min_stock_alert.unwrap_or(5);
         let status = payload.status.unwrap_or_else(|| "active".to_string());
@@ -128,7 +130,7 @@ impl ProductService {
         let sku = if Self::auto_numeric_sku_enabled_tx(&mut tx).await? {
             Some(Self::next_numeric_sku_tx(&mut tx).await?)
         } else {
-            payload.sku.clone()
+            payload.sku.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(String::from)
         };
 
         sqlx::query(
@@ -136,9 +138,9 @@ impl ProductService {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
         )
         .bind(&id)
-        .bind(&payload.name)
+        .bind(clean_name)
         .bind(&sku)
-        .bind(&payload.category_id)
+        .bind(clean_cat_id)
         .bind(payload.mrp_cents)
         .bind(cost_price)
         .bind(tax_rate)
@@ -186,6 +188,8 @@ impl ProductService {
     ) -> Result<Product, AppError> {
         ValidationService::validate_update_product(&payload)?;
 
+        let clean_name = payload.name.trim();
+        let clean_cat_id = payload.category_id.as_deref().map(str::trim).filter(|s| !s.is_empty());
         let min_stock_alert = payload.min_stock_alert.unwrap_or(5);
 
         // SKU is not editable while automatic numerical SKUs are enabled; keep
@@ -197,10 +201,12 @@ impl ProductService {
                 .await?
                 .flatten()
         } else {
-            payload.sku.clone()
+            payload.sku.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(String::from)
         };
 
-        sqlx::query(
+        let mut tx = pool.begin().await?;
+
+        let rows_affected = sqlx::query(
             "UPDATE products SET
                 name = ?,
                 sku = ?,
@@ -211,19 +217,37 @@ impl ProductService {
                 min_stock_alert = ?,
                 status = ?,
                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?"
+             WHERE id = ? AND is_deleted = 0"
         )
-        .bind(&payload.name)
+        .bind(clean_name)
         .bind(&sku)
-        .bind(&payload.category_id)
+        .bind(clean_cat_id)
         .bind(payload.mrp_cents)
         .bind(payload.cost_price_cents)
         .bind(payload.tax_rate)
         .bind(min_stock_alert)
         .bind(&payload.status)
         .bind(id)
-        .execute(pool)
-        .await?;
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(AppError::NotFound(format!("Product {} not found", id)));
+        }
+
+        let audit_id = Uuid::new_v4().to_string();
+        let _ = sqlx::query(
+            "INSERT INTO audit_logs (id, event_type, entity_type, entity_id, description, created_at)
+             VALUES (?, 'PRODUCT_UPDATED', 'PRODUCT', ?, ?, CURRENT_TIMESTAMP)"
+        )
+        .bind(&audit_id)
+        .bind(id)
+        .bind(format!("Updated product '{}'", clean_name))
+        .execute(&mut *tx)
+        .await;
+
+        tx.commit().await?;
 
         Self::get_product_by_id(pool, id).await
     }
