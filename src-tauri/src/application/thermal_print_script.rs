@@ -31,8 +31,9 @@ $doc.add_PrintPage({
         if ($driverW -gt 240 -and $driverW -lt 360) { $driverW } else { 285 }
     }
 
-    $margin = 4
-    $contentW = $paperW - ($margin * 2)
+    # Start at x = 0 to utilize space on the left side
+    $margin = 0
+    $contentW = $paperW
 
     $fontTitle = New-Object System.Drawing.Font("Times New Roman", 13, [System.Drawing.FontStyle]::Bold)
     $fontSub   = New-Object System.Drawing.Font("Times New Roman", 9.5)
@@ -88,19 +89,24 @@ $doc.add_PrintPage({
     $g.DrawLine($pen, $margin, $y, $margin + $contentW, $y)
     $y += 6
 
-    # Sample Table Columns
-    $colItemW = $contentW * 0.44
-    $colQtyW  = $contentW * 0.14
-    $colRateW = $contentW * 0.20
-    $colAmtW  = $contentW * 0.22
+    # Sample Table Columns (Item: 46%, Qty: 12%, Rate: 20%, Amount: 22%)
+    $colItemW = [Math]::Floor($contentW * 0.46)
+    $colQtyW  = [Math]::Floor($contentW * 0.12)
+    $colRateW = [Math]::Floor($contentW * 0.20)
+    $colAmtW  = $contentW - $colItemW - $colQtyW - $colRateW
 
-    $rect = New-Object System.Drawing.RectangleF($margin, $y, $colItemW, 18)
+    $xItem = $margin
+    $xQty  = $xItem + $colItemW
+    $xRate = $xQty + $colQtyW
+    $xAmt  = $xRate + $colRateW
+
+    $rect = New-Object System.Drawing.RectangleF($xItem, $y, $colItemW, 18)
     $g.DrawString("Item", $fontBold, $brush, $rect, $sfLeft)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW, $y, $colQtyW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xQty, $y, $colQtyW, 18)
     $g.DrawString("Qty", $fontBold, $brush, $rect, $sfCenter)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW, $y, $colRateW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xRate, $y, $colRateW, 18)
     $g.DrawString("Rate", $fontBold, $brush, $rect, $sfRight)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW + $colRateW, $y, $colAmtW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xAmt, $y, $colAmtW, 18)
     $g.DrawString("Amount", $fontBold, $brush, $rect, $sfRight)
     $y += 20
 
@@ -108,13 +114,13 @@ $doc.add_PrintPage({
     $y += 6
 
     # Sample Item Row
-    $rect = New-Object System.Drawing.RectangleF($margin, $y, $colItemW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xItem, $y, $colItemW, 18)
     $g.DrawString("Sample Product Test", $fontSub, $brush, $rect, $sfLeft)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW, $y, $colQtyW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xQty, $y, $colQtyW, 18)
     $g.DrawString("1", $fontSub, $brush, $rect, $sfCenter)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW, $y, $colRateW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xRate, $y, $colRateW, 18)
     $g.DrawString("100.00", $fontSub, $brush, $rect, $sfRight)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW + $colRateW, $y, $colAmtW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xAmt, $y, $colAmtW, 18)
     $g.DrawString("100.00", $fontSub, $brush, $rect, $sfRight)
     $y += 18
 
@@ -186,8 +192,9 @@ $doc.add_PrintPage({
         if ($driverW -gt 240 -and $driverW -lt 360) { $driverW } else { 285 }
     }
 
-    $margin = 4
-    $contentW = $paperW - ($margin * 2)
+    # Start at x = 0 to utilize space on the left side
+    $margin = 0
+    $contentW = $paperW
 
     $fontTitle = New-Object System.Drawing.Font("Times New Roman", 13, [System.Drawing.FontStyle]::Bold)
     $fontSub   = New-Object System.Drawing.Font("Times New Roman", 9.5)
@@ -284,33 +291,44 @@ $doc.add_PrintPage({
     # Items Header: Item | Qty | Rate | [Tax] | Amount
     $hasTaxCol = ($data.showTax -eq $true) -and ($data.taxCents -gt 0)
     if ($hasTaxCol) {
-        $colItemW = $contentW * 0.36
-        $colQtyW  = $contentW * 0.12
-        $colRateW = $contentW * 0.18
-        $colTaxW  = $contentW * 0.14
-        $colAmtW  = $contentW * 0.20
+        $colItemW = [Math]::Floor($contentW * 0.36)
+        $colQtyW  = [Math]::Floor($contentW * 0.11)
+        $colRateW = [Math]::Floor($contentW * 0.17)
+        $colTaxW  = [Math]::Floor($contentW * 0.14)
+        $colAmtW  = $contentW - $colItemW - $colQtyW - $colRateW - $colTaxW
+
+        $xItem = $margin
+        $xQty  = $xItem + $colItemW
+        $xRate = $xQty + $colQtyW
+        $xTax  = $xRate + $colRateW
+        $xAmt  = $xTax + $colTaxW
     } else {
-        $colItemW = $contentW * 0.44
-        $colQtyW  = $contentW * 0.14
-        $colRateW = $contentW * 0.20
+        $colItemW = [Math]::Floor($contentW * 0.46)
+        $colQtyW  = [Math]::Floor($contentW * 0.12)
+        $colRateW = [Math]::Floor($contentW * 0.20)
         $colTaxW  = 0
-        $colAmtW  = $contentW * 0.22
+        $colAmtW  = $contentW - $colItemW - $colQtyW - $colRateW
+
+        $xItem = $margin
+        $xQty  = $xItem + $colItemW
+        $xRate = $xQty + $colQtyW
+        $xTax  = 0
+        $xAmt  = $xRate + $colRateW
     }
 
-    $rect = New-Object System.Drawing.RectangleF($margin, $y, $colItemW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xItem, $y, $colItemW, 18)
     $g.DrawString("Item", $fontBold, $brush, $rect, $sfLeft)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW, $y, $colQtyW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xQty, $y, $colQtyW, 18)
     $g.DrawString("Qty", $fontBold, $brush, $rect, $sfCenter)
-    $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW, $y, $colRateW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xRate, $y, $colRateW, 18)
     $g.DrawString("Rate", $fontBold, $brush, $rect, $sfRight)
 
     if ($hasTaxCol) {
-        $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW + $colRateW, $y, $colTaxW, 18)
+        $rect = New-Object System.Drawing.RectangleF($xTax, $y, $colTaxW, 18)
         $g.DrawString("Tax", $fontBold, $brush, $rect, $sfRight)
     }
 
-    $amtX = $margin + $colItemW + $colQtyW + $colRateW + (if ($hasTaxCol) { $colTaxW } else { 0 })
-    $rect = New-Object System.Drawing.RectangleF($amtX, $y, $colAmtW, 18)
+    $rect = New-Object System.Drawing.RectangleF($xAmt, $y, $colAmtW, 18)
     $g.DrawString("Amount", $fontBold, $brush, $rect, $sfRight)
     $y += 20
 
@@ -333,21 +351,21 @@ $doc.add_PrintPage({
         $measured = $g.MeasureString($name, $fontSub, [int]$colItemW, $sfWrap)
         $rowH = [Math]::Max(16, [Math]::Ceiling($measured.Height) + 2)
 
-        $rect = New-Object System.Drawing.RectangleF($margin, $y, $colItemW, $rowH)
+        $rect = New-Object System.Drawing.RectangleF($xItem, $y, $colItemW, $rowH)
         $g.DrawString($name, $fontSub, $brush, $rect, $sfWrap)
 
-        $rect = New-Object System.Drawing.RectangleF($margin + $colItemW, $y, $colQtyW, 18)
+        $rect = New-Object System.Drawing.RectangleF($xQty, $y, $colQtyW, 18)
         $g.DrawString($qtyStr, $fontSub, $brush, $rect, $sfCenter)
 
-        $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW, $y, $colRateW, 18)
+        $rect = New-Object System.Drawing.RectangleF($xRate, $y, $colRateW, 18)
         $g.DrawString($rateStr, $fontSub, $brush, $rect, $sfRight)
 
         if ($hasTaxCol) {
-            $rect = New-Object System.Drawing.RectangleF($margin + $colItemW + $colQtyW + $colRateW, $y, $colTaxW, 18)
+            $rect = New-Object System.Drawing.RectangleF($xTax, $y, $colTaxW, 18)
             $g.DrawString($taxRateStr, $fontSub, $brush, $rect, $sfRight)
         }
 
-        $rect = New-Object System.Drawing.RectangleF($amtX, $y, $colAmtW, 18)
+        $rect = New-Object System.Drawing.RectangleF($xAmt, $y, $colAmtW, 18)
         $g.DrawString($amtStr, $fontSub, $brush, $rect, $sfRight)
 
         $y += $rowH + 2
