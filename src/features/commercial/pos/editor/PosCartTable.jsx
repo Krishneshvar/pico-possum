@@ -66,8 +66,8 @@ export default function PosCartTable({
       </div>
 
       {/* Cart Items Table */}
-      <div className="flex-1 overflow-auto bg-surface flex flex-col">
-        <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden bg-surface flex flex-col">
+        <div className="flex-1 overflow-auto pb-28">
           <table className="w-full text-left border-collapse border-b border-border-default select-text">
             <thead className="bg-table-header-bg text-[11px] font-semibold text-table-header-text uppercase tracking-wider sticky top-0 border-b border-table-header-border z-10 shadow-xs">
               <tr className="h-9">

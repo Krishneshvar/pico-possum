@@ -8,6 +8,7 @@ export function usePosTableNavigation({
   bill,
   products = [],
   stockProducts = [],
+  searchInputRef,
   onAddItem,
   onUpdateItemQty,
   onUpdateItemPrice,
@@ -32,7 +33,8 @@ export function usePosTableNavigation({
   const discountInputRefs = useRef({});
   const skuInputRefs = useRef({});
   const emptyRowSkuInputRef = useRef(null);
-  const emptyProductInputRef = useRef(null);
+  const internalEmptyProductInputRef = useRef(null);
+  const emptyProductInputRef = searchInputRef || internalEmptyProductInputRef;
 
   // Default focus on empty row's product cell on mount or bill switch
   useEffect(() => {
@@ -52,12 +54,14 @@ export function usePosTableNavigation({
       if (col === 1) {
         if (emptyRowSkuInputRef.current && document.activeElement !== emptyRowSkuInputRef.current) {
           emptyRowSkuInputRef.current.focus();
+          emptyRowSkuInputRef.current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
         return;
       }
       if (col === 2) {
         if (emptyProductInputRef.current && document.activeElement !== emptyProductInputRef.current) {
           emptyProductInputRef.current.focus();
+          emptyProductInputRef.current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
         return;
       }
@@ -69,6 +73,7 @@ export function usePosTableNavigation({
         if (input && document.activeElement !== input) {
           input.focus();
           input.select();
+          input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
         return;
       }
@@ -77,6 +82,7 @@ export function usePosTableNavigation({
         if (input && document.activeElement !== input) {
           input.focus();
           input.select();
+          input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
         return;
       }
@@ -85,6 +91,7 @@ export function usePosTableNavigation({
         if (input && document.activeElement !== input) {
           input.focus();
           input.select();
+          input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
         return;
       }
@@ -131,6 +138,10 @@ export function usePosTableNavigation({
       if (qtyInput) {
         qtyInput.focus();
         qtyInput.select();
+        qtyInput.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+      if (existingIdx < 0) {
+        emptyProductInputRef.current?.closest('tr')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       }
     }, 40);
   };

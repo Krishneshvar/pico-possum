@@ -88,6 +88,7 @@ export default function PosBillEditor({
     bill,
     products,
     stockProducts,
+    searchInputRef,
     onAddItem,
     onUpdateItemQty,
     onUpdateItemPrice,
@@ -99,7 +100,7 @@ export default function PosBillEditor({
     setExpandedRowId,
   });
 
-  const emptyProductRef = searchInputRef || nav.emptyProductInputRef;
+  const emptyProductRef = nav.emptyProductInputRef;
 
   // Click outside listener to dismiss search autocomplete dropdown
   useEffect(() => {

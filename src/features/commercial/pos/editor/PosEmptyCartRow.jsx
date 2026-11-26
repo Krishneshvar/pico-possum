@@ -93,8 +93,19 @@ export default function PosEmptyCartRow({
 
       {/* 3. Product (Search & Input cell with Autocomplete) */}
       <td
+        tabIndex={-1}
         style={getWidthStyle('product')}
-        className={`p-1.5 border-r border-border-default relative ${
+        onClick={() => {
+          setActiveCell({ row: itemsCount, col: 2 });
+          emptyProductInputRef.current?.focus();
+        }}
+        onFocus={(e) => {
+          if (e.target === e.currentTarget) {
+            setActiveCell({ row: itemsCount, col: 2 });
+            emptyProductInputRef.current?.focus();
+          }
+        }}
+        className={`p-1.5 border-r border-border-default relative outline-none ${
           activeCell?.row === itemsCount && activeCell?.col === 2
             ? 'ring-2 ring-brand ring-inset bg-brand-subtle/30 z-10'
             : ''
