@@ -289,6 +289,12 @@ const settings = {
       brandAction: 'Brand Action',
     },
     paletteSwatch: (hex, label) => `${hex} ${label}`,
+    uiScale: 'Interface Scale',
+    uiScaleHint:
+      'Adjust the overall size of text, buttons, and layouts to fit your screen resolution on this device.',
+    uiScaleReset: 'Reset to 100%',
+    uiScaleDefault: 'Default',
+    uiScaleDeviceNote: 'Saved automatically for this device.',
   },
 
   toasts: {

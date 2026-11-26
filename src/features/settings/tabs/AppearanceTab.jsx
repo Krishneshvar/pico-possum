@@ -1,9 +1,19 @@
-import { Sun, Moon, Check } from 'lucide-react';
-import { useThemeStore } from '../../../stores/theme.store';
+import { Sun, Moon, Check, Monitor, RotateCcw } from 'lucide-react';
+import {
+  useThemeStore,
+  MIN_UI_SCALE,
+  MAX_UI_SCALE,
+  DEFAULT_UI_SCALE,
+  UI_SCALE_STEP,
+} from '../../../stores/theme.store';
 import { strings } from '../../../lib/strings';
 
+const SCALE_PRESETS = [0.75, 0.9, 1.0, 1.15, 1.3, 1.5];
+
 export default function AppearanceTab() {
-  const { theme, setTheme } = useThemeStore();
+  const { theme, setTheme, uiScale, setUiScale, resetUiScale } = useThemeStore();
+  const scalePercent = Math.round(uiScale * 100);
+  const isDefaultScale = Math.abs(uiScale - DEFAULT_UI_SCALE) < 0.001;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -83,6 +93,85 @@ export default function AppearanceTab() {
             <p className="text-[11px] text-content-secondary">
               {strings.settings.appearance.darkDescription}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Interface Scale Slider */}
+      <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Monitor className="w-4 h-4 text-brand" />
+              <h3 className="text-sm font-semibold text-content">
+                {strings.settings.appearance.uiScale}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-brand-subtle text-brand border border-brand/20 tabular-nums">
+                {scalePercent}%
+              </span>
+            </div>
+            <p className="text-xs text-content-secondary">
+              {strings.settings.appearance.uiScaleHint}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={resetUiScale}
+            disabled={isDefaultScale}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-surface-secondary text-content-secondary hover:text-content hover:border-border-strong disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{strings.settings.appearance.uiScaleReset}</span>
+          </button>
+        </div>
+
+        <div className="pt-2 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-medium text-content-muted tabular-nums w-9">
+              {Math.round(MIN_UI_SCALE * 100)}%
+            </span>
+            <input
+              type="range"
+              aria-label={strings.settings.appearance.uiScale}
+              min={MIN_UI_SCALE}
+              max={MAX_UI_SCALE}
+              step={UI_SCALE_STEP}
+              value={uiScale}
+              onChange={(e) => setUiScale(parseFloat(e.target.value))}
+              className="flex-1 h-2 bg-surface-secondary rounded-lg appearance-none cursor-pointer accent-brand border border-border"
+            />
+            <span className="text-[11px] font-medium text-content-muted tabular-nums w-10 text-right">
+              {Math.round(MAX_UI_SCALE * 100)}%
+            </span>
+          </div>
+
+          {/* Quick-select presets */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {SCALE_PRESETS.map((preset) => {
+                const pct = Math.round(preset * 100);
+                const isActive = Math.abs(uiScale - preset) < 0.001;
+                const isDef = Math.abs(preset - DEFAULT_UI_SCALE) < 0.001;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setUiScale(preset)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors cursor-pointer tabular-nums ${
+                      isActive
+                        ? 'bg-brand text-white border-brand shadow-xs'
+                        : 'bg-surface-secondary text-content-secondary border-border hover:text-content hover:border-border-strong'
+                    }`}
+                  >
+                    {pct}%{isDef ? ` (${strings.settings.appearance.uiScaleDefault})` : ''}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[11px] text-content-muted">
+              {strings.settings.appearance.uiScaleDeviceNote}
+            </span>
           </div>
         </div>
       </div>

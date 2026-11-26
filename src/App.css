@@ -253,6 +253,7 @@ input[type="number"] {
   html, body {
     margin: 0 !important;
     padding: 0 !important;
+    font-size: 16px !important;
     background: #fff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
