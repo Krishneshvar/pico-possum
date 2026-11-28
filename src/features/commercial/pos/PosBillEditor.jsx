@@ -149,6 +149,23 @@ export default function PosBillEditor({
 
   const filteredSearchProducts = products.slice(0, 8);
 
+  const handleRestrictedSearchQueryChange = (nextQuery) => {
+    const trimmed = nextQuery.trim().toLowerCase();
+    if (!trimmed || nextQuery.length <= searchQuery.length) {
+      onSearchQueryChange(nextQuery);
+      return;
+    }
+    const sourceCatalog = stockProducts && stockProducts.length > 0 ? stockProducts : products;
+    const hasMatch = sourceCatalog.some((p) => {
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toLowerCase();
+      return name.includes(trimmed) || sku.includes(trimmed);
+    });
+    if (hasMatch) {
+      onSearchQueryChange(nextQuery);
+    }
+  };
+
   return (
     <div className="flex-1 flex overflow-hidden bg-canvas">
       {/* ── Left Area: Cart Table (~66% width) ── */}
@@ -186,7 +203,7 @@ export default function PosBillEditor({
         handleEmptyRowSkuKeyDown={nav.handleEmptyRowSkuKeyDown}
         emptyProductInputRef={emptyProductRef}
         emptyRowQuery={searchQuery}
-        setEmptyRowQuery={onSearchQueryChange}
+        setEmptyRowQuery={handleRestrictedSearchQueryChange}
         emptyRowOpen={searchFocused}
         setEmptyRowOpen={onSearchFocusedChange}
         emptyRowResults={filteredSearchProducts}

@@ -1,8 +1,136 @@
-import { User, X, StickyNote, Receipt } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { User, X, StickyNote, Receipt, Search, ChevronDown } from 'lucide-react';
 import Select from '../../../../components/common/Select';
 import { formatCurrency, unitsToCents } from '../../../../lib/formatters';
 import { toast } from '../../../../stores/toast.store';
 import { strings } from '../../../../lib/strings';
+
+function CustomerSearchDropdown({ customers, onSelect, placeholder }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const containerRef = useRef(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return customers.slice(0, 50);
+    return customers
+      .filter(
+        (c) =>
+          (c.name && c.name.toLowerCase().includes(q)) ||
+          (c.phone && c.phone.toLowerCase().includes(q))
+      )
+      .slice(0, 50);
+  }, [customers, query]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (customer) => {
+    onSelect(customer);
+    setQuery('');
+    setOpen(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1 < filtered.length ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev - 1 >= 0 ? prev - 1 : Math.max(0, filtered.length - 1)));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[highlightedIndex]) {
+        handleSelect(filtered[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative flex items-center">
+        <Search className="w-3.5 h-3.5 text-text-muted absolute left-2.5 pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onFocus={() => {
+            setOpen(true);
+            setHighlightedIndex(0);
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            setHighlightedIndex(0);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full bg-surface-secondary border border-border-strong rounded-lg pl-8 pr-7 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('');
+              setOpen(true);
+            }}
+            className="absolute right-2 text-text-muted hover:text-text-primary cursor-pointer"
+            title="Clear search"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <ChevronDown className="w-3.5 h-3.5 text-text-muted absolute right-2.5 pointer-events-none" />
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 mt-1 bg-surface border border-border-strong rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto py-1 text-xs">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-text-muted text-[11px]">No matching customers</div>
+          ) : (
+            filtered.map((c, idx) => (
+              <button
+                key={c.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(c);
+                }}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                className={`w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                  idx === highlightedIndex
+                    ? 'bg-brand-subtle text-brand font-semibold'
+                    : 'text-text-primary hover:bg-surface-secondary'
+                }`}
+              >
+                <span className="truncate">{c.name}</span>
+                {c.phone && (
+                  <span className="text-[10px] font-mono text-text-muted shrink-0">{c.phone}</span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PosCheckoutSidebar({
   bill,
@@ -122,20 +250,10 @@ export default function PosCheckoutSidebar({
               </div>
             </div>
           ) : (
-            <Select
-              value={bill.customer?.id || ''}
-              onChange={(val) => {
-                const c = customers.find((cust) => String(cust.id) === String(val));
-                onSetCustomer(c || null);
-              }}
+            <CustomerSearchDropdown
+              customers={customers}
+              onSelect={(c) => onSetCustomer(c)}
               placeholder={strings.pos.editor.walkInCustomer}
-              options={[
-                { value: '', label: strings.pos.editor.walkInCustomer },
-                ...customers.map((c) => ({
-                  value: String(c.id),
-                  label: `${c.name}${c.phone ? ` (${c.phone})` : ''}`,
-                })),
-              ]}
             />
           )}
         </div>
@@ -305,8 +423,15 @@ export default function PosCheckoutSidebar({
 
         {/* 4. Bill-Level Discount */}
         <div className="px-4 py-2.5 space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-text-primary">{strings.pos.editor.billDiscount}</span>
+          <div className="flex items-center justify-between text-xs gap-2">
+            <span className="font-semibold text-text-primary flex items-center gap-1.5 min-w-0">
+              <span>{strings.pos.editor.billDiscount}</span>
+              {bill.discountType === 'PERCENT' && (totals.discountCents ?? totals.discount_cents ?? 0) > 0 && (
+                <span className="text-[11px] font-mono font-semibold text-amber-600 dark:text-amber-400">
+                  (-{formatCurrency(totals.discountCents ?? totals.discount_cents ?? 0)})
+                </span>
+              )}
+            </span>
             <div className="flex bg-surface-secondary rounded-lg p-0.5 border border-border-default">
               <button
                 type="button"
