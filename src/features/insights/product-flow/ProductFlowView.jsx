@@ -314,12 +314,6 @@ export default function ProductFlowView() {
       <div className="flex-1 overflow-hidden flex flex-col p-4">
         {hasSelectedProduct ? (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden border border-border rounded-xl bg-surface">
-            {/* Product Summary Header */}
-            <ProductFlowStats
-              selectedProduct={selectedProduct}
-              summaryMetrics={summaryMetrics}
-            />
-
             {/* Transaction Flow Table */}
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <DataTable
@@ -331,6 +325,12 @@ export default function ProductFlowView() {
                 pageSize={25}
                 emptyMessage={strings.productFlow.productFlow.emptyTable}
                 isLoading={isLoading}
+                headerRight={
+                  <ProductFlowStats
+                    selectedProduct={selectedProduct}
+                    summaryMetrics={summaryMetrics}
+                  />
+                }
               />
             </div>
           </div>
