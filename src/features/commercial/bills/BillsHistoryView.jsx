@@ -196,6 +196,7 @@ export default function BillsHistoryView() {
       render: (r) => {
         const isCancelled = r.status === 'CANCELLED';
         const isLegacy = r.status === 'LEGACY';
+        const isPartiallyPaid = r.status === 'PARTIALLY_PAID';
         return (
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
@@ -203,6 +204,8 @@ export default function BillsHistoryView() {
                 ? 'bg-danger-bg text-danger border-danger/30'
                 : isLegacy
                 ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30'
+                : isPartiallyPaid
+                ? 'bg-warning-bg text-warning border-warning/30'
                 : 'bg-success-bg text-success border-success/30'
             }`}
           >
@@ -210,6 +213,8 @@ export default function BillsHistoryView() {
               ? strings.bills.status.cancelled
               : isLegacy
               ? strings.bills.status.legacy
+              : isPartiallyPaid
+              ? 'Partially Paid'
               : strings.bills.status.paid}
           </span>
         );
@@ -219,14 +224,16 @@ export default function BillsHistoryView() {
 
   const statusCounts = useMemo(() => {
     let completed = 0;
+    let partiallyPaid = 0;
     let cancelled = 0;
     let legacy = 0;
     for (const s of sales) {
       if (s.status === 'CANCELLED') cancelled++;
       else if (s.status === 'LEGACY') legacy++;
+      else if (s.status === 'PARTIALLY_PAID') partiallyPaid++;
       else completed++;
     }
-    return { completed, cancelled, legacy };
+    return { completed, partiallyPaid, cancelled, legacy };
   }, [sales]);
 
   const pmCounts = useMemo(() => {
@@ -261,6 +268,10 @@ export default function BillsHistoryView() {
             label: strings.bills.filters.statusOptions.paid(statusCounts.completed),
           },
           {
+            value: 'PARTIALLY_PAID',
+            label: `Partially Paid (${statusCounts.partiallyPaid})`,
+          },
+          {
             value: 'LEGACY',
             label: strings.bills.filters.statusOptions.legacy(statusCounts.legacy),
           },
@@ -275,6 +286,8 @@ export default function BillsHistoryView() {
               ? 'CANCELLED'
               : row.status === 'LEGACY'
               ? 'LEGACY'
+              : row.status === 'PARTIALLY_PAID'
+              ? 'PARTIALLY_PAID'
               : 'COMPLETED';
           return vals.includes(rowStatus);
         },

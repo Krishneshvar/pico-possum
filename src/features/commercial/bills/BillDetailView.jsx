@@ -226,7 +226,7 @@ export default function BillDetailView({ saleId, invoiceNumber, editRequest }) {
                     ) : (
                       <CheckCircle2 className="w-3 h-3" />
                     )}
-                    {isLegacy ? b.status.legacy : sale.status}
+                    {isLegacy ? b.status.legacy : sale.status === 'PARTIALLY_PAID' ? 'Partially Paid' : sale.status}
                   </span>
                 )}
               </div>
