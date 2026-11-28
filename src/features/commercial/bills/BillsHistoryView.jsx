@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { History, Eye, Printer, RotateCcw } from 'lucide-react';
+import { History, Eye, Pencil, Printer, RotateCcw } from 'lucide-react';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
 import { confirmDialog } from '../../../stores/confirm.store';
@@ -70,6 +70,16 @@ export default function BillsHistoryView() {
       strings.bills.history.tabTitle(invNo),
       'bill-detail',
       { saleId: row.id, invoiceNumber: invNo },
+      `bill-${row.id}`
+    );
+  };
+
+  const handleEditBill = (row) => {
+    const invNo = row.invoiceNumber ?? row.invoice_number;
+    openOrFocus(
+      strings.bills.history.tabTitle(invNo),
+      'bill-detail',
+      { saleId: row.id, invoiceNumber: invNo, editRequest: Date.now() },
       `bill-${row.id}`
     );
   };
@@ -378,6 +388,15 @@ export default function BillsHistoryView() {
                   icon: <Eye className="w-3.5 h-3.5" />,
                   onClick: () => handleOpenDetail(row),
                 },
+                ...(row.status !== 'CANCELLED' && row.status !== 'LEGACY'
+                  ? [
+                      {
+                        label: strings.bills.actions.amendBill || 'Edit Bill',
+                        icon: <Pencil className="w-3.5 h-3.5" />,
+                        onClick: () => handleEditBill(row),
+                      },
+                    ]
+                  : []),
                 {
                   label: 'Reprint Receipt',
                   icon: <Printer className="w-3.5 h-3.5" />,

@@ -358,12 +358,21 @@ export default function PosView() {
 
   const handlePrintReceipt = async () => {
     if (!completedSale) return;
-    await executeDirectPrint({
+    const result = await executeDirectPrint({
       sale: completedSale.sale,
       items: completedSale.items,
       billSettings,
       generalSettings,
     });
+    if (result?.method === 'fallback') {
+      setTimeout(() => {
+        setShowPrintModal(false);
+        setCompletedSale(null);
+      }, 300);
+    } else {
+      setShowPrintModal(false);
+      setCompletedSale(null);
+    }
   };
 
   const handleClearCart = async () => {
