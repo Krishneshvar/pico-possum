@@ -306,12 +306,9 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
                                 updateSectionOption(section.id, 'storeName', e.target.value);
                                 setBill((prev) => ({ ...prev, storeName: e.target.value }));
                               }}
-                              placeholder={general?.storeName || general?.store_name || strings.receipt.defaults.storeName}
+                              placeholder={general?.storeName || general?.store_name || strings.settings.general.storeNamePlaceholder}
                               className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs"
                             />
-                            <span className="text-[10px] text-content-muted mt-0.5 block">
-                              Leave empty to use Store Profile
-                            </span>
                           </div>
 
                           <div className="col-span-2 sm:col-span-1">
@@ -328,9 +325,6 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
                               placeholder={general?.phone || 'e.g. +91 9876543210'}
                               className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs font-mono"
                             />
-                            <span className="text-[10px] text-content-muted mt-0.5 block">
-                              Leave empty to use Store Profile
-                            </span>
                           </div>
 
                           <div className="col-span-2">
@@ -347,9 +341,6 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
                               placeholder={general?.address || 'Store address or location'}
                               className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs"
                             />
-                            <span className="text-[10px] text-content-muted mt-0.5 block">
-                              Leave empty to use Store Profile
-                            </span>
                           </div>
 
                           <div className="col-span-2 sm:col-span-1">

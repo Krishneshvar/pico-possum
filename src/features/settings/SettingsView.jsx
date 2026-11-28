@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Sliders,
-  Store,
   Receipt,
   Printer,
   ShieldCheck,
@@ -17,7 +16,6 @@ import { applyGeneralSettings, getCurrencySymbol } from '../../lib/formatters';
 import { strings } from '../../lib/strings';
 
 import GeneralTab from './tabs/GeneralTab';
-import StoreTaxTab from './tabs/StoreTaxTab';
 import ReceiptTab from './tabs/ReceiptTab';
 import PrintingTab from './tabs/PrintingTab';
 import BackupTab from './tabs/BackupTab';
@@ -186,7 +184,6 @@ export default function SettingsView() {
   // Navigation Items
   const navItems = [
     { id: 'general', label: strings.settings.nav.general.label, icon: Sliders, description: strings.settings.nav.general.description },
-    { id: 'storeTax', label: strings.settings.nav.storeTax.label, icon: Store, description: strings.settings.nav.storeTax.description },
     { id: 'receipt', label: strings.settings.nav.receipt.label, icon: Receipt, description: strings.settings.nav.receipt.description },
     { id: 'printing', label: strings.settings.nav.printing.label, icon: Printer, description: strings.settings.nav.printing.description },
     { id: 'backup', label: strings.settings.nav.backup.label, icon: ShieldCheck, description: strings.settings.nav.backup.description },
@@ -249,15 +246,6 @@ export default function SettingsView() {
         <main className="flex-1 overflow-y-auto p-8">
           {activeNav === 'general' && (
             <GeneralTab
-              general={general}
-              setGeneral={setGeneral}
-              onSave={(data) => updateGeneralMutation.mutate(data)}
-              isSaving={updateGeneralMutation.isPending}
-            />
-          )}
-
-          {activeNav === 'storeTax' && (
-            <StoreTaxTab
               general={general}
               setGeneral={setGeneral}
               onSave={(data) => updateGeneralMutation.mutate(data)}

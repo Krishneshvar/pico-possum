@@ -1,4 +1,4 @@
-import { User, X, StickyNote } from 'lucide-react';
+import { User, X, StickyNote, Receipt } from 'lucide-react';
 import Select from '../../../../components/common/Select';
 import { formatCurrency, unitsToCents } from '../../../../lib/formatters';
 import { toast } from '../../../../stores/toast.store';
@@ -37,10 +37,26 @@ export default function PosCheckoutSidebar({
   const PrimaryIcon = primaryAction?.icon;
 
   return (
-    <div className="w-[360px] md:w-[380px] bg-canvas flex flex-col justify-between overflow-y-auto p-4 space-y-4 shrink-0">
-      <div className="space-y-3.5">
+    <div className="w-[350px] md:w-[370px] bg-surface border-l border-border-default flex flex-col overflow-hidden shrink-0">
+      {/* Panel Header */}
+      <div className="px-4 py-2.5 border-b border-border-default bg-surface-secondary/60 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <Receipt className="w-4 h-4 text-brand" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
+            Checkout &amp; Payment
+          </h3>
+        </div>
+        {bills.length > 0 && (
+          <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-surface border border-border-default text-text-secondary">
+            Bill #{activeBillIndex + 1}
+          </span>
+        )}
+      </div>
+
+      {/* Unified Scrollable Sections */}
+      <div className="flex-1 overflow-y-auto divide-y divide-border-default/70">
         {/* 1. Customer Selector */}
-        <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
+        <div className="px-4 py-2.5 space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-brand" /> Customer
@@ -55,22 +71,22 @@ export default function PosCheckoutSidebar({
           </div>
 
           {bill.customer ? (
-            <div className="bg-surface-secondary p-2 rounded-lg border border-border-default text-xs space-y-2">
-              <div className="flex items-start justify-between gap-2">
+            <div className="bg-surface-secondary/70 p-2 rounded-lg border border-border-default text-xs space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
                 <div className="font-semibold text-text-primary min-w-0 truncate">
                   {bill.customer.name}
                 </div>
                 <button
                   type="button"
                   onClick={() => onSetCustomer(null)}
-                  className="text-text-muted hover:text-danger cursor-pointer p-1 shrink-0"
+                  className="text-text-muted hover:text-danger cursor-pointer p-0.5 shrink-0"
                   title={strings.pos.editor.removeCustomer}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <label className="block">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                     {strings.common.labels.phone}
@@ -125,7 +141,7 @@ export default function PosCheckoutSidebar({
         </div>
 
         {/* 2. Payment Method Selector */}
-        <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
+        <div className="px-4 py-2.5 space-y-1.5">
           <label className="text-xs font-semibold text-text-primary block">
             {strings.common.labels.paymentMethod}
           </label>
@@ -141,7 +157,7 @@ export default function PosCheckoutSidebar({
             className="w-full"
           />
           {!requiresTender && (
-            <div className="pt-1.5 border-t border-border-default/60 flex items-center justify-between text-xs text-text-muted">
+            <div className="pt-1 flex items-center justify-between text-xs text-text-muted">
               <span>{strings.pos.editor.exactAmountPayable}</span>
               <span className="font-semibold text-text-primary financial-value">
                 {formatCurrency(totals.totalCents ?? totals.total_cents)}
@@ -152,7 +168,7 @@ export default function PosCheckoutSidebar({
 
         {/* 3. Amount Tendered & Dynamic Settlement Status (Cash & Gift Card) */}
         {requiresTender && (
-          <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2 animate-fade-in">
+          <div className="px-4 py-2.5 space-y-1.5 animate-fade-in">
             <div className="flex items-center justify-between text-xs gap-2">
               <label
                 htmlFor={`amount-tendered-${bill.index}`}
@@ -247,7 +263,7 @@ export default function PosCheckoutSidebar({
 
             {/* Settlement Feedback */}
             {(totals.totalCents ?? totals.total_cents ?? 0) > 0 && (
-              <div className="pt-1.5 border-t border-border-default/60 space-y-1">
+              <div className="pt-1 space-y-0.5">
                 {bill.isFullPayment !== false ? (
                   (bill.amountTenderedCents || 0) >= (totals.totalCents ?? totals.total_cents ?? 0) ? (
                     <div className="flex items-center justify-between text-xs font-semibold text-success">
@@ -288,7 +304,7 @@ export default function PosCheckoutSidebar({
         )}
 
         {/* 4. Bill-Level Discount */}
-        <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
+        <div className="px-4 py-2.5 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-text-primary">{strings.pos.editor.billDiscount}</span>
             <div className="flex bg-surface-secondary rounded-lg p-0.5 border border-border-default">
@@ -328,7 +344,7 @@ export default function PosCheckoutSidebar({
         </div>
 
         {/* 5. Bill Notes */}
-        <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
+        <div className="px-4 py-2.5 space-y-1.5">
           <label className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
             <StickyNote className="w-3.5 h-3.5 text-brand" /> {strings.common.labels.notes}
           </label>
@@ -337,13 +353,13 @@ export default function PosCheckoutSidebar({
             value={notes}
             onChange={(e) => onNotesChange?.(e.target.value)}
             placeholder={strings.pos.editor.notesPlaceholder}
-            className="w-full bg-surface-secondary border border-border-strong rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand resize-none"
+            className="w-full bg-surface-secondary border border-border-strong rounded-lg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand resize-none"
           />
         </div>
 
         {/* 6. Open Bills Selector */}
         {bills.length > 0 && onSwitchBill && (
-          <div className="solid-card p-3 rounded-xl border border-border-default bg-surface space-y-2">
+          <div className="px-4 py-2.5 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-text-primary">{strings.pos.editor.bills}</span>
               {onClearCart && (
@@ -367,7 +383,7 @@ export default function PosCheckoutSidebar({
                     type="button"
                     onClick={() => onSwitchBill(idx)}
                     aria-current={isActive ? 'true' : undefined}
-                    className={`h-8 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                    className={`h-7 rounded-md text-xs font-bold border transition-colors cursor-pointer ${
                       isActive
                         ? 'bg-brand text-white border-brand shadow-xs'
                         : hasItems
@@ -385,13 +401,13 @@ export default function PosCheckoutSidebar({
       </div>
 
       {/* 8. Complete Sale Persistent Button */}
-      <div className="pt-2 border-t border-border-default">
+      <div className="px-4 py-3 border-t border-border-default bg-surface shrink-0">
         {primaryAction && (
           <button
             type="button"
             onClick={primaryAction.onClick}
             disabled={primaryAction.disabled}
-            className="w-full py-3 rounded-xl bg-brand hover:bg-brand-hover text-white font-bold text-sm shadow-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white font-bold text-sm shadow-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {primaryAction.pending ? (
               <span>{primaryAction.pendingLabel || 'Processing...'}</span>

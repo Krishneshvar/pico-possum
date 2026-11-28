@@ -89,7 +89,7 @@ const pos = {
     billDiscount: 'Bill Discount',
     flatDiscount: (symbol) => `${symbol} Flat`,
     notesPlaceholder: 'Internal remarks or delivery notes…',
-    bills: 'Bills',
+    bills: 'Bills (Ctrl + 1..9)',
     clearCart: 'Clear Cart',
   },
 
