@@ -112,6 +112,7 @@ export default function SettingsView() {
     gst: '',
     showTax: false,
     footerText: strings.settings.sampleData.footer,
+    logoData: null,
     sections: DEFAULT_SECTIONS,
   });
 
@@ -156,6 +157,7 @@ export default function SettingsView() {
         gst: billData.gst ?? prev.gst,
         showTax: billData.showTax ?? billData.show_tax ?? prev.showTax,
         footerText: billData.footerText ?? billData.footer_text ?? prev.footerText,
+        logoData: billData.logoData ?? billData.logo_data ?? prev.logoData ?? null,
         sections: billData.sections && billData.sections.length > 0 ? billData.sections : prev.sections,
       }));
     }

@@ -36,14 +36,28 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
     const alignClass = getAlignClass(opts.alignment);
     const fontClass = getFontSizeClass(opts.fontSize);
 
-    const invoiceNumber = sale.invoiceNumber ?? sale.invoice_number;
+    const rawInvoiceNumber = sale.invoiceNumber ?? sale.invoice_number;
+    const invoiceMatch = String(rawInvoiceNumber || '').match(/(\d+)$/);
+    const invoiceNumber = invoiceMatch ? invoiceMatch[1] : rawInvoiceNumber;
     const createdAt = sale.createdAt ?? sale.created_at;
     const customerName = sale.customerName ?? sale.customer_name;
     const billerName = sale.billerName ?? sale.biller_name;
-    const discountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+    const subtotalCents = sale.subtotalCents ?? sale.subtotal_cents;
+    const billDiscountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+    const itemsGrossSubtotalCents = (items || []).reduce(
+      (sum, it) => sum + ((it.unitPriceCents ?? it.unit_price_cents ?? 0) * (it.quantity ?? 1)),
+      0
+    );
+    const itemsDiscountCents = (items || []).reduce(
+      (sum, it) => sum + (it.discountCents ?? it.discount_cents ?? 0),
+      0
+    );
+    const totalDiscountCents = itemsDiscountCents + billDiscountCents;
     const taxCents = sale.taxCents ?? sale.tax_cents ?? 0;
     const totalCents = sale.totalCents ?? sale.total_cents ?? 0;
-    const paidCents = sale.paidCents ?? sale.paid_cents ?? totalCents;
+    const effectiveSubtotalCents = (items && items.length > 0)
+      ? itemsGrossSubtotalCents
+      : (subtotalCents ?? (totalCents + billDiscountCents));
 
     switch (section.id) {
       case 'storeHeader': {
@@ -53,6 +67,7 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
         const optStoreDetails = opts.storeDetails?.trim();
         const optPhone = opts.phone?.trim();
         const optGst = opts.gst?.trim();
+        const logoData = opts.logoData || billSettings?.logoData || billSettings?.logo_data;
 
         const billStoreName = (billSettings?.storeName ?? billSettings?.store_name)?.trim();
         const billStoreDetails = (billSettings?.storeDetails ?? billSettings?.store_details)?.trim();
@@ -88,12 +103,45 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
           genGstin ||
           (isPreview ? (strings.settings.sampleData.gstin || '29ABCDE1234F1Z5') : '');
 
+        const headerSize = opts.fontSize || 'medium';
+        const titleSizeClass =
+          headerSize === 'large'
+            ? 'text-[28px] leading-tight'
+            : headerSize === 'small'
+            ? 'text-xl leading-tight'
+            : 'text-2xl leading-tight';
+        const logoSizeClass =
+          headerSize === 'large'
+            ? 'max-h-16 max-w-[112px]'
+            : headerSize === 'small'
+            ? 'max-h-11 max-w-[72px]'
+            : 'max-h-14 max-w-[96px]';
+
         return (
-          <div key="storeHeader" className={`pb-2 border-b-2 border-black ${alignClass} ${fontClass}`} style={fontStyle}>
-            <h2 className="text-base font-black uppercase tracking-tight">{storeName}</h2>
-            {storeDetails && <p className="whitespace-pre-line text-[11px]">{storeDetails}</p>}
-            {phone && <p className="font-bold text-[11px]">{strings.receipt.labels.phoneLine(phone)}</p>}
-            {gstin && <p className="font-bold text-[11px]">{strings.receipt.labels.gstinLine(gstin)}</p>}
+          <div key="storeHeader" className={`pb-2 border-b-[2.5px] border-black ${alignClass} ${fontClass}`} style={fontStyle}>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              {logoData && (
+                <img
+                  src={logoData}
+                  alt="Store Logo"
+                  className={`${logoSizeClass} object-contain shrink-0`}
+                />
+              )}
+              <h2 className={`${titleSizeClass} font-bold tracking-tight`}>{storeName}</h2>
+            </div>
+            {storeDetails && <p className="whitespace-pre-line text-[11px] leading-tight">{storeDetails}</p>}
+            {phone && (
+              <p className="text-[11px]">
+                <strong className="font-bold">Phone: </strong>
+                <span>{phone}</span>
+              </p>
+            )}
+            {gstin && (
+              <p className="text-[11px]">
+                <strong className="font-bold">GSTIN: </strong>
+                <span>{gstin}</span>
+              </p>
+            )}
           </div>
         );
       }
@@ -101,20 +149,25 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
       case 'billMetadata': {
         const showCashier = opts.showCashier ?? true;
         const showCustomer = opts.showCustomer ?? true;
+        const hasRealCustomer = customerName && customerName.trim() !== '' && customerName.trim().toLowerCase() !== 'walk-in customer';
+
         return (
-          <div key="billMetadata" className={`py-2 border-b border-black space-y-0.5 ${alignClass} ${fontClass}`} style={fontStyle}>
-            <div className="flex justify-between">
-              <span><strong className="font-bold">{strings.receipt.labels.billNo}:</strong> {invoiceNumber}</span>
-              <span><strong className="font-bold">{strings.common.labels.date}:</strong> {formatDate(createdAt)}</span>
+          <div key="billMetadata" className={`py-2 border-b-[2.5px] border-black space-y-0.5 ${alignClass} ${fontClass}`} style={fontStyle}>
+            <div className="grid grid-cols-[54%_46%] items-start">
+              <div className="text-left min-w-0 pr-1"><strong className="font-bold">Bill No: </strong><span>{invoiceNumber}</span></div>
+              <div className="text-left"><strong className="font-bold">Date: </strong><span>{formatDate(createdAt)}</span></div>
             </div>
-            <div className="flex justify-between">
+            <div className="grid grid-cols-[54%_46%] items-start">
               {showCustomer ? (
-                <span><strong className="font-bold">{strings.receipt.labels.cust}:</strong> {customerName || strings.receipt.defaults.cashCustomer}</span>
-              ) : <span />}
-              <span><strong className="font-bold">{strings.common.labels.time}:</strong> {formatTime(createdAt)}</span>
+                <div className="text-left min-w-0 break-words pr-1">
+                  <strong className="font-bold">Cust: </strong>
+                  <span>{hasRealCustomer ? customerName : ''}</span>
+                </div>
+              ) : <div />}
+              <div className="text-left"><strong className="font-bold">Time: </strong><span>{formatTime(createdAt)}</span></div>
             </div>
             {showCashier && billerName && (
-              <div><strong className="font-bold">{strings.receipt.labels.cashier}:</strong> {billerName}</div>
+              <div className="text-left"><strong className="font-bold">User: </strong><span>{billerName}</span></div>
             )}
           </div>
         );
@@ -125,27 +178,26 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
         return (
           <table key="itemsTable" className={`w-full my-2 border-collapse ${fontClass}`} style={fontStyle}>
             <thead>
-              <tr className="border-b-2 border-black font-bold">
-                <th className="text-left py-1">{strings.receipt.columns.item}</th>
-                <th className="text-center py-1 w-10">{strings.receipt.columns.qty}</th>
-                <th className="text-right py-1 w-14">{strings.receipt.columns.rate}</th>
-                {showTax && <th className="text-right py-1 w-12">{strings.receipt.columns.tax}</th>}
-                <th className="text-right py-1 w-16">{strings.receipt.columns.amount}</th>
+              <tr className="border-b-[2.5px] border-black font-bold">
+                <th className="text-left py-1">Item</th>
+                <th className="text-center py-1 w-10">Qty</th>
+                <th className="text-right py-1 w-14">Rate</th>
+                {showTax && <th className="text-right py-1 w-12">Tax%</th>}
+                <th className="text-right py-1 w-16">Amt</th>
               </tr>
             </thead>
             <tbody>
               {(items || []).map((it, idx) => {
                 const unitPrice = it.unitPriceCents ?? it.unit_price_cents ?? 0;
-                const itemDiscount = it.discountCents ?? it.discount_cents ?? 0;
                 const productName = it.productName ?? it.product_name ?? it.name;
                 const taxRate = it.taxRate ?? it.tax_rate ?? 0;
-                const lineTotal = (unitPrice * it.quantity) - itemDiscount;
+                const lineTotal = unitPrice * it.quantity;
                 return (
                   <tr key={idx} className="border-b border-dotted border-gray-400">
                     <td className="py-1 pr-1 break-words whitespace-normal leading-tight">{productName}</td>
                     <td className="text-center py-1">{it.quantity}</td>
                     <td className="text-right py-1">{(unitPrice / 100).toFixed(2)}</td>
-                    {showTax && <td className="text-right py-1 font-mono">{strings.receipt.columns.taxRate(taxRate)}</td>}
+                    {showTax && <td className="text-right py-1 font-mono">{taxRate}%</td>}
                     <td className="text-right py-1">{(lineTotal / 100).toFixed(2)}</td>
                   </tr>
                 );
@@ -157,24 +209,34 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
 
       case 'totals': {
         const showTax = opts.showTax ?? billSettings?.showTax ?? billSettings?.show_tax ?? false;
+        const hasDiscount = totalDiscountCents > 0;
+        const hasTax = showTax && taxCents > 0;
+        const hasPreTotalRows = hasDiscount || hasTax;
+
         return (
-          <div key="totals" className={`pt-1 border-t-2 border-black space-y-1 ${alignClass} ${fontClass}`} style={fontStyle}>
-            {discountCents > 0 && (
-              <div className="flex justify-between">
-                <span>{strings.common.labels.discount}:</span>
-                <span>-{formatCurrency(discountCents)}</span>
-              </div>
+          <div key="totals" className={`pt-1 border-t-[2.5px] border-black space-y-1 ${alignClass} ${fontClass}`} style={fontStyle}>
+            {hasDiscount && (
+              <>
+                <div className="flex justify-between">
+                  <span><strong className="font-bold">Subtotal: </strong></span>
+                  <span>{formatCurrency(effectiveSubtotalCents)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span><strong className="font-bold">Discount: </strong></span>
+                  <span>-{formatCurrency(totalDiscountCents)}</span>
+                </div>
+              </>
             )}
 
-            {showTax && taxCents > 0 && (
+            {hasTax && (
               <div className="flex justify-between">
-                <span>{strings.receipt.labels.taxAmount}:</span>
+                <span><strong className="font-bold">Tax Amount: </strong></span>
                 <span>{formatCurrency(taxCents)}</span>
               </div>
             )}
 
-            <div className="flex justify-between font-black text-sm pt-1 border-t border-black">
-              <span>{strings.common.labels.total}:</span>
+            <div className={`flex justify-between font-black text-sm pt-1 ${hasPreTotalRows ? 'border-t-[2.5px] border-black' : ''}`}>
+              <span>Total:</span>
               <span>{formatCurrency(totalCents)}</span>
             </div>
           </div>
@@ -184,7 +246,7 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
       case 'footer': {
         const text = opts.text || billSettings?.footerText || strings.receipt.defaults.footerText;
         return (
-          <div key="footer" className={`mt-4 pt-2 border-t border-black whitespace-pre-line ${alignClass} ${fontClass}`} style={fontStyle}>
+          <div key="footer" className={`mt-4 pt-2 border-t-[2.5px] border-black whitespace-pre-line ${alignClass} ${fontClass}`} style={fontStyle}>
             {text}
           </div>
         );
@@ -196,22 +258,16 @@ export default function ReceiptPrinter({ sale, items, billSettings, generalSetti
   };
 
   const isCancelled = sale.status === 'CANCELLED';
-  const isAmended = !!sale.notes && sale.notes.includes('[Amended:');
 
   return (
     <div
       id="thermal-receipt"
-      className={`${widthClass} bg-white text-black p-3 mx-auto leading-tight shadow-md rounded-sm`}
+      className={`${widthClass} bg-white text-black pt-1.5 px-3 pb-3 mx-auto leading-tight shadow-md rounded-sm`}
       style={fontStyle}
     >
       {isCancelled && (
         <div className="border-2 border-black border-dashed py-1.5 mb-2 text-center font-black text-sm uppercase tracking-wider" style={fontStyle}>
           {strings.receipt.banners.cancelled}
-        </div>
-      )}
-      {!isCancelled && isAmended && (
-        <div className="border border-black py-1 mb-2 text-center font-bold text-xs uppercase tracking-wide" style={fontStyle}>
-          {strings.receipt.banners.amended}
         </div>
       )}
       {sections.map(renderSection)}

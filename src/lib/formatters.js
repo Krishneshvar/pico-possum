@@ -198,11 +198,12 @@ export function formatTime(dateInput) {
 
   try {
     const is24Hour = (localeSettings.timeFormat || '').includes('24');
-    return parsed.date.toLocaleTimeString([], {
+    const formatted = parsed.date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
       hour12: !is24Hour,
     });
+    return formatted.replace(/\b(am|pm)\b/gi, (m) => m.toUpperCase());
   } catch {
     return '';
   }

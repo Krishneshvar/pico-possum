@@ -60,6 +60,8 @@ pub struct BillSettings {
     pub show_tax: bool,
     #[serde(alias = "footer_text")]
     pub footer_text: String,
+    #[serde(alias = "logo_data")]
+    pub logo_data: Option<String>,
     pub sections: Option<Vec<serde_json::Value>>,
 }
 
@@ -73,6 +75,7 @@ impl Default for BillSettings {
             gst: "".to_string(),
             show_tax: false,
             footer_text: "Thank you for shopping!".to_string(),
+            logo_data: None,
             sections: None,
         }
     }

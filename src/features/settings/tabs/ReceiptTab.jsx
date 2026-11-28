@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { Receipt, ArrowUp, ArrowDown, RefreshCw, Check, Printer } from 'lucide-react';
+import { Receipt, ArrowUp, ArrowDown, RefreshCw, Check, Printer, Upload, X, Image as ImageIcon } from 'lucide-react';
 import ReceiptPrinter from '../../../components/receipt/ReceiptPrinter';
 import { tauriApi } from '../../../lib/tauri';
 import { toast } from '../../../stores/toast.store';
@@ -65,6 +65,49 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
       return s;
     });
     setBill({ ...bill, sections: newSections });
+  };
+
+  const handleLogoUpload = (e, sectionId) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, SVG, WebP)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 240;
+        const maxH = 120;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/png');
+
+        updateSectionOption(sectionId, 'logoData', dataUrl);
+        setBill((prev) => ({ ...prev, logoData: dataUrl }));
+      };
+      img.src = readerEvent.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveLogo = (sectionId) => {
+    updateSectionOption(sectionId, 'logoData', null);
+    setBill((prev) => ({ ...prev, logoData: null }));
   };
 
   return (
@@ -208,6 +251,50 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
 
                       {section.id === 'storeHeader' && (
                         <>
+                          <div className="col-span-2">
+                            <label className="text-[11px] text-content-secondary block mb-1">
+                              Store Logo (Monogram / Emblem)
+                            </label>
+                            <div className="flex items-center gap-3">
+                              {(opts.logoData || bill.logoData) ? (
+                                <div className="relative group p-1.5 bg-surface border border-border-strong rounded flex items-center justify-center">
+                                  <img
+                                    src={opts.logoData || bill.logoData}
+                                    alt="Store Logo"
+                                    className="h-10 max-w-[100px] object-contain"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveLogo(section.id)}
+                                    className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-red-600 text-white hover:bg-red-700 shadow cursor-pointer"
+                                    title="Remove Logo"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="w-12 h-10 border border-dashed border-border-strong rounded flex items-center justify-center text-content-muted">
+                                  <ImageIcon className="w-5 h-5 opacity-40" />
+                                </div>
+                              )}
+                              <div>
+                                <label className="px-3 py-1.5 rounded bg-surface hover:bg-surface-secondary border border-border-strong text-content text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm">
+                                  <Upload className="w-3.5 h-3.5" />
+                                  <span>{(opts.logoData || bill.logoData) ? 'Change Logo' : 'Upload Logo'}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleLogoUpload(e, section.id)}
+                                    className="hidden"
+                                  />
+                                </label>
+                                <span className="text-[10px] text-content-muted mt-0.5 block">
+                                  PNG or JPG. Displayed next to store title on receipt.
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="col-span-2 sm:col-span-1">
                             <label className="text-[11px] text-content-secondary block mb-1">
                               {strings.settings.general.storeName}

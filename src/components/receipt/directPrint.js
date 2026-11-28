@@ -55,7 +55,9 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
   const showMetadata = metaSection?.visible ?? true;
   const metaOpts = metaSection?.options || {};
 
-  const invoiceNumber = showMetadata ? (sale.invoiceNumber ?? sale.invoice_number ?? '—') : null;
+  const rawInvoiceNumber = showMetadata ? (sale.invoiceNumber ?? sale.invoice_number ?? '—') : null;
+  const invoiceMatch = rawInvoiceNumber ? String(rawInvoiceNumber).match(/(\d+)$/) : null;
+  const invoiceNumber = invoiceMatch ? invoiceMatch[1] : rawInvoiceNumber;
   const createdAt = sale.createdAt ?? sale.created_at;
   const customerName = sale.customerName ?? sale.customer_name;
   const billerName = sale.billerName ?? sale.biller_name;
@@ -68,8 +70,7 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
     const name = it.productName ?? it.product_name ?? it.name ?? 'Item';
     const quantity = it.quantity ?? 1;
     const unitPriceCents = it.unitPriceCents ?? it.unit_price_cents ?? 0;
-    const itemDiscount = it.discountCents ?? it.discount_cents ?? 0;
-    const totalCents = (unitPriceCents * quantity) - itemDiscount;
+    const totalCents = unitPriceCents * quantity;
     const taxRate = it.taxRate ?? it.tax_rate ?? 0;
     return {
       name,
@@ -82,9 +83,21 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
     };
   });
 
-  const discountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+  const itemsGrossSubtotalCents = (items || []).reduce(
+    (sum, it) => sum + ((it.unitPriceCents ?? it.unit_price_cents ?? 0) * (it.quantity ?? 1)),
+    0
+  );
+  const itemsDiscountCents = (items || []).reduce(
+    (sum, it) => sum + (it.discountCents ?? it.discount_cents ?? 0),
+    0
+  );
+  const billDiscountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+  const discountCents = itemsDiscountCents + billDiscountCents;
   const taxCents = sale.taxCents ?? sale.tax_cents ?? 0;
   const totalCents = sale.totalCents ?? sale.total_cents ?? 0;
+  const subtotalCents = (items && items.length > 0)
+    ? itemsGrossSubtotalCents
+    : (sale.subtotalCents ?? sale.subtotal_cents ?? (totalCents + billDiscountCents));
 
   const footerSection = billSettings?.sections?.find((s) => s.id === 'footer');
   const showFooter = footerSection?.visible ?? true;
@@ -94,11 +107,15 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
     : null;
 
   const isCancelled = sale.status === 'CANCELLED';
-  const isAmended = !!sale.notes && sale.notes.includes('[Amended:');
   const plainText = buildReceiptPlainText({ sale, items, billSettings, generalSettings });
+
+  const logoData = headerOpts?.logoData || billSettings?.logoData || billSettings?.logo_data || null;
+  const hasRealCustomer = customerName && customerName.trim() !== '' && customerName.trim().toLowerCase() !== 'walk-in customer';
 
   return {
     paperWidth: is58mm ? '58mm' : '80mm',
+    headerFontSize: headerOpts.fontSize || 'medium',
+    logoData,
     storeName,
     storeDetails,
     phone,
@@ -106,20 +123,21 @@ export function buildReceiptPayload({ sale, items = [], billSettings, generalSet
     invoiceNumber,
     date: showMetadata ? formatDate(createdAt) : null,
     time: showMetadata ? formatTime(createdAt) : null,
-    customerName: showCustomer ? (customerName || strings.receipt.defaults.cashCustomer) : null,
+    customerName: showCustomer ? (hasRealCustomer ? customerName.trim() : '') : null,
     billerName: showCashier && billerName ? billerName : null,
     showTax,
     items: formattedItems,
+    subtotalCents,
     discountCents,
     taxCents,
     totalCents,
+    subtotalStr: formatCurrency(subtotalCents, '').trim(),
     totalStr: formatCurrency(totalCents, '').trim(),
     discountStr: discountCents > 0 ? formatCurrency(discountCents, '').trim() : null,
     taxStr: taxCents > 0 ? formatCurrency(taxCents, '').trim() : null,
     currencySymbol: generalSettings?.currencySymbol ?? generalSettings?.currency_symbol ?? '$',
     footerText,
     isCancelled,
-    isAmended,
     plainText,
   };
 }
@@ -204,22 +222,24 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
   const metaOpts = metaSection?.options || {};
 
   if (showMetadata) {
-    const invoiceNumber = sale.invoiceNumber ?? sale.invoice_number ?? '—';
+    const rawInvoiceNumber = sale.invoiceNumber ?? sale.invoice_number ?? '—';
+    const invoiceMatch = String(rawInvoiceNumber).match(/(\d+)$/);
+    const invoiceNumber = invoiceMatch ? invoiceMatch[1] : rawInvoiceNumber;
     const createdAt = sale.createdAt ?? sale.created_at;
     const customerName = sale.customerName ?? sale.customer_name;
     const billerName = sale.billerName ?? sale.biller_name;
 
     lines.push(justify(`${strings.receipt.labels.billNo}: ${invoiceNumber}`, `${formatDate(createdAt)}`));
     const showCustomer = metaOpts.showCustomer ?? true;
+    const hasRealCustomer = customerName && customerName.trim() !== '' && customerName.trim().toLowerCase() !== 'walk-in customer';
     if (showCustomer) {
-      const custDisplayName = customerName || strings.receipt.defaults.cashCustomer;
-      lines.push(justify(`${strings.receipt.labels.cust}: ${custDisplayName}`, `${formatTime(createdAt)}`));
+      lines.push(justify(`${strings.receipt.labels.cust}: ${hasRealCustomer ? customerName : ''}`, `${formatTime(createdAt)}`));
     } else {
       lines.push(justify('', `${formatTime(createdAt)}`));
     }
     const showCashier = metaOpts.showCashier ?? true;
     if (showCashier && billerName) {
-      lines.push(`${strings.receipt.labels.cashier}: ${billerName}`);
+      lines.push(`User: ${billerName}`);
     }
     lines.push(divider);
   }
@@ -229,7 +249,7 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
   if (is58mm) {
     lines.push(justify('Item/Qty x Rate', 'Amt'));
   } else {
-    lines.push(justify('Item                 Qty    Rate', 'Amount'));
+    lines.push(justify('Item                 Qty    Rate', 'Amt'));
   }
   lines.push(divider);
 
@@ -237,8 +257,7 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
     const productName = it.productName ?? it.product_name ?? it.name ?? 'Item';
     const qty = it.quantity ?? 1;
     const unitPrice = it.unitPriceCents ?? it.unit_price_cents ?? 0;
-    const itemDiscount = it.discountCents ?? it.discount_cents ?? 0;
-    const lineTotal = (unitPrice * qty) - itemDiscount;
+    const lineTotal = unitPrice * qty;
 
     const rateStr = (unitPrice / 100).toFixed(2);
     const amtStr = (lineTotal / 100).toFixed(2);
@@ -258,12 +277,24 @@ export function buildReceiptPlainText({ sale, items = [], billSettings, generalS
   lines.push(divider);
 
   // Totals (NO Subtotal, Discount ONLY if > 0, NO Paid via)
-  const discountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+  const itemsGrossSubtotalCents = (items || []).reduce(
+    (sum, it) => sum + ((it.unitPriceCents ?? it.unit_price_cents ?? 0) * (it.quantity ?? 1)),
+    0
+  );
+  const itemsDiscountCents = (items || []).reduce(
+    (sum, it) => sum + (it.discountCents ?? it.discount_cents ?? 0),
+    0
+  );
+  const billDiscountCents = sale.discountCents ?? sale.discount_cents ?? 0;
+  const discountCents = itemsDiscountCents + billDiscountCents;
   const taxCents = sale.taxCents ?? sale.tax_cents ?? 0;
   const totalCents = sale.totalCents ?? sale.total_cents ?? 0;
-  const paidCents = sale.paidCents ?? sale.paid_cents ?? totalCents;
+  const subtotalCents = (items && items.length > 0)
+    ? itemsGrossSubtotalCents
+    : (sale.subtotalCents ?? sale.subtotal_cents ?? (totalCents + billDiscountCents));
 
   if (discountCents > 0) {
+    lines.push(justify(strings.common.labels.subtotal + ':', formatCurrency(subtotalCents)));
     lines.push(justify(strings.common.labels.discount + ':', `-${formatCurrency(discountCents)}`));
   }
 

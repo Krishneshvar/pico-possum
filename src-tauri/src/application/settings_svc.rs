@@ -75,6 +75,11 @@ impl SettingsService {
                                             s.gst = gst.to_string();
                                         }
                                     }
+                                    if s.logo_data.is_none() {
+                                        if let Some(logo) = opts.get("logoData").and_then(|v| v.as_str()) {
+                                            s.logo_data = Some(logo.to_string());
+                                        }
+                                    }
                                 }
                             }
                         }
