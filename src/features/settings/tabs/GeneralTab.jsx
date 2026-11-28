@@ -51,12 +51,12 @@ export default function GeneralTab({ general, setGeneral, onSave, isSaving }) {
         </div>
       </div>
 
-      {/* Currency & Tax Registration */}
+      {/* Currency */}
       <div className="p-6 rounded-xl bg-surface border border-border space-y-4">
         <h3 className="text-sm font-semibold text-content">
-          {strings.settings.storeTax.currencyGstin}
+          Currency Formatting
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
             <label className="text-content font-medium block mb-1">
               {strings.settings.storeTax.currencySymbol}
@@ -89,22 +89,6 @@ export default function GeneralTab({ general, setGeneral, onSave, isSaving }) {
             </select>
             <span className="text-[11px] text-content-muted mt-1 block">
               {strings.settings.storeTax.currencyFormatHint}
-            </span>
-          </div>
-
-          <div>
-            <label className="text-content font-medium block mb-1">
-              {strings.settings.storeTax.gstin}
-            </label>
-            <input
-              type="text"
-              value={general.gstin ?? ''}
-              onChange={(e) => setGeneral({ ...general, gstin: e.target.value })}
-              placeholder={strings.settings.storeTax.gstinPlaceholder}
-              className="w-full bg-surface-secondary border border-border-strong rounded-lg p-2.5 text-content focus:border-brand focus:outline-none font-mono"
-            />
-            <span className="text-[11px] text-content-muted mt-1 block">
-              {strings.settings.storeTax.gstinHint}
             </span>
           </div>
         </div>

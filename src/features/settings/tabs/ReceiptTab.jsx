@@ -357,9 +357,6 @@ export default function ReceiptTab({ bill, setBill, general, onSave, isSaving })
                               placeholder={general?.gstin || 'Tax registration ID'}
                               className="w-full bg-surface border border-border-strong rounded p-1.5 text-content text-xs font-mono"
                             />
-                            <span className="text-[10px] text-content-muted mt-0.5 block">
-                              Leave empty to use Store & Tax GSTIN
-                            </span>
                           </div>
                         </>
                       )}
